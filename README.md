@@ -73,7 +73,7 @@ with DataLensClientYC(auth=auth) as client:
     dashboard = client.get.dashboard(by_id="<dashboard-id>")
 ```
 
-Pass `auth=None` explicitly for access without authenticatio.
+Pass `auth=None` explicitly for access without authentication.
 
 ## Core concepts
 

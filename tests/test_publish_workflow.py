@@ -4,6 +4,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 import runpy
 import subprocess
+import sys
 from types import FunctionType
 from typing import Any, cast
 
@@ -11,6 +12,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "validate_publish_ref.py"
+RELEASE_CHECK_SCRIPT = ROOT / "scripts" / "check_release.py"
 
 
 def _load_release_validation() -> tuple[FunctionType, type[Any]]:
@@ -18,6 +20,10 @@ def _load_release_validation() -> tuple[FunctionType, type[Any]]:
     validate = cast(FunctionType, namespace["validate_publish_ref"])
     publish_target = cast(type[Any], namespace["PublishTarget"])
     return validate, publish_target
+
+
+def test_current_release_metadata_passes_release_check() -> None:
+    subprocess.run([sys.executable, str(RELEASE_CHECK_SCRIPT)], cwd=ROOT, check=True)
 
 
 def test_testpypi_dispatch_must_run_from_main(monkeypatch: pytest.MonkeyPatch) -> None:
