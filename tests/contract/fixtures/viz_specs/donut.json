@@ -1,0 +1,61 @@
+{
+  "golden_id": "je8zp7ycsdx2b",
+  "visualization": {
+    "allowFilters": true,
+    "allowLabels": true,
+    "allowLayerFilters": false,
+    "allowSort": true,
+    "availableLabelModes": [
+      "absolute",
+      "percent"
+    ],
+    "hidden": false,
+    "highchartsId": "pie",
+    "iconProps": {
+      "id": "visDonut",
+      "width": "24"
+    },
+    "id": "donut",
+    "name": "label_visualization-donut",
+    "placeholders": [
+      {
+        "allowedDataTypes": {},
+        "allowedFinalTypes": {},
+        "allowedTypes": {},
+        "capacity": 1,
+        "iconProps": {},
+        "id": "dimensions",
+        "required": false,
+        "settings": {},
+        "title": "section_categories",
+        "type": "dimensions"
+      },
+      {
+        "allowedDataTypes": {},
+        "allowedTypes": {},
+        "capacity": 1,
+        "iconProps": {},
+        "id": "colors",
+        "required": false,
+        "settings": {},
+        "title": "section_color",
+        "type": "colors"
+      },
+      {
+        "allowedDataTypes": {},
+        "allowedFinalTypes": {},
+        "allowedTypes": {},
+        "capacity": 1,
+        "iconProps": {},
+        "id": "measures",
+        "required": true,
+        "settings": {},
+        "title": "section_measures",
+        "type": "measures"
+      }
+    ],
+    "type": "pie"
+  },
+  "viz_id": "donut",
+  "wire_type": "datalens"
+}

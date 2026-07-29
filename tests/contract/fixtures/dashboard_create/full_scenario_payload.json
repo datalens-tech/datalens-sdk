@@ -1,0 +1,201 @@
+{
+  "entry": {
+    "data": {
+      "schemeVersion": 8,
+      "salt": "0.13371337",
+      "counter": 11,
+      "settings": {
+        "autoupdateInterval": null,
+        "maxConcurrentRequests": null,
+        "silentLoading": false,
+        "dependentSelectors": true,
+        "expandTOC": false,
+        "globalParams": {},
+        "hideDashTitle": false,
+        "hideTabs": true
+      },
+      "tabs": [
+        {
+          "id": "tab_1",
+          "title": "Overview",
+          "items": [
+            {
+              "id": "el_1",
+              "type": "title",
+              "namespace": "default",
+              "data": {
+                "text": "Sales overview",
+                "size": "m",
+                "showInTOC": true,
+                "autoHeight": true,
+                "textSettings": {
+                  "color": "#027bfeb3"
+                }
+              }
+            },
+            {
+              "id": "el_2",
+              "type": "widget",
+              "namespace": "default",
+              "data": {
+                "hideTitle": false,
+                "tabs": [
+                  {
+                    "id": "wt_1",
+                    "title": "Sales dynamics",
+                    "chartId": "ch-single",
+                    "params": {
+                      "region": [
+                        "RU"
+                      ]
+                    },
+                    "isDefault": true,
+                    "autoHeight": false,
+                    "description": "Weekly numbers",
+                    "enableDescription": true
+                  }
+                ]
+              }
+            },
+            {
+              "id": "el_3",
+              "type": "widget",
+              "namespace": "default",
+              "data": {
+                "hideTitle": true,
+                "tabs": [
+                  {
+                    "id": "wt_2",
+                    "title": "Plan",
+                    "chartId": "ch-plan",
+                    "params": {},
+                    "isDefault": false,
+                    "autoHeight": false
+                  },
+                  {
+                    "id": "wt_3",
+                    "title": "Fact",
+                    "chartId": "ch-fact",
+                    "params": {
+                      "mode": [
+                        "fact",
+                        "raw"
+                      ]
+                    },
+                    "isDefault": true,
+                    "autoHeight": true
+                  }
+                ],
+                "backgroundSettings": {
+                  "color": {
+                    "light": "#ffffff",
+                    "dark": "#000000"
+                  }
+                }
+              }
+            },
+            {
+              "id": "el_4",
+              "type": "text",
+              "namespace": "default",
+              "data": {
+                "text": "**Notes** for the overview",
+                "autoHeight": true,
+                "backgroundSettings": {
+                  "color": "#E0F7FA"
+                }
+              }
+            }
+          ],
+          "layout": [
+            {
+              "i": "el_1",
+              "x": 0,
+              "y": 0,
+              "w": 36,
+              "h": 2
+            },
+            {
+              "i": "el_2",
+              "x": 0,
+              "y": 2,
+              "w": 24,
+              "h": 12
+            },
+            {
+              "i": "el_3",
+              "x": 24,
+              "y": 2,
+              "w": 12,
+              "h": 12
+            },
+            {
+              "i": "el_4",
+              "x": 0,
+              "y": 14,
+              "w": 36,
+              "h": 4
+            }
+          ],
+          "connections": [],
+          "aliases": {
+            "default": []
+          }
+        },
+        {
+          "id": "tab_2",
+          "title": "Details",
+          "items": [
+            {
+              "id": "el_5",
+              "type": "title",
+              "namespace": "default",
+              "data": {
+                "text": "Raw data",
+                "size": "l",
+                "showInTOC": true,
+                "autoHeight": true
+              }
+            },
+            {
+              "id": "el_6",
+              "type": "image",
+              "namespace": "default",
+              "data": {
+                "src": "https://img.test/logo.png",
+                "preserveAspectRatio": true,
+                "alt": "Logo"
+              }
+            }
+          ],
+          "layout": [
+            {
+              "i": "el_5",
+              "x": 0,
+              "y": 0,
+              "w": 36,
+              "h": 2
+            },
+            {
+              "i": "el_6",
+              "x": 0,
+              "y": 2,
+              "w": 12,
+              "h": 6,
+              "parent": "__fixGCont"
+            }
+          ],
+          "connections": [],
+          "aliases": {
+            "default": []
+          }
+        }
+      ],
+      "description": "Snapshot dashboard",
+      "accessDescription": "Ask BI team",
+      "supportDescription": "Contact support"
+    },
+    "meta": null,
+    "key": "/Users/me/Snapshot Dash"
+  }
+}

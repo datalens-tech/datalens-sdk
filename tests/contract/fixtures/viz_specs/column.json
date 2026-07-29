@@ -1,0 +1,78 @@
+{
+  "golden_id": "57qrvb08760yp",
+  "visualization": {
+    "allowColors": true,
+    "allowFilters": true,
+    "allowLabels": true,
+    "allowSegments": true,
+    "allowSort": true,
+    "availableLabelModes": [
+      "absolute"
+    ],
+    "iconProps": {
+      "id": "visColumn",
+      "width": "24"
+    },
+    "id": "column",
+    "name": "label_visualization-column",
+    "placeholders": [
+      {
+        "allowedDataTypes": {},
+        "allowedTypes": {},
+        "capacity": 2,
+        "iconProps": {},
+        "id": "x",
+        "required": false,
+        "settings": {
+          "axisFormatMode": "auto",
+          "axisLabelDateFormat": "DD.MM.YYYY",
+          "axisLabelFormating": {},
+          "axisModeMap": {
+            "7b03a180-2128-11f1-aaab-05ae219965cc": "continuous"
+          },
+          "axisVisibility": "show",
+          "grid": "on",
+          "gridStep": "auto",
+          "gridStepValue": 50,
+          "hideLabels": "no",
+          "holidays": "off",
+          "labelsView": "auto",
+          "title": "off",
+          "titleValue": "",
+          "type": "linear"
+        },
+        "title": "section_x",
+        "type": "x"
+      },
+      {
+        "allowedDataTypes": {},
+        "allowedFinalTypes": {},
+        "allowedTypes": {},
+        "iconProps": {},
+        "id": "y",
+        "settings": {
+          "axisFormatMode": "auto",
+          "axisLabelDateFormat": "DD.MM.YYYY",
+          "axisLabelFormating": {},
+          "axisVisibility": "show",
+          "grid": "on",
+          "gridStep": "auto",
+          "gridStepValue": 50,
+          "hideLabels": "no",
+          "labelsView": "auto",
+          "nulls": "ignore",
+          "scale": "auto",
+          "scaleValue": "min-max",
+          "title": "off",
+          "titleValue": "",
+          "type": "linear"
+        },
+        "title": "section_y",
+        "type": "y"
+      }
+    ],
+    "type": "column"
+  },
+  "viz_id": "column",
+  "wire_type": "datalens"
+}

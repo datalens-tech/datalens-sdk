@@ -1,0 +1,223 @@
+{
+  "entryId": "d2bkncoeml94w",
+  "scope": "widget",
+  "type": "d3_ql_node",
+  "key": "Users/mg-evdokimov/Примеры DL/Best Practices/QL Chart Example donut",
+  "createdBy": "uid:1120000000325296",
+  "createdAt": "2026-07-17T14:20:26.138Z",
+  "updatedBy": "uid:1120000000325296",
+  "updatedAt": "2026-07-17T14:20:48.134Z",
+  "revUpdatedBy": "uid:1120000000325296",
+  "revUpdatedAt": "2026-07-17T14:20:48.134Z",
+  "savedId": "shqz44sg4oa2b",
+  "publishedId": "shqz44sg4oa2b",
+  "revId": "shqz44sg4oa2b",
+  "tenantId": "common",
+  "data": {
+    "type": "ql",
+    "chartType": "sql",
+    "connection": {
+      "entryId": "9ufygkkh1doaz",
+      "type": "ch_over_yt",
+      "dataExportForbidden": false
+    },
+    "colors": [],
+    "colorsConfig": {},
+    "labels": [
+      {
+        "guid": "events",
+        "title": "events",
+        "datasetId": "ql-mocked-dataset",
+        "data_type": "integer",
+        "cast": "integer",
+        "type": "DIMENSION",
+        "calc_mode": "direct",
+        "inspectHidden": true,
+        "formulaHidden": true,
+        "noEdit": true,
+        "id": "inserted-1784284315846",
+        "hideLabelMode": "show",
+        "formatting": {
+          "format": "number",
+          "showRankDelimiter": true,
+          "prefix": "",
+          "postfix": "",
+          "unit": "auto",
+          "labelMode": "absolute",
+          "precision": 0
+        },
+        "mode": "absolute"
+      }
+    ],
+    "tooltips": [],
+    "shapes": [],
+    "shapesConfig": {},
+    "extraSettings": {
+      "totals": "on"
+    },
+    "queryValue": "SELECT\r\n  toDateTime(toStartOfInterval(t1.event_dttm, interval 1 week)) AS dttm,\r\n  sum(1) AS events,\r\n  CASE WHEN (t1.exec_time_sec < 3) THEN '< 3 sec.' WHEN (t1.exec_time_sec < 5) THEN '< 5 sec' WHEN (t1.exec_time_sec < 10) THEN '< 10 sec' ELSE '> 10 sec' END AS category\r\nFROM \"//home/taxi-analytics/taxi-bi/datalens-meta/cdm/datalens_events\" AS t1\r\nWHERE\r\n  t1.dash_path_lvl_2 IN ({{service}}) AND t1.source IN ('Chart') AND t1.event_dttm BETWEEN toDateTime('2026-06-17T00:00:00') AND toDateTime('2026-07-16T23:59:59') AND toDateTime(toStartOfInterval(t1.event_dttm, interval 1 week)) BETWEEN toDateTime('2026-06-17T00:00:00') AND toDateTime('2026-07-16T23:59:59')\r\nGROUP BY dttm, category\r\n  ORDER BY category ASC NULLS FIRST\r\nLIMIT 1000001",
+    "queries": [],
+    "params": [
+      {
+        "type": "number",
+        "name": "avg_exec_param",
+        "defaultValue": "5"
+      },
+      {
+        "type": "number",
+        "name": "err_limit",
+        "defaultValue": "1"
+      },
+      {
+        "type": "number",
+        "name": "mem_limit",
+        "defaultValue": "1024"
+      },
+      {
+        "type": "string",
+        "name": "source",
+        "defaultValue": "Chart"
+      },
+      {
+        "type": "string",
+        "name": "service",
+        "defaultValue": "01 Taxi"
+      },
+      {
+        "type": "string",
+        "name": "connection_type",
+        "defaultValue": ""
+      },
+      {
+        "type": "string",
+        "name": "folder",
+        "defaultValue": ""
+      },
+      {
+        "type": "string",
+        "name": "owner",
+        "defaultValue": ""
+      },
+      {
+        "type": "date-interval",
+        "name": "interval",
+        "defaultValue": {
+          "from": "__relative_-30d",
+          "to": "__relative_-0d"
+        }
+      }
+    ],
+    "visualization": {
+      "id": "donut",
+      "type": "pie",
+      "name": "label_visualization-donut",
+      "iconProps": {
+        "id": "visDonut",
+        "width": "24"
+      },
+      "allowFilters": false,
+      "allowLabels": true,
+      "allowSort": false,
+      "availableLabelModes": [
+        "absolute",
+        "percent"
+      ],
+      "placeholders": [
+        {
+          "allowedTypes": {},
+          "allowedFinalTypes": {},
+          "allowedDataTypes": {},
+          "id": "dimensions",
+          "type": "dimensions",
+          "title": "section_categories",
+          "iconProps": {},
+          "items": [],
+          "required": false,
+          "capacity": 1,
+          "settings": {}
+        },
+        {
+          "allowedTypes": {},
+          "allowedDataTypes": {},
+          "id": "colors",
+          "type": "colors",
+          "title": "section_color",
+          "iconProps": {},
+          "items": [
+            {
+              "guid": "dttm",
+              "title": "dttm",
+              "datasetId": "ql-mocked-dataset",
+              "data_type": "genericdatetime",
+              "cast": "genericdatetime",
+              "type": "DIMENSION",
+              "calc_mode": "direct",
+              "inspectHidden": true,
+              "formulaHidden": true,
+              "noEdit": true
+            },
+            {
+              "guid": "events",
+              "title": "events",
+              "datasetId": "ql-mocked-dataset",
+              "data_type": "integer",
+              "cast": "integer",
+              "type": "DIMENSION",
+              "calc_mode": "direct",
+              "inspectHidden": true,
+              "formulaHidden": true,
+              "noEdit": true
+            }
+          ],
+          "required": false,
+          "capacity": 1,
+          "settings": {}
+        },
+        {
+          "allowedTypes": {},
+          "allowedFinalTypes": {},
+          "allowedDataTypes": {},
+          "id": "measures",
+          "type": "measures",
+          "title": "section_measures",
+          "iconProps": {},
+          "items": [
+            {
+              "guid": "events",
+              "title": "events",
+              "datasetId": "ql-mocked-dataset",
+              "data_type": "integer",
+              "cast": "integer",
+              "type": "DIMENSION",
+              "calc_mode": "direct",
+              "inspectHidden": true,
+              "formulaHidden": true,
+              "noEdit": true
+            }
+          ],
+          "required": true,
+          "capacity": 1,
+          "settings": {}
+        }
+      ],
+      "highchartsId": "pie",
+      "hidden": false,
+      "allowSegments": false,
+      "allowAvailable": true,
+      "allowLayerFilters": false
+    },
+    "order": null,
+    "version": "7",
+    "geopointsConfig": {}
+  },
+  "meta": {},
+  "annotation": {
+    "description": ""
+  },
+  "version": null,
+  "sourceVersion": null,
+  "hidden": false,
+  "public": false,
+  "workbookId": null,
+  "collectionId": null
+}

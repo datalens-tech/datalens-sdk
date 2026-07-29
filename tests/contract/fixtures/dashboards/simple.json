@@ -1,0 +1,108 @@
+{
+  "annotation": null,
+  "createdAt": "2026-07-18T10:13:08.154Z",
+  "createdBy": "uid:0000000000000001",
+  "data": {
+    "counter": 1,
+    "salt": "0.13371337",
+    "schemeVersion": 8,
+    "settings": {
+      "autoupdateInterval": null,
+      "dependentSelectors": true,
+      "expandTOC": false,
+      "globalParams": {},
+      "hideDashTitle": false,
+      "hideTabs": false,
+      "maxConcurrentRequests": null,
+      "silentLoading": false
+    },
+    "tabs": [
+      {
+        "aliases": {
+          "default": []
+        },
+        "connections": [],
+        "id": "tab_1",
+        "items": [
+          {
+            "data": {
+              "showInTOC": false,
+              "size": "m",
+              "text": "Text 1"
+            },
+            "id": "ti1",
+            "namespace": "default",
+            "type": "title"
+          },
+          {
+            "data": {
+              "text": "Text 2"
+            },
+            "id": "tx1",
+            "namespace": "default",
+            "type": "text"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": false,
+                  "chartId": "fixture000002",
+                  "id": "wt1",
+                  "isDefault": true,
+                  "params": {},
+                  "title": "Title 3"
+                }
+              ]
+            },
+            "id": "wg1",
+            "namespace": "default",
+            "type": "widget"
+          }
+        ],
+        "layout": [
+          {
+            "h": 2,
+            "i": "ti1",
+            "w": 36,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "tx1",
+            "w": 36,
+            "x": 0,
+            "y": 2
+          },
+          {
+            "h": 12,
+            "i": "wg1",
+            "w": 24,
+            "x": 0,
+            "y": 4
+          }
+        ],
+        "title": "Title 4"
+      }
+    ]
+  },
+  "entryId": "fixture000003",
+  "hidden": false,
+  "key": "fixtures/dashboards/simple",
+  "meta": {},
+  "public": false,
+  "publishedId": "fixture000004",
+  "revId": "fixture000004",
+  "revUpdatedAt": "2026-07-18T10:13:08.154Z",
+  "revUpdatedBy": "uid:0000000000000001",
+  "savedId": "fixture000004",
+  "scope": "dash",
+  "tenantId": "common",
+  "type": "",
+  "updatedAt": "2026-07-18T10:13:08.154Z",
+  "updatedBy": "uid:0000000000000001",
+  "version": 1,
+  "workbookId": null
+}

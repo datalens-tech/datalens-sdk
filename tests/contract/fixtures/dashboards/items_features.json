@@ -1,0 +1,198 @@
+{
+  "annotation": null,
+  "createdAt": "2026-07-18T10:15:57.583Z",
+  "createdBy": "uid:0000000000000001",
+  "data": {
+    "counter": 1,
+    "salt": "0.13371337",
+    "schemeVersion": 8,
+    "settings": {
+      "autoupdateInterval": null,
+      "dependentSelectors": true,
+      "expandTOC": false,
+      "globalParams": {},
+      "hideDashTitle": false,
+      "hideTabs": false,
+      "maxConcurrentRequests": null,
+      "silentLoading": false
+    },
+    "tabs": [
+      {
+        "aliases": {
+          "default": []
+        },
+        "connections": [],
+        "id": "tab_1",
+        "items": [
+          {
+            "data": {
+              "source": {
+                "acceptableValues": [
+                  {
+                    "title": "Title 1",
+                    "value": "Title 1"
+                  }
+                ],
+                "elementType": "select",
+                "fieldName": "field_0002",
+                "multiselectable": true
+              },
+              "sourceType": "manual",
+              "title": "Title 2"
+            },
+            "defaults": {},
+            "id": "ctl1",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000003",
+                  "enableActionParams": true,
+                  "hint": "Hint 3",
+                  "id": "wt1",
+                  "isDefault": true,
+                  "params": {},
+                  "title": "Title 4"
+                }
+              ]
+            },
+            "id": "wg1",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "autoHeight": true,
+              "backgroundSettings": {
+                "color": {
+                  "dark": "#333300",
+                  "light": "#FFF3B0"
+                }
+              },
+              "hint": {
+                "enabled": true,
+                "text": "Text 5"
+              },
+              "showInTOC": false,
+              "size": "m",
+              "text": "Text 6",
+              "textSettings": {
+                "color": {
+                  "dark": "#00FF00",
+                  "light": "#FF0000"
+                }
+              }
+            },
+            "id": "ti1",
+            "namespace": "default",
+            "type": "title"
+          },
+          {
+            "data": {
+              "autoHeight": true,
+              "backgroundSettings": {
+                "color": {
+                  "dark": "#00363A",
+                  "light": "#E0F7FA"
+                }
+              },
+              "text": "Text 7"
+            },
+            "id": "tx1",
+            "namespace": "default",
+            "type": "text"
+          },
+          {
+            "data": {
+              "alt": "Alt 8",
+              "preserveAspectRatio": true,
+              "src": "https://static.example.com/s3/home-static/_/37/37a02b5dc7a51abac55d8a5b6c865f0e.png"
+            },
+            "id": "im1",
+            "namespace": "default",
+            "type": "image"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "prompt": "Prompt 9",
+              "title": "Title 10",
+              "widgetTabId": "wt1"
+            },
+            "id": "nw1",
+            "namespace": "default",
+            "type": "neuro_widget"
+          }
+        ],
+        "layout": [
+          {
+            "h": 2,
+            "i": "ctl1",
+            "parent": "__fixHead",
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "h": 10,
+            "i": "wg1",
+            "parent": "__fixGCont",
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "ti1",
+            "w": 36,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "h": 3,
+            "i": "tx1",
+            "w": 18,
+            "x": 0,
+            "y": 2
+          },
+          {
+            "h": 3,
+            "i": "im1",
+            "w": 18,
+            "x": 18,
+            "y": 2
+          },
+          {
+            "h": 6,
+            "i": "nw1",
+            "w": 24,
+            "x": 0,
+            "y": 5
+          }
+        ],
+        "title": "Title 11"
+      }
+    ]
+  },
+  "entryId": "fixture000004",
+  "hidden": false,
+  "key": "fixtures/dashboards/items_features",
+  "meta": {},
+  "public": false,
+  "publishedId": "fixture000005",
+  "revId": "fixture000005",
+  "revUpdatedAt": "2026-07-18T10:15:58.069Z",
+  "revUpdatedBy": "uid:0000000000000001",
+  "savedId": "fixture000005",
+  "scope": "dash",
+  "tenantId": "common",
+  "type": "",
+  "updatedAt": "2026-07-18T10:15:58.069Z",
+  "updatedBy": "uid:0000000000000001",
+  "version": 1,
+  "workbookId": null
+}

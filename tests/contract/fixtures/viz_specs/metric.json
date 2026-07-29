@@ -1,0 +1,44 @@
+{
+  "golden_id": "u6vchqqsj10ce",
+  "visualization": {
+    "allowFilters": true,
+    "allowLabels": false,
+    "allowLayerFilters": false,
+    "allowSort": false,
+    "iconProps": {
+      "id": "visMetric",
+      "width": "24"
+    },
+    "id": "metric",
+    "name": "label_visualization-metric",
+    "placeholders": [
+      {
+        "allowedDataTypes": {},
+        "allowedFinalTypes": {},
+        "allowedTypes": {},
+        "capacity": 1,
+        "iconProps": {},
+        "id": "measures",
+        "required": true,
+        "settings": {
+          "axisModeMap": {
+            "553eb180-1d2a-11f1-a052-4d8f5b1603a2": "continuous"
+          }
+        },
+        "title": "section_measure",
+        "type": "measures"
+      },
+      {
+        "allowedTypes": {},
+        "iconProps": {},
+        "id": "colors",
+        "settings": {},
+        "title": "section_colors",
+        "type": "colors"
+      }
+    ],
+    "type": "metric"
+  },
+  "viz_id": "indicator",
+  "wire_type": "datalens"
+}

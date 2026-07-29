@@ -1,0 +1,1960 @@
+{
+  "annotation": {
+    "description": "<redacted>"
+  },
+  "collectionId": null,
+  "data": {
+    "colors": [],
+    "colorsConfig": {},
+    "datasetsIds": [
+      "<redacted>"
+    ],
+    "datasetsPartialFields": [
+      [
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "calc_mode": "<redacted>",
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        }
+      ]
+    ],
+    "extraSettings": {
+      "feed": "<redacted>",
+      "indicatorTitleMode": "by-field",
+      "legendMode": "<redacted>",
+      "limit": 100,
+      "mapCenterMode": "auto",
+      "navigatorSettings": {
+        "isNavigatorAvailable": false,
+        "selectedLines": []
+      },
+      "pagination": "off",
+      "pivotFallback": "<redacted>",
+      "pivotInlineSort": "<redacted>",
+      "size": "s",
+      "stacking": "<redacted>",
+      "title": "<redacted>",
+      "titleMode": "hide",
+      "tooltipSum": "<redacted>",
+      "totals": "<redacted>",
+      "zoomMode": "<redacted>"
+    },
+    "filters": [
+      {
+        "calc_mode": "<redacted>",
+        "datasetId": "<redacted>",
+        "filter": {
+          "operation": {
+            "code": "<redacted>"
+          },
+          "value": [
+            "__interval_2026-01-01T00:00:00.000Z_2026-05-11T23:59:59.999Z"
+          ]
+        },
+        "guid": "<redacted>",
+        "title": "<redacted>",
+        "type": "DIMENSION"
+      },
+      {
+        "calc_mode": "<redacted>",
+        "datasetId": "<redacted>",
+        "filter": {
+          "operation": {
+            "code": "<redacted>"
+          },
+          "value": [
+            "false"
+          ]
+        },
+        "guid": "<redacted>",
+        "title": "<redacted>",
+        "type": "DIMENSION"
+      }
+    ],
+    "geopointsConfig": {},
+    "hierarchies": [],
+    "labels": [],
+    "links": [],
+    "segments": [],
+    "shapes": [],
+    "shapesConfig": {},
+    "sort": [],
+    "tooltips": [],
+    "type": "datalens",
+    "updates": [
+      {
+        "action": "<redacted>",
+        "deleteUpdateAfterValidation": false,
+        "field": {
+          "aggregation": "<redacted>",
+          "aggregation_locked": true,
+          "autoaggregated": false,
+          "calc_mode": "<redacted>",
+          "cast": "<redacted>",
+          "data_type": "<redacted>",
+          "datasetId": "<redacted>",
+          "default_value": "<redacted>",
+          "description": "<redacted>",
+          "formula": "<redacted>",
+          "guid": "<redacted>",
+          "guid_formula": "<redacted>",
+          "has_auto_aggregation": false,
+          "hidden": false,
+          "initial_data_type": "<redacted>",
+          "lock_aggregation": false,
+          "managed_by": "<redacted>",
+          "source": "<redacted>",
+          "template_enabled": false,
+          "title": "<redacted>",
+          "type": "DIMENSION",
+          "ui_settings": "<redacted>",
+          "valid": true,
+          "virtual": false
+        }
+      },
+      {
+        "action": "<redacted>",
+        "deleteUpdateAfterValidation": false,
+        "field": {
+          "aggregation": "<redacted>",
+          "aggregation_locked": true,
+          "autoaggregated": false,
+          "calc_mode": "<redacted>",
+          "cast": "<redacted>",
+          "data_type": "<redacted>",
+          "datasetId": "<redacted>",
+          "default_value": 100,
+          "description": "<redacted>",
+          "formula": "<redacted>",
+          "guid": "<redacted>",
+          "guid_formula": "<redacted>",
+          "has_auto_aggregation": false,
+          "hidden": false,
+          "initial_data_type": "<redacted>",
+          "lock_aggregation": false,
+          "managed_by": "<redacted>",
+          "source": "<redacted>",
+          "template_enabled": false,
+          "title": "<redacted>",
+          "type": "DIMENSION",
+          "ui_settings": "<redacted>",
+          "valid": true,
+          "virtual": false
+        }
+      },
+      {
+        "action": "<redacted>",
+        "deleteUpdateAfterValidation": false,
+        "field": {
+          "aggregation": "<redacted>",
+          "aggregation_locked": true,
+          "autoaggregated": false,
+          "calc_mode": "<redacted>",
+          "cast": "<redacted>",
+          "data_type": "<redacted>",
+          "datasetId": "<redacted>",
+          "default_value": "<redacted>",
+          "description": "<redacted>",
+          "formula": "<redacted>",
+          "guid": "<redacted>",
+          "guid_formula": "<redacted>",
+          "has_auto_aggregation": false,
+          "hidden": false,
+          "initial_data_type": "<redacted>",
+          "lock_aggregation": false,
+          "managed_by": "<redacted>",
+          "source": "<redacted>",
+          "template_enabled": false,
+          "title": "<redacted>",
+          "type": "DIMENSION",
+          "ui_settings": "<redacted>",
+          "valid": true,
+          "virtual": false
+        }
+      },
+      {
+        "action": "<redacted>",
+        "deleteUpdateAfterValidation": false,
+        "field": {
+          "aggregation": "<redacted>",
+          "aggregation_locked": true,
+          "autoaggregated": false,
+          "calc_mode": "<redacted>",
+          "cast": "<redacted>",
+          "data_type": "<redacted>",
+          "datasetId": "<redacted>",
+          "default_value": "<redacted>",
+          "description": "<redacted>",
+          "formula": "<redacted>",
+          "guid": "<redacted>",
+          "guid_formula": "<redacted>",
+          "has_auto_aggregation": false,
+          "hidden": false,
+          "initial_data_type": "<redacted>",
+          "lock_aggregation": false,
+          "managed_by": "<redacted>",
+          "source": "<redacted>",
+          "template_enabled": false,
+          "title": "<redacted>",
+          "type": "DIMENSION",
+          "ui_settings": "<redacted>",
+          "valid": true,
+          "virtual": false
+        }
+      }
+    ],
+    "visualization": {
+      "allowColors": true,
+      "allowFilters": true,
+      "allowLayerFilters": false,
+      "allowSort": true,
+      "iconProps": {
+        "id": "<redacted>",
+        "width": "24"
+      },
+      "id": "<redacted>",
+      "name": "<redacted>",
+      "placeholders": [
+        {
+          "allowedTypes": {},
+          "iconProps": {},
+          "id": "<redacted>",
+          "items": [
+            {
+              "aggregation": "<redacted>",
+              "aggregation_locked": false,
+              "autoaggregated": false,
+              "avatar_id": "<redacted>",
+              "calc_mode": "<redacted>",
+              "cast": "<redacted>",
+              "data_type": "<redacted>",
+              "datasetId": "<redacted>",
+              "datasetName": "<redacted>",
+              "default_value": null,
+              "description": "<redacted>",
+              "formula": "<redacted>",
+              "guid": "<redacted>",
+              "guid_formula": "<redacted>",
+              "has_auto_aggregation": false,
+              "hidden": false,
+              "id": "<redacted>",
+              "initial_data_type": "<redacted>",
+              "lock_aggregation": false,
+              "managed_by": "<redacted>",
+              "source": "<redacted>",
+              "title": "<redacted>",
+              "type": "DIMENSION",
+              "ui_settings": "<redacted>",
+              "valid": true,
+              "value_constraint": null,
+              "virtual": false
+            },
+            {
+              "aggregation": "<redacted>",
+              "aggregation_locked": true,
+              "autoaggregated": true,
+              "avatar_id": null,
+              "calc_mode": "<redacted>",
+              "cast": "<redacted>",
+              "data_type": "<redacted>",
+              "datasetId": "<redacted>",
+              "datasetName": "<redacted>",
+              "default_value": null,
+              "description": "<redacted>",
+              "formula": "<redacted>",
+              "guid": "<redacted>",
+              "guid_formula": "<redacted>",
+              "has_auto_aggregation": true,
+              "hidden": false,
+              "id": "<redacted>",
+              "initial_data_type": "<redacted>",
+              "lock_aggregation": false,
+              "managed_by": "<redacted>",
+              "source": "<redacted>",
+              "title": "<redacted>",
+              "type": "MEASURE",
+              "ui_settings": "<redacted>",
+              "valid": true,
+              "value_constraint": null,
+              "virtual": false
+            },
+            {
+              "aggregation": "<redacted>",
+              "aggregation_locked": true,
+              "autoaggregated": false,
+              "avatar_id": null,
+              "calc_mode": "<redacted>",
+              "cast": "<redacted>",
+              "data_type": "<redacted>",
+              "datasetId": "<redacted>",
+              "datasetName": "<redacted>",
+              "default_value": null,
+              "description": "<redacted>",
+              "formula": "<redacted>",
+              "guid": "<redacted>",
+              "guid_formula": "<redacted>",
+              "has_auto_aggregation": false,
+              "hidden": false,
+              "id": "<redacted>",
+              "initial_data_type": "<redacted>",
+              "lock_aggregation": false,
+              "managed_by": "<redacted>",
+              "source": "<redacted>",
+              "title": "<redacted>",
+              "type": "MEASURE",
+              "ui_settings": "<redacted>",
+              "valid": true,
+              "value_constraint": null,
+              "virtual": false
+            }
+          ],
+          "required": true,
+          "settings": {
+            "groupping": "<redacted>"
+          },
+          "title": "<redacted>",
+          "type": "flat-table-columns"
+        }
+      ],
+      "type": "table"
+    }
+  },
+  "entryId": "<redacted>",
+  "hidden": false,
+  "key": "<redacted>",
+  "meta": {},
+  "public": false,
+  "publishedId": "<redacted>",
+  "revId": "<redacted>",
+  "savedId": "<redacted>",
+  "scope": "<redacted>",
+  "sourceVersion": null,
+  "tenantId": "<redacted>",
+  "type": "table_wizard_node",
+  "workbookId": null
+}
