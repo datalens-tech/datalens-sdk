@@ -90,16 +90,23 @@ def _write_text_file_exclusive(path: Path, value: str) -> None:
 
 
 def _rename_directory_no_replace(source: Path, target: Path) -> None:
-    if sys.platform.startswith("linux"):
+    platform_name = _runtime_platform()
+    if platform_name.startswith("linux"):
         _rename_directory_linux(source, target)
         return
-    if sys.platform == "darwin":
+    if platform_name == "darwin":
         _rename_directory_macos(source, target)
         return
-    if _is_windows():  # type: ignore[unreachable]
+    if _is_windows():
         _rename_directory_windows(source, target)
         return
-    raise DatalensConfigurationError(f"Atomic no-replace artifact commit is not supported on platform {sys.platform!r}")
+    raise DatalensConfigurationError(
+        f"Atomic no-replace artifact commit is not supported on platform {platform_name!r}"
+    )
+
+
+def _runtime_platform() -> str:
+    return sys.platform
 
 
 def _is_windows() -> bool:
