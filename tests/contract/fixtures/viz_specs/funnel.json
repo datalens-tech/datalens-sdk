@@ -1,0 +1,48 @@
+{
+  "golden_id": "5v9tonl3zaogo",
+  "visualization": {
+    "allowColors": true,
+    "allowFilters": true,
+    "allowLabels": true,
+    "allowLayerFilters": false,
+    "allowSort": true,
+    "availableLabelModes": [
+      "absolute",
+      "percent"
+    ],
+    "iconProps": {
+      "id": "visFunnel",
+      "width": "24"
+    },
+    "id": "funnel",
+    "name": "label_visualization-funnel",
+    "placeholders": [
+      {
+        "allowedDataTypes": {},
+        "allowedFinalTypes": {},
+        "allowedTypes": {},
+        "capacity": 1,
+        "iconProps": {},
+        "id": "dimensions",
+        "required": true,
+        "settings": {},
+        "title": "section_categories",
+        "type": "dimensions"
+      },
+      {
+        "allowedDataTypes": {},
+        "allowedFinalTypes": {},
+        "allowedTypes": {},
+        "iconProps": {},
+        "id": "measures",
+        "required": true,
+        "settings": {},
+        "title": "section_measures",
+        "type": "measures"
+      }
+    ],
+    "type": "funnel"
+  },
+  "viz_id": "funnel",
+  "wire_type": "datalens"
+}

@@ -1,0 +1,84 @@
+{
+  "golden_id": "eg56c4cumyzcy",
+  "visualization": {
+    "allowColors": true,
+    "allowFilters": true,
+    "allowLabels": true,
+    "allowLayerFilters": false,
+    "allowSegments": true,
+    "allowSort": true,
+    "availableLabelModes": [
+      "absolute",
+      "percent"
+    ],
+    "highchartsId": "column",
+    "iconProps": {
+      "id": "visColumn100p",
+      "width": "24"
+    },
+    "id": "column100p",
+    "name": "label_visualization-column-100p",
+    "placeholders": [
+      {
+        "allowedDataTypes": {},
+        "allowedTypes": {},
+        "capacity": 2,
+        "iconProps": {},
+        "id": "x",
+        "required": false,
+        "settings": {
+          "axisFormatMode": "auto",
+          "axisLabelDateFormat": "DD.MM.YYYY",
+          "axisLabelFormating": {},
+          "axisModeMap": {
+            "de411420-1c7e-11f1-a4a0-0365bd0eff82": "continuous"
+          },
+          "axisVisibility": "show",
+          "grid": "on",
+          "gridStep": "auto",
+          "gridStepValue": 50,
+          "hideLabels": "no",
+          "holidays": "off",
+          "labelsView": "auto",
+          "title": "off",
+          "titleValue": "",
+          "type": "linear"
+        },
+        "title": "section_x",
+        "type": "x"
+      },
+      {
+        "allowedDataTypes": {},
+        "allowedFinalTypes": {},
+        "allowedTypes": {},
+        "iconProps": {},
+        "id": "y",
+        "settings": {
+          "axisFormatMode": "auto",
+          "axisLabelDateFormat": "DD.MM.YYYY",
+          "axisLabelFormating": {},
+          "axisModeMap": {
+            "42377db0-1c8f-11f1-8ec7-c57cf85f3008": "continuous"
+          },
+          "axisVisibility": "show",
+          "grid": "on",
+          "gridStep": "auto",
+          "gridStepValue": 50,
+          "hideLabels": "no",
+          "labelsView": "auto",
+          "nulls": "ignore",
+          "scale": "auto",
+          "scaleValue": "min-max",
+          "title": "off",
+          "titleValue": "",
+          "type": "linear"
+        },
+        "title": "section_y",
+        "type": "y"
+      }
+    ],
+    "type": "column"
+  },
+  "viz_id": "column_100p",
+  "wire_type": "datalens"
+}

@@ -1,0 +1,551 @@
+{
+  "annotation": {
+    "description": ""
+  },
+  "createdAt": "2026-06-17T10:50:57.565Z",
+  "createdBy": "uid:0000000000000001",
+  "data": {
+    "counter": 30,
+    "salt": "0.8381110385971706",
+    "schemeVersion": 8,
+    "settings": {
+      "autoupdateInterval": null,
+      "dependentSelectors": true,
+      "expandTOC": false,
+      "globalParams": {},
+      "hideDashTitle": false,
+      "hideTabs": false,
+      "loadOnlyVisibleCharts": true,
+      "loadPriority": "charts",
+      "maxConcurrentRequests": null,
+      "silentLoading": false
+    },
+    "tabs": [
+      {
+        "aliases": {
+          "default": [
+            [
+              "field_0002",
+              "base_branch_dndn"
+            ],
+            [
+              "date",
+              "date_1jp0"
+            ],
+            [
+              "field_0004",
+              "platform_vjw0"
+            ]
+          ]
+        },
+        "connections": [
+          {
+            "from": "no",
+            "kind": "ignore",
+            "to": "rB"
+          },
+          {
+            "from": "7o",
+            "kind": "ignore",
+            "to": "rB"
+          },
+          {
+            "from": "om",
+            "kind": "ignore",
+            "to": "rB"
+          }
+        ],
+        "id": "GJ",
+        "items": [
+          {
+            "data": {
+              "autoHeight": true,
+              "borderRadius": 10,
+              "buttonApply": true,
+              "buttonReset": true,
+              "group": [
+                {
+                  "defaults": {
+                    "field_0002": "__eq_Value 1"
+                  },
+                  "id": "no",
+                  "impactTabsIds": null,
+                  "impactType": "asGroup",
+                  "namespace": "default",
+                  "placementMode": "auto",
+                  "source": {
+                    "accentType": "info",
+                    "defaultValue": "Value 1",
+                    "elementType": "input",
+                    "fieldName": "field_0002",
+                    "innerTitle": "=",
+                    "operation": "EQ",
+                    "required": true,
+                    "showHint": false,
+                    "showTitle": true,
+                    "titlePlacement": "left"
+                  },
+                  "sourceType": "manual",
+                  "title": "Title 2",
+                  "width": ""
+                },
+                {
+                  "defaults": {
+                    "field_0003": "__between___interval___relative_-14d___relative_-0d"
+                  },
+                  "id": "7o",
+                  "impactTabsIds": null,
+                  "impactType": "asGroup",
+                  "namespace": "default",
+                  "placementMode": "auto",
+                  "source": {
+                    "accentType": "info",
+                    "defaultValue": "__interval___relative_-14d___relative_-0d",
+                    "elementType": "date",
+                    "fieldName": "field_0003",
+                    "innerTitle": "Innertitle 3",
+                    "isRange": true,
+                    "operation": "BETWEEN",
+                    "required": true,
+                    "showHint": false,
+                    "showTitle": true,
+                    "titlePlacement": "left"
+                  },
+                  "sourceType": "manual",
+                  "title": "Title 4",
+                  "width": ""
+                },
+                {
+                  "defaults": {
+                    "field_0004": [
+                      "__eq_Value 5"
+                    ]
+                  },
+                  "id": "om",
+                  "impactTabsIds": null,
+                  "impactType": "asGroup",
+                  "namespace": "default",
+                  "placementMode": "auto",
+                  "source": {
+                    "accentType": "info",
+                    "acceptableValues": [
+                      {
+                        "title": "Title 6",
+                        "value": "Title 6"
+                      },
+                      {
+                        "title": "Title 7",
+                        "value": "Title 7"
+                      },
+                      {
+                        "title": "Title 8",
+                        "value": "Title 8"
+                      },
+                      {
+                        "title": "Title 9",
+                        "value": "Title 9"
+                      },
+                      {
+                        "title": "Value 5",
+                        "value": "Value 5"
+                      }
+                    ],
+                    "defaultValue": [
+                      "Value 5"
+                    ],
+                    "elementType": "select",
+                    "fieldName": "field_0004",
+                    "innerTitle": "=",
+                    "multiselectable": false,
+                    "operation": "EQ",
+                    "required": true,
+                    "showHint": false,
+                    "showTitle": true,
+                    "titlePlacement": "left"
+                  },
+                  "sourceType": "manual",
+                  "title": "Title 10",
+                  "width": ""
+                },
+                {
+                  "defaults": {
+                    "field_0005": "__eq_Value 11"
+                  },
+                  "id": "4G",
+                  "impactTabsIds": null,
+                  "impactType": "asGroup",
+                  "namespace": "default",
+                  "placementMode": "auto",
+                  "source": {
+                    "accentType": "info",
+                    "defaultValue": "Value 11",
+                    "elementType": "input",
+                    "fieldName": "field_0005",
+                    "hint": "",
+                    "innerTitle": "=",
+                    "operation": "EQ",
+                    "required": true,
+                    "showHint": true,
+                    "showTitle": true,
+                    "titlePlacement": "left"
+                  },
+                  "sourceType": "manual",
+                  "title": "Title 12",
+                  "width": ""
+                },
+                {
+                  "defaults": {
+                    "field_0006": "__eq_*"
+                  },
+                  "id": "Yg",
+                  "impactTabsIds": null,
+                  "impactType": "asGroup",
+                  "namespace": "default",
+                  "placementMode": "auto",
+                  "source": {
+                    "accentType": "info",
+                    "defaultValue": "*",
+                    "elementType": "input",
+                    "fieldName": "field_0006",
+                    "hint": "Hint 13",
+                    "innerTitle": "=",
+                    "operation": "EQ",
+                    "required": true,
+                    "showHint": true,
+                    "showTitle": true,
+                    "titlePlacement": "left"
+                  },
+                  "sourceType": "manual",
+                  "title": "Title 14",
+                  "width": ""
+                }
+              ],
+              "impactTabsIds": [
+                "GJ"
+              ],
+              "impactType": "currentTab",
+              "showGroupName": false,
+              "updateControlsOnChange": true
+            },
+            "id": "2j",
+            "namespace": "default",
+            "type": "group_control"
+          },
+          {
+            "data": {
+              "backgroundSettings": {
+                "color": {}
+              },
+              "borderRadius": 10,
+              "hideTitle": true,
+              "tabs": [
+                {
+                  "autoHeight": true,
+                  "chartId": "fixture000007",
+                  "description": "",
+                  "enableDescription": false,
+                  "enableHint": false,
+                  "hint": "",
+                  "id": "3Z",
+                  "isDefault": true,
+                  "params": {},
+                  "title": "Title 15"
+                }
+              ]
+            },
+            "id": "Lp",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "autoHeight": false,
+              "backgroundSettings": {
+                "color": {
+                  "dark": "transparent",
+                  "light": "transparent"
+                }
+              },
+              "borderRadius": 10,
+              "text": ""
+            },
+            "id": "mV",
+            "namespace": "default",
+            "type": "text"
+          },
+          {
+            "data": {
+              "autoHeight": false,
+              "backgroundSettings": {
+                "color": {
+                  "dark": "#027bfeb3",
+                  "light": "#027bfe80"
+                }
+              },
+              "borderRadius": 10,
+              "text": ""
+            },
+            "id": "OK",
+            "namespace": "default",
+            "type": "text"
+          },
+          {
+            "data": {
+              "autoHeight": false,
+              "backgroundSettings": {
+                "color": {
+                  "dark": "#027bfeb3",
+                  "light": "#027bfe80"
+                }
+              },
+              "borderRadius": 6,
+              "text": "Text 16"
+            },
+            "id": "Do",
+            "namespace": "default",
+            "type": "text"
+          },
+          {
+            "data": {
+              "autoHeight": false,
+              "backgroundSettings": {
+                "color": {
+                  "dark": "#027bfeb3",
+                  "light": "#027bfe80"
+                }
+              },
+              "borderRadius": 10,
+              "text": ""
+            },
+            "id": "Rl",
+            "namespace": "default",
+            "type": "text"
+          },
+          {
+            "data": {
+              "backgroundSettings": {
+                "color": {}
+              },
+              "borderRadius": 10,
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": false,
+                  "chartId": "fixture000008",
+                  "description": "",
+                  "enableDescription": false,
+                  "enableHint": false,
+                  "hint": "",
+                  "id": "rB",
+                  "isDefault": true,
+                  "params": {},
+                  "title": "Title 17"
+                },
+                {
+                  "autoHeight": false,
+                  "chartId": "fixture000009",
+                  "description": "",
+                  "id": "Mx",
+                  "params": {},
+                  "title": "Title 18"
+                }
+              ]
+            },
+            "id": "1l",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "autoHeight": false,
+              "backgroundSettings": {
+                "color": {
+                  "dark": "#027bfeb3",
+                  "light": "#027bfe80"
+                }
+              },
+              "borderRadius": 10,
+              "text": ""
+            },
+            "id": "kq",
+            "namespace": "default",
+            "type": "text"
+          },
+          {
+            "data": {
+              "autoHeight": false,
+              "backgroundSettings": {
+                "color": {
+                  "dark": "#027bfeb3",
+                  "light": "#027bfe80"
+                }
+              },
+              "borderRadius": 6,
+              "text": "Text 19"
+            },
+            "id": "z0",
+            "namespace": "default",
+            "type": "text"
+          },
+          {
+            "data": {
+              "autoHeight": false,
+              "backgroundSettings": {
+                "color": {
+                  "dark": "#027bfeb3",
+                  "light": "#027bfe80"
+                }
+              },
+              "borderRadius": 10,
+              "text": ""
+            },
+            "id": "E3",
+            "namespace": "default",
+            "type": "text"
+          },
+          {
+            "data": {
+              "backgroundSettings": {
+                "color": {}
+              },
+              "borderRadius": 10,
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": false,
+                  "chartId": "fixture000010",
+                  "description": "",
+                  "enableDescription": false,
+                  "enableHint": false,
+                  "hint": "",
+                  "id": "wP",
+                  "isDefault": true,
+                  "params": {},
+                  "title": "Title 20"
+                },
+                {
+                  "autoHeight": false,
+                  "chartId": "fixture000011",
+                  "description": "",
+                  "id": "p2",
+                  "params": {},
+                  "title": "Title 21"
+                }
+              ]
+            },
+            "id": "gR",
+            "namespace": "default",
+            "type": "widget"
+          }
+        ],
+        "layout": [
+          {
+            "h": 2,
+            "i": "2j",
+            "w": 36,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "h": 4,
+            "i": "Lp",
+            "w": 7,
+            "x": 0,
+            "y": 2
+          },
+          {
+            "h": 5,
+            "i": "mV",
+            "w": 29,
+            "x": 7,
+            "y": 2
+          },
+          {
+            "h": 3,
+            "i": "OK",
+            "w": 15,
+            "x": 0,
+            "y": 7
+          },
+          {
+            "h": 3,
+            "i": "Do",
+            "w": 7,
+            "x": 15,
+            "y": 7
+          },
+          {
+            "h": 3,
+            "i": "Rl",
+            "w": 14,
+            "x": 22,
+            "y": 7
+          },
+          {
+            "h": 28,
+            "i": "1l",
+            "w": 36,
+            "x": 0,
+            "y": 10
+          },
+          {
+            "h": 3,
+            "i": "kq",
+            "w": 15,
+            "x": 0,
+            "y": 38
+          },
+          {
+            "h": 3,
+            "i": "z0",
+            "w": 7,
+            "x": 15,
+            "y": 38
+          },
+          {
+            "h": 3,
+            "i": "E3",
+            "w": 14,
+            "x": 22,
+            "y": 38
+          },
+          {
+            "h": 20,
+            "i": "gR",
+            "w": 36,
+            "x": 0,
+            "y": 41
+          }
+        ],
+        "title": "Title 22"
+      },
+      {
+        "aliases": {},
+        "connections": [],
+        "id": "q0",
+        "items": [],
+        "layout": [],
+        "title": "Title 23"
+      }
+    ]
+  },
+  "entryId": "fixture000012",
+  "hidden": false,
+  "key": "fixtures/dashboards/group_control_manual",
+  "meta": {
+    "is_release": true
+  },
+  "public": false,
+  "publishedId": "fixture000013",
+  "revId": "fixture000013",
+  "revUpdatedAt": "2026-06-17T12:50:26.207Z",
+  "revUpdatedBy": "uid:0000000000000001",
+  "savedId": "fixture000013",
+  "scope": "dash",
+  "tenantId": "common",
+  "type": "",
+  "updatedAt": "2026-06-17T12:50:26.207Z",
+  "updatedBy": "uid:0000000000000001",
+  "version": 1,
+  "workbookId": null
+}

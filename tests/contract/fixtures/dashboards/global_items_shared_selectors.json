@@ -1,0 +1,1088 @@
+{
+  "annotation": {
+    "description": "Description 1"
+  },
+  "createdAt": "2026-06-01T08:29:56.369Z",
+  "createdBy": "uid:0000000000000001",
+  "data": {
+    "counter": 3,
+    "description": "Description 1",
+    "salt": "0.13371337",
+    "schemeVersion": 8,
+    "settings": {
+      "autoupdateInterval": null,
+      "dependentSelectors": true,
+      "expandTOC": false,
+      "globalParams": {},
+      "hideDashTitle": false,
+      "hideTabs": false,
+      "maxConcurrentRequests": null,
+      "silentLoading": false
+    },
+    "tabs": [
+      {
+        "aliases": {
+          "default": []
+        },
+        "connections": [],
+        "globalItems": [
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0002",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 2"
+            },
+            "defaults": {
+              "field_0002": []
+            },
+            "id": "item_1",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0004",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 3"
+            },
+            "defaults": {
+              "field_0004": []
+            },
+            "id": "item_2",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0005",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 4"
+            },
+            "defaults": {
+              "field_0005": []
+            },
+            "id": "item_3",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0006",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 5"
+            },
+            "defaults": {
+              "field_0006": []
+            },
+            "id": "item_4",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0007",
+                "datasetId": "fixture000003",
+                "defaultValue": "__interval_2018-01-01T00:00:00.000Z_2021-12-31T00:00:00.000Z",
+                "elementType": "date",
+                "isRange": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 6"
+            },
+            "defaults": {
+              "field_0007": "__interval_2018-01-01T00:00:00.000Z_2021-12-31T00:00:00.000Z"
+            },
+            "id": "item_5",
+            "namespace": "default",
+            "type": "control"
+          }
+        ],
+        "id": "tab_1",
+        "items": [
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": true,
+                  "chartId": "fixture000008",
+                  "id": "ct_6",
+                  "params": {},
+                  "title": "Title 7"
+                }
+              ]
+            },
+            "id": "item_6",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": true,
+                  "chartId": "fixture000009",
+                  "id": "ct_7",
+                  "params": {},
+                  "title": "Title 8"
+                }
+              ]
+            },
+            "id": "item_7",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": true,
+                  "chartId": "fixture000010",
+                  "id": "ct_8",
+                  "params": {},
+                  "title": "Title 9"
+                }
+              ]
+            },
+            "id": "item_8",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": true,
+                  "chartId": "fixture000011",
+                  "id": "ct_9",
+                  "params": {},
+                  "title": "Title 10"
+                }
+              ]
+            },
+            "id": "item_9",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000012",
+                  "id": "ct_10",
+                  "params": {},
+                  "title": "Title 11"
+                }
+              ]
+            },
+            "id": "item_10",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000013",
+                  "id": "ct_11",
+                  "params": {},
+                  "title": "Title 12"
+                }
+              ]
+            },
+            "id": "item_11",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000014",
+                  "id": "ct_12",
+                  "params": {},
+                  "title": "Title 13"
+                }
+              ]
+            },
+            "id": "item_12",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000015",
+                  "id": "ct_13",
+                  "params": {},
+                  "title": "Title 14"
+                }
+              ]
+            },
+            "id": "item_13",
+            "namespace": "default",
+            "type": "widget"
+          }
+        ],
+        "layout": [
+          {
+            "h": 2,
+            "i": "item_1",
+            "w": 7,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_2",
+            "w": 7,
+            "x": 7,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_3",
+            "w": 8,
+            "x": 14,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_4",
+            "w": 7,
+            "x": 22,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_5",
+            "w": 7,
+            "x": 29,
+            "y": 0
+          },
+          {
+            "h": 6,
+            "i": "item_6",
+            "w": 9,
+            "x": 0,
+            "y": 2
+          },
+          {
+            "h": 6,
+            "i": "item_7",
+            "w": 9,
+            "x": 9,
+            "y": 2
+          },
+          {
+            "h": 6,
+            "i": "item_8",
+            "w": 9,
+            "x": 18,
+            "y": 2
+          },
+          {
+            "h": 6,
+            "i": "item_9",
+            "w": 9,
+            "x": 27,
+            "y": 2
+          },
+          {
+            "h": 9,
+            "i": "item_10",
+            "w": 9,
+            "x": 0,
+            "y": 8
+          },
+          {
+            "h": 9,
+            "i": "item_11",
+            "w": 9,
+            "x": 9,
+            "y": 8
+          },
+          {
+            "h": 9,
+            "i": "item_12",
+            "w": 9,
+            "x": 18,
+            "y": 8
+          },
+          {
+            "h": 9,
+            "i": "item_13",
+            "w": 9,
+            "x": 27,
+            "y": 8
+          }
+        ],
+        "title": "Title 15"
+      },
+      {
+        "aliases": {
+          "default": []
+        },
+        "connections": [],
+        "globalItems": [
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0002",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 2"
+            },
+            "defaults": {
+              "field_0002": []
+            },
+            "id": "item_1",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0004",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 3"
+            },
+            "defaults": {
+              "field_0004": []
+            },
+            "id": "item_2",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0005",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 4"
+            },
+            "defaults": {
+              "field_0005": []
+            },
+            "id": "item_3",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0006",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 5"
+            },
+            "defaults": {
+              "field_0006": []
+            },
+            "id": "item_4",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0007",
+                "datasetId": "fixture000003",
+                "defaultValue": "__interval_2018-01-01T00:00:00.000Z_2021-12-31T00:00:00.000Z",
+                "elementType": "date",
+                "isRange": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 6"
+            },
+            "defaults": {
+              "field_0007": "__interval_2018-01-01T00:00:00.000Z_2021-12-31T00:00:00.000Z"
+            },
+            "id": "item_5",
+            "namespace": "default",
+            "type": "control"
+          }
+        ],
+        "id": "tab_2",
+        "items": [
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000016",
+                  "id": "ct_14",
+                  "params": {},
+                  "title": "Title 16"
+                }
+              ]
+            },
+            "id": "item_14",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000017",
+                  "id": "ct_15",
+                  "params": {},
+                  "title": "Title 17"
+                }
+              ]
+            },
+            "id": "item_15",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000018",
+                  "id": "ct_16",
+                  "params": {},
+                  "title": "Title 18"
+                }
+              ]
+            },
+            "id": "item_16",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000019",
+                  "id": "ct_17",
+                  "params": {},
+                  "title": "Title 19"
+                }
+              ]
+            },
+            "id": "item_17",
+            "namespace": "default",
+            "type": "widget"
+          }
+        ],
+        "layout": [
+          {
+            "h": 2,
+            "i": "item_1",
+            "w": 7,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_2",
+            "w": 7,
+            "x": 7,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_3",
+            "w": 8,
+            "x": 14,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_4",
+            "w": 7,
+            "x": 22,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_5",
+            "w": 7,
+            "x": 29,
+            "y": 0
+          },
+          {
+            "h": 10,
+            "i": "item_14",
+            "w": 18,
+            "x": 0,
+            "y": 2
+          },
+          {
+            "h": 10,
+            "i": "item_15",
+            "w": 18,
+            "x": 18,
+            "y": 2
+          },
+          {
+            "h": 12,
+            "i": "item_16",
+            "w": 18,
+            "x": 0,
+            "y": 12
+          },
+          {
+            "h": 12,
+            "i": "item_17",
+            "w": 18,
+            "x": 18,
+            "y": 12
+          }
+        ],
+        "title": "Title 7"
+      },
+      {
+        "aliases": {
+          "default": []
+        },
+        "connections": [],
+        "globalItems": [
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0002",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 2"
+            },
+            "defaults": {
+              "field_0002": []
+            },
+            "id": "item_1",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0004",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 3"
+            },
+            "defaults": {
+              "field_0004": []
+            },
+            "id": "item_2",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0005",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 4"
+            },
+            "defaults": {
+              "field_0005": []
+            },
+            "id": "item_3",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0006",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 5"
+            },
+            "defaults": {
+              "field_0006": []
+            },
+            "id": "item_4",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0007",
+                "datasetId": "fixture000003",
+                "defaultValue": "__interval_2018-01-01T00:00:00.000Z_2021-12-31T00:00:00.000Z",
+                "elementType": "date",
+                "isRange": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 6"
+            },
+            "defaults": {
+              "field_0007": "__interval_2018-01-01T00:00:00.000Z_2021-12-31T00:00:00.000Z"
+            },
+            "id": "item_5",
+            "namespace": "default",
+            "type": "control"
+          }
+        ],
+        "id": "tab_3",
+        "items": [
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000020",
+                  "id": "ct_18",
+                  "params": {},
+                  "title": "Title 16"
+                }
+              ]
+            },
+            "id": "item_18",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000021",
+                  "id": "ct_19",
+                  "params": {},
+                  "title": "Title 17"
+                }
+              ]
+            },
+            "id": "item_19",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000022",
+                  "id": "ct_20",
+                  "params": {},
+                  "title": "Title 18"
+                }
+              ]
+            },
+            "id": "item_20",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000023",
+                  "id": "ct_21",
+                  "params": {},
+                  "title": "Title 19"
+                }
+              ]
+            },
+            "id": "item_21",
+            "namespace": "default",
+            "type": "widget"
+          }
+        ],
+        "layout": [
+          {
+            "h": 2,
+            "i": "item_1",
+            "w": 7,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_2",
+            "w": 7,
+            "x": 7,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_3",
+            "w": 8,
+            "x": 14,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_4",
+            "w": 7,
+            "x": 22,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_5",
+            "w": 7,
+            "x": 29,
+            "y": 0
+          },
+          {
+            "h": 10,
+            "i": "item_18",
+            "w": 18,
+            "x": 0,
+            "y": 2
+          },
+          {
+            "h": 10,
+            "i": "item_19",
+            "w": 18,
+            "x": 18,
+            "y": 2
+          },
+          {
+            "h": 12,
+            "i": "item_20",
+            "w": 18,
+            "x": 0,
+            "y": 12
+          },
+          {
+            "h": 12,
+            "i": "item_21",
+            "w": 18,
+            "x": 18,
+            "y": 12
+          }
+        ],
+        "title": "Title 8"
+      },
+      {
+        "aliases": {
+          "default": []
+        },
+        "connections": [],
+        "globalItems": [
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0002",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 2"
+            },
+            "defaults": {
+              "field_0002": []
+            },
+            "id": "item_1",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0004",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 3"
+            },
+            "defaults": {
+              "field_0004": []
+            },
+            "id": "item_2",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0005",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 4"
+            },
+            "defaults": {
+              "field_0005": []
+            },
+            "id": "item_3",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0006",
+                "datasetId": "fixture000003",
+                "elementType": "select",
+                "multiselectable": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 5"
+            },
+            "defaults": {
+              "field_0006": []
+            },
+            "id": "item_4",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "source": {
+                "datasetFieldId": "field_0007",
+                "datasetId": "fixture000003",
+                "defaultValue": "__interval_2018-01-01T00:00:00.000Z_2021-12-31T00:00:00.000Z",
+                "elementType": "date",
+                "isRange": true,
+                "showTitle": true
+              },
+              "sourceType": "dataset",
+              "title": "Title 6"
+            },
+            "defaults": {
+              "field_0007": "__interval_2018-01-01T00:00:00.000Z_2021-12-31T00:00:00.000Z"
+            },
+            "id": "item_5",
+            "namespace": "default",
+            "type": "control"
+          }
+        ],
+        "id": "tab_4",
+        "items": [
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000024",
+                  "id": "ct_22",
+                  "params": {},
+                  "title": "Title 16"
+                }
+              ]
+            },
+            "id": "item_22",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000025",
+                  "id": "ct_23",
+                  "params": {},
+                  "title": "Title 17"
+                }
+              ]
+            },
+            "id": "item_23",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000026",
+                  "id": "ct_24",
+                  "params": {},
+                  "title": "Title 18"
+                }
+              ]
+            },
+            "id": "item_24",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "chartId": "fixture000027",
+                  "id": "ct_25",
+                  "params": {},
+                  "title": "Title 19"
+                }
+              ]
+            },
+            "id": "item_25",
+            "namespace": "default",
+            "type": "widget"
+          }
+        ],
+        "layout": [
+          {
+            "h": 2,
+            "i": "item_1",
+            "w": 7,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_2",
+            "w": 7,
+            "x": 7,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_3",
+            "w": 8,
+            "x": 14,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_4",
+            "w": 7,
+            "x": 22,
+            "y": 0
+          },
+          {
+            "h": 2,
+            "i": "item_5",
+            "w": 7,
+            "x": 29,
+            "y": 0
+          },
+          {
+            "h": 10,
+            "i": "item_22",
+            "w": 18,
+            "x": 0,
+            "y": 2
+          },
+          {
+            "h": 10,
+            "i": "item_23",
+            "w": 18,
+            "x": 18,
+            "y": 2
+          },
+          {
+            "h": 12,
+            "i": "item_24",
+            "w": 18,
+            "x": 0,
+            "y": 12
+          },
+          {
+            "h": 12,
+            "i": "item_25",
+            "w": 18,
+            "x": 18,
+            "y": 12
+          }
+        ],
+        "title": "Title 9"
+      }
+    ]
+  },
+  "entryId": "fixture000028",
+  "hidden": false,
+  "key": "fixtures/dashboards/global_items_shared_selectors",
+  "meta": {
+    "is_release": true
+  },
+  "public": false,
+  "publishedId": "fixture000029",
+  "revId": "fixture000029",
+  "revUpdatedAt": "2026-06-01T08:54:23.421Z",
+  "revUpdatedBy": "uid:0000000000000030",
+  "savedId": "fixture000029",
+  "scope": "dash",
+  "tenantId": "common",
+  "type": "",
+  "updatedAt": "2026-06-01T08:54:23.421Z",
+  "updatedBy": "uid:0000000000000030",
+  "version": 1,
+  "workbookId": null
+}

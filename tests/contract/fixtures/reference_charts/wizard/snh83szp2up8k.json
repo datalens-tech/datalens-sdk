@@ -1,0 +1,497 @@
+{
+  "id": "snh83szp2up8k",
+  "visualization_id": "flatTable",
+  "data": {
+    "title": "",
+    "colors": [],
+    "colorsConfig": {},
+    "extraSettings": {
+      "titleMode": "hide",
+      "title": "LAG",
+      "legendMode": "show",
+      "tooltipSum": "on",
+      "navigatorMode": "hide",
+      "navigatorSeriesName": "",
+      "pagination": "on",
+      "limit": 10,
+      "totals": "on"
+    },
+    "filters": [],
+    "geopointsConfig": {},
+    "hierarchies": [
+      {
+        "guid": "245392e0-0fef-11ec-9437-dd572e54e61e",
+        "title": "Иерархия продуктов",
+        "className": "item dimension-item",
+        "type": "PSEUDO",
+        "data_type": "hierarchy",
+        "valid": true,
+        "fields": [
+          {
+            "title": "Продукт - категория",
+            "calc_mode": "direct",
+            "data_type": "string",
+            "autoaggregated": false,
+            "type": "DIMENSION",
+            "initial_data_type": "string",
+            "avatar_id": "7372d790-e1e4-11e9-a279-0b30c0a74ab7",
+            "managed_by": "user",
+            "has_auto_aggregation": false,
+            "virtual": false,
+            "lock_aggregation": false,
+            "source": "ProductCategory",
+            "aggregation": "none",
+            "guid": "45bdfbb6-1dd9-41bd-9871-b011efd8ec6b",
+            "description": "",
+            "formula": "",
+            "cast": "string",
+            "aggregation_locked": false,
+            "hidden": false,
+            "valid": true,
+            "datasetId": "b60rhj4luj0y3",
+            "id": "dimension-26",
+            "datasetName": "Продажи"
+          },
+          {
+            "title": "Продукт - подкатегория",
+            "calc_mode": "direct",
+            "data_type": "string",
+            "autoaggregated": false,
+            "type": "DIMENSION",
+            "initial_data_type": "string",
+            "avatar_id": "7372d790-e1e4-11e9-a279-0b30c0a74ab7",
+            "managed_by": "user",
+            "has_auto_aggregation": false,
+            "virtual": false,
+            "lock_aggregation": false,
+            "source": "ProductSubcategory",
+            "aggregation": "none",
+            "guid": "0483c778-3a9a-4f65-8168-1beb8818580f",
+            "description": "",
+            "formula": "",
+            "cast": "string",
+            "aggregation_locked": false,
+            "hidden": false,
+            "valid": true,
+            "datasetId": "b60rhj4luj0y3",
+            "id": "dimension-27",
+            "datasetName": "Продажи"
+          },
+          {
+            "title": "Продукт - бренд",
+            "calc_mode": "direct",
+            "data_type": "string",
+            "autoaggregated": false,
+            "type": "DIMENSION",
+            "initial_data_type": "string",
+            "avatar_id": "7372d790-e1e4-11e9-a279-0b30c0a74ab7",
+            "managed_by": "user",
+            "has_auto_aggregation": false,
+            "virtual": false,
+            "lock_aggregation": false,
+            "source": "ProductBrand",
+            "aggregation": "none",
+            "guid": "9fe8a3e7-b30a-49be-b75a-b54b96e87adc",
+            "description": "",
+            "formula": "",
+            "cast": "string",
+            "aggregation_locked": false,
+            "hidden": false,
+            "valid": true,
+            "datasetId": "b60rhj4luj0y3",
+            "id": "dimension-28",
+            "datasetName": "Продажи"
+          },
+          {
+            "title": "Продукт",
+            "calc_mode": "direct",
+            "data_type": "string",
+            "autoaggregated": false,
+            "type": "DIMENSION",
+            "initial_data_type": "string",
+            "avatar_id": "7372d790-e1e4-11e9-a279-0b30c0a74ab7",
+            "managed_by": "user",
+            "has_auto_aggregation": false,
+            "virtual": false,
+            "lock_aggregation": false,
+            "source": "ProductName",
+            "aggregation": "none",
+            "guid": "b9e8f031-bbc8-4f35-ab4e-59d89208185a",
+            "description": "",
+            "formula": "",
+            "cast": "string",
+            "aggregation_locked": false,
+            "hidden": false,
+            "valid": true,
+            "datasetId": "b60rhj4luj0y3",
+            "id": "dimension-29",
+            "datasetName": "Продажи"
+          }
+        ]
+      }
+    ],
+    "labels": [],
+    "links": [],
+    "sort": [],
+    "tooltips": [],
+    "type": "datalens",
+    "updates": [],
+    "visualization": {
+      "id": "flatTable",
+      "type": "table",
+      "name": "label_visualization-flat-table",
+      "icon": {
+        "key": null,
+        "ref": null,
+        "props": {
+          "width": "24"
+        },
+        "_owner": null
+      },
+      "allowFilters": true,
+      "allowColors": true,
+      "allowSort": true,
+      "placeholders": [
+        {
+          "allowedTypes": {},
+          "id": "flat-table-columns",
+          "type": "flat-table-columns",
+          "title": "section_columns",
+          "icon": {
+            "key": null,
+            "ref": null,
+            "props": {
+              "width": "24"
+            },
+            "_owner": null
+          },
+          "items": [
+            {
+              "guid": "245392e0-0fef-11ec-9437-dd572e54e61e",
+              "title": "Иерархия продуктов",
+              "className": "item dimension-item",
+              "type": "PSEUDO",
+              "data_type": "hierarchy",
+              "valid": true,
+              "fields": [
+                {
+                  "title": "Продукт - категория",
+                  "calc_mode": "direct",
+                  "data_type": "string",
+                  "autoaggregated": false,
+                  "type": "DIMENSION",
+                  "initial_data_type": "string",
+                  "avatar_id": "7372d790-e1e4-11e9-a279-0b30c0a74ab7",
+                  "managed_by": "user",
+                  "has_auto_aggregation": false,
+                  "virtual": false,
+                  "lock_aggregation": false,
+                  "source": "ProductCategory",
+                  "aggregation": "none",
+                  "guid": "45bdfbb6-1dd9-41bd-9871-b011efd8ec6b",
+                  "description": "",
+                  "formula": "",
+                  "cast": "string",
+                  "aggregation_locked": false,
+                  "hidden": false,
+                  "valid": true,
+                  "datasetId": "b60rhj4luj0y3",
+                  "id": "dimension-26",
+                  "datasetName": "Продажи"
+                },
+                {
+                  "title": "Продукт - подкатегория",
+                  "calc_mode": "direct",
+                  "data_type": "string",
+                  "autoaggregated": false,
+                  "type": "DIMENSION",
+                  "initial_data_type": "string",
+                  "avatar_id": "7372d790-e1e4-11e9-a279-0b30c0a74ab7",
+                  "managed_by": "user",
+                  "has_auto_aggregation": false,
+                  "virtual": false,
+                  "lock_aggregation": false,
+                  "source": "ProductSubcategory",
+                  "aggregation": "none",
+                  "guid": "0483c778-3a9a-4f65-8168-1beb8818580f",
+                  "description": "",
+                  "formula": "",
+                  "cast": "string",
+                  "aggregation_locked": false,
+                  "hidden": false,
+                  "valid": true,
+                  "datasetId": "b60rhj4luj0y3",
+                  "id": "dimension-27",
+                  "datasetName": "Продажи"
+                },
+                {
+                  "title": "Продукт - бренд",
+                  "calc_mode": "direct",
+                  "data_type": "string",
+                  "autoaggregated": false,
+                  "type": "DIMENSION",
+                  "initial_data_type": "string",
+                  "avatar_id": "7372d790-e1e4-11e9-a279-0b30c0a74ab7",
+                  "managed_by": "user",
+                  "has_auto_aggregation": false,
+                  "virtual": false,
+                  "lock_aggregation": false,
+                  "source": "ProductBrand",
+                  "aggregation": "none",
+                  "guid": "9fe8a3e7-b30a-49be-b75a-b54b96e87adc",
+                  "description": "",
+                  "formula": "",
+                  "cast": "string",
+                  "aggregation_locked": false,
+                  "hidden": false,
+                  "valid": true,
+                  "datasetId": "b60rhj4luj0y3",
+                  "id": "dimension-28",
+                  "datasetName": "Продажи"
+                },
+                {
+                  "title": "Продукт",
+                  "calc_mode": "direct",
+                  "data_type": "string",
+                  "autoaggregated": false,
+                  "type": "DIMENSION",
+                  "initial_data_type": "string",
+                  "avatar_id": "7372d790-e1e4-11e9-a279-0b30c0a74ab7",
+                  "managed_by": "user",
+                  "has_auto_aggregation": false,
+                  "virtual": false,
+                  "lock_aggregation": false,
+                  "source": "ProductName",
+                  "aggregation": "none",
+                  "guid": "b9e8f031-bbc8-4f35-ab4e-59d89208185a",
+                  "description": "",
+                  "formula": "",
+                  "cast": "string",
+                  "aggregation_locked": false,
+                  "hidden": false,
+                  "valid": true,
+                  "datasetId": "b60rhj4luj0y3",
+                  "id": "dimension-29",
+                  "datasetName": "Продажи"
+                }
+              ]
+            },
+            {
+              "title": "Продажа, ₽",
+              "calc_mode": "direct",
+              "data_type": "float",
+              "autoaggregated": false,
+              "type": "MEASURE",
+              "initial_data_type": "float",
+              "avatar_id": "33810c50-e1e0-11e9-a279-0b30c0a74ab7",
+              "managed_by": "user",
+              "has_auto_aggregation": false,
+              "virtual": false,
+              "lock_aggregation": false,
+              "source": "FinalSales",
+              "aggregation": "sum",
+              "guid": "fce88220-0b2e-11ec-bd48-b9e839be43ee",
+              "description": "",
+              "formula": "",
+              "cast": "float",
+              "aggregation_locked": false,
+              "hidden": false,
+              "valid": true,
+              "datasetId": "b60rhj4luj0y3",
+              "id": "inserted-1631028043170",
+              "datasetName": "Продажи"
+            },
+            {
+              "title": "Число клиентов",
+              "calc_mode": "direct",
+              "data_type": "integer",
+              "autoaggregated": false,
+              "type": "MEASURE",
+              "initial_data_type": "string",
+              "avatar_id": "33810c50-e1e0-11e9-a279-0b30c0a74ab7",
+              "managed_by": "user",
+              "has_auto_aggregation": false,
+              "virtual": false,
+              "lock_aggregation": false,
+              "source": "ClientID",
+              "aggregation": "countunique",
+              "guid": "ebfc90c0-e31f-11e9-b6c9-fbe8a8ac5350",
+              "description": "",
+              "formula": "",
+              "cast": "string",
+              "aggregation_locked": false,
+              "hidden": false,
+              "valid": true,
+              "datasetId": "b60rhj4luj0y3",
+              "id": "inserted-1631028048725",
+              "datasetName": "Продажи"
+            }
+          ],
+          "required": true,
+          "settings": {
+            "groupping": "on"
+          }
+        }
+      ],
+      "allowLayerFilters": false
+    },
+    "shapes": [],
+    "shapesConfig": {},
+    "version": "15",
+    "datasetsIds": [
+      "b60rhj4luj0y3"
+    ],
+    "datasetsPartialFields": [
+      [
+        {
+          "guid": "848f5000-0eef-11ec-bc14-6de0c4d5d690",
+          "title": "Месяц заявки"
+        },
+        {
+          "guid": "9cd1cbd0-0ee4-11ec-b9e8-6b5e199aa6f2",
+          "title": "Год заявки"
+        },
+        {
+          "guid": "6b585d90-e3c0-11e9-8fd6-9b0ff802f246",
+          "title": "Доставка (точка)"
+        },
+        {
+          "guid": "960c06a0-e3bf-11e9-9ba9-493ddd35c259",
+          "title": "Доставка - район (полигон)"
+        },
+        {
+          "guid": "a6b94410-e219-11e9-a279-0b30c0a74ab7",
+          "title": "Средний чек"
+        },
+        {
+          "guid": "52808089-ec9b-41e1-bc7c-697221f5727e",
+          "title": "ID заявки"
+        },
+        {
+          "guid": "c81b1fa0-e207-11e9-a279-0b30c0a74ab7",
+          "title": "Число заявок"
+        },
+        {
+          "guid": "56bb64a1-d220-416f-9453-5f11e1b84444",
+          "title": "ID клиента"
+        },
+        {
+          "guid": "ebfc90c0-e31f-11e9-b6c9-fbe8a8ac5350",
+          "title": "Число клиентов"
+        },
+        {
+          "guid": "60ed95e3-8c1e-4003-9d93-817e20dca1c2",
+          "title": "Дата и время заявки"
+        },
+        {
+          "guid": "3dcc4a70-e1f0-11e9-a279-0b30c0a74ab7",
+          "title": "Дата заявки"
+        },
+        {
+          "guid": "cddd9cad-52a2-4232-8898-ade9a972c864",
+          "title": "Дата и время доставки"
+        },
+        {
+          "guid": "cfe4a4f0-e314-11e9-9730-e7d592294dab",
+          "title": "Дата доставки"
+        },
+        {
+          "guid": "e9f1b908-8748-4433-820c-781d3b12e666",
+          "title": "Скидка, ₽"
+        },
+        {
+          "guid": "5ab73893-e624-4ac2-b3fd-28f86098388d",
+          "title": "Среднее число продуктов в заказе"
+        },
+        {
+          "guid": "08ce262b-34ec-4123-b5cc-1c0ecac39f70",
+          "title": "Доставка - тип"
+        },
+        {
+          "guid": "38e0b1f4-d46b-48a0-8905-6a6d1e61900d",
+          "title": "Тип  оплаты"
+        },
+        {
+          "guid": "3d1f627f-54e7-4bda-acca-dcf8974c8887",
+          "title": "Цена продукта, ₽"
+        },
+        {
+          "guid": "fce88220-0b2e-11ec-bd48-b9e839be43ee",
+          "title": "Продажа, ₽"
+        },
+        {
+          "guid": "9056a6c0-0fc3-11ec-b8de-d1fdca37dcc9",
+          "title": "Продажа, ₽ (без агрегации)"
+        },
+        {
+          "guid": "7b358ff2-adf3-483a-afa5-b45917e0ef11",
+          "title": "Продажа без учета скидки, ₽"
+        },
+        {
+          "guid": "4664cc4f-6a50-44cc-8dfb-b76fc814a159",
+          "title": "Доставка - район"
+        },
+        {
+          "guid": "87a44c2c-d33e-462e-b5ad-9c5637458173",
+          "title": "Клиент"
+        },
+        {
+          "guid": "68b29381-e436-4e3d-b106-1704243115ed",
+          "title": "Клиент - пол"
+        },
+        {
+          "guid": "b76344a2-2cc1-4f65-bb40-f81035853bf2",
+          "title": "Клиент - статус"
+        },
+        {
+          "guid": "831a3ac6-bb48-4967-bc9f-f47b930b81f7",
+          "title": "Клиент- дата рождения"
+        },
+        {
+          "guid": "45bdfbb6-1dd9-41bd-9871-b011efd8ec6b",
+          "title": "Продукт - категория"
+        },
+        {
+          "guid": "0483c778-3a9a-4f65-8168-1beb8818580f",
+          "title": "Продукт - подкатегория"
+        },
+        {
+          "guid": "9fe8a3e7-b30a-49be-b75a-b54b96e87adc",
+          "title": "Продукт - бренд"
+        },
+        {
+          "guid": "b9e8f031-bbc8-4f35-ab4e-59d89208185a",
+          "title": "Продукт"
+        },
+        {
+          "guid": "f014117e-d37a-4cc1-9e2c-b0af6a019f51",
+          "title": "Магазин"
+        },
+        {
+          "guid": "23ebe688-7831-4d8e-a15c-be9284d31857",
+          "title": "Магазин - адрес"
+        },
+        {
+          "guid": "01cfd1c6-318f-4799-9969-3952a17c9c95",
+          "title": "Магазин (точка)"
+        },
+        {
+          "guid": "d7d0f23b-cda4-4acb-8221-c0712c81130e",
+          "title": "Магазин - район (полигон)"
+        },
+        {
+          "guid": "d9d53baf-6e48-413c-a1f9-84cdd39ac0d5",
+          "title": "Магазин - район"
+        },
+        {
+          "guid": "c0ff109a-0eab-4d9b-a6fc-e0498baedb4e",
+          "title": "Доставка - округ"
+        },
+        {
+          "guid": "17bc26fb-5e6d-4ca4-baa0-265c5f62d65b",
+          "title": "Доставка - округ (полигон)"
+        }
+      ]
+    ]
+  }
+}

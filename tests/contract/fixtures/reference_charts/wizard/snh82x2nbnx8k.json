@@ -1,0 +1,1065 @@
+{
+  "annotation": null,
+  "collectionId": null,
+  "data": {
+    "colors": [
+      {
+        "aggregation": "<redacted>",
+        "aggregation_locked": false,
+        "autoaggregated": false,
+        "avatar_id": "<redacted>",
+        "calc_mode": "<redacted>",
+        "cast": "<redacted>",
+        "data_type": "<redacted>",
+        "datasetId": "<redacted>",
+        "datasetName": "<redacted>",
+        "description": "<redacted>",
+        "formula": "<redacted>",
+        "guid": "<redacted>",
+        "has_auto_aggregation": false,
+        "hidden": false,
+        "id": "<redacted>",
+        "initial_data_type": "<redacted>",
+        "lock_aggregation": false,
+        "managed_by": "<redacted>",
+        "source": "<redacted>",
+        "title": "<redacted>",
+        "type": "MEASURE",
+        "valid": true,
+        "virtual": false
+      }
+    ],
+    "colorsConfig": {
+      "gradientMode": "2-point",
+      "gradientPalette": "blue",
+      "polygonBorders": "show",
+      "reversed": true,
+      "thresholdsMode": "auto"
+    },
+    "datasetsIds": [
+      "<redacted>"
+    ],
+    "datasetsPartialFields": [
+      [
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        },
+        {
+          "guid": "<redacted>",
+          "title": "<redacted>"
+        }
+      ]
+    ],
+    "extraSettings": {
+      "title": "<redacted>",
+      "titleMode": "show"
+    },
+    "filters": [
+      {
+        "aggregation": "<redacted>",
+        "aggregation_locked": false,
+        "autoaggregated": false,
+        "avatar_id": "<redacted>",
+        "calc_mode": "<redacted>",
+        "cast": "<redacted>",
+        "data_type": "<redacted>",
+        "datasetId": "<redacted>",
+        "datasetName": "<redacted>",
+        "description": "<redacted>",
+        "filter": {
+          "operation": {
+            "code": "<redacted>"
+          },
+          "value": [
+            "<redacted>"
+          ]
+        },
+        "formula": "<redacted>",
+        "guid": "<redacted>",
+        "has_auto_aggregation": false,
+        "hidden": false,
+        "id": "<redacted>",
+        "initial_data_type": "<redacted>",
+        "lock_aggregation": false,
+        "managed_by": "<redacted>",
+        "source": "<redacted>",
+        "title": "<redacted>",
+        "type": "DIMENSION",
+        "valid": true,
+        "virtual": false
+      }
+    ],
+    "geopointsConfig": {},
+    "hierarchies": [],
+    "labels": [],
+    "links": [],
+    "shapes": [],
+    "shapesConfig": {},
+    "sort": [],
+    "title": "<redacted>",
+    "tooltips": [
+      {
+        "aggregation": "<redacted>",
+        "aggregation_locked": false,
+        "autoaggregated": false,
+        "avatar_id": "<redacted>",
+        "calc_mode": "<redacted>",
+        "cast": "<redacted>",
+        "data_type": "<redacted>",
+        "datasetId": "<redacted>",
+        "datasetName": "<redacted>",
+        "description": "<redacted>",
+        "formula": "<redacted>",
+        "guid": "<redacted>",
+        "has_auto_aggregation": false,
+        "hidden": false,
+        "id": "<redacted>",
+        "initial_data_type": "<redacted>",
+        "lock_aggregation": false,
+        "managed_by": "<redacted>",
+        "source": "<redacted>",
+        "title": "<redacted>",
+        "type": "DIMENSION",
+        "valid": true,
+        "virtual": false
+      },
+      {
+        "aggregation": "<redacted>",
+        "aggregation_locked": false,
+        "autoaggregated": false,
+        "avatar_id": "<redacted>",
+        "calc_mode": "<redacted>",
+        "cast": "<redacted>",
+        "data_type": "<redacted>",
+        "datasetId": "<redacted>",
+        "datasetName": "<redacted>",
+        "description": "<redacted>",
+        "formula": "<redacted>",
+        "guid": "<redacted>",
+        "has_auto_aggregation": false,
+        "hidden": false,
+        "id": "<redacted>",
+        "initial_data_type": "<redacted>",
+        "lock_aggregation": false,
+        "managed_by": "<redacted>",
+        "source": "<redacted>",
+        "title": "<redacted>",
+        "type": "DIMENSION",
+        "valid": true,
+        "virtual": false
+      },
+      {
+        "aggregation": "<redacted>",
+        "aggregation_locked": false,
+        "autoaggregated": false,
+        "avatar_id": "<redacted>",
+        "calc_mode": "<redacted>",
+        "cast": "<redacted>",
+        "data_type": "<redacted>",
+        "datasetId": "<redacted>",
+        "datasetName": "<redacted>",
+        "description": "<redacted>",
+        "formula": "<redacted>",
+        "guid": "<redacted>",
+        "has_auto_aggregation": false,
+        "hidden": false,
+        "id": "<redacted>",
+        "initial_data_type": "<redacted>",
+        "lock_aggregation": false,
+        "managed_by": "<redacted>",
+        "source": "<redacted>",
+        "title": "<redacted>",
+        "type": "MEASURE",
+        "valid": true,
+        "virtual": false
+      },
+      {
+        "aggregation": "<redacted>",
+        "aggregation_locked": false,
+        "autoaggregated": false,
+        "avatar_id": "<redacted>",
+        "calc_mode": "<redacted>",
+        "cast": "<redacted>",
+        "data_type": "<redacted>",
+        "datasetId": "<redacted>",
+        "datasetName": "<redacted>",
+        "description": "<redacted>",
+        "formula": "<redacted>",
+        "guid": "<redacted>",
+        "has_auto_aggregation": false,
+        "hidden": false,
+        "id": "<redacted>",
+        "initial_data_type": "<redacted>",
+        "lock_aggregation": false,
+        "managed_by": "<redacted>",
+        "source": "<redacted>",
+        "title": "<redacted>",
+        "type": "MEASURE",
+        "valid": true,
+        "virtual": false
+      },
+      {
+        "aggregation": "<redacted>",
+        "aggregation_locked": false,
+        "autoaggregated": false,
+        "avatar_id": "<redacted>",
+        "calc_mode": "<redacted>",
+        "cast": "<redacted>",
+        "data_type": "<redacted>",
+        "datasetId": "<redacted>",
+        "datasetName": "<redacted>",
+        "description": "<redacted>",
+        "formula": "<redacted>",
+        "guid": "<redacted>",
+        "has_auto_aggregation": false,
+        "hidden": false,
+        "id": "<redacted>",
+        "initial_data_type": "<redacted>",
+        "lock_aggregation": false,
+        "managed_by": "<redacted>",
+        "source": "<redacted>",
+        "title": "<redacted>",
+        "type": "MEASURE",
+        "valid": true,
+        "virtual": false
+      }
+    ],
+    "type": "datalens",
+    "updates": [
+      {
+        "action": "<redacted>",
+        "field": {
+          "aggregation": "<redacted>",
+          "calc_mode": "<redacted>",
+          "datasetId": "<redacted>",
+          "fakeTitle": "<redacted>",
+          "formula": "<redacted>",
+          "grouping": "<redacted>",
+          "guid": "<redacted>",
+          "originalDateCast": "<redacted>",
+          "originalFormula": "<redacted>",
+          "originalSource": "<redacted>",
+          "originalTitle": "<redacted>",
+          "quickFormula": true,
+          "title": "<redacted>",
+          "type": "DIMENSION"
+        }
+      },
+      {
+        "action": "<redacted>",
+        "field": {
+          "aggregation": "<redacted>",
+          "aggregation_locked": true,
+          "autoaggregated": false,
+          "avatar_id": "<redacted>",
+          "calc_mode": "<redacted>",
+          "cast": "<redacted>",
+          "data_type": "<redacted>",
+          "datasetId": "<redacted>",
+          "description": "<redacted>",
+          "fakeTitle": "<redacted>",
+          "format": "<redacted>",
+          "formula": "<redacted>",
+          "grouping": "<redacted>",
+          "guid": "<redacted>",
+          "has_auto_aggregation": false,
+          "hidden": false,
+          "id": "<redacted>",
+          "local": true,
+          "lock_aggregation": false,
+          "managed_by": "<redacted>",
+          "originalDateCast": "<redacted>",
+          "originalSource": "<redacted>",
+          "originalTitle": "<redacted>",
+          "quickFormula": true,
+          "source": "<redacted>",
+          "title": "<redacted>",
+          "type": "DIMENSION",
+          "undragable": false,
+          "valid": true,
+          "virtual": false
+        }
+      },
+      {
+        "action": "<redacted>",
+        "field": {
+          "aggregation": "<redacted>",
+          "aggregation_locked": false,
+          "autoaggregated": false,
+          "avatar_id": "<redacted>",
+          "calc_mode": "<redacted>",
+          "cast": "<redacted>",
+          "data_type": "<redacted>",
+          "datasetId": "<redacted>",
+          "description": "<redacted>",
+          "formula": "<redacted>",
+          "guid": "<redacted>",
+          "has_auto_aggregation": false,
+          "hidden": false,
+          "id": "<redacted>",
+          "labelMode": "<redacted>",
+          "lock_aggregation": false,
+          "managed_by": "<redacted>",
+          "source": "<redacted>",
+          "title": "<redacted>",
+          "type": "MEASURE",
+          "valid": true,
+          "virtual": false
+        }
+      }
+    ],
+    "visualization": {
+      "hidden": false,
+      "icon": {
+        "_owner": null,
+        "key": null,
+        "props": {
+          "width": "24"
+        },
+        "ref": null
+      },
+      "id": "<redacted>",
+      "layers": [
+        {
+          "allowColors": true,
+          "allowFilters": true,
+          "allowLayerFilters": true,
+          "commonPlaceholders": {
+            "colors": [],
+            "colorsConfig": {},
+            "filters": [],
+            "geopointsConfig": {},
+            "labels": [],
+            "sort": [],
+            "tooltips": []
+          },
+          "hidden": true,
+          "icon": {
+            "_owner": null,
+            "key": null,
+            "props": {
+              "width": "24"
+            },
+            "ref": null
+          },
+          "id": "<redacted>",
+          "layerSettings": {
+            "alpha": 80,
+            "id": "<redacted>",
+            "name": "<redacted>",
+            "type": "heatmap",
+            "valid": true
+          },
+          "name": "<redacted>",
+          "placeholders": [
+            {
+              "allowedDataTypes": {},
+              "allowedTypes": {},
+              "icon": {
+                "_owner": null,
+                "key": null,
+                "props": {
+                  "width": "24"
+                },
+                "ref": null
+              },
+              "id": "<redacted>",
+              "items": [
+                {
+                  "aggregation": "<redacted>",
+                  "aggregation_locked": false,
+                  "autoaggregated": false,
+                  "avatar_id": "<redacted>",
+                  "calc_mode": "<redacted>",
+                  "cast": "<redacted>",
+                  "data_type": "<redacted>",
+                  "datasetId": "<redacted>",
+                  "datasetName": "<redacted>",
+                  "description": "<redacted>",
+                  "formula": "<redacted>",
+                  "guid": "<redacted>",
+                  "has_auto_aggregation": false,
+                  "hidden": false,
+                  "id": "<redacted>",
+                  "initial_data_type": "<redacted>",
+                  "lock_aggregation": false,
+                  "managed_by": "<redacted>",
+                  "source": "<redacted>",
+                  "title": "<redacted>",
+                  "type": "DIMENSION",
+                  "valid": true,
+                  "virtual": false
+                }
+              ],
+              "required": true,
+              "settings": {},
+              "title": "<redacted>",
+              "type": "geopoint"
+            }
+          ],
+          "type": "geo"
+        },
+        {
+          "allowColors": true,
+          "allowFilters": true,
+          "allowLayerFilters": true,
+          "allowTooltips": true,
+          "commonPlaceholders": {
+            "colors": [
+              {
+                "aggregation": "<redacted>",
+                "aggregation_locked": false,
+                "autoaggregated": false,
+                "avatar_id": "<redacted>",
+                "calc_mode": "<redacted>",
+                "cast": "<redacted>",
+                "data_type": "<redacted>",
+                "datasetId": "<redacted>",
+                "datasetName": "<redacted>",
+                "description": "<redacted>",
+                "formula": "<redacted>",
+                "guid": "<redacted>",
+                "has_auto_aggregation": false,
+                "hidden": false,
+                "id": "<redacted>",
+                "initial_data_type": "<redacted>",
+                "lock_aggregation": false,
+                "managed_by": "<redacted>",
+                "source": "<redacted>",
+                "title": "<redacted>",
+                "type": "MEASURE",
+                "valid": true,
+                "virtual": false
+              }
+            ],
+            "colorsConfig": {
+              "gradientMode": "2-point",
+              "gradientPalette": "yellow",
+              "polygonBorders": "show",
+              "reversed": true,
+              "thresholdsMode": "auto"
+            },
+            "filters": [],
+            "geopointsConfig": {},
+            "labels": [],
+            "sort": [],
+            "tooltips": [
+              {
+                "aggregation": "<redacted>",
+                "aggregation_locked": false,
+                "autoaggregated": false,
+                "avatar_id": "<redacted>",
+                "calc_mode": "<redacted>",
+                "cast": "<redacted>",
+                "data_type": "<redacted>",
+                "datasetId": "<redacted>",
+                "datasetName": "<redacted>",
+                "description": "<redacted>",
+                "formula": "<redacted>",
+                "guid": "<redacted>",
+                "has_auto_aggregation": false,
+                "hidden": false,
+                "id": "<redacted>",
+                "initial_data_type": "<redacted>",
+                "lock_aggregation": false,
+                "managed_by": "<redacted>",
+                "source": "<redacted>",
+                "title": "<redacted>",
+                "type": "DIMENSION",
+                "valid": true,
+                "virtual": false
+              },
+              {
+                "aggregation": "<redacted>",
+                "aggregation_locked": false,
+                "autoaggregated": false,
+                "avatar_id": "<redacted>",
+                "calc_mode": "<redacted>",
+                "cast": "<redacted>",
+                "data_type": "<redacted>",
+                "datasetId": "<redacted>",
+                "datasetName": "<redacted>",
+                "description": "<redacted>",
+                "formula": "<redacted>",
+                "guid": "<redacted>",
+                "has_auto_aggregation": false,
+                "hidden": false,
+                "id": "<redacted>",
+                "initial_data_type": "<redacted>",
+                "lock_aggregation": false,
+                "managed_by": "<redacted>",
+                "source": "<redacted>",
+                "title": "<redacted>",
+                "type": "MEASURE",
+                "valid": true,
+                "virtual": false
+              },
+              {
+                "aggregation": "<redacted>",
+                "aggregation_locked": false,
+                "autoaggregated": false,
+                "avatar_id": "<redacted>",
+                "calc_mode": "<redacted>",
+                "cast": "<redacted>",
+                "data_type": "<redacted>",
+                "datasetId": "<redacted>",
+                "datasetName": "<redacted>",
+                "description": "<redacted>",
+                "formula": "<redacted>",
+                "guid": "<redacted>",
+                "has_auto_aggregation": false,
+                "hidden": false,
+                "id": "<redacted>",
+                "initial_data_type": "<redacted>",
+                "lock_aggregation": false,
+                "managed_by": "<redacted>",
+                "source": "<redacted>",
+                "title": "<redacted>",
+                "type": "MEASURE",
+                "valid": true,
+                "virtual": false
+              },
+              {
+                "aggregation": "<redacted>",
+                "aggregation_locked": false,
+                "autoaggregated": false,
+                "avatar_id": "<redacted>",
+                "calc_mode": "<redacted>",
+                "cast": "<redacted>",
+                "data_type": "<redacted>",
+                "datasetId": "<redacted>",
+                "datasetName": "<redacted>",
+                "description": "<redacted>",
+                "formula": "<redacted>",
+                "guid": "<redacted>",
+                "has_auto_aggregation": false,
+                "hidden": false,
+                "id": "<redacted>",
+                "initial_data_type": "<redacted>",
+                "lock_aggregation": false,
+                "managed_by": "<redacted>",
+                "source": "<redacted>",
+                "title": "<redacted>",
+                "type": "MEASURE",
+                "valid": true,
+                "virtual": false
+              }
+            ]
+          },
+          "hidden": true,
+          "icon": {
+            "_owner": null,
+            "key": null,
+            "props": {
+              "width": "24"
+            },
+            "ref": null
+          },
+          "id": "<redacted>",
+          "layerSettings": {
+            "alpha": 80,
+            "id": "<redacted>",
+            "name": "<redacted>",
+            "type": "geopolygon",
+            "valid": true
+          },
+          "name": "<redacted>",
+          "placeholders": [
+            {
+              "allowedDataTypes": {},
+              "allowedTypes": {},
+              "capacity": null,
+              "icon": {
+                "_owner": null,
+                "key": null,
+                "props": {
+                  "width": "24"
+                },
+                "ref": null
+              },
+              "id": "<redacted>",
+              "items": [
+                {
+                  "aggregation": "<redacted>",
+                  "aggregation_locked": false,
+                  "autoaggregated": false,
+                  "avatar_id": "<redacted>",
+                  "calc_mode": "<redacted>",
+                  "cast": "<redacted>",
+                  "data_type": "<redacted>",
+                  "datasetId": "<redacted>",
+                  "description": "<redacted>",
+                  "formula": "<redacted>",
+                  "guid": "<redacted>",
+                  "has_auto_aggregation": false,
+                  "hidden": false,
+                  "id": "<redacted>",
+                  "lock_aggregation": false,
+                  "managed_by": "<redacted>",
+                  "source": "<redacted>",
+                  "title": "<redacted>",
+                  "type": "DIMENSION",
+                  "valid": true,
+                  "virtual": false
+                }
+              ],
+              "required": true,
+              "settings": {},
+              "title": "<redacted>",
+              "type": "geopolygon"
+            }
+          ],
+          "type": "geo"
+        },
+        {
+          "allowColors": true,
+          "allowFilters": true,
+          "allowLabels": true,
+          "allowLayerFilters": true,
+          "allowTooltips": true,
+          "availableLabelModes": [
+            "<redacted>"
+          ],
+          "commonPlaceholders": {
+            "colors": [
+              {
+                "aggregation": "<redacted>",
+                "aggregation_locked": false,
+                "autoaggregated": false,
+                "avatar_id": "<redacted>",
+                "calc_mode": "<redacted>",
+                "cast": "<redacted>",
+                "data_type": "<redacted>",
+                "datasetId": "<redacted>",
+                "datasetName": "<redacted>",
+                "description": "<redacted>",
+                "formula": "<redacted>",
+                "guid": "<redacted>",
+                "has_auto_aggregation": false,
+                "hidden": false,
+                "id": "<redacted>",
+                "initial_data_type": "<redacted>",
+                "lock_aggregation": false,
+                "managed_by": "<redacted>",
+                "source": "<redacted>",
+                "title": "<redacted>",
+                "type": "MEASURE",
+                "valid": true,
+                "virtual": false
+              }
+            ],
+            "colorsConfig": {
+              "gradientMode": "2-point",
+              "gradientPalette": "blue",
+              "polygonBorders": "show",
+              "reversed": true,
+              "thresholdsMode": "auto"
+            },
+            "filters": [],
+            "geopointsConfig": {},
+            "labels": [],
+            "sort": [],
+            "tooltips": [
+              {
+                "aggregation": "<redacted>",
+                "aggregation_locked": false,
+                "autoaggregated": false,
+                "avatar_id": "<redacted>",
+                "calc_mode": "<redacted>",
+                "cast": "<redacted>",
+                "data_type": "<redacted>",
+                "datasetId": "<redacted>",
+                "datasetName": "<redacted>",
+                "description": "<redacted>",
+                "formula": "<redacted>",
+                "guid": "<redacted>",
+                "has_auto_aggregation": false,
+                "hidden": false,
+                "id": "<redacted>",
+                "initial_data_type": "<redacted>",
+                "lock_aggregation": false,
+                "managed_by": "<redacted>",
+                "source": "<redacted>",
+                "title": "<redacted>",
+                "type": "DIMENSION",
+                "valid": true,
+                "virtual": false
+              },
+              {
+                "aggregation": "<redacted>",
+                "aggregation_locked": false,
+                "autoaggregated": false,
+                "avatar_id": "<redacted>",
+                "calc_mode": "<redacted>",
+                "cast": "<redacted>",
+                "data_type": "<redacted>",
+                "datasetId": "<redacted>",
+                "datasetName": "<redacted>",
+                "description": "<redacted>",
+                "formula": "<redacted>",
+                "guid": "<redacted>",
+                "has_auto_aggregation": false,
+                "hidden": false,
+                "id": "<redacted>",
+                "initial_data_type": "<redacted>",
+                "lock_aggregation": false,
+                "managed_by": "<redacted>",
+                "source": "<redacted>",
+                "title": "<redacted>",
+                "type": "DIMENSION",
+                "valid": true,
+                "virtual": false
+              },
+              {
+                "aggregation": "<redacted>",
+                "aggregation_locked": false,
+                "autoaggregated": false,
+                "avatar_id": "<redacted>",
+                "calc_mode": "<redacted>",
+                "cast": "<redacted>",
+                "data_type": "<redacted>",
+                "datasetId": "<redacted>",
+                "datasetName": "<redacted>",
+                "description": "<redacted>",
+                "formula": "<redacted>",
+                "guid": "<redacted>",
+                "has_auto_aggregation": false,
+                "hidden": false,
+                "id": "<redacted>",
+                "initial_data_type": "<redacted>",
+                "lock_aggregation": false,
+                "managed_by": "<redacted>",
+                "source": "<redacted>",
+                "title": "<redacted>",
+                "type": "MEASURE",
+                "valid": true,
+                "virtual": false
+              },
+              {
+                "aggregation": "<redacted>",
+                "aggregation_locked": false,
+                "autoaggregated": false,
+                "avatar_id": "<redacted>",
+                "calc_mode": "<redacted>",
+                "cast": "<redacted>",
+                "data_type": "<redacted>",
+                "datasetId": "<redacted>",
+                "datasetName": "<redacted>",
+                "description": "<redacted>",
+                "formula": "<redacted>",
+                "guid": "<redacted>",
+                "has_auto_aggregation": false,
+                "hidden": false,
+                "id": "<redacted>",
+                "initial_data_type": "<redacted>",
+                "lock_aggregation": false,
+                "managed_by": "<redacted>",
+                "source": "<redacted>",
+                "title": "<redacted>",
+                "type": "MEASURE",
+                "valid": true,
+                "virtual": false
+              },
+              {
+                "aggregation": "<redacted>",
+                "aggregation_locked": false,
+                "autoaggregated": false,
+                "avatar_id": "<redacted>",
+                "calc_mode": "<redacted>",
+                "cast": "<redacted>",
+                "data_type": "<redacted>",
+                "datasetId": "<redacted>",
+                "datasetName": "<redacted>",
+                "description": "<redacted>",
+                "formula": "<redacted>",
+                "guid": "<redacted>",
+                "has_auto_aggregation": false,
+                "hidden": false,
+                "id": "<redacted>",
+                "initial_data_type": "<redacted>",
+                "lock_aggregation": false,
+                "managed_by": "<redacted>",
+                "source": "<redacted>",
+                "title": "<redacted>",
+                "type": "MEASURE",
+                "valid": true,
+                "virtual": false
+              }
+            ]
+          },
+          "hidden": true,
+          "icon": {
+            "_owner": null,
+            "key": null,
+            "props": {
+              "width": "24"
+            },
+            "ref": null
+          },
+          "id": "<redacted>",
+          "layerSettings": {
+            "alpha": 80,
+            "id": "<redacted>",
+            "name": "<redacted>",
+            "type": "geopoint",
+            "valid": true
+          },
+          "name": "<redacted>",
+          "placeholders": [
+            {
+              "allowedDataTypes": {},
+              "allowedTypes": {},
+              "icon": {
+                "_owner": null,
+                "key": null,
+                "props": {
+                  "width": "24"
+                },
+                "ref": null
+              },
+              "id": "<redacted>",
+              "items": [
+                {
+                  "aggregation": "<redacted>",
+                  "aggregation_locked": false,
+                  "autoaggregated": false,
+                  "avatar_id": "<redacted>",
+                  "calc_mode": "<redacted>",
+                  "cast": "<redacted>",
+                  "data_type": "<redacted>",
+                  "datasetId": "<redacted>",
+                  "datasetName": "<redacted>",
+                  "description": "<redacted>",
+                  "formula": "<redacted>",
+                  "guid": "<redacted>",
+                  "has_auto_aggregation": false,
+                  "hidden": false,
+                  "id": "<redacted>",
+                  "initial_data_type": "<redacted>",
+                  "lock_aggregation": false,
+                  "managed_by": "<redacted>",
+                  "source": "<redacted>",
+                  "title": "<redacted>",
+                  "type": "DIMENSION",
+                  "valid": true,
+                  "virtual": false
+                }
+              ],
+              "required": true,
+              "settings": {},
+              "title": "<redacted>",
+              "type": "geopoint"
+            },
+            {
+              "allowedDataTypes": {},
+              "allowedTypes": {},
+              "capacity": 1,
+              "icon": {
+                "_owner": null,
+                "key": null,
+                "props": {
+                  "width": "24"
+                },
+                "ref": null
+              },
+              "id": "<redacted>",
+              "items": [
+                {
+                  "aggregation": "<redacted>",
+                  "aggregation_locked": false,
+                  "autoaggregated": false,
+                  "avatar_id": "<redacted>",
+                  "calc_mode": "<redacted>",
+                  "cast": "<redacted>",
+                  "data_type": "<redacted>",
+                  "datasetId": "<redacted>",
+                  "datasetName": "<redacted>",
+                  "description": "<redacted>",
+                  "formula": "<redacted>",
+                  "guid": "<redacted>",
+                  "has_auto_aggregation": false,
+                  "hidden": false,
+                  "id": "<redacted>",
+                  "initial_data_type": "<redacted>",
+                  "lock_aggregation": false,
+                  "managed_by": "<redacted>",
+                  "source": "<redacted>",
+                  "title": "<redacted>",
+                  "type": "MEASURE",
+                  "valid": true,
+                  "virtual": false
+                }
+              ],
+              "settings": {},
+              "title": "<redacted>",
+              "type": "measures"
+            }
+          ],
+          "type": "geo"
+        }
+      ],
+      "name": "<redacted>",
+      "placeholders": [],
+      "selectedLayerId": "<redacted>",
+      "type": "geo"
+    }
+  },
+  "entryId": "<redacted>",
+  "hidden": false,
+  "key": "<redacted>",
+  "meta": {},
+  "public": false,
+  "publishedId": "<redacted>",
+  "revId": "<redacted>",
+  "savedId": "<redacted>",
+  "scope": "<redacted>",
+  "sourceVersion": null,
+  "tenantId": "<redacted>",
+  "type": "ymap_wizard_node",
+  "workbookId": null
+}

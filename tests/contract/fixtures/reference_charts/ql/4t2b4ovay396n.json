@@ -1,0 +1,242 @@
+{
+  "entryId": "4t2b4ovay396n",
+  "scope": "widget",
+  "type": "d3_ql_node",
+  "key": "Users/mg-evdokimov/Примеры DL/Best Practices/QL Chart Example area 100p",
+  "createdBy": "uid:1120000000325296",
+  "createdAt": "2026-07-17T14:18:48.629Z",
+  "updatedBy": "uid:1120000000325296",
+  "updatedAt": "2026-07-17T14:18:48.629Z",
+  "revUpdatedBy": "uid:1120000000325296",
+  "revUpdatedAt": "2026-07-17T14:18:48.629Z",
+  "savedId": "h6foh1bp6zu40",
+  "publishedId": "h6foh1bp6zu40",
+  "revId": "h6foh1bp6zu40",
+  "tenantId": "common",
+  "data": {
+    "type": "ql",
+    "chartType": "sql",
+    "connection": {
+      "entryId": "9ufygkkh1doaz",
+      "type": "ch_over_yt",
+      "dataExportForbidden": false
+    },
+    "colors": [
+      {
+        "guid": "category",
+        "title": "category",
+        "datasetId": "ql-mocked-dataset",
+        "data_type": "string",
+        "cast": "string",
+        "type": "DIMENSION",
+        "calc_mode": "direct",
+        "inspectHidden": true,
+        "formulaHidden": true,
+        "noEdit": true
+      }
+    ],
+    "colorsConfig": {},
+    "labels": [
+      {
+        "guid": "events",
+        "title": "events",
+        "datasetId": "ql-mocked-dataset",
+        "data_type": "integer",
+        "cast": "integer",
+        "type": "DIMENSION",
+        "calc_mode": "direct",
+        "inspectHidden": true,
+        "formulaHidden": true,
+        "noEdit": true,
+        "id": "inserted-1784284315846",
+        "hideLabelMode": "show",
+        "formatting": {
+          "format": "number",
+          "showRankDelimiter": true,
+          "prefix": "",
+          "postfix": "",
+          "unit": "auto",
+          "labelMode": "absolute",
+          "precision": 0
+        },
+        "mode": "absolute"
+      }
+    ],
+    "tooltips": [],
+    "shapes": [],
+    "shapesConfig": {},
+    "extraSettings": {},
+    "queryValue": "SELECT\r\n  toDateTime(toStartOfInterval(t1.event_dttm, interval 1 week)) AS dttm,\r\n  sum(1) AS events,\r\n  CASE WHEN (t1.exec_time_sec < 3) THEN '< 3 sec.' WHEN (t1.exec_time_sec < 5) THEN '< 5 sec' WHEN (t1.exec_time_sec < 10) THEN '< 10 sec' ELSE '> 10 sec' END AS category\r\nFROM \"//home/taxi-analytics/taxi-bi/datalens-meta/cdm/datalens_events\" AS t1\r\nWHERE\r\n  t1.dash_path_lvl_2 IN ({{service}}) AND t1.source IN ('Chart') AND t1.event_dttm BETWEEN toDateTime('2026-06-17T00:00:00') AND toDateTime('2026-07-16T23:59:59') AND toDateTime(toStartOfInterval(t1.event_dttm, interval 1 week)) BETWEEN toDateTime('2026-06-17T00:00:00') AND toDateTime('2026-07-16T23:59:59')\r\nGROUP BY dttm, category\r\n  ORDER BY category ASC NULLS FIRST\r\nLIMIT 1000001",
+    "queries": [],
+    "params": [
+      {
+        "type": "number",
+        "name": "avg_exec_param",
+        "defaultValue": "5"
+      },
+      {
+        "type": "number",
+        "name": "err_limit",
+        "defaultValue": "1"
+      },
+      {
+        "type": "number",
+        "name": "mem_limit",
+        "defaultValue": "1024"
+      },
+      {
+        "type": "string",
+        "name": "source",
+        "defaultValue": "Chart"
+      },
+      {
+        "type": "string",
+        "name": "service",
+        "defaultValue": "01 Taxi"
+      },
+      {
+        "type": "string",
+        "name": "connection_type",
+        "defaultValue": ""
+      },
+      {
+        "type": "string",
+        "name": "folder",
+        "defaultValue": ""
+      },
+      {
+        "type": "string",
+        "name": "owner",
+        "defaultValue": ""
+      },
+      {
+        "type": "date-interval",
+        "name": "interval",
+        "defaultValue": {
+          "from": "__relative_-30d",
+          "to": "__relative_-0d"
+        }
+      }
+    ],
+    "visualization": {
+      "id": "area100p",
+      "type": "line",
+      "name": "label_visualization-area-100p",
+      "iconProps": {
+        "id": "visArea100p",
+        "width": "24"
+      },
+      "allowFilters": false,
+      "allowColors": true,
+      "allowSort": false,
+      "allowSegments": false,
+      "allowLabels": true,
+      "availableLabelModes": [
+        "absolute",
+        "percent"
+      ],
+      "placeholders": [
+        {
+          "allowedTypes": {},
+          "allowedDataTypes": {},
+          "id": "x",
+          "type": "x",
+          "title": "section_x",
+          "iconProps": {},
+          "items": [
+            {
+              "guid": "dttm",
+              "title": "dttm",
+              "datasetId": "ql-mocked-dataset",
+              "data_type": "genericdatetime",
+              "cast": "genericdatetime",
+              "type": "DIMENSION",
+              "calc_mode": "direct",
+              "inspectHidden": true,
+              "formulaHidden": true,
+              "noEdit": true
+            }
+          ],
+          "required": true,
+          "capacity": 1,
+          "settings": {
+            "title": "off",
+            "titleValue": "",
+            "type": "linear",
+            "grid": "on",
+            "gridStep": "auto",
+            "gridStepValue": 50,
+            "hideLabels": "no",
+            "labelsView": "auto",
+            "holidays": "off",
+            "axisLabelDateFormat": "DD.MM.YYYY",
+            "axisLabelFormating": {},
+            "axisFormatMode": "auto",
+            "axisModeMap": {
+              "dttm": "discrete"
+            },
+            "axisVisibility": "show",
+            "disableAxisMode": true
+          }
+        },
+        {
+          "allowedTypes": {},
+          "allowedFinalTypes": {},
+          "allowedDataTypes": {},
+          "id": "y",
+          "type": "y",
+          "title": "section_y",
+          "iconProps": {},
+          "items": [
+            {
+              "guid": "events",
+              "title": "events",
+              "datasetId": "ql-mocked-dataset",
+              "data_type": "integer",
+              "cast": "integer",
+              "type": "DIMENSION",
+              "calc_mode": "direct",
+              "inspectHidden": true,
+              "formulaHidden": true,
+              "noEdit": true
+            }
+          ],
+          "settings": {
+            "scale": "auto",
+            "scaleValue": "min-max",
+            "title": "off",
+            "titleValue": "",
+            "type": "linear",
+            "grid": "on",
+            "gridStep": "auto",
+            "gridStepValue": 50,
+            "hideLabels": "no",
+            "labelsView": "auto",
+            "nulls": "as-0",
+            "axisLabelDateFormat": "DD.MM.YYYY",
+            "axisLabelFormating": {},
+            "axisFormatMode": "auto",
+            "axisVisibility": "show"
+          }
+        }
+      ],
+      "highchartsId": "area",
+      "allowAvailable": true,
+      "allowLayerFilters": false,
+      "colorsCapacity": 2
+    },
+    "order": null,
+    "version": "7",
+    "geopointsConfig": {}
+  },
+  "meta": {},
+  "annotation": {
+    "description": ""
+  },
+  "version": null,
+  "sourceVersion": null,
+  "hidden": false,
+  "public": false,
+  "workbookId": null,
+  "collectionId": null
+}

@@ -1,0 +1,74 @@
+{
+  "golden_id": "94yprmepstny1",
+  "visualization": {
+    "allowColors": true,
+    "allowFilters": true,
+    "allowLabels": true,
+    "allowLayerFilters": false,
+    "allowSort": true,
+    "availableLabelModes": [
+      "absolute",
+      "percent"
+    ],
+    "highchartsId": "bar",
+    "iconProps": {
+      "id": "visBar100p",
+      "width": "24"
+    },
+    "id": "bar100p",
+    "name": "label_visualization-bar-100p",
+    "placeholders": [
+      {
+        "allowedDataTypes": {},
+        "allowedTypes": {},
+        "capacity": 2,
+        "iconProps": {},
+        "id": "y",
+        "required": false,
+        "settings": {
+          "axisFormatMode": "auto",
+          "axisModeMap": {},
+          "axisVisibility": "show",
+          "grid": "off",
+          "gridStep": "auto",
+          "gridStepValue": 50,
+          "hideLabels": "no",
+          "labelsView": "auto",
+          "title": "off",
+          "titleValue": "",
+          "type": "linear"
+        },
+        "title": "section_y",
+        "type": "y"
+      },
+      {
+        "allowedDataTypes": {},
+        "allowedFinalTypes": {},
+        "allowedTypes": {},
+        "iconProps": {},
+        "id": "x",
+        "settings": {
+          "axisFormatMode": "auto",
+          "axisVisibility": "show",
+          "grid": "off",
+          "gridStep": "auto",
+          "gridStepValue": 50,
+          "hideLabels": "yes",
+          "holidays": "off",
+          "labelsView": "auto",
+          "nulls": "ignore",
+          "scale": "auto",
+          "scaleValue": "min-max",
+          "title": "off",
+          "titleValue": "",
+          "type": "linear"
+        },
+        "title": "section_x",
+        "type": "x"
+      }
+    ],
+    "type": "column"
+  },
+  "viz_id": "bar_100p",
+  "wire_type": "datalens"
+}

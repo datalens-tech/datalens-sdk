@@ -1,0 +1,150 @@
+{
+  "entryId": "h6eyoxeihu8c0",
+  "scope": "widget",
+  "type": "metric2_ql_node",
+  "key": "Users/mg-evdokimov/Примеры DL/Best Practices/QL Chart Example - Indicator",
+  "createdBy": "uid:1120000000325296",
+  "createdAt": "2026-07-17T11:54:18.557Z",
+  "updatedBy": "uid:1120000000325296",
+  "updatedAt": "2026-07-17T14:06:04.786Z",
+  "revUpdatedBy": "uid:1120000000325296",
+  "revUpdatedAt": "2026-07-17T14:06:04.786Z",
+  "savedId": "odmtegjsjmgu7",
+  "publishedId": "odmtegjsjmgu7",
+  "revId": "odmtegjsjmgu7",
+  "tenantId": "common",
+  "data": {
+    "type": "ql",
+    "chartType": "sql",
+    "connection": {
+      "entryId": "9ufygkkh1doaz",
+      "type": "ch_over_yt",
+      "dataExportForbidden": false
+    },
+    "colors": [],
+    "colorsConfig": {},
+    "labels": [],
+    "tooltips": [],
+    "shapes": [],
+    "shapesConfig": {},
+    "extraSettings": {
+      "metricFontColorIndex": 1,
+      "metricFontColor": "#FF3D64"
+    },
+    "queryValue": "SELECT\r\n  toDateTime(toStartOfInterval(t1.event_dttm, interval 1 week)) AS dttm,\r\n  sum(1) AS events,\r\n  CASE WHEN (t1.exec_time_sec < 3) THEN '< 3 sec.' WHEN (t1.exec_time_sec < 5) THEN '< 5 sec' WHEN (t1.exec_time_sec < 10) THEN '< 10 sec' ELSE '> 10 sec' END AS category\r\nFROM \"//home/taxi-analytics/taxi-bi/datalens-meta/cdm/datalens_events\" AS t1\r\nWHERE\r\n  t1.dash_path_lvl_2 IN ({{service}}) AND t1.source IN ('Chart') AND t1.event_dttm BETWEEN toDateTime('2026-06-17T00:00:00') AND toDateTime('2026-07-16T23:59:59') AND toDateTime(toStartOfInterval(t1.event_dttm, interval 1 week)) BETWEEN toDateTime('2026-06-17T00:00:00') AND toDateTime('2026-07-16T23:59:59')\r\nGROUP BY dttm, category\r\n  ORDER BY category ASC NULLS FIRST\r\nLIMIT 1000001",
+    "queries": [],
+    "params": [
+      {
+        "type": "number",
+        "name": "avg_exec_param",
+        "defaultValue": "5"
+      },
+      {
+        "type": "number",
+        "name": "err_limit",
+        "defaultValue": "1"
+      },
+      {
+        "type": "number",
+        "name": "mem_limit",
+        "defaultValue": "1024"
+      },
+      {
+        "type": "string",
+        "name": "source",
+        "defaultValue": "Chart"
+      },
+      {
+        "type": "string",
+        "name": "service",
+        "defaultValue": "01 Taxi"
+      },
+      {
+        "type": "string",
+        "name": "connection_type",
+        "defaultValue": ""
+      },
+      {
+        "type": "string",
+        "name": "folder",
+        "defaultValue": ""
+      },
+      {
+        "type": "string",
+        "name": "owner",
+        "defaultValue": ""
+      },
+      {
+        "type": "date-interval",
+        "name": "interval",
+        "defaultValue": {
+          "from": "__relative_-30d",
+          "to": "__relative_-0d"
+        }
+      }
+    ],
+    "visualization": {
+      "id": "metric",
+      "type": "metric",
+      "name": "label_visualization-metric",
+      "iconProps": {
+        "id": "visMetric",
+        "width": "24"
+      },
+      "allowFilters": false,
+      "allowLabels": false,
+      "allowSort": false,
+      "placeholders": [
+        {
+          "allowedTypes": {},
+          "allowedFinalTypes": {},
+          "allowedDataTypes": {},
+          "id": "measures",
+          "type": "measures",
+          "title": "section_measure",
+          "iconProps": {},
+          "items": [
+            {
+              "guid": "events",
+              "title": "events",
+              "datasetId": "ql-mocked-dataset",
+              "data_type": "integer",
+              "cast": "integer",
+              "type": "DIMENSION",
+              "calc_mode": "direct",
+              "inspectHidden": true,
+              "formulaHidden": true,
+              "noEdit": true
+            }
+          ],
+          "required": true,
+          "capacity": 1
+        },
+        {
+          "allowedTypes": {},
+          "id": "colors",
+          "type": "colors",
+          "title": "section_colors",
+          "iconProps": {},
+          "items": []
+        }
+      ],
+      "allowSegments": false,
+      "allowAvailable": true,
+      "allowLayerFilters": false
+    },
+    "order": null,
+    "version": "7",
+    "geopointsConfig": {}
+  },
+  "meta": {},
+  "annotation": {
+    "description": ""
+  },
+  "version": null,
+  "sourceVersion": null,
+  "hidden": false,
+  "public": false,
+  "workbookId": null,
+  "collectionId": null
+}

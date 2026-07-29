@@ -1,0 +1,115 @@
+{
+  "golden_id": "je8z32m90gr2b",
+  "visualization": {
+    "allowColors": true,
+    "allowFilters": true,
+    "allowLayerFilters": false,
+    "allowSort": true,
+    "colorsCapacity": 1,
+    "iconProps": {
+      "id": "visScatter",
+      "width": "24"
+    },
+    "id": "scatter",
+    "name": "label_visualization-scatter",
+    "placeholders": [
+      {
+        "allowedDataTypes": {},
+        "allowedFinalTypes": {},
+        "allowedTypes": {},
+        "capacity": 1,
+        "iconProps": {},
+        "id": "x",
+        "required": true,
+        "settings": {
+          "axisModeMap": {},
+          "grid": "on",
+          "gridStep": "auto",
+          "gridStepValue": 50,
+          "hideLabels": "no",
+          "labelsView": "auto",
+          "scale": "auto",
+          "scaleValue": "min-max",
+          "title": "off",
+          "titleValue": "",
+          "type": "linear"
+        },
+        "title": "section_x",
+        "type": "x"
+      },
+      {
+        "allowedDataTypes": {},
+        "allowedFinalTypes": {},
+        "allowedTypes": {},
+        "capacity": 1,
+        "iconProps": {},
+        "id": "y",
+        "required": true,
+        "settings": {
+          "grid": "on",
+          "gridStep": "auto",
+          "gridStepValue": 50,
+          "hideLabels": "no",
+          "labelsView": "auto",
+          "scale": "auto",
+          "scaleValue": "min-max",
+          "title": "off",
+          "titleValue": "",
+          "type": "linear"
+        },
+        "title": "section_y",
+        "type": "y"
+      },
+      {
+        "allowedDataTypes": {},
+        "allowedFinalTypes": {},
+        "allowedTypes": {},
+        "capacity": 1,
+        "iconProps": {},
+        "id": "points",
+        "required": false,
+        "settings": {},
+        "title": "section_points",
+        "type": "points"
+      },
+      {
+        "allowedDataTypes": {},
+        "allowedFinalTypes": {},
+        "allowedTypes": {},
+        "capacity": 1,
+        "iconProps": {},
+        "id": "size",
+        "required": false,
+        "settings": {},
+        "title": "section_points_size",
+        "type": "measures"
+      },
+      {
+        "allowedDataTypes": {},
+        "allowedTypes": {},
+        "capacity": 1,
+        "iconProps": {},
+        "id": "colors",
+        "required": false,
+        "settings": {},
+        "title": "section_color",
+        "type": "colors"
+      },
+      {
+        "allowedDataTypes": {},
+        "allowedTypes": {},
+        "capacity": 1,
+        "iconProps": {},
+        "id": "shapes",
+        "required": false,
+        "settings": {},
+        "title": "section_shapes",
+        "type": "shapes"
+      }
+    ],
+    "shapesCapacity": 1,
+    "type": "line"
+  },
+  "viz_id": "scatter",
+  "wire_type": "datalens"
+}
