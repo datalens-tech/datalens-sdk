@@ -1,11 +1,6 @@
 # Changelog
 
-## [Unreleased]
-
-- `DataLensClientEnterprise` now requires an explicit `base_url` and fails
-  before creating a transport when it is omitted.
-
-## [0.1.0] - 2026-07-29
+## 0.1.0 - 2026-07-29
 
 Initial alpha release of the public DataLens Python SDK:
 

@@ -12,7 +12,7 @@ navigation in Yandex Cloud DataLens and DataLens Enterprise.
 ## Project status
 
 The `0.1` series is an alpha release. Until `1.0`, breaking API changes may be
-made in minor releases and will be documented in the changelog.
+made in minor releases.
 
 ## Installation
 
@@ -73,7 +73,7 @@ with DataLensClientYC(auth=auth) as client:
     dashboard = client.get.dashboard(by_id="<dashboard-id>")
 ```
 
-Pass `auth=None` explicitly for an unauthenticated endpoint.
+Pass `auth=None` explicitly for access without authenticatio.
 
 ## Core concepts
 
