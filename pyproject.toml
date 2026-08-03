@@ -53,6 +53,9 @@ Changelog = "https://github.com/datalens-tech/datalens-sdk/blob/main/CHANGELOG.m
 [tool.hatch.build.targets.wheel]
 packages = ["src/datalens_sdk"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"skills/datalens-sdk" = "datalens_sdk/skills/datalens-sdk"
+
 [tool.hatch.build.targets.sdist]
 include = [
   "/CHANGELOG.md",
@@ -61,6 +64,7 @@ include = [
   "/noxfile.py",
   "/pyproject.toml",
   "/scripts",
+  "/skills",
   "/spec",
   "/src",
   "/tests",

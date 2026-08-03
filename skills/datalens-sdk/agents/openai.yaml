@@ -1,0 +1,4 @@
+interface:
+  display_name: "DataLens SDK"
+  short_description: "Automate DataLens connections, datasets, charts, and dashboards with the Python SDK"
+  default_prompt: "Use $datalens-sdk to plan or perform a DataLens automation task through the datalens-sdk Python package."
