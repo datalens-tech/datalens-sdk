@@ -207,15 +207,17 @@ def validate_artifacts(session: nox.Session, wheel: Path, sdist: Path, temp_dir:
             "assert sdk.DataLensClientYC; "
             "assert sdk.DataLensClientEnterprise; "
             "assert r.files('datalens_sdk._generated').joinpath('installations.json').is_file(); "
+            "assert sdk.agent_skill_paths() == [str(skill)]; "
             "assert skill.joinpath('SKILL.md').is_file(); "
             "assert skill.joinpath('scripts', 'preflight.sh').is_file()"
         ),
     )
     typing_fixture = temp_dir / "typing_smoke.py"
     typing_fixture.write_text(
-        "from datalens_sdk import DataLensClientEnterprise, DataLensClientYC\n"
+        "from datalens_sdk import DataLensClientEnterprise, DataLensClientYC, agent_skill_paths\n"
         "yc: type[DataLensClientYC] = DataLensClientYC\n"
         "enterprise: type[DataLensClientEnterprise] = DataLensClientEnterprise\n"
+        "skills: list[str] = agent_skill_paths()\n"
     )
     session.run("mypy", "--strict", str(typing_fixture))
 
