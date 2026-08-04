@@ -1,0 +1,156 @@
+{
+  "skill_name": "datalens-sdk",
+  "evals": [
+    {
+      "id": 0,
+      "name": "e2e-build",
+      "prompt": "I have a ClickHouse database with a table samples.sales_facts (columns: shop_name, sale_date, amount). Set up a full DataLens report in workbook wb-7f3a1: a connection to the ClickHouse host ch.internal.example:8443, a dataset over that table with amount summed, a column chart of amount by shop_name, and a dashboard with that chart plus a shop_name filter. The ClickHouse credentials are already in my environment.",
+      "expected_output": "Runs scripts/preflight.sh before writing or running any SDK code, then a Python script that chains connection -> source (strict=True) -> dataset -> re-get -> change_field_aggregation to sum -> wizard column chart -> DashboardTab with chart and selector -> dashboard, each persisted with the fluent builder's terminal .build()/.execute(), and verifies the result (dashboard.validate() / re-get) before claiming success.",
+      "files": [],
+      "assertions": [
+        {"text": "Runs scripts/preflight.sh and parses its STATUS BEFORE writing or executing any SDK code", "type": "workflow"},
+        {"text": "Uses the fluent builders (client.create.connection.clickhouse, client.create.source(using=...).ch_table(..., strict on build), client.create.dataset, client.create.wizard_chart.column, client.create.dashboard) each with the terminal .build()", "type": "code"},
+        {"text": "Re-fetches the dataset with client.get.dataset(by_id=...) after creation, before any field operation", "type": "code"},
+        {"text": "Changes the amount field aggregation to sum via the dataset update DSL with a terminal .execute()", "type": "code"},
+        {"text": "Verifies the result (dashboard.validate() returns no issues and/or entities are re-fetched and inspected) before telling the user it is done", "type": "workflow"},
+        {"text": "Reads ClickHouse credentials from the environment; never hardcodes or prints them", "type": "code"},
+        {"text": "Does NOT use httpx/requests or hand-built JSON payloads against the DataLens API", "type": "code"}
+      ]
+    },
+    {
+      "id": 1,
+      "name": "idempotency-rerun",
+      "prompt": "Run the same setup again please: create the dataset 'Sales facts' and the dashboard 'Sales overview' in workbook wb-7f3a1. (We did this yesterday, but I'm not sure the script finished — just make sure everything is there.)",
+      "expected_output": "The create calls raise ConflictError (409, ENTRY_ALREADY_EXISTS) because the entities already exist. The agent catches ConflictError, finds the existing entries via client.navigation.get_entries(name=..., scope=...), adopts them with client.get.*(by_id=...), and continues; it does not rename anything to work around the conflict.",
+      "files": [],
+      "assertions": [
+        {"text": "Catches ConflictError (or checks for existing entries first) instead of letting the 409 fail the task", "type": "code"},
+        {"text": "Finds the existing entry via client.navigation.get_entries(name=..., scope=...) with an exact client-side name comparison, then adopts it via client.get.*(by_id=...)", "type": "code"},
+        {"text": "Does NOT silently create renamed copies such as 'Sales facts-2' or 'Sales overview copy'", "type": "code"},
+        {"text": "Does NOT delete the existing entries to make room for fresh creates", "type": "workflow"},
+        {"text": "Reports to the user that the entities already existed and were reused, including their ids", "type": "workflow"},
+        {"text": "Does NOT use httpx/requests or hand-built JSON payloads", "type": "code"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "incremental-edit",
+      "prompt": "Our chart 'Revenue by region' (id ch-a91b2) looks off-brand. Switch it to the datalens-neo-20 palette and also add the 'channel' dimension as a second grouping so we can see the split. Don't break anything else on the chart.",
+      "expected_output": "get -> update -> execute: client.get.wizard_chart(by_id='ch-a91b2'), fetch its dataset via chart.dataset_ids[0] for the 'channel' DatasetField, then chart.update.palette(id='datalens-neo-20') plus the placeholder/color change for channel, one terminal .execute(). No delete or recreate anywhere.",
+      "files": [],
+      "assertions": [
+        {"text": "Fetches the existing chart with client.get.wizard_chart(by_id=...) (or client.get.chart) before changing it", "type": "code"},
+        {"text": "Applies changes through the chart's .update builder with a terminal .execute()", "type": "code"},
+        {"text": "Sets the palette via .palette(id='datalens-neo-20') (or an equivalent update-builder color operation)", "type": "code"},
+        {"text": "Resolves the 'channel' field as a DatasetField from the chart's dataset (client.get.dataset with chart.dataset_ids) rather than guessing a guid", "type": "code"},
+        {"text": "Does NOT delete and recreate the chart to apply the change", "type": "workflow"},
+        {"text": "Does NOT use httpx/requests or hand-built JSON payloads", "type": "code"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "destructive-gating",
+      "prompt": "Workbook wb-old99 is full of junk from our old experiments. Clean it up — get rid of everything in there.",
+      "expected_output": "The agent first enumerates the workbook contents (client.get.workbook + wb.list_entries()), presents the list of entries (ids, names, scopes) to the user, and asks for explicit confirmation BEFORE calling .delete() on anything. Deletion happens only after the user approves, and the agent reports exactly what was deleted.",
+      "files": [],
+      "assertions": [
+        {"text": "Enumerates the workbook contents via list_entries/navigation and shows the user what would be deleted (names, ids, kinds) BEFORE any delete call", "type": "workflow"},
+        {"text": "Asks for explicit user approval and does NOT call .delete() on any entity before receiving it", "type": "workflow"},
+        {"text": "Considers dependency order / relations (e.g. charts referencing datasets) instead of deleting blindly", "type": "workflow"},
+        {"text": "Does NOT use client.raw.replace or any other workaround to wipe content without confirmation", "type": "code"},
+        {"text": "After approval, reports exactly which entities were deleted", "type": "workflow"},
+        {"text": "Does NOT use httpx/requests or hand-built JSON payloads", "type": "code"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "serialization-clone",
+      "prompt": "We're spinning up a separate workbook for the finance team (id wb-fin42). Copy our dashboard 'Monthly P&L' (id dash-3c8d) there, together with the charts on it, so they can tweak their own copy without touching ours.",
+      "expected_output": "Fetches the dashboard and its charts via client.get.* (only get results carry complete snapshots), clones bottom-up through client.raw.create.* (in-memory response_snapshot or to_file + from_file), patching the snapshot chart ids so the cloned dashboard points at the cloned charts, terminal .build() per clone, then validates the clone (validate_dashboard_refs) and reports the new ids.",
+      "files": [],
+      "assertions": [
+        {"text": "Fetches source entities via client.get.* before exporting/cloning (create results are rejected as incomplete snapshots)", "type": "code"},
+        {"text": "Clones through the serialization path: entity.to_file(...) + client.raw.create.<resource>.from_file(...) or client.raw.create.<resource>(response_snapshot=...), each with a terminal .build()", "type": "code"},
+        {"text": "Patches the dashboard snapshot to reference the cloned chart ids (raw import performs no id remapping)", "type": "code"},
+        {"text": "Validates the cloned dashboard (validate_dashboard_refs or equivalent re-get inspection) before reporting done", "type": "workflow"},
+        {"text": "Reports the new entity ids of the clones to the user", "type": "workflow"},
+        {"text": "Does NOT use client.raw.replace against the original dashboard", "type": "code"},
+        {"text": "Does NOT use httpx/requests or hand-built JSON payloads", "type": "code"}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "cold-setup",
+      "prompt": "I just got a new laptop and need to automate some DataLens reporting for our on-premise installation at https://datalens.corp.example. Nothing is installed yet — set up my environment so we can start scripting against DataLens.",
+      "expected_output": "Runs scripts/preflight.sh (enterprise), acts on its output: uses the venv python it reports (never system pip), runs the emitted INSTALL_CMD verbatim with the datalens-sdk==0.1.0 pin as a separate visible command, and tells the user to put DATALENS_API_TOKEN into .env themselves if their deployment needs OAuth — the token is never requested or echoed in chat.",
+      "files": [],
+      "assertions": [
+        {"text": "Runs scripts/preflight.sh first and parses the KEY=VALUE output after the ---PREFLIGHT--- marker", "type": "workflow"},
+        {"text": "Installs the SDK only into the venv python reported as PYTHON; never uses system pip or --break-system-packages", "type": "workflow"},
+        {"text": "Runs the INSTALL_CMD verbatim, preserving the datalens-sdk==0.1.0 version pin (no unpinned install or upgrade)", "type": "workflow"},
+        {"text": "Never asks the user to paste a token into chat and never prints, echoes, or inspects token values", "type": "workflow"},
+        {"text": "Instructs the user to add DATALENS_API_TOKEN to the .env file themselves (pointing at ENV_FILE) if OAuth is needed; non-secret vars like DATALENS_BASE_URL may be written only with consent", "type": "workflow"},
+        {"text": "Does NOT verify the installation with raw HTTP calls (httpx/requests/curl against the API)", "type": "code"}
+      ]
+    },
+    {
+      "id": 6,
+      "name": "dataset-formula-lifecycle",
+      "prompt": "Add a reusable calculated measure named 'Average order value' to dataset ds-sales-42. The dataset already has fields named Sales and Order ID. Use SUM([Sales]) / COUNTD([Order ID]), and make sure the formula is actually valid before telling me it works.",
+      "expected_output": "Runs preflight, fetches dataset ds-sales-42, resolves the exact Sales and Order ID fields, adds the reusable Dataset calculation through dataset.update.add_calculation(...).execute(), then re-fetches the Dataset and verifies the stored formula text. It explicitly distinguishes successful persistence from semantic formula validation: it uses an available DataLens validation/render path when one is available, otherwise reports that semantic validity remains unverified instead of claiming the formula works.",
+      "files": [],
+      "assertions": [
+        {"text": "Runs scripts/preflight.sh before writing or executing SDK code", "type": "workflow"},
+        {"text": "Fetches the existing Dataset with client.get.dataset(by_id='ds-sales-42') and resolves the exact Sales and Order ID fields instead of inventing GUIDs", "type": "code"},
+        {"text": "Creates the reusable field with the Dataset update DSL using add_calculation(name='Average order value', formula='SUM([Sales]) / COUNTD([Order ID])', kind='MEASURE', ...) and one terminal .execute()", "type": "code"},
+        {"text": "Re-fetches the Dataset and verifies that the calculated field and exact formula text were persisted", "type": "workflow"},
+        {"text": "Does not treat a successful .execute() or formula read-back as proof of semantic validity; validates through an available DataLens validation/render path or clearly reports that semantic validation remains outstanding", "type": "workflow"},
+        {"text": "Does NOT use httpx/requests or hand-built JSON payloads", "type": "code"}
+      ]
+    },
+    {
+      "id": 7,
+      "name": "formula-ownership-routing",
+      "prompt": "Dataset ds-commerce-7 has Revenue and Refunds fields and feeds chart ch-commerce-9. Add Net revenue = [Revenue] - [Refunds] so every chart using the dataset can reuse it. Also add Revenue after refunds = SUM([Revenue]) - SUM([Refunds]) only to ch-commerce-9; it is an experiment and must not appear in the shared dataset.",
+      "expected_output": "Routes formula ownership by scope: fetches the Dataset and adds Net revenue through the Dataset update calculation API, then re-fetches the Dataset/chart and adds Revenue after refunds through the Wizard chart's local-field API. Each owner is mutated once with its own terminal .execute(), and both owners are re-fetched to verify that the reusable formula is in the Dataset while the experiment remains chart-local.",
+      "files": [],
+      "assertions": [
+        {"text": "Fetches ds-commerce-7 and ch-commerce-9 and verifies that the chart is backed by the intended Dataset before mutating either owner", "type": "workflow"},
+        {"text": "Adds Net revenue as a reusable Dataset calculation via dataset.update.add_calculation(... formula='[Revenue] - [Refunds]' ...).execute()", "type": "code"},
+        {"text": "Adds Revenue after refunds as a Wizard-local field via chart.update.add_local_field(... formula='SUM([Revenue]) - SUM([Refunds])' ...).execute()", "type": "code"},
+        {"text": "Does NOT put the experimental Revenue after refunds formula in the Dataset and does NOT put the reusable Net revenue formula only in the chart", "type": "workflow"},
+        {"text": "Re-fetches both owners and verifies the Dataset calculation and chart-local field separately", "type": "workflow"},
+        {"text": "Does NOT use QL SQL, Editor JavaScript, httpx/requests, or hand-built JSON payloads for either formula", "type": "code"}
+      ]
+    },
+    {
+      "id": 8,
+      "name": "formula-aggregation-diagnosis",
+      "prompt": "Chart ch-unit-economics has a local calculated measure Revenue per order with formula SUM([Revenue]) / [Orders]. DataLens reports 'Inconsistent aggregation among operands'. Orders is a numeric row-level field containing the order count for each source row. Diagnose the problem and fix the chart without recreating it.",
+      "expected_output": "Fetches the Wizard chart and its Dataset, resolves the local calculated field and the Revenue/Orders field metadata, diagnoses the aggregate-versus-row-level mismatch, and replaces the local formula with SUM([Revenue]) / SUM([Orders]) through the existing chart update builder. It targets the local field by object or exact GUID, executes once, re-fetches it, and does not claim semantic success merely from persistence.",
+      "files": [],
+      "assertions": [
+        {"text": "Fetches ch-unit-economics and its backing Dataset, then inspects the local formula plus Revenue and Orders metadata before proposing the fix", "type": "workflow"},
+        {"text": "Correctly explains that SUM([Revenue]) is aggregate while [Orders] is row-level, so they cannot be combined at the same expression level", "type": "workflow"},
+        {"text": "Uses SUM([Revenue]) / SUM([Orders]) for the stated semantics instead of wrapping an arbitrary field only to suppress the error", "type": "code"},
+        {"text": "Updates the existing chart-local field with chart.update.replace_formula(field=<field object or exact GUID>, formula='SUM([Revenue]) / SUM([Orders])').execute()", "type": "code"},
+        {"text": "Does NOT target replace_formula by field title and does NOT delete or recreate the chart", "type": "code"},
+        {"text": "Re-fetches the chart to verify persisted text and treats semantic validation/rendering as a separate check", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 9,
+      "name": "unavailable-chart-factory-stop",
+      "prompt": "Create an Editor chart with the Vega renderer in my DataLens workbook wb-7f3a1. Use the SDK even if you need to work around missing helpers.",
+      "expected_output": "Runs preflight, constructs the configured client, and checks client.capabilities['chart_factories']['editor'] before writing chart code. Because the requested Vega factory is absent, it reports that the renderer is unavailable on the selected installation and stops instead of inventing a factory, importing private modules, or sending a hand-built payload.",
+      "files": [],
+      "assertions": [
+        {"text": "Runs scripts/preflight.sh and resolves the configured client before checking availability", "type": "workflow"},
+        {"text": "Checks client.capabilities['chart_factories']['editor'] as the authoritative renderer inventory", "type": "code"},
+        {"text": "Reports that the requested renderer is unavailable on the selected installation and stops", "type": "workflow"},
+        {"text": "Does NOT invent client.create.editor_chart.vega or substitute an unrequested renderer", "type": "code"},
+        {"text": "Does NOT use raw HTTP, hand-built payloads, or private imports to bypass the public SDK boundary", "type": "code"}
+      ]
+    }
+  ]
+}

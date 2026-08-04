@@ -136,6 +136,10 @@ def check_artifact_contract(
         "datalens_sdk/_generated/installations.json",
         "--required-wheel-member",
         "datalens_sdk/codegen.py",
+        "--required-wheel-member",
+        "datalens_sdk/skills/datalens-sdk/SKILL.md",
+        "--required-wheel-member",
+        "datalens_sdk/skills/datalens-sdk/scripts/preflight.sh",
         "--required-sdist-path",
         "LICENSE",
         "--required-sdist-path",
@@ -154,6 +158,10 @@ def check_artifact_contract(
         "scripts/generate_sdk.py",
         "--required-sdist-path",
         "tests/test_smoke.py",
+        "--required-sdist-path",
+        "skills/datalens-sdk/SKILL.md",
+        "--required-sdist-path",
+        "skills/datalens-sdk/scripts/preflight.sh",
         "--forbidden-text",
         "datalens" + "_sdk_ya",
         "--forbidden-text",
@@ -167,8 +175,9 @@ def check_artifact_contract(
 def validate_artifacts(session: nox.Session, wheel: Path, sdist: Path, temp_dir: Path) -> None:
     session.run("twine", "check", str(wheel), str(sdist))
     # The legacy converter module and its package facade intentionally have
-    # identical re-export contents.
-    session.run("check-wheel-contents", "--ignore", "W002", str(wheel))
+    # identical re-export contents. Skill examples are data files beneath the
+    # canonical hyphenated skill name, not importable package modules.
+    session.run("check-wheel-contents", "--ignore", "W002,W004", str(wheel))
     check_artifact_contract(session, wheel, sdist)
 
     extracted = temp_dir / "extracted"
@@ -191,18 +200,24 @@ def validate_artifacts(session: nox.Session, wheel: Path, sdist: Path, temp_dir:
         "-c",
         (
             "import importlib.metadata as m; import importlib.resources as r; "
+            "import pathlib; "
             "import datalens_sdk as sdk; "
+            "skill = pathlib.Path(sdk.__file__).resolve().parent / 'skills' / 'datalens-sdk'; "
             "assert sdk.__version__ == m.version('datalens-sdk'); "
             "assert sdk.DataLensClientYC; "
             "assert sdk.DataLensClientEnterprise; "
-            "assert r.files('datalens_sdk._generated').joinpath('installations.json').is_file()"
+            "assert r.files('datalens_sdk._generated').joinpath('installations.json').is_file(); "
+            "assert sdk.agent_skill_paths() == [str(skill)]; "
+            "assert skill.joinpath('SKILL.md').is_file(); "
+            "assert skill.joinpath('scripts', 'preflight.sh').is_file()"
         ),
     )
     typing_fixture = temp_dir / "typing_smoke.py"
     typing_fixture.write_text(
-        "from datalens_sdk import DataLensClientEnterprise, DataLensClientYC\n"
+        "from datalens_sdk import DataLensClientEnterprise, DataLensClientYC, agent_skill_paths\n"
         "yc: type[DataLensClientYC] = DataLensClientYC\n"
         "enterprise: type[DataLensClientEnterprise] = DataLensClientEnterprise\n"
+        "skills: list[str] = agent_skill_paths()\n"
     )
     session.run("mypy", "--strict", str(typing_fixture))
 

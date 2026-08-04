@@ -1,6 +1,7 @@
 from importlib.metadata import PackageNotFoundError as _PackageNotFoundError
 from importlib.metadata import version as _distribution_version
 
+from datalens_sdk._agent_skills import agent_skill_paths
 from datalens_sdk.auth import (
     AuthorizationTokenAuthProvider,
     AuthProviderProtocol,
@@ -343,5 +344,6 @@ __all__ = [
     "WorkbookUpdate",
     "YCIAMAuthProvider",
     "YCServiceAccountCredentialsAuthProvider",
+    "agent_skill_paths",
     "validate_dashboard_refs",
 ]

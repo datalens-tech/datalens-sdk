@@ -1,0 +1,8 @@
+version: 1
+files:
+  - datalens-sdk/SKILL.md
+  - datalens-sdk/examples/*
+  - datalens-sdk/references/connections.md
+  - datalens-sdk/references/setup.md
+  - datalens-sdk/references/*/_index.md
+  - datalens-sdk/scripts/preflight.sh
