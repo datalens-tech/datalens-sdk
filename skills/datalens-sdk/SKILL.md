@@ -26,7 +26,7 @@ improvising an SDK solution.
 
 ## Version and stability
 
-Work against the pinned version **`datalens-sdk==0.1.0`** (import name
+Work against the pinned version **`datalens-sdk==0.2.0`** (import name
 `datalens_sdk`). The 0.x series is an alpha: minor releases may rename
 classes and methods, so an unpinned install can silently break every snippet
 in this skill. The preflight script pins the version for you; do not install
@@ -138,7 +138,7 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
    call of a session; use the `PYTHON` it reports for every script.
 2. **pip only into the resolved venv.** Never install into system Python,
    never suggest `--break-system-packages`, always pin
-   `datalens-sdk==0.1.0`.
+   `datalens-sdk==0.2.0`.
 3. **Tokens are opaque.** Never print, log, echo, hash, or measure a token;
    never ask the user to paste one into chat. Secrets live in `.env`, which
    the user edits themselves. The only permitted checks are existence

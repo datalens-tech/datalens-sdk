@@ -91,9 +91,9 @@ conn = (
 `raw_sql_level` gates subselect sources and QL charts on this connection:
 `"off"` allows neither, `"subselect"` allows subselect dataset sources, and
 `"dashsql"` also allows QL charts. `ssl_ca_verify` and
-`data_export_forbidden` use the strings `"on"` / `"off"`. In SDK 0.1.0, the
+`data_export_forbidden` use the strings `"on"` / `"off"`. As of now, the
 ClickHouse `secure` field has an unconstrained server schema and is generated
-as `Mapping[str, object]`; do not guess its payload from the other options.
+as `Mapping[str, object]`; do not guess its payload from the other options; this will change in future releases.
 
 ## Binding a source
 
