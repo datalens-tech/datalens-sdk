@@ -32,7 +32,7 @@ METADATA: dict[str, ConnectorMetadata] = {
         required=frozenset(['host', 'port']),
         available_fields=frozenset(['cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'connection_manager_cloud_id', 'connection_manager_connection_id', 'connection_manager_delegation_is_set', 'connection_manager_folder_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'experimental_features', 'host', 'mdb_cluster_id', 'mdb_folder_id', 'name', 'password', 'port', 'raw_sql_level', 'readonly', 'secure', 'ssl_ca', 'ssl_ca_verify', 'type', 'username', 'workbook_id']),
         defaults={'data_export_forbidden': 'off', 'description': '', 'experimental_features': 'off', 'raw_sql_level': 'off', 'readonly': 2, 'ssl_ca_verify': 'on'},
-        enum_restrictions={'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
+        enum_restrictions={'raw_sql_level': ['off', 'subselect', 'template', 'dashsql'], 'secure': ['on', 'off']},
     ),
     'greenplum': ConnectorMetadata(
         connector='greenplum',
@@ -226,7 +226,7 @@ class ClickhouseConnectionCreate(BaseConnectionCreate):
     def readonly(self, value: int) -> Self:
         return self._set('readonly', value)
 
-    def secure(self, value: Mapping[str, object]) -> Self:
+    def secure(self, value: Literal['on', 'off']) -> Self:
         return self._set('secure', value)
 
     def ssl_ca(self, value: Mapping[str, object]) -> Self:

@@ -757,6 +757,39 @@ def test_generated_builders_validate_fields_before_transport() -> None:
     assert seen == []
 
 
+@pytest.mark.parametrize("installation", ["yacloud", "enterprise"])
+def test_clickhouse_secure_is_consistent_across_installations(installation: str) -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json={"id": "conn-1", "type": "clickhouse", "name": "CH"})
+
+    transport = httpx.MockTransport(handler)
+    client: dl.DataLensClientYC | dl.DataLensClientEnterprise
+    if installation == "yacloud":
+        client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=transport)
+    else:
+        client = dl.DataLensClientEnterprise(auth=None, base_url="http://test", transport=transport)
+    builder = (
+        client.create.connection.clickhouse(name="CH", location=dl.EntryLocation.path("/sdk"))
+        .host("ch.local")
+        .port(8443)
+    )
+
+    assert builder.allowed_values("secure") == ["on", "off"]
+    with pytest.raises(dl.NotSupportedError, match=r"clickhouse\.secure=True is not allowed"):
+        builder.secure(True)  # type: ignore[arg-type]
+    assert seen == []
+
+    builder.secure("on").build()
+
+    assert len(seen) == 1
+    payload: object = json.loads(seen[0].content.decode())
+    assert isinstance(payload, dict)
+    assert payload["secure"] == "on"
+
+
 def test_source_factory_rejects_wrong_or_unbound_connections_before_transport() -> None:
     client = dl.DataLensClientYC(
         auth=None,

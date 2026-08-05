@@ -414,6 +414,10 @@
               "subselect",
               "template",
               "dashsql"
+            ],
+            "secure": [
+              "on",
+              "off"
             ]
           },
           "fields": {
@@ -478,7 +482,7 @@
               "type": "integer"
             },
             "secure": {
-              "type": "object"
+              "type": "enum"
             },
             "ssl_ca": {
               "type": "object"
@@ -2376,6 +2380,10 @@
               "subselect",
               "template",
               "dashsql"
+            ],
+            "secure": [
+              "on",
+              "off"
             ]
           },
           "fields": {
@@ -2440,7 +2448,7 @@
               "type": "integer"
             },
             "secure": {
-              "type": "object"
+              "type": "enum"
             },
             "ssl_ca": {
               "type": "object"

@@ -78,13 +78,14 @@ import os
 conn = (
     client.create.connection.clickhouse(name="prod-ch", location=wb)
     .host(os.environ["CH_HOST"])
-    .port(8443)
     .db_name("samples")
     .username(os.environ["CH_USER"])
     .password(os.environ["CH_PASSWORD"])  # secret: env only, never echo
-    .raw_sql_level("off")  # "off" | "subselect" | "template" | "dashsql"
-    .ssl_ca_verify("on")
-    .secure("on")
+    .port(int(os.environ["CH_PORT"]))
+    .readonly(int(os.environ.get("CH_READONLY", "2")))
+    .secure(os.environ.get("CH_SECURE", "on"))
+    .ssl_ca_verify(os.environ.get("CH_SSL_CA_VERIFY", "on"))
+    .raw_sql_level(os.environ.get("CH_RAW_SQL_LEVEL", "off"))
     .build()
 )
 ```
@@ -92,9 +93,10 @@ conn = (
 `raw_sql_level` gates subselect sources and QL charts on this connection:
 `"off"` allows neither, `"subselect"` allows subselect dataset sources, and
 `"dashsql"` also allows QL charts. `secure`, `ssl_ca_verify` and
-`data_export_forbidden` use the strings `"on"` / `"off"`. As of now, the
-ClickHouse `secure` field has an unconstrained server schema and is generated
-as `Mapping[str, object]`; do not guess its payload from the other options; this will change in future releases.
+`data_export_forbidden` use the strings `"on"` / `"off"`.
+
+- `raw_sql_level="dashsql"` is valid when QL access was requested; do not force it back to `"off"` as a generic safety measure.
+- After creation, re-fetch through the returned id. Expect `password` to be absent from `saved.raw`; absence is successful redaction.
 
 ## Binding a source
 
