@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 - 2026-08-05
+
+- Constrain ClickHouse "secure" values
+
 ## 0.2.0 - 2026-08-04
 
 - A skill for agents was added

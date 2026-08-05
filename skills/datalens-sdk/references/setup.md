@@ -9,7 +9,7 @@ Read this when configuring the environment, interpreting `scripts/preflight.sh` 
 | Yandex Cloud (`yc`) | `datalens_sdk.DataLensClientYC` | `datalens-sdk` | `datalens_sdk` |
 | Enterprise / on-premise (`enterprise`) | `datalens_sdk.DataLensClientEnterprise` | `datalens-sdk` | `datalens_sdk` |
 
-The package is pinned to **`datalens-sdk==0.2.0`**. Preflight verifies the pin and emits the exact reinstall command on drift — never install or upgrade unpinned.
+The package is pinned to **`datalens-sdk==0.3.0`**. Preflight verifies the pin and emits the exact reinstall command on drift — never install or upgrade unpinned.
 
 ## Preflight
 
@@ -58,7 +58,7 @@ output.
 |---|---|---|
 | `SDK=installed` and credentials present | `ready` | Proceed to the task. Use `PYTHON` for everything. |
 | `SDK=needs_install`, credentials present | `needs_input` | After `INSTALLATION` is resolved, run `INSTALL_CMD` verbatim as a separate, visible bash call (so the user sees pip progress). Do not change the interpreter or drop the version pin. |
-| `ACTUAL` present but not `0.2.0` (reported as `SDK=needs_install`) | `needs_input` | Version drift. Run `INSTALL_CMD` — it reinstalls the pinned `datalens-sdk==0.2.0`. |
+| `ACTUAL` present but not `0.3.0` (reported as `SDK=needs_install`) | `needs_input` | Version drift. Run `INSTALL_CMD` — it reinstalls the pinned `datalens-sdk==0.3.0`. |
 | `INSTALLATION=ambiguous` (see `INSTALLATION_HINTS`) | `needs_input` | Ask the user which installation to target, offering the hints; rerun `preflight.sh <choice>`. |
 | `INSTALLATION=unknown` | `needs_input` | Ask the user: yc or enterprise; rerun with the answer. |
 | yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Relay one line: install the `yc` CLI (https://yandex.cloud/docs/cli/quickstart) or provide `DATALENS_YC_ORG_ID` + `DATALENS_YC_IAM_TOKEN`. Do not work around it. |

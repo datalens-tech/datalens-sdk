@@ -134,7 +134,7 @@ Both are `DatalensAPIError` subclasses with a **synthetic 502** context (`e.cont
 
 **Handling:** check `e.context.message` — it names the operation and reason. Confirm `base_url` is the API origin, not the UI. If the endpoint is right, this is version drift or a server bug: report the operation, `e.context.request_id` (may be `None` when the response never carried one), and the SDK version to the user.
 
-**What NOT to do:** do not parse the raw body yourself and continue, and do not upgrade or unpin the SDK to "match the server" — the skill works against `datalens-sdk==0.2.0`.
+**What NOT to do:** do not parse the raw body yourself and continue, and do not upgrade or unpin the SDK to "match the server" — the skill works against `datalens-sdk==0.3.0`.
 
 ## Decision-tree cheat sheet
 
