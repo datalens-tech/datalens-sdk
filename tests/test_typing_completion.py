@@ -62,7 +62,13 @@ from datalens_sdk._generated.builders.dataset_sources import (
     YacloudSourceCreateFactory,
 )
 from datalens_sdk._generated.builders.enterprise import (
+    ClickhouseConnectionCreate as EnterpriseClickhouseConnectionCreate,
+)
+from datalens_sdk._generated.builders.enterprise import (
     ConnectionCreateFactory as EnterpriseConnectionCreateFactory,
+)
+from datalens_sdk._generated.builders.yacloud import (
+    ClickhouseConnectionCreate as YacloudClickhouseConnectionCreate,
 )
 from datalens_sdk._generated.builders.yacloud import (
     ConnectionCreateFactory as YacloudConnectionCreateFactory,
@@ -614,6 +620,8 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
     assert_type(builder.host("db.local"), PostgresConnectionCreate)
     assert_type(builder.port(5432), PostgresConnectionCreate)
     assert_type(builder.raw_sql_level("off"), PostgresConnectionCreate)
+    clickhouse_builder = client.create.connection.clickhouse(name="CH", location=EntryLocation.path("/sdk"))
+    assert_type(clickhouse_builder.secure("on"), YacloudClickhouseConnectionCreate)
     assert_type(
         client.create.dataset(name="DS", location=EntryLocation.path("/sdk")),
         DatasetCreate,
@@ -651,6 +659,8 @@ def test_enterprise_client_namespaces_are_visible_to_static_tools() -> None:
     )
     assert_type(client.create.editor_chart, EnterpriseEditorChartCreateFactory)
     assert_type(client.create.source(using=connection), EnterpriseSourceCreateFactory)
+    clickhouse_builder = client.create.connection.clickhouse(name="CH", location=EntryLocation.path("/sdk"))
+    assert_type(clickhouse_builder.secure("on"), EnterpriseClickhouseConnectionCreate)
 
 
 def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> None:
@@ -748,6 +758,11 @@ def test_dataset_update_public_signatures_avoid_broad_user_argument_types() -> N
         "template_enabled",
         "data_export_forbidden",
     }
+
+
+def test_clickhouse_secure_public_signatures_are_literal_enums() -> None:
+    for builder_type in (YacloudClickhouseConnectionCreate, EnterpriseClickhouseConnectionCreate):
+        assert get_args(get_type_hints(builder_type.secure)["value"]) == ("on", "off")
 
 
 def test_dataset_create_exposes_creation_safe_mutations() -> None:

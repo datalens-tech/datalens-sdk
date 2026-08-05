@@ -164,6 +164,11 @@ _EDITOR_FACTORY_METHOD_OVERRIDES = {
 _CONNECTOR_DEFAULT_OVERRIDES: dict[tuple[str, str], dict[str, object]] = {
     ("yateam", "ch_over_yt"): {"additional_cluster": ""},
 }
+_CONNECTOR_FIELD_ENUM_OVERRIDES: dict[tuple[str, str], dict[str, list[object]]] = {
+    ("enterprise", "clickhouse"): {"secure": ["on", "off"]},
+    ("yacloud", "clickhouse"): {"secure": ["on", "off"]},
+    ("yateam", "clickhouse"): {"secure": ["on", "off"]},
+}
 
 
 def _class_name(value: str, suffix: str) -> str:
@@ -287,6 +292,11 @@ def _connector_meta(
         if field not in fields:
             raise ValueError(f"Default override targets unknown field {installation}.{connector}.{field}")
         defaults[field] = default
+    for field, enum_values in _CONNECTOR_FIELD_ENUM_OVERRIDES.get((installation, connector), {}).items():
+        if field not in fields:
+            raise ValueError(f"Enum override targets unknown field {installation}.{connector}.{field}")
+        fields[field]["type"] = "enum"
+        enums[field] = list(enum_values)
     return {
         "schema": _ref_name(ref),
         "required": sorted(field for field in required if field in fields and field not in LOCATION_FIELDS),
