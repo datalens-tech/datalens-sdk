@@ -82,12 +82,12 @@
       "id": 5,
       "name": "cold-setup",
       "prompt": "I just got a new laptop and need to automate some DataLens reporting for our on-premise installation at https://datalens.corp.example. Nothing is installed yet — set up my environment so we can start scripting against DataLens.",
-      "expected_output": "Runs scripts/preflight.sh (enterprise), acts on its output: uses the venv python it reports (never system pip), runs the emitted INSTALL_CMD verbatim with the datalens-sdk==0.2.0 pin as a separate visible command, and tells the user to put DATALENS_API_TOKEN into .env themselves if their deployment needs OAuth — the token is never requested or echoed in chat.",
+      "expected_output": "Runs scripts/preflight.sh (enterprise), acts on its output: uses the venv python it reports (never system pip), runs the emitted INSTALL_CMD verbatim with the datalens-sdk==0.3.0 pin as a separate visible command, and tells the user to put DATALENS_API_TOKEN into .env themselves if their deployment needs OAuth — the token is never requested or echoed in chat.",
       "files": [],
       "assertions": [
         {"text": "Runs scripts/preflight.sh first and parses the KEY=VALUE output after the ---PREFLIGHT--- marker", "type": "workflow"},
         {"text": "Installs the SDK only into the venv python reported as PYTHON; never uses system pip or --break-system-packages", "type": "workflow"},
-        {"text": "Runs the INSTALL_CMD verbatim, preserving the datalens-sdk==0.2.0 version pin (no unpinned install or upgrade)", "type": "workflow"},
+        {"text": "Runs the INSTALL_CMD verbatim, preserving the datalens-sdk==0.3.0 version pin (no unpinned install or upgrade)", "type": "workflow"},
         {"text": "Never asks the user to paste a token into chat and never prints, echoes, or inspects token values", "type": "workflow"},
         {"text": "Instructs the user to add DATALENS_API_TOKEN to the .env file themselves (pointing at ENV_FILE) if OAuth is needed; non-secret vars like DATALENS_BASE_URL may be written only with consent", "type": "workflow"},
         {"text": "Does NOT verify the installation with raw HTTP calls (httpx/requests/curl against the API)", "type": "code"}
