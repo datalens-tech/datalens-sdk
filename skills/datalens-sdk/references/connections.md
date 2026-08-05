@@ -84,13 +84,14 @@ conn = (
     .password(os.environ["CH_PASSWORD"])  # secret: env only, never echo
     .raw_sql_level("off")  # "off" | "subselect" | "template" | "dashsql"
     .ssl_ca_verify("on")
+    .secure("on")
     .build()
 )
 ```
 
 `raw_sql_level` gates subselect sources and QL charts on this connection:
 `"off"` allows neither, `"subselect"` allows subselect dataset sources, and
-`"dashsql"` also allows QL charts. `ssl_ca_verify` and
+`"dashsql"` also allows QL charts. `secure`, `ssl_ca_verify` and
 `data_export_forbidden` use the strings `"on"` / `"off"`. As of now, the
 ClickHouse `secure` field has an unconstrained server schema and is generated
 as `Mapping[str, object]`; do not guess its payload from the other options; this will change in future releases.
