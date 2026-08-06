@@ -57,17 +57,22 @@ def _field(
     }
 
 
-def _replacement_field() -> DatasetField:
+def _replacement_field(
+    *,
+    guid: str = _NEW_GUID,
+    title: str = "New field",
+    dataset_id: str = _NEW_DATASET,
+) -> DatasetField:
     return DatasetField(
-        guid=_NEW_GUID,
-        title="New field",
-        name="New field",
+        guid=guid,
+        title=title,
+        name=title,
         type="MEASURE",
         data_type="float",
         calc_mode="direct",
         source="new-source",
         aggregation="sum",
-        dataset_id=_NEW_DATASET,
+        dataset_id=dataset_id,
     )
 
 
@@ -125,6 +130,27 @@ def test_replace_field_replaces_complete_snapshot_in_every_carrier(carrier: Carr
     assert replaced["data_type"] == "float"
     assert replaced["source"] == "new-source"
     assert replaced["datasetId"] == _NEW_DATASET
+    assert replaced["formatting"] == {"precision": 1}
+    if carrier == "filter":
+        assert replaced["filter"] == {"operation": {"code": "EQ"}, "value": ["old"]}
+    if carrier == "sort":
+        assert replaced["direction"] == "DESC"
+
+
+@pytest.mark.parametrize("carrier", _CARRIERS)
+def test_replace_field_with_same_guid_refreshes_every_carrier_snapshot(carrier: Carrier) -> None:
+    chart = _chart(_data_for_carrier(carrier))
+    refreshed = _replacement_field(guid=_OLD_GUID, title="Refreshed field", dataset_id=_OLD_DATASET)
+
+    items = _carrier_items(_payload(chart.update.replace_field(_OLD_GUID, refreshed)), carrier)
+
+    assert [item["guid"] for item in items] == [_OLD_GUID, "keep-guid"]
+    replaced = items[0]
+    assert replaced["title"] == "Refreshed field"
+    assert replaced["type"] == "MEASURE"
+    assert replaced["data_type"] == "float"
+    assert replaced["source"] == "new-source"
+    assert replaced["datasetId"] == _OLD_DATASET
     assert replaced["formatting"] == {"precision": 1}
     if carrier == "filter":
         assert replaced["filter"] == {"operation": {"code": "EQ"}, "value": ["old"]}
@@ -201,6 +227,26 @@ def test_structural_mutations_update_color_and_shape_config_pointers(operation: 
         )
         assert result["colorsConfig"]["fieldGuid"] == "aggregated-guid"
         assert result["shapesConfig"]["fieldGuid"] == "aggregated-guid"
+
+
+def test_same_guid_refresh_leaves_config_pointers_unchanged() -> None:
+    data = _data_for_carrier("placeholder")
+    data["colorsConfig"] = {"fieldGuid": _OLD_GUID, "palette": "classic20"}
+    data["shapesConfig"] = {"fieldGuid": _OLD_GUID, "mountedShapes": {"Old field": "Solid"}}
+    chart = _chart(data)
+
+    result = _payload(
+        chart.update.replace_field(
+            _OLD_GUID,
+            _replacement_field(guid=_OLD_GUID, title="Refreshed field", dataset_id=_OLD_DATASET),
+        )
+    )
+
+    assert result["colorsConfig"] == {"fieldGuid": _OLD_GUID, "palette": "classic20"}
+    assert result["shapesConfig"] == {
+        "fieldGuid": _OLD_GUID,
+        "mountedShapes": {"Old field": "Solid"},
+    }
 
 
 def _combined_data() -> dict[str, Any]:
@@ -294,6 +340,61 @@ def test_structural_mutations_traverse_combined_layers(operation: Operation) -> 
         assert _NEW_DATASET in _all_dataset_ids(data)
 
 
+def test_same_guid_refresh_traverses_combined_layers() -> None:
+    chart = _chart(_combined_data())
+
+    data = _payload(
+        chart.update.replace_field(
+            _OLD_GUID,
+            _replacement_field(guid=_OLD_GUID, title="Refreshed field", dataset_id=_OLD_DATASET),
+        )
+    )
+    visualization = cast(dict[str, Any], data["visualization"])
+
+    def active_snapshots(value: object) -> list[Mapping[str, Any]]:
+        result: list[Mapping[str, Any]] = []
+        if isinstance(value, Mapping):
+            if value.get("guid") == _OLD_GUID:
+                result.append(value)
+            for nested in value.values():
+                result.extend(active_snapshots(nested))
+        elif isinstance(value, list):
+            for nested in value:
+                result.extend(active_snapshots(nested))
+        return result
+
+    refreshed = active_snapshots(visualization)
+    assert refreshed
+    assert {snapshot["title"] for snapshot in refreshed} == {"Refreshed field"}
+    assert all(snapshot["formatting"] == {"precision": 1} for snapshot in refreshed)
+
+
+def test_same_guid_refresh_updates_hierarchy_fields() -> None:
+    data = _data_for_carrier("placeholder")
+    data["hierarchies"] = [
+        {
+            "guid": "hierarchy-guid",
+            "title": "Hierarchy",
+            "data_type": "hierarchy",
+            "fields": [_field()],
+        }
+    ]
+    chart = _chart(data)
+
+    result = _payload(
+        chart.update.replace_field(
+            _OLD_GUID,
+            _replacement_field(guid=_OLD_GUID, title="Refreshed field", dataset_id=_OLD_DATASET),
+        )
+    )
+    hierarchy = cast(list[dict[str, Any]], result["hierarchies"])[0]
+    hierarchy_field = cast(list[dict[str, Any]], hierarchy["fields"])[0]
+
+    assert hierarchy_field["guid"] == _OLD_GUID
+    assert hierarchy_field["title"] == "Refreshed field"
+    assert hierarchy_field["formatting"] == {"precision": 1}
+
+
 def test_wizard_chart_fields_includes_segments_shapes_and_combined_layer_carriers() -> None:
     data = _combined_data()
     layer = cast(dict[str, Any], data["visualization"]["layers"][0])
@@ -347,6 +448,18 @@ def test_structural_mutations_reject_unknown_targets_instead_of_becoming_noops()
         _payload(chart.update.delete_field("unknown-guid"))
     with pytest.raises(DatalensValidationError, match="chart datasets"):
         _payload(chart.update.replace_dataset(old="unknown-dataset", new=_NEW_DATASET))
+
+
+def test_same_guid_refresh_rejects_unreferenced_guid() -> None:
+    chart = _chart(_data_for_carrier("placeholder"))
+
+    with pytest.raises(DatalensValidationError, match="not referenced"):
+        _payload(
+            chart.update.replace_field(
+                "unknown-guid",
+                _replacement_field(guid="unknown-guid", title="Unknown field", dataset_id=_OLD_DATASET),
+            )
+        )
 
 
 @pytest.mark.parametrize("operation", ["delete", "replace"])

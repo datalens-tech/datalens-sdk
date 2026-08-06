@@ -202,14 +202,14 @@ class WizardFieldReferences:
         replacement_guid = _guid(replacement)
         if replacement_guid is None:
             raise DatalensValidationError("Replacement field snapshot must contain a non-empty guid.")
-        if replacement_guid == old_guid:
-            raise DatalensValidationError(f"Replacement field guid must differ from {old_guid!r}.")
         snapshots = [location for location in self.snapshot_locations() if location.guid == old_guid]
         pointers = [location for location in self.guid_locations() if location.guid == old_guid]
         if not snapshots and not pointers:
             raise DatalensValidationError(f"Field guid {old_guid!r} is not referenced by this Wizard chart.")
         for snapshot_location in snapshots:
             snapshot_location.replace(replacement)
+        if replacement_guid == old_guid:
+            return
         for pointer_location in pointers:
             pointer_location.replace(replacement_guid)
         self.assert_guid_absent(old_guid)

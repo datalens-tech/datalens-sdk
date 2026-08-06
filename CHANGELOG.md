@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Allow `WizardChartUpdate.replace_field()` to refresh active field snapshots when the replacement keeps the same GUID.
 - Translate `ERR.US.DB.UNIQUE_VIOLATION` responses to `ConflictError` while preserving their original API context.
 
 ## 0.3.0 - 2026-08-05
