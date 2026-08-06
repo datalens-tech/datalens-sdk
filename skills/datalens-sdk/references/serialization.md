@@ -155,7 +155,7 @@ client.raw.replace.dashboard.from_file(
 
 Bottom-up, in dependency order, patching ids as you go — because `raw.create` never remaps them for you. Shown for a dataset + wizard chart pair; extend the same pattern per entity:
 
-Inventory the target workbook before creating anything. Check collisions only for the names and scopes this clone will create, adopt an exact existing match on 409, and preserve every unrelated target entry. A target workbook is not required to be empty, and an exact total-entry-count assertion is not a valid clone check.
+Inventory the target workbook before creating anything. Check collisions only for the names and scopes this clone will create, adopt an exact existing match on `ConflictError`, and preserve every unrelated target entry. A target workbook is not required to be empty, and an exact total-entry-count assertion is not a valid clone check.
 
 ```python
 import json
@@ -192,10 +192,10 @@ For a dashboard on top, repeat step 2–3 with the dashboard snapshot, replacing
 
 Verify clones through stable business invariants: the requested names/scopes exist exactly once, the old-to-new id map is complete, cloned charts and dashboards reference the remapped ids, expected shared connections remain shared, and both dashboard validators are clean. Do not compare complete `response_snapshot` values, revision ids, counters, or service-owned metadata with the source.
 
-Name collisions on import behave like any create: same name in the same location raises 409 `ConflictError` — adopt the existing entry, do not mint `name-2` copies (hard rule 7).
+Name collisions on import behave like any create: same name in the same location raises `ConflictError` — adopt the existing entry, do not mint `name-2` copies (hard rule 7). Inspect `e.context.status_code` for diagnostics rather than assuming it is always 409.
 
 ## Related references
 
 - [core-concepts.md](core-concepts.md) — `client.raw` in the namespace map, locations, lifecycle
 - [navigation.md](navigation.md) — finding source entities and target workbooks/folders
-- [troubleshooting.md](troubleshooting.md) — `DatalensValidationError`, 409 adoption, any API error
+- [troubleshooting.md](troubleshooting.md) — `DatalensValidationError`, conflict adoption, any API error

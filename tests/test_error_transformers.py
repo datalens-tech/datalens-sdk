@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from datalens_sdk import (
+    DATALENS_ERROR_TRANSFORMER,
     NULL_ERROR_TRANSFORMER,
     APIErrorContext,
+    BadRequestError,
     ChainTransformer,
     CodeMapTransformer,
+    ConflictError,
     DatalensAPIError,
     StatusMapTransformer,
 )
@@ -62,3 +65,31 @@ def test_chain_transformer_uses_first_match_and_returns_none_on_miss() -> None:
 
     assert isinstance(result, _StatusMappedError)
     assert ChainTransformer(transformers=[]).transform(error) is None
+
+
+def test_default_transformer_maps_unique_violation_to_conflict_before_status() -> None:
+    error = DatalensAPIError(
+        APIErrorContext(
+            status_code=400,
+            code="ERR.US.DB.UNIQUE_VIOLATION",
+            message="duplicate entry",
+            details={"entryId": "dash-1"},
+            request_url="https://example.test/rpc/createDashboard",
+            request_id="request-unique",
+            request_method="POST",
+            attempts=2,
+        )
+    )
+
+    result = DATALENS_ERROR_TRANSFORMER.transform(error)
+
+    assert isinstance(result, ConflictError)
+    assert result.context is error.context
+
+
+def test_default_transformer_keeps_unrelated_bad_request_and_status_conflict_mappings() -> None:
+    bad_request = DATALENS_ERROR_TRANSFORMER.transform(_api_error(status_code=400, code="ERR.OTHER"))
+    conflict = DATALENS_ERROR_TRANSFORMER.transform(_api_error(status_code=409, code="ERR.OTHER"))
+
+    assert isinstance(bad_request, BadRequestError)
+    assert isinstance(conflict, ConflictError)

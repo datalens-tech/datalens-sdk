@@ -71,26 +71,28 @@ Two very different causes, same status:
 
 **What NOT to do:** do not recreate the "missing" entity as a fix — if the id was merely pointed at the wrong installation you will create a duplicate in the wrong place.
 
-## 4. `ConflictError` (409) — the entry already exists: adopt it
+## 4. `ConflictError` — the entry already exists: adopt it
 
-Creates are not idempotent. Re-running a create for a name that exists in the same location raises 409 (`ENTRY_ALREADY_EXISTS` in `e.context.code`). The canonical response is to **adopt** the existing entry:
+Creates are not idempotent. Re-running a create for a name that exists in the same location raises `ConflictError`. Its context usually has status 409 and an entry-already-exists code; legacy paths may instead retain status 400 with `ERR.US.DB.UNIQUE_VIOLATION`. Catch `ConflictError`, not a hard-coded status. The canonical response is to **adopt** the existing entry:
 
 ```python
-from datalens_sdk import ConflictError
+from datalens_sdk import ConflictError, EntryLocation
 
 
-def create_or_adopt_dataset(client, *, name, location):
+def create_or_adopt_dataset(client, *, name, workbook_id):
+    location = EntryLocation.workbook(workbook_id)
     try:
         created = client.create.dataset(name=name, location=location).build()
         return client.get.dataset(by_id=created.id)  # re-get: create response omits fields
     except ConflictError as e:
         for entry in client.navigation.get_entries(scope="dataset", name=name):
-            if entry.name == name:
+            display_name = entry.name.rsplit("/", 1)[-1] if entry.name is not None else None
+            if display_name == name and entry.workbook_id == workbook_id:
                 return client.get.dataset(by_id=entry.id)  # adopt the existing entry
         raise  # conflict but no match found — report e.context.request_id
 ```
 
-The same shape works for any entity kind (adjust `scope=` and the getter). To then bring the adopted entry to the desired state, use its `update` builder — never delete-and-recreate.
+The same shape works for any entity kind (adjust `scope=` and the getter). Scope by workbook or folder when possible and verify location as well as the display-name leaf before adopting. Fetch the adopted object, compare and verify the properties your task owns, and use its `update` builder to reconcile any differences — never treat adoption alone as proof that the task is complete, and never delete-and-recreate.
 
 **What NOT to do:** do not create `name-2`/`name (copy)` variants, and do not delete the existing entry to make room — it may be referenced by charts, dashboards, and permissions you cannot see.
 
@@ -122,9 +124,9 @@ Raised client-side at build/execute time (and sometimes at the offending builder
 
 DNS failure, connection refused, TLS problems, timeouts. There is **no `e.context` and no `request_id`** — use `e.method`, `e.url`, `e.attempts`, `e.reason`. Reads were already retried up to 3 times before this surfaced.
 
-**Handling:** verify `e.url` is the endpoint you expect (typos in `DATALENS_BASE_URL` show up here), check VPN/proxy/network, then re-run. For a **write**, remember a timeout is ambiguous — the create may have landed. If the re-run raises 409, that is your answer: the first attempt succeeded; switch to the adopt pattern from section 4.
+**Handling:** verify `e.url` is the endpoint you expect (typos in `DATALENS_BASE_URL` show up here), check VPN/proxy/network, then re-run. For a **write**, remember a timeout is ambiguous — the create may have landed. If the re-run raises `ConflictError`, that is your answer: the first attempt succeeded; switch to the adopt pattern from section 4.
 
-**What NOT to do:** do not blind-loop retries on writes without watching for 409, and do not "fix" a wrong base URL by disabling TLS verification or hand-rolling HTTP.
+**What NOT to do:** do not blind-loop retries on writes without watching for `ConflictError`, and do not "fix" a wrong base URL by disabling TLS verification or hand-rolling HTTP.
 
 ## 9. `InvalidResponseError` / `DTOValidationError` — the server answered, but not in the API's language
 
@@ -144,13 +146,13 @@ exception raised
 ├─ DatalensValidationError    → builder input wrong → fix code; never retry
 ├─ NotSupportedError          → surface absent on this installation → check client.capabilities
 ├─ DatalensTransportError     → network; no request_id → verify url/VPN, re-run;
-│                                write re-run hits 409? → first attempt landed → adopt (sec. 4)
+│                                write re-run conflicts? → first attempt landed → adopt (sec. 4)
 └─ DatalensAPIError           → report e.context.request_id, then branch on type:
    ├─ 400 BadRequestError     → server rejected payload → fix code; never retry
+   ├─ ConflictError           → entry exists; status may be legacy 400 or 409 → adopt (sec. 4)
    ├─ 401 UnauthorizedError   → token invalid/expired → setup.md
    ├─ 403 ForbiddenError      → token fine, ACL denies → user must grant access
    ├─ 404 NotFoundError       → wrong id OR wrong installation endpoint → verify both
-   ├─ 409 ConflictError       → entry exists → adopt pattern (sec. 4)
    ├─ 423 LockedError         → locked, no lock API → report and wait for the user
    ├─ 429 RateLimitError      → back off seconds, serialize, retry once
    ├─ 5xx ServerError         → transient? reads auto-retried already → retry once, then report
