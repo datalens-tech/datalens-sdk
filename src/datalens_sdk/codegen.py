@@ -87,12 +87,19 @@ class ChartMeta(TypedDict):
     editor_update_nodes: dict[str, EditorNodeMeta]
 
 
+class ChartFactoryMeta(TypedDict):
+    wizard: list[str]
+    ql: list[str]
+    editor: list[str]
+
+
 class InstallationMetadata(TypedDict):
     name: str
     namespaces: list[str]
     connectors: dict[str, ConnectorMeta]
     dataset_sources: dict[str, SourceMeta]
     charts: ChartMeta
+    chart_factories: ChartFactoryMeta
 
 
 class Metadata(TypedDict):
@@ -469,6 +476,8 @@ def _chart_meta(schemas: dict[str, dict[str, object]]) -> ChartMeta:
 
 def build_metadata(installations: dict[str, Path]) -> Metadata:
     out: Metadata = {"installations": {}}
+    wizard_factory_methods = sorted(_visualization_factory_methods(sorted(VIZ_SPECS), family="Wizard").values())
+    ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
         schemas = _schemas(spec)
@@ -488,6 +497,7 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
             source_discriminator.get("mapping"),
             context="DataSourceStrict.discriminator.mapping",
         )
+        chart_meta = _chart_meta(schemas)
         out["installations"][installation] = {
             "name": installation,
             "namespaces": NAMESPACES[installation],
@@ -499,7 +509,12 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
                 source_type: _source_meta(schemas, source_type, ref, installation)
                 for source_type, ref in sorted(source_mapping.items())
             },
-            "charts": _chart_meta(schemas),
+            "charts": chart_meta,
+            "chart_factories": {
+                "wizard": wizard_factory_methods,
+                "ql": ql_factory_methods,
+                "editor": sorted(node["factory_method"] for node in chart_meta["editor_nodes"].values()),
+            },
         }
     editor_methods_by_wire_type: dict[str, tuple[str, str]] = {}
     for installation, info in sorted(out["installations"].items()):
