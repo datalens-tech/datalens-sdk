@@ -179,9 +179,9 @@ Strings *can* also resolve against the bound dataset schema (guid first, then ti
 
 ## Critical behaviors
 
-### No server idempotency — adopt on 409
+### No server idempotency — adopt on `ConflictError`
 
-Re-running a successful create raises `ConflictError` (409, `ENTRY_ALREADY_EXISTS`): same name in the same location. Never work around it by creating `name-2` copies — find the existing entry (via `client.navigation.get_entries(name=..., scope=...)`), `get` it, and continue with it. The full pattern with code: [troubleshooting.md](troubleshooting.md).
+Re-running a successful create raises `ConflictError`: same name in the same location. Its original context is usually status 409, but legacy API paths may retain status 400 with code `ERR.US.DB.UNIQUE_VIOLATION`. Catch the exception type, not a hard-coded status. Never work around it by creating `name-2` copies — find the exact existing entry (via `client.navigation.get_entries(name=..., scope=...)`), `get` and verify it, then update it if its state differs. The full pattern with code: [troubleshooting.md](troubleshooting.md).
 
 ### Re-`get` a dataset after creating it
 

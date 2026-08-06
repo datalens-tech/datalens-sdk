@@ -113,7 +113,7 @@ if len(matches) > 1:
 ds = client.get.dataset(by_id=matches[0].id)
 ```
 
-Scope the search when you can: inside a known workbook use `wb.list_entries(name=..., scope="dataset")` instead of the global listing. The server-side `name=` filter only narrows candidates; always compare the derived display leaf exactly. This is also the adopt-on-409 lookup (hard rule 7).
+Scope the search when you can: inside a known workbook use `wb.list_entries(name=..., scope="dataset")` instead of the global listing. The server-side `name=` filter only narrows candidates; always compare the derived display leaf exactly. This is also the adopt-on-`ConflictError` lookup (hard rule 7).
 
 ## Relations: what an entry depends on
 
@@ -184,4 +184,4 @@ For a path-located create or move, `name` must not contain `/` — the directory
 
 - [core-concepts.md](core-concepts.md) — `EntryLocation`, `client.capabilities`, `NotSupportedError`, pagination and retry behavior
 - [serialization.md](serialization.md) — export, import, and clone when entries must cross workbook or folder boundaries
-- [troubleshooting.md](troubleshooting.md) — 404 on lookups, 409 on creates, permission errors while listing
+- [troubleshooting.md](troubleshooting.md) — 404 on lookups, conflicts on creates, permission errors while listing

@@ -1,8 +1,9 @@
-"""Adopt-on-conflict: try to create a dashboard, on 409 adopt the existing entry.
+"""Adopt-on-conflict: try to create a dashboard, then adopt an existing entry.
 
 Creates are not idempotent — re-running a create for a name that already
-exists in the same location raises ``ConflictError`` (409,
-``ENTRY_ALREADY_EXISTS``). This script tries the create, catches the
+exists in the same location raises ``ConflictError``. Depending on the API
+path, its context can contain status 409 or a legacy status 400 with
+``ERR.US.DB.UNIQUE_VIOLATION``. This script tries the create, catches the
 conflict, finds the existing entry via ``client.navigation.get_entries()``,
 and continues with it instead of minting a ``name-2`` copy.
 
@@ -64,7 +65,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def create_or_adopt_dashboard(client, *, name: str, workbook_id: str):
-    """Create the dashboard; on 409 adopt the existing entry with that name."""
+    """Create the dashboard; on a name conflict adopt the existing entry."""
     location = EntryLocation.workbook(workbook_id)
     try:
         created = (
@@ -75,10 +76,14 @@ def create_or_adopt_dashboard(client, *, name: str, workbook_id: str):
         print(f"Created dashboard {created.id!r}")
         return client.get.dashboard(by_id=created.id)
     except ConflictError as e:
-        print(f"Entry already exists (409 {e.context.code}, request_id={e.context.request_id}); adopting it")
+        print(
+            f"Entry already exists ({e.context.status_code} {e.context.code}, "
+            f"request_id={e.context.request_id}); adopting it"
+        )
         # Server name= filter narrows; compare exactly on the client.
         for entry in client.navigation.get_entries(scope="dash", name=name):
-            if entry.name == name and entry.workbook_id == workbook_id:
+            display_name = entry.name.rsplit("/", 1)[-1] if entry.name is not None else None
+            if display_name == name and entry.workbook_id == workbook_id:
                 print(f"Adopted existing dashboard {entry.id!r}")
                 return client.get.dashboard(by_id=entry.id)
         raise  # conflict but no match found — report e.context.request_id

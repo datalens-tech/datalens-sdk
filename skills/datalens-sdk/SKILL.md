@@ -154,9 +154,11 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
    any `client.raw.replace` builder (last-write-wins, no conflict check), list
    what will be affected and get the user's confirmation. A missing typed
    update operation is not permission to prepare or attempt a raw replace.
-7. **No idempotency — adopt on conflict.** Re-running a create raises 409
-   `ENTRY_ALREADY_EXISTS`. Fetch and reuse the existing entry; do not
-   silently create `name-2` copies.
+7. **No idempotency — adopt on conflict.** Re-running a create raises
+   `ConflictError`. Its context is usually 409, but legacy paths may report
+   status 400 with `ERR.US.DB.UNIQUE_VIOLATION`. Fetch the exact existing
+   entry, verify it, and reconcile it to the desired state; do not silently
+   create `name-2` copies.
 8. **Probes go to tmp.** When experimenting, create scratch entities in a
    dedicated tmp folder/workbook, not next to the user's deliverables, and
    tell the user where the probes are.
@@ -180,7 +182,7 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 
 | Do not | Use instead |
 |---|---|
-| Retry a create under a new name after 409 | Find and adopt the existing entry, then update it |
+| Retry a create under a new name after `ConflictError` | Find and adopt the exact existing entry, verify it, then update it if needed |
 | Delete and recreate an entity to edit it | `get` → `update` → `.execute()` |
 | Assume a builder chain already persisted | Finish creates with `.build()` and updates with `.execute()` |
 | Read fields from the dataset create response | Re-fetch with `client.get.dataset(by_id=...)` |
@@ -282,7 +284,8 @@ All SDK exceptions derive from `DatalensError`. Two families:
   `NotSupportedError`): your code or setup is wrong — fix it, never retry.
 - **Server-side** (`DatalensAPIError` and typed subclasses:
   `UnauthorizedError` 401, `ForbiddenError` 403, `NotFoundError` 404,
-  `ConflictError` 409, `LockedError` 423, `RateLimitError` 429,
+  `ConflictError` (usually 409; unique-name conflicts may retain legacy 400),
+  `LockedError` 423, `RateLimitError` 429,
   `ServerError` 5xx): inspect `e.context` — it has `status_code`, `code`,
   `message`, `details`, `request_url`, `request_id`, `request_method`, and
   `attempts`.
@@ -346,5 +349,5 @@ with the preflight-resolved `PYTHON`, config via env per the table above):
   structural plus remote-reference validation.
 - `serialization_roundtrip.py` — export an entity to a file and clone it
   back via `client.raw`.
-- `adopt_or_create.py` — the 409-conflict adoption pattern (hard rule 7)
+- `adopt_or_create.py` — the semantic conflict-adoption pattern (hard rule 7)
   as executable code.
