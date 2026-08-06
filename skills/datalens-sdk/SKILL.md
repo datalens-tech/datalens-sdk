@@ -124,6 +124,9 @@ Two more rules of the object model:
 - A successful `.build()`/`.execute()` confirms **persistence, not
   correctness** — the entity may still render empty or wrong. Verify the
   result (re-`get` it, check fields/placeholders) before reporting done.
+- Once a terminal write call returns successfully, treat that write as
+  persisted. If later local verification code raises or asserts, re-fetch and
+  rerun only the verifier; do not blindly execute the mutation again.
 - After `client.create.dataset(...).build()`, re-fetch with
   `client.get.dataset(by_id=...)` before any field operations — the create
   response omits field snapshots.
@@ -145,7 +148,9 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
    checks (`[ -n "$DATALENS_API_TOKEN" ]`, quiet grep for the key name).
 4. **Validate, don't just create.** "It built without an error" is not
    done. Re-fetch the entity and check the parts that matter for the task
-   before telling the user it works.
+   before telling the user it works. If the write succeeded but a later local
+   verifier failed, re-fetch and repair the verifier without repeating the
+   write.
 5. **Edit incrementally.** To change an existing entity: `get` → `update`
    builder → `.execute()`. Never delete-and-recreate to apply a change —
    that destroys ids, links, and permissions.
@@ -185,6 +190,7 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 | Retry a create under a new name after `ConflictError` | Find and adopt the exact existing entry, verify it, then update it if needed |
 | Delete and recreate an entity to edit it | `get` → `update` → `.execute()` |
 | Assume a builder chain already persisted | Finish creates with `.build()` and updates with `.execute()` |
+| Rerun a successful mutation because a later local assertion crashed | Re-fetch current state and rerun only the verifier |
 | Read fields from the dataset create response | Re-fetch with `client.get.dataset(by_id=...)` |
 | Treat successful formula persistence as semantic validation | Validate or render the formula-dependent result |
 | Add a dashboard chart without an id, or use `main`/`chart_1` | Pass a stable semantic `item_id=`, such as `orders_trend` |
@@ -202,7 +208,8 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 - **Get/List:** use `client.get.*` for a known id and `client.navigation` for
   discovery or pagination.
 - **Update:** fetch the current entity → apply the narrow update builder →
-  `.execute()` → re-fetch and verify.
+  `.execute()` once → re-fetch and verify; if verification code fails locally,
+  fix and rerun only the read-only verification phase.
 - **Diagnose:** classify configuration, validation, transport, or API error →
   follow the troubleshooting decision tree and report `request_id` when
   available.

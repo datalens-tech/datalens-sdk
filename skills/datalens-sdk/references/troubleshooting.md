@@ -28,6 +28,19 @@ except DatalensError as e:
 
 `e.context.request_id` is what DataLens support needs; the exception message already embeds it as `x-request-id=...`, but pull it out explicitly in your own reports. The sections below assume this shape and only show what changes per error.
 
+## A local verifier failed after a successful write
+
+First locate the boundary: did `.build()` or `.execute()` return before the
+exception or failed assertion? If yes, assume the remote mutation persisted.
+Do not rerun the mutation as part of debugging the verifier. Start a read-only
+verification process, re-fetch the entity by id, and correct only the
+inspection/assertion logic. This matters especially for creates and publish
+updates, where replay can create a conflict or an unnecessary revision.
+
+If the terminal call itself raised `DatalensTransportError`, persistence is
+ambiguous instead; follow section 8. If it raised an API or client-side SDK
+exception, classify that exception below.
+
 ## 1. `DatalensConfigurationError` — the client cannot even be built or used
 
 **Symptoms:** raised before any HTTP happens. The message names the gap precisely:
