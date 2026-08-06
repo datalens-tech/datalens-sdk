@@ -36,7 +36,7 @@ for entry in pager:  # EntrySummary
     print(entry.id, entry.scope, entry.name, entry.workbook_id)
 ```
 
-`EntrySummary` carries `.id`, `.scope`, `.type`, `.name`, `.key` (path, on folder installations), `.workbook_id`, `.collection_id`, `.created_by`/`.created_at`, `.updated_by`/`.updated_at`, `.saved_id`/`.published_id`, `.hidden`, `.is_favorite`, `.is_locked`, plus `.data`/`.links`/`.permissions` (populated only when the matching `include_*` flag is on) and `.raw`.
+`EntrySummary` carries `.id`, `.scope`, `.type`, `.name`, `.key` (path, on folder installations), `.workbook_id`, `.collection_id`, `.created_by`/`.created_at`, `.updated_by`/`.updated_at`, `.saved_id`/`.published_id`, `.hidden`, `.is_favorite`, `.is_locked`, plus `.data`/`.links`/`.permissions` (populated only when the matching `include_*` flag is on) and `.raw`. Some listing endpoints return a path-qualified `.name` such as `Folder/Sales`; derive the display leaf with `entry.name.rsplit("/", 1)[-1]` when matching by the user-visible name.
 
 ### Pager semantics — lazy and re-iterable
 
@@ -99,7 +99,13 @@ for page in folder.list_entries(order_by="name").pages():
 Entity getters are id-only (`client.get.folder(by_path=...)` is the single path-based exception), so find-by-name is always list-then-get. The server `name=` filter narrows the listing; compare exactly on the client, then `get` by the id you found:
 
 ```python
-matches = [e for e in client.navigation.get_entries(scope="dataset", name="Sales") if e.name == "Sales"]
+def display_name(entry):
+    return entry.name.rsplit("/", 1)[-1] if entry.name is not None else None
+
+
+matches = [
+    entry for entry in client.navigation.get_entries(scope="dataset", name="Sales") if display_name(entry) == "Sales"
+]
 if not matches:
     raise LookupError("dataset 'Sales' not found")
 if len(matches) > 1:
@@ -107,7 +113,7 @@ if len(matches) > 1:
 ds = client.get.dataset(by_id=matches[0].id)
 ```
 
-Scope the search when you can: inside a known workbook use `wb.list_entries(name=..., scope="dataset")` instead of the global listing. This is also the adopt-on-409 lookup (hard rule 7).
+Scope the search when you can: inside a known workbook use `wb.list_entries(name=..., scope="dataset")` instead of the global listing. The server-side `name=` filter only narrows candidates; always compare the derived display leaf exactly. This is also the adopt-on-409 lookup (hard rule 7).
 
 ## Relations: what an entry depends on
 
