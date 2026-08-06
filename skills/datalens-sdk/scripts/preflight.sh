@@ -41,7 +41,7 @@
 
 set -u
 
-PIN_VERSION="0.3.0"
+PIN_VERSION="0.4.0"
 CWD="$(pwd -P)"
 ENV_FILE_PATH="${CWD}/.env"
 
