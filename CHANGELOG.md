@@ -3,6 +3,7 @@
 ## 0.3.0 - 2026-08-05
 
 - Constrain ClickHouse "secure" values
+- Expose installation-specific Wizard, QL, and Editor chart factory capabilities
 
 ## 0.2.0 - 2026-08-04
 

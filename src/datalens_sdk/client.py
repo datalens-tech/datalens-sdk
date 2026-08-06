@@ -117,10 +117,17 @@ class SourceFactoryConstructor(Protocol[SourceFactoryT_co]):
     def __call__(self, *, connection: Connection, operations: DatasetOperations | None = None) -> SourceFactoryT_co: ...
 
 
+class ChartFactoryCapabilities(TypedDict):
+    wizard: list[str]
+    ql: list[str]
+    editor: list[str]
+
+
 class InstallationInfo(TypedDict):
     connectors: dict[str, object]
     dataset_sources: dict[str, object]
     namespaces: list[str]
+    chart_factories: ChartFactoryCapabilities
 
 
 def _class_name(value: str, suffix: str) -> str:
@@ -144,6 +151,18 @@ def _string_list(value: object, *, context: str) -> list[str]:
     return list(value)
 
 
+def _chart_factory_capabilities(value: object, *, context: str) -> ChartFactoryCapabilities:
+    raw = _string_keyed_dict(value, context=context)
+    expected = {"wizard", "ql", "editor"}
+    if set(raw) != expected:
+        raise TypeError(f"{context} metadata must contain exactly {sorted(expected)!r}")
+    return {
+        "wizard": _string_list(raw["wizard"], context=f"{context}.wizard"),
+        "ql": _string_list(raw["ql"], context=f"{context}.ql"),
+        "editor": _string_list(raw["editor"], context=f"{context}.editor"),
+    }
+
+
 def _load_installations(generated_package: str) -> dict[str, InstallationInfo]:
     text = resources.files(generated_package).joinpath("installations.json").read_text()
     data: object = json.loads(text)
@@ -163,6 +182,10 @@ def _load_installations(generated_package: str) -> dict[str, InstallationInfo]:
                 context=f"{name}.dataset_sources",
             ),
             "namespaces": _string_list(info.get("namespaces"), context=f"{name}.namespaces"),
+            "chart_factories": _chart_factory_capabilities(
+                info.get("chart_factories"),
+                context=f"{name}.chart_factories",
+            ),
         }
     return result
 
