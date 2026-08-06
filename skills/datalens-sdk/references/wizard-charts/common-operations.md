@@ -340,7 +340,7 @@ non-negative palette-index string such as `"2"` for each override value.
 |---|---|---|
 | `.mode(value: Literal["save", "publish"])` | U | Select update mode; default is `"save"`. |
 | `.change_visualization_to(*, visualization_id: str)` | U | Only verified transitions: `line↔column` and `line↔bar`; bar swaps axes. |
-| `.replace_field(old, new)` | U | Replace every chart use of `old`; target `old` by object or exact GUID. |
+| `.replace_field(old, new)` | U | Replace every active chart use of `old`; target `old` by object or exact GUID. If `new` has the same GUID, refresh field-definition data while preserving placement-local filter, sort, and formatting state. |
 | `.delete_field(field)` | U | Remove every chart use of a field targeted by object or exact GUID. |
 | `.replace_dataset(*, old: str, new: str)` | U | Rebind references from one dataset ID to another. |
 | `.delete_filter(field)` | U | Remove filters targeted by a field object or exact field GUID. |

@@ -514,9 +514,13 @@ def _resolve_replacement_snapshot(
     return snapshot
 
 
-def _apply_structural_field_mutations(data: dict[str, object], update: WizardChartUpdate) -> frozenset[str]:
+def _apply_structural_field_mutations(
+    data: dict[str, object],
+    update: WizardChartUpdate,
+) -> tuple[frozenset[str], frozenset[str]]:
     references = WizardFieldReferences(data)
     replacement_targets: set[str] = set()
+    refreshed_guids: set[str] = set()
     deleted = update.deleted_field_guids
     for guid in deleted:
         references.delete_field(guid)
@@ -546,7 +550,9 @@ def _apply_structural_field_mutations(data: dict[str, object], update: WizardCha
         replacement_guid = replacement.get("guid")
         if isinstance(replacement_guid, str):
             replacement_targets.add(replacement_guid)
-    return frozenset(replacement_targets)
+            if replacement_guid == old_guid:
+                refreshed_guids.add(old_guid)
+    return frozenset(replacement_targets), frozenset(refreshed_guids)
 
 
 def _assert_structural_field_invariants(
@@ -554,10 +560,11 @@ def _assert_structural_field_invariants(
     update: WizardChartUpdate,
     *,
     replacement_targets: frozenset[str],
+    refreshed_guids: frozenset[str],
 ) -> None:
     stale_guids = (
         (update.deleted_field_guids - replacement_targets)
-        | update.field_replacements.keys()
+        | (update.field_replacements.keys() - refreshed_guids)
         | update.aggregation_field_replacements.keys()
     )
     references = WizardFieldReferences(data)
@@ -575,7 +582,7 @@ def _apply_update_operations(data: dict[str, object], update: WizardChartUpdate)
     # _local_fields_from_data(data) (P1-RACE).
     _apply_local_field_additions(data, update, initial_dataset_id)
     _apply_visualization_transition(data, update)
-    replacement_targets = _apply_structural_field_mutations(data, update)
+    replacement_targets, refreshed_guids = _apply_structural_field_mutations(data, update)
     _apply_placeholder_edits(data, update)
     _apply_extra_settings_edits(data, update)
     _apply_ph_settings_edits(data, update)
@@ -634,4 +641,9 @@ def _apply_update_operations(data: dict[str, object], update: WizardChartUpdate)
         references = WizardFieldReferences(data)
         references.replace_dataset(old_dataset_id, new_dataset_id)
         references.assert_dataset_absent(old_dataset_id)
-    _assert_structural_field_invariants(data, update, replacement_targets=replacement_targets)
+    _assert_structural_field_invariants(
+        data,
+        update,
+        replacement_targets=replacement_targets,
+        refreshed_guids=refreshed_guids,
+    )

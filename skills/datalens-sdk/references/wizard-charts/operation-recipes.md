@@ -327,6 +327,27 @@ obsolete_profit = chart.fields.by_name("Outdated Profit")
 chart = chart.update.replace_field(old_date, new_date).delete_field(obsolete_profit).mode("save").execute()
 ```
 
+Use the same operation to refresh stale chart snapshots after a compatible
+dataset field changed without changing its GUID. Pass the fresh
+`DatasetField` from a re-fetched dataset as `new`; the SDK updates every active
+snapshot while preserving carrier-local placement, filter, sort, and
+formatting metadata. Same-GUID config pointers remain unchanged.
+
+```python
+chart = client.get.wizard_chart(by_id="chart-id")
+dataset = client.get.dataset(by_id=chart.dataset_ids[0])
+
+stale_field = chart.fields.by_guid("stable-field-guid")
+fresh_field = dataset.fields.by_guid(stale_field.guid)
+
+chart = chart.update.replace_field(stale_field, fresh_field).mode("save").execute()
+```
+
+The old GUID must already be referenced by the loaded chart. This operation
+does not add an unreferenced field or rewrite dataset field definitions that
+are not active chart references. Re-fetch and verify the persisted chart after
+the update.
+
 Visualization changes are limited to `line ↔ column` and `line ↔ bar`.
 The SDK maps retained placeholders, including the axis swap between line and
 bar. Re-fetch and inspect the result before publishing.

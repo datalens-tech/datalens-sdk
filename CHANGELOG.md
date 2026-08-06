@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Allow `WizardChartUpdate.replace_field()` to refresh active field snapshots when the replacement keeps the same GUID.
+
 ## 0.3.0 - 2026-08-05
 
 - Constrain ClickHouse "secure" values
