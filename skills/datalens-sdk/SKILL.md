@@ -150,9 +150,10 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
    builder → `.execute()`. Never delete-and-recreate to apply a change —
    that destroys ids, links, and permissions.
 6. **Destructive operations need explicit approval.** Before `.delete()` on
-   anything you did not create in this session, or any `client.raw.replace`
-   (last-write-wins, no conflict check), list what will be affected and get
-   the user's confirmation.
+   anything you did not create in this session, or before even constructing
+   any `client.raw.replace` builder (last-write-wins, no conflict check), list
+   what will be affected and get the user's confirmation. A missing typed
+   update operation is not permission to prepare or attempt a raw replace.
 7. **No idempotency — adopt on conflict.** Re-running a create raises 409
    `ENTRY_ALREADY_EXISTS`. Fetch and reuse the existing entry; do not
    silently create `name-2` copies.
@@ -188,6 +189,7 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 | Guess a factory, setter, field, or enum | Use the matching `client.capabilities` inventory, builder introspection, and the relevant matrix |
 | Debug by printing credentials or only the exception text | Keep tokens opaque and report `e.context.request_id` |
 | Fall back to raw HTTP or private imports | Stay on the documented public SDK surface |
+| Prepare `client.raw.replace` because a typed update is missing | Stop, explain the SDK boundary, and request explicit approval before constructing it |
 
 ## Common scenarios
 
