@@ -10,6 +10,7 @@ from datalens_sdk import (
     DEFAULT_RETRY_POLICY,
     APIErrorContext,
     BadRequestError,
+    ConflictError,
     DataLensClientYC,
     DatalensConfigurationError,
     DatalensHTTPClient,
@@ -432,6 +433,38 @@ def test_dataset_http_400_without_component_errors_still_raises() -> None:
         pytest.raises(BadRequestError, match="invalid dataset"),
     ):
         DatasetAPI(http_client).get("dataset-1")
+
+
+def test_unique_violation_http_400_raises_conflict_with_original_context() -> None:
+    with (
+        DatalensHTTPClient(
+            installation="yacloud",
+            sdk_version="1.2.3",
+            api_version="2",
+            base_url="https://example.test",
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(
+                    400,
+                    json={
+                        "code": "ERR.US.DB.UNIQUE_VIOLATION",
+                        "message": "duplicate entry",
+                        "details": {"entryId": "dataset-1"},
+                    },
+                    headers={"x-request-id": "request-unique"},
+                )
+            ),
+        ) as http_client,
+        pytest.raises(ConflictError) as exc_info,
+    ):
+        DatasetAPI(http_client).create({"name": "Sales"})
+
+    assert exc_info.value.context.status_code == 400
+    assert exc_info.value.context.code == "ERR.US.DB.UNIQUE_VIOLATION"
+    assert exc_info.value.context.details == {"entryId": "dataset-1"}
+    assert exc_info.value.context.request_url == "https://example.test/rpc/createDataset"
+    assert exc_info.value.context.request_id == "request-unique"
+    assert exc_info.value.context.request_method == "POST"
+    assert exc_info.value.context.attempts == 1
 
 
 def test_non_dataset_http_400_still_raises() -> None:

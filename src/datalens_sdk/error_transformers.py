@@ -86,7 +86,12 @@ def _default_status_map() -> dict[int, ExceptionFactoryProtocol]:
     return result
 
 
-DATALENS_ERROR_TRANSFORMER: Final[ErrorTransformerProtocol] = StatusMapTransformer(status_map=_default_status_map())
+DATALENS_ERROR_TRANSFORMER: Final[ErrorTransformerProtocol] = ChainTransformer(
+    transformers=(
+        CodeMapTransformer(code_map={"ERR.US.DB.UNIQUE_VIOLATION": ConflictError}),
+        StatusMapTransformer(status_map=_default_status_map()),
+    )
+)
 
 
 __all__ = [

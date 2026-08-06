@@ -453,5 +453,5 @@ dash.delete()  # hard rule 6: confirm first; accepts lock_token=
 - [core-concepts.md](core-concepts.md) — builders and terminal calls, `UNSET`/`REMOVE_PARAM`, locations, the update contract
 - [wizard-charts/_index.md](wizard-charts/_index.md) — building the charts a dashboard references
 - [serialization.md](serialization.md) — `to_file(with_dependencies=True)`, cloning via `client.raw`
-- [troubleshooting.md](troubleshooting.md) — `LockedError`, 409 adoption, every other API error
+- [troubleshooting.md](troubleshooting.md) — `LockedError`, conflict adoption, every other API error
 - [design-guide.md](design-guide.md) — composition: what to put where and how to size it

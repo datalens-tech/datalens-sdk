@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Translate `ERR.US.DB.UNIQUE_VIOLATION` responses to `ConflictError` while preserving their original API context.
+
 ## 0.3.0 - 2026-08-05
 
 - Constrain ClickHouse "secure" values
