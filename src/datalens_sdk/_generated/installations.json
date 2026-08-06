@@ -1,6 +1,49 @@
 {
   "installations": {
     "enterprise": {
+      "chart_factories": {
+        "editor": [
+          "advanced_chart",
+          "gravity_charts",
+          "markdown",
+          "selector",
+          "table"
+        ],
+        "ql": [
+          "area",
+          "area_100p",
+          "bar",
+          "bar_100p",
+          "column",
+          "column_100p",
+          "donut",
+          "flat_table",
+          "indicator",
+          "line",
+          "pie",
+          "scatter",
+          "treemap"
+        ],
+        "wizard": [
+          "area",
+          "area_100p",
+          "bar",
+          "bar_100p",
+          "column",
+          "column_100p",
+          "combined_chart",
+          "donut",
+          "flat_table",
+          "funnel",
+          "geolayer",
+          "indicator",
+          "line",
+          "pie",
+          "pivot_table",
+          "scatter",
+          "treemap"
+        ]
+      },
       "charts": {
         "editor_nodes": {
           "advanced-chart_node": {
@@ -1762,6 +1805,49 @@
       ]
     },
     "yacloud": {
+      "chart_factories": {
+        "editor": [
+          "advanced_chart",
+          "gravity_charts",
+          "markdown",
+          "selector",
+          "table"
+        ],
+        "ql": [
+          "area",
+          "area_100p",
+          "bar",
+          "bar_100p",
+          "column",
+          "column_100p",
+          "donut",
+          "flat_table",
+          "indicator",
+          "line",
+          "pie",
+          "scatter",
+          "treemap"
+        ],
+        "wizard": [
+          "area",
+          "area_100p",
+          "bar",
+          "bar_100p",
+          "column",
+          "column_100p",
+          "combined_chart",
+          "donut",
+          "flat_table",
+          "funnel",
+          "geolayer",
+          "indicator",
+          "line",
+          "pie",
+          "pivot_table",
+          "scatter",
+          "treemap"
+        ]
+      },
       "charts": {
         "editor_nodes": {
           "advanced-chart_node": {

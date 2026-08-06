@@ -7,7 +7,7 @@ Read this when you need to export an entity to files, import one from an artifac
 Every fetched entity carries `response_snapshot` — the raw JSON object the server returned when it was fetched. `to_file()` writes it to disk; `client.raw` consumes it (in memory or from disk). Two consequences:
 
 - **Only a `client.get.*` result is complete enough.** Snapshots are validated on capture: a chart snapshot must contain full `data`, an id, and a wire type; a dataset snapshot must contain the full `dataset` content. Objects returned by `create` builders fail this validation (the create response omits content) with a message telling you to fetch via `client.get.<resource>(...)` first.
-- **The snapshot is opaque.** Do not build one by hand; fetch, optionally patch (see the cross-workbook recipe), and feed it back.
+- **The snapshot is opaque and transport-oriented.** Do not build one by hand; fetch, optionally patch (see the cross-workbook recipe), and feed it back. Revisions, counters, service metadata, and representation details may change after a create or update, so snapshots are not stable byte-for-byte equality targets.
 
 ## Exporting: `entity.to_file(path)`
 
@@ -136,7 +136,7 @@ issues = validate_dashboard_refs(client, client.get.dashboard(by_id=new_dash.id)
 
 `raw.replace` sends the snapshot's content to the target id. It does **not** fetch the target's current state, does **not** merge, and does **not** check for conflicts — pure last-write-wins. Everything on the target that is not in the snapshot is gone after `.execute()`; concurrent edits are silently overwritten. The target keeps its own id, name, and location — only the content is replaced.
 
-Per the skill's hard rules, before any `raw.replace`:
+Per the skill's hard rules, before constructing any `raw.replace` builder:
 
 1. Get **explicit user approval**, naming the exact entity (id + name) that will be overwritten.
 2. Double-check the target id — replace onto the wrong id is unrecoverable through the SDK.
@@ -154,6 +154,8 @@ client.raw.replace.dashboard.from_file(
 ## Recipe: clone across workbooks
 
 Bottom-up, in dependency order, patching ids as you go — because `raw.create` never remaps them for you. Shown for a dataset + wizard chart pair; extend the same pattern per entity:
+
+Inventory the target workbook before creating anything. Check collisions only for the names and scopes this clone will create, adopt an exact existing match on 409, and preserve every unrelated target entry. A target workbook is not required to be empty, and an exact total-entry-count assertion is not a valid clone check.
 
 ```python
 import json
@@ -181,12 +183,14 @@ new_ch = client.raw.create.wizard_chart(
     location=target,
 ).build()
 
-# 4. Verify (hard rule 4): re-fetch and confirm the reference moved.
+# 4. Verify (hard rule 4): re-fetch and confirm the business reference moved.
 check = client.get.wizard_chart(by_id=new_ch.id)
 assert src_ds.id not in json.dumps(check.response_snapshot)
 ```
 
 For a dashboard on top, repeat step 2–3 with the dashboard snapshot, replacing each old chart id with its clone's id, then run `validate_dashboard_refs` on the result. If you skip the patching, the clones keep pointing at the originals — acceptable when you *want* shared dependencies, broken when the originals are deleted or inaccessible from the target.
+
+Verify clones through stable business invariants: the requested names/scopes exist exactly once, the old-to-new id map is complete, cloned charts and dashboards reference the remapped ids, expected shared connections remain shared, and both dashboard validators are clean. Do not compare complete `response_snapshot` values, revision ids, counters, or service-owned metadata with the source.
 
 Name collisions on import behave like any create: same name in the same location raises 409 `ConflictError` — adopt the existing entry, do not mint `name-2` copies (hard rule 7).
 

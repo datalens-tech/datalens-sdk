@@ -493,6 +493,22 @@ def test_public_clients_expose_installation_specific_create_surface() -> None:
     assert callable(enterprise_connection_factory.chyt)
     for client in (yc, enterprise):
         assert {"collections", "folders", "workbooks"} <= set(client.capabilities["namespaces"])
+        chart_factories = client.capabilities["chart_factories"]
+        assert chart_factories["wizard"] == sorted(
+            name
+            for name, value in vars(type(client.create.wizard_chart)).items()
+            if not name.startswith("_") and callable(value)
+        )
+        assert chart_factories["ql"] == sorted(
+            name
+            for name, value in vars(type(client.create.ql_chart)).items()
+            if not name.startswith("_") and callable(value)
+        )
+        assert chart_factories["editor"] == sorted(
+            name
+            for name, value in vars(type(client.create.editor_chart)).items()
+            if not name.startswith("_") and callable(value)
+        )
         assert callable(client.create.collection)
         assert callable(client.create.workbook)
         assert callable(client.create.folder)

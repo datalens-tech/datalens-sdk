@@ -3,6 +3,7 @@
 ## 0.3.0 - 2026-08-05
 
 - Constrain ClickHouse "secure" values
+- Expose installation-specific Wizard, QL, and Editor chart factory capabilities
 - Refresh dashboards from an explicit saved or published branch
 - Append typed selector members to existing dashboard groups without rebuilding the wrapper
 
