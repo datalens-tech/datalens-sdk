@@ -39,7 +39,19 @@ ds.sources  # SourcesProxy; ds.sources.by_alias("sales") matches title or id
 
 `find_field` / `find_fields` live on the **`Dataset`**, not on `FieldsProxy`. `find_fields` filters: `grep=` (case-insensitive regex on title), `calc_mode=` (`"direct"` / `"formula"` / `"parameter"`), `kind=` (`"DIMENSION"` / `"MEASURE"`), `hidden=`, `only_with_description=`.
 
-A `DatasetField` is a frozen dataclass: `guid`, `title`, `name`, `calc_mode`, `data_type`, `type`, `aggregation`, `cast`, `source` (backing column), `avatar_id`, `formula`, `description`, `hidden`, plus the raw payload in `.raw`. Structural snapshots for id lookups: `ds.relations`, `ds.default_filters`, `ds.source_avatars`, `ds.rls2` (and `ds.find_source_avatar(title_or_id)`).
+A `DatasetField` is a frozen dataclass: `guid`, `title`, `name`, `calc_mode`, `data_type`, `type`, `aggregation`, `cast`, `source` (backing column), `avatar_id`, `formula`, `description`, `hidden`, plus the raw payload in `.raw`.
+
+`Source` is a slotted dataclass with public attributes `id`, `source_type`,
+`title`, `connection_id`, `connection_type`, `parameters`, `raw_schema`,
+`valid`, and `fields`. It has no `.raw` and no instance `__dict__`; read those
+typed attributes directly.
+
+Structural snapshots for id lookups are deliberately mapping-shaped:
+`ds.relations`, `ds.default_filters`, `ds.source_avatars`, and `ds.rls2`.
+In particular, each `source_avatars` item and the result of
+`ds.find_source_avatar(title_or_id)` is a `Mapping[str, object]`, not an object
+with `.id`/`.title`; use `avatar.get("id")`, `avatar.get("source_id")`, and
+`avatar.get("title")`.
 
 ## The update DSL
 
@@ -155,10 +167,19 @@ Filter operators (`WhereOperation`) are uppercase: `"EQ"`, `"NE"`, `"GT"`, `"GTE
 ```python
 u = ds.update
 u.add_source(source=extra_src)  # registers the source; creates no avatar
-u.update_source(source_id=src.id, title="facts-v2")
+u.update_source(
+    source_id=src.id,
+    title="facts-v2",
+    parameters={**src.parameters, "db_name": "samples", "table_name": "FactsV2"},
+)
 u.delete_source(source_id=extra_src.id)
-u.update_source_avatar(avatar_id=aid, title="Shops")  # aid from ds.source_avatars / find_source_avatar
-u.delete_source_avatar(avatar_id=aid)
+avatar = ds.find_source_avatar(src.id)  # Mapping[str, object] | None
+avatar_id = avatar.get("id") if avatar is not None else None
+if not isinstance(avatar_id, str):
+    raise LookupError(f"Source avatar for {src.id!r} not found")
+u.update_source_avatar(avatar_id=avatar_id, title="Shops")
+# Alternative destructive action when explicitly requested:
+# u.delete_source_avatar(avatar_id=avatar_id)
 u.refresh_source(src.id, force_update_fields=False)  # re-sync fields after schema drift (positional id)
 u.replace_connection(old_connection_id=old_id, new_connection_id=new_id)
 u.update_setting(name="load_preview_by_default", value=False)
@@ -167,6 +188,54 @@ u.name("Sales v2")  # rename inside the same update
 u.description("Refreshed")
 ds = u.execute()
 ```
+
+`update_source(*, source_id, title=None, parameters=None)` preserves the
+current title or parameters only when that argument is omitted. When changing
+source parameters, pass the complete desired mapping—normally a copy of
+`src.parameters` with narrow overrides—so connector-specific keys are not
+lost. Do not look for `src.raw` or patch a dataset snapshot.
+
+To refresh every registered source and force dataset fields to follow the
+current source schemas, use the dataset convenience method:
+
+```python
+ds = client.get.dataset(by_id=dataset_id)
+ds = ds.enrich_via_refresh(force_update_fields=True)
+ds = client.get.dataset(by_id=dataset_id)
+```
+
+### Typed source-schema migration
+
+Use this sequence for a connection/table migration; keep each mutation narrow
+and re-fetch between phases so the next builder uses current server state:
+
+1. Fetch the dataset, its sources, source avatars, fields, and outgoing
+   relations. Record source ids, full `Source.parameters`, field GUIDs, and
+   every dependent chart before mutating.
+2. If the connection changes, call
+   `replace_connection(old_connection_id=..., new_connection_id=...).execute()`
+   and re-fetch.
+3. Resolve the current `Source` from `ds.sources`, merge the desired table or
+   query keys into `source.parameters`, and call
+   `update_source(source_id=..., title=..., parameters=...).execute()`. Re-fetch.
+4. Call `ds.enrich_via_refresh(force_update_fields=True)`, then re-fetch and
+   inspect `source.valid`, `source.raw_schema`, `ds.fields`, and source-avatar
+   mappings.
+5. Apply only confirmed field/formula changes with the typed dataset update
+   DSL. Then update each dependent chart with its typed update builder,
+   preserving chart and dataset ids.
+6. Re-fetch the dataset and every dependent chart and verify connection ids,
+   source parameters/schema, field GUIDs/formulas, chart references, and saved
+   versus published state where applicable.
+
+Schema similarity is not permission to invent semantics. Do not guess renamed
+column mappings, formulas, aggregations, field kinds, or derived values from
+spelling or sample names. If old fields lack an exact source match and the
+task/data contract does not define their replacements, stop before that
+mutation and ask the user for the mapping. Likewise, add newly discovered
+columns as direct fields only when their source identity and intended kind are
+known; do not synthesize fields such as month/year ids without an explicit
+definition.
 
 ## Complete example: two-table join
 

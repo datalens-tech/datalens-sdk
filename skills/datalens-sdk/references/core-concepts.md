@@ -191,6 +191,12 @@ The `createDataset` response omits field snapshots. After `client.create.dataset
 
 A clean terminal call means the server stored the entity — not that it renders, has the right fields, or queries successfully. Verify: re-`get` the entity and inspect the parts that matter (fields, placeholders, dataset ids) before reporting done.
 
+Keep the mutation boundary separate from local verification. Once
+`.build()`/`.execute()` returns, a later `AssertionError`, `AttributeError`, or
+other verifier bug does not roll the server write back. Re-fetch the object and
+rerun only the corrected read-only checks. Re-executing the mutation can create
+duplicates, publish extra revisions, or reapply non-idempotent actions.
+
 ### Retries: writes are never retried by default
 
 The transport picks a `RetryPolicy` per operation:

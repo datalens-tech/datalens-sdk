@@ -79,6 +79,10 @@ QLColumn("created_at", cast="genericdatetime")
 ```
 
 Only `"string"`, `"integer"`, and `"genericdatetime"` are accepted casts.
+The wire name `"integer"` is the generic numeric QL cast: use it for numeric
+SQL results, including floating-point measures. There is no QL `"float"`
+cast, and you should not coerce a float SQL expression to an integer merely to
+match this wire vocabulary.
 Every QL item is encoded with a synthetic QL dataset identity and a
 dimension-shaped wire item, including values placed in measure sections. Do
 not substitute `DatasetField`, aggregation builders, formulas, or Wizard field
