@@ -3,6 +3,8 @@
 ## 0.3.0 - 2026-08-05
 
 - Constrain ClickHouse "secure" values
+- Refresh dashboards from an explicit saved or published branch
+- Append typed selector members to existing dashboard groups without rebuilding the wrapper
 
 ## 0.2.0 - 2026-08-04
 

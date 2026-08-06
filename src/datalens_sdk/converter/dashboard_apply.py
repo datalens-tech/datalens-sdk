@@ -32,6 +32,7 @@ from datalens_sdk.converter.dashboard_apply_layout import (
 )
 from datalens_sdk.converter.dashboard_control import (
     _drop_dangling_aliases,
+    _member_wire,
     _prefixed_defaults_wire,
     _raw_default_wire,
     _tab_used_fields,
@@ -52,12 +53,13 @@ from datalens_sdk.domain.dashboard_types import (
     SelectorDefaultValue,
     _RemoveParam,
 )
-from datalens_sdk.domain.dashboard_update_support import _shared_ids_displayed_on_all_tabs
+from datalens_sdk.domain.dashboard_update_support import _iter_mappings, _shared_ids_displayed_on_all_tabs
 from datalens_sdk.domain.specs.dashboard import (
     AddAliasOp,
     AddConnectionOp,
     AddGroupSelectorOp,
     AddItemsOp,
+    AddSelectorMemberOp,
     AddTabOp,
     ApplyLayoutOp,
     AutoLayoutItemSpec,
@@ -701,6 +703,43 @@ def _apply_remove_selector_member(data: dict[str, object], op: RemoveSelectorMem
             _drop_dangling_aliases(tab, used_before=used_before)
 
 
+def _apply_add_selector_member(data: dict[str, object], op: AddSelectorMemberOp) -> None:
+    if isinstance(op.member.affects, tuple):
+        known_tabs = {
+            tab_id
+            for tab_id in (_string_or_none_apply(tab.get("id")) for tab in _data_tabs(data))
+            if tab_id is not None
+        }
+        unknown = sorted(set(op.member.affects) - known_tabs)
+        if unknown:
+            raise DatalensValidationError(f"Selector {op.member.id!r} references unknown tab ids {unknown!r}")
+
+    shared = any(
+        any(item.get("id") == op.item_id for item in _iter_mappings(tab.get("globalItems"))) for tab in _data_tabs(data)
+    )
+    member_wire = _member_wire(op.member)
+    found = False
+    for item in _find_item_occurrences(data, op.item_id):
+        if item.get("type") != "group_control":
+            raise DatalensValidationError(f"Item {op.item_id!r} is not a group_control")
+        item_data = item.get("data")
+        if not isinstance(item_data, dict):
+            raise DatalensValidationError(f"Group {op.item_id!r} data is not an object")
+        group = item_data.get("group")
+        if not isinstance(group, list):
+            raise DatalensValidationError(f"Group {op.item_id!r} members are not a list")
+        if any(isinstance(member, dict) and member.get("id") == op.member.id for member in group):
+            raise DatalensValidationError(f"Duplicate item id {op.member.id!r}")
+        if shared and len(group) == 1 and isinstance(group[0], dict) and "impactType" not in item_data:
+            for key in ("impactType", "impactTabsIds"):
+                if key in group[0]:
+                    item_data[key] = group[0].pop(key)
+        group.append(json.loads(json.dumps(member_wire)))
+        found = True
+    if not found:
+        raise DatalensValidationError(f"Unknown item id {op.item_id!r}")
+
+
 def _apply_add_group_selector(data: dict[str, object], op: AddGroupSelectorOp, affected: set[tuple[str, str]]) -> None:
     """Assemble a group on update, absorbing existing selectors verbatim."""
     tab = _find_tab(data, op.tab_id)
@@ -789,7 +828,7 @@ def _id_high_water(data: dict[str, object]) -> int:
 
 def _bump_counter(data: dict[str, object], spec: DashboardUpdateSpec) -> None:
     """High-water counter bump; untouched without structural additions."""
-    structural = any(isinstance(op, (AddTabOp, AddItemsOp, AddGroupSelectorOp)) for op in spec.ops)
+    structural = any(isinstance(op, (AddTabOp, AddItemsOp, AddGroupSelectorOp, AddSelectorMemberOp)) for op in spec.ops)
     if not structural:
         return
     existing = data.get("counter")
@@ -825,6 +864,8 @@ def _apply_op(data: dict[str, object], op: DashboardUpdateOp, affected: set[tupl
         _apply_add_items(data, op, affected)
     elif isinstance(op, AddGroupSelectorOp):
         _apply_add_group_selector(data, op, affected)
+    elif isinstance(op, AddSelectorMemberOp):
+        _apply_add_selector_member(data, op)
     elif isinstance(op, UpdateSelectorOp):
         _apply_update_selector(data, op)
     elif isinstance(op, RemoveSelectorMemberOp):

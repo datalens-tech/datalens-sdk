@@ -31,6 +31,7 @@ __all__ = [
     "AddConnectionOp",
     "AddGroupSelectorOp",
     "AddItemsOp",
+    "AddSelectorMemberOp",
     "AddTabOp",
     "ApplyLayoutOp",
     "AutoLayoutItemSpec",
@@ -395,6 +396,14 @@ class RemoveSelectorMemberOp:
 
 
 @dataclass(frozen=True, slots=True)
+class AddSelectorMemberOp:
+    """Append one typed member to every occurrence of a group_control."""
+
+    item_id: str
+    member: SelectorMemberSpec
+
+
+@dataclass(frozen=True, slots=True)
 class AddConnectionOp:
     """Append one directed ignore edge (wire endpoint ids, see ConnectionSpec)."""
 
@@ -522,7 +531,8 @@ class CompactLayoutOp:
 DashboardUpdateOp: TypeAlias = (
     "UpdateTabOp | RemoveTabOp | ReorderTabsOp | ReplaceChartOp | RemoveItemOp | "
     "SetChartParamsOp | RemoveConnectionOp | RemoveAliasOp | GlobalParamsOp | AddTabOp | AddItemsOp | "
-    "AddConnectionOp | AddAliasOp | AddGroupSelectorOp | UpdateSelectorOp | RemoveSelectorMemberOp | "
+    "AddConnectionOp | AddAliasOp | AddGroupSelectorOp | AddSelectorMemberOp | UpdateSelectorOp | "
+    "RemoveSelectorMemberOp | "
     "ApplyLayoutOp | MoveItemOp | ResizeItemOp | SwapItemsOp | ShiftBelowOp | PinItemOp | UnpinItemOp | "
     "CompactLayoutOp"
 )

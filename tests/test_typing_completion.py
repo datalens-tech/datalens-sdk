@@ -690,10 +690,22 @@ def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> Non
     dashboard = client.get.dashboard(by_id="dash-1", branch="published")
     assert_type(dashboard, Dashboard)
     assert_type(dashboard.refresh(), Dashboard)
+    assert_type(dashboard.refresh(branch="saved"), Dashboard)
     assert_type(dashboard.tabs, tuple[DashboardTabView, ...])
     assert_type(dashboard.get_relations(), Pager[EntryRelation])
     assert_type(dashboard.update, DashboardUpdate)
     assert_type(dashboard.update.hide_tab("tab_1"), DashboardUpdate)
+    if TYPE_CHECKING:
+        assert_type(
+            dashboard.update.add_selector_to_group(
+                group_item_id="filters",
+                item_id="city",
+                dataset=Dataset(id="ds-1"),
+                field="City",
+                element="select",
+            ),
+            DashboardUpdate,
+        )
     assert_type(dashboard.update.execute(publish=True), Dashboard)
     assert_type(dashboard.publish_revision(rev_id="rev-1"), Dashboard)
     assert_type(

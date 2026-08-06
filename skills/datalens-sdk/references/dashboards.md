@@ -224,6 +224,8 @@ local and global controls.
 
 Shared items have global mutation semantics:
 
+- `add_selector_to_group` appends the member to every occurrence of an
+  existing shared group while preserving the wrapper's settings and layout.
 - `remove_item` removes every occurrence from every tab, all related
   connections, and selector-dependent alias fields/groups that become empty.
 - `replace_chart` and `set_chart_params` likewise patch every occurrence of a
@@ -358,7 +360,7 @@ searching the full `dashboard.raw` payload:
 ```python
 from collections.abc import Mapping
 
-dashboard = client.get.dashboard(by_id=dashboard_id)
+dashboard = client.get.dashboard(by_id=dashboard_id, branch="saved")
 for tab in dashboard.tabs:
     print("tab", tab.id, tab.title)
     for item in (*tab.items, *tab.global_items):
@@ -391,8 +393,8 @@ the ids shown by the read model.
 `get` → `.update` (a property, fresh builder) → chain operations → `.execute(publish=, lock_token=)`:
 
 ```python
-dash = client.get.dashboard(by_id=dashboard_id)
-dash = dash.refresh()  # re-pull right before editing (see below)
+dash = client.get.dashboard(by_id=dashboard_id, branch="saved")
+dash = dash.refresh(branch="saved")  # re-pull the draft right before editing
 
 dash = (
     dash.update.add_chart(new_chart, tab="Overview", item_id="conversion_chart", size=(12, 12))
@@ -413,7 +415,8 @@ exist here too, taking `tab=` — a tab id or title): `add_tab` / `remove_tab` /
 `reorder_tabs` / `hide_tab` / `show_tab` / `update_tab`; `remove_item` /
 `replace_chart` / `set_chart_params`; `move_item` / `resize_item` /
 `swap_items` / `shift_below` / `compact_layout` / `apply_layout`; `pin_item` /
-`unpin_item`; `update_selector` / `remove_selector`; `remove_connection` /
+`unpin_item`; `add_selector_to_group` / `update_selector` / `remove_selector`;
+`remove_connection` /
 `disconnect_all` / `remove_alias`; `settings(...)` (tri-state `UNSET`
 semantics — see core-concepts) / `global_params(...)` (supports
 `REMOVE_PARAM`) / `description` / `access_description` /
@@ -424,9 +427,42 @@ semantics — see core-concepts) / `global_params(...)` (supports
 `title`/`hint`. `set_chart_params` merge/replacement and multi-tab behavior
 are covered in [parameters.md](parameters.md).
 
+### Append a selector to an existing group
+
+Use the group's wrapper id from `tab.controls`, choose a new semantic member
+id, and call `add_selector_to_group`. It accepts the dataset/manual selector
+arguments from `add_selector`, but intentionally does not accept `chart=`:
+external selectors cannot be group members. The new member is immediately
+available to later connection operations in the same chain.
+
+```python
+dash = client.get.dashboard(by_id=dashboard_id, branch="saved")
+group = next(control for tab in dash.tabs for control in tab.controls if control.id == "filters")
+assert all(member.id != "flt_city" for member in group.members)
+
+dash = (
+    dash.refresh(branch="saved")
+    .update.add_selector_to_group(
+        group_item_id="filters",
+        item_id="flt_city",
+        dataset=ds,
+        field=ds.fields.by_name("City"),
+        element="select",
+        multiselect=True,
+    )
+    .resize_item("filters", h=4)
+    .add_connection(from_item="conversion_chart", to_item="flt_city")
+    .execute(publish=False)
+)
+```
+
+This is a typed in-place append: it preserves existing members, wrapper
+settings, layout, and shared copies. Do not remove/rebuild the group and do
+not use raw replacement for this operation.
+
 ### Concurrency: last-write-wins, no lock API
 
-- The server has **no optimistic locking**. `execute()` writes your full snapshot; a stale one silently overwrites concurrent edits. Mitigate by calling `dash.refresh()` immediately before `.update` and keeping the builder short-lived.
+- The server has **no optimistic locking**. `execute()` writes your full snapshot; a stale one silently overwrites concurrent edits. Mitigate by calling `dash.refresh(branch="saved")` immediately before editing a draft (or `refresh()` when the default branch is intentional) and keeping the builder short-lived.
 - There is **no lock-acquisition API** in the SDK. If someone is editing the entry in the UI, any write raises `LockedError` (423) immediately — do not retry in a loop; report it and wait for the user (`lock_token=` on `execute`/`delete`/`publish_revision` is pass-through only, for tokens obtained elsewhere).
 
 ### Rename and delete

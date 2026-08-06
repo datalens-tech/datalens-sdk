@@ -288,6 +288,10 @@ def test_refresh_and_delete_delegate_to_operations() -> None:
     assert refreshed.id == "dash-1"
     assert operations.get_calls == [("dash-1", "wb-1", None, None)]
 
+    saved = dashboard.refresh(branch="saved")
+    assert saved.id == "dash-1"
+    assert operations.get_calls[-1] == ("dash-1", "wb-1", "saved", None)
+
     dashboard.delete(lock_token="lock-7")
     assert operations.delete_calls == [("dash-1", "lock-7")]
 

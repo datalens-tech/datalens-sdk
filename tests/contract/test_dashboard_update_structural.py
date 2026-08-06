@@ -9,7 +9,7 @@ from typing import cast
 
 import pytest
 
-from datalens_sdk import DashboardChartTab, DashboardTab, Position
+from datalens_sdk import DashboardChartTab, DashboardTab, Dataset, Position
 from datalens_sdk.converter.dashboard_apply import _apply_update
 from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.specs.dashboard import AddItemsOp, GroupControlItem, WidgetItem
@@ -439,6 +439,158 @@ def _raw_tab(
         "connections": [],
         "aliases": {"default": []},
     }
+
+
+def _local_group_tab() -> dict[str, object]:
+    return {
+        "id": "tab_1",
+        "title": "One",
+        "items": [
+            {
+                "id": "sales",
+                "type": "widget",
+                "namespace": "default",
+                "data": {"tabs": [{"id": "sales-tab", "chartId": "chart-1", "title": "Sales"}]},
+            },
+            {
+                "id": "filters",
+                "type": "group_control",
+                "namespace": "default",
+                "data": {
+                    "group": [
+                        {
+                            "id": "country",
+                            "title": "Country",
+                            "sourceType": "manual",
+                            "source": {"fieldName": "country", "elementType": "input", "defaultValue": ""},
+                            "defaults": {"country": ""},
+                        }
+                    ],
+                    "updateControlsOnChange": False,
+                    "customFutureSetting": {"keep": True},
+                },
+            },
+        ],
+        "layout": [
+            {"i": "sales", "x": 0, "y": 0, "w": 24, "h": 8},
+            {"i": "filters", "x": 0, "y": 8, "w": 36, "h": 2, "parent": "__fixGCont"},
+        ],
+        "connections": [],
+        "aliases": {"default": []},
+    }
+
+
+def test_add_selector_to_existing_group_preserves_wrapper_and_supports_follow_up_wiring() -> None:
+    source_tab = _local_group_tab()
+    before_group = _canonical(_as_dicts(source_tab["items"])[1])
+    before_layout = _as_dicts(source_tab["layout"])[1]
+    builder = _synthetic([source_tab], counter=10).update
+
+    builder.add_selector_to_group(
+        group_item_id="filters",
+        item_id="city",
+        param_name="city",
+        element="input",
+        title="City",
+    ).add_connection(from_item="sales", to_item="city")
+
+    data = _apply_update(builder.to_spec())
+    tab = _tabs(data)[0]
+    group = next(item for item in _as_dicts(tab["items"]) if item["id"] == "filters")
+    members = _as_dicts(_as_dict(group["data"])["group"])
+    assert [member["id"] for member in members] == ["country", "city"]
+    assert _as_dict(group["data"])["updateControlsOnChange"] is False
+    assert _as_dict(group["data"])["customFutureSetting"] == {"keep": True}
+    assert next(entry for entry in _as_dicts(tab["layout"]) if entry["i"] == "filters") == before_layout
+    assert tab["connections"] == [{"from": "sales-tab", "to": "city", "kind": "ignore"}]
+    assert data["counter"] == 11
+    assert _canonical(_as_dicts(source_tab["items"])[1]) == before_group  # input snapshot was not mutated
+
+
+def test_add_dataset_selector_to_existing_group_uses_dataset_field_guid() -> None:
+    dataset = Dataset(
+        id="ds-1",
+        installation="yacloud",
+        result_schema=({"guid": "city-guid", "title": "City", "data_type": "string", "type": "DIMENSION"},),
+    )
+    builder = _synthetic([_local_group_tab()]).update
+    builder.add_selector_to_group(
+        group_item_id="filters",
+        item_id="city",
+        dataset=dataset,
+        field="City",
+        element="select",
+    )
+
+    data = _apply_update(builder.to_spec())
+    group = next(item for item in _as_dicts(_tabs(data)[0]["items"]) if item["id"] == "filters")
+    member = _as_dicts(_as_dict(group["data"])["group"])[-1]
+    source = _as_dict(member["source"])
+    assert member["sourceType"] == "dataset"
+    assert source["datasetId"] == "ds-1"
+    assert source["datasetFieldId"] == "city-guid"
+
+
+def test_add_selector_to_shared_singleton_propagates_and_normalizes_group_impact() -> None:
+    shared = _shared_singleton_wire("filters", impact_type="allTabs")
+    tabs = [
+        _raw_tab(
+            tab_id,
+            global_items=[json.loads(json.dumps(shared))],
+            layout=[{"i": "filters", "x": 0, "y": 0, "w": 36, "h": 2}],
+        )
+        for tab_id in ("tab_1", "tab_2")
+    ]
+    builder = _synthetic(tabs).update
+    builder.add_selector_to_group(
+        group_item_id="filters",
+        item_id="city",
+        param_name="city",
+        element="input",
+    )
+
+    data = _apply_update(builder.to_spec())
+    groups = [_as_dicts(tab["globalItems"])[0] for tab in _tabs(data)]
+    assert _canonical(groups[0]) == _canonical(groups[1])
+    for group in groups:
+        group_data = _as_dict(group["data"])
+        members = _as_dicts(group_data["group"])
+        assert [member["id"] for member in members] == ["filters_m", "city"]
+        assert group_data["impactType"] == "allTabs"
+        assert "impactType" not in members[0]
+    for tab in _tabs(data):
+        assert tab["layout"] == [{"i": "filters", "x": 0, "y": 0, "w": 36, "h": 2}]
+
+
+@pytest.mark.parametrize(
+    ("target", "member", "error"),
+    [
+        ("missing", "city", "Unknown item id 'missing'"),
+        ("sales", "city", "is not a group_control"),
+        ("filters", "country", "Duplicate item id 'country'"),
+    ],
+)
+def test_add_selector_to_existing_group_rejects_invalid_targets(target: str, member: str, error: str) -> None:
+    builder = _synthetic([_local_group_tab()]).update
+    with pytest.raises(DatalensValidationError, match=error):
+        builder.add_selector_to_group(
+            group_item_id=target,
+            item_id=member,
+            param_name="city",
+            element="input",
+        )
+
+
+def test_add_selector_to_existing_group_rejects_unknown_affects_tab() -> None:
+    builder = _synthetic([_local_group_tab()]).update
+    with pytest.raises(DatalensValidationError, match="unknown tab ids"):
+        builder.add_selector_to_group(
+            group_item_id="filters",
+            item_id="city",
+            param_name="city",
+            element="input",
+            affects=("missing-tab",),
+        )
 
 
 def test_update_add_tab_inherits_singleton_despite_member_selected_tabs() -> None:
