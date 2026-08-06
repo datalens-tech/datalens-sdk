@@ -2,7 +2,10 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-08-06
+
 - Translate `ERR.US.DB.UNIQUE_VIOLATION` responses to `ConflictError` while preserving their original API context.
+- Harden migration and verification guidance in the bundled skill
 
 ## 0.3.0 - 2026-08-05
 
