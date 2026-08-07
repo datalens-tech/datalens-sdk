@@ -51,6 +51,6 @@ Leave `meta` unset.
 
 ## Related references
 
-- [_index.md](_index.md) — routing, exact tab matrix
+- [_index.md#safely-embed-dynamic-values](_index.md#safely-embed-dynamic-values) — safe dynamic values
 - [common-operations.md](common-operations.md) — read, update, publish, delete
 - [troubleshooting.md](troubleshooting.md) — chart persists but does not render

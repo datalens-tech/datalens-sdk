@@ -75,31 +75,30 @@ not complete documentation for every optional tab.
 Keep executable JavaScript in a trusted, fixed template. Never concatenate or
 interpolate user-provided strings, lists, or mappings directly into that code:
 quotes, backslashes, and newlines can break the source or turn data into code.
-Serialize dynamic values with `json.dumps(..., ensure_ascii=False)` and insert
-only the resulting JSON literal:
+Serialize each value as a strict JSON document, serialize that document again
+as a JavaScript string literal, and parse it at runtime:
 
+<!-- editor-safe-json-example:start -->
 ```python
 import json
 
-title = "User-provided title"
-rows = [{"name": "A", "value": 1}]
 
-title_literal = json.dumps(title, ensure_ascii=False)
-rows_literal = json.dumps(rows, ensure_ascii=False)
-prepare = f"""\
-const title = {title_literal};
-const rows = {rows_literal};
-
-module.exports = {{
-    title: {{text: title}},
-    rows,
-}};
-"""
+def javascript_json_parse(value: object) -> str:
+    document = json.dumps(value, ensure_ascii=False, allow_nan=False)
+    return f"JSON.parse({json.dumps(document)})"
 ```
+<!-- editor-safe-json-example:end -->
+
+Insert only the returned `JSON.parse(...)` expression into the renderer's
+trusted template. Do not insert the first `json.dumps()` result directly as an
+object literal: JavaScript treats a `"__proto__"` property specially there,
+whereas `JSON.parse()` preserves it as an own data property. See the complete
+[Table example](table.md#dynamic-values) for a renderer-valid template.
 
 Use this pattern for titles, labels, table cells, parameter values, and chart
-data. JSON cannot represent JavaScript functions: keep functions in the
-trusted template, and never accept executable function bodies as data.
+data. `allow_nan=False` rejects values that strict JSON cannot represent. JSON
+cannot represent JavaScript functions: keep functions in the trusted template,
+and never accept executable function bodies as data.
 
 ## Shared builder signatures
 
