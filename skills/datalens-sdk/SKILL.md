@@ -27,15 +27,15 @@ improvising an SDK solution.
 ## Version and stability
 
 These instructions ship inside `datalens-sdk` and therefore match the
-installed package. The root `datalens-skills` skill owns interpreter
-selection, package installation, freshness checks, and upgrades before it
-loads this bundled skill. Do not install, downgrade, or upgrade the package
-from this skill.
+installed package. Use the exact interpreter supplied by the calling
+bootstrap, which must complete interpreter selection and package lifecycle
+work before loading this bundled skill. Do not install, downgrade, or upgrade
+the package from this skill.
 
 ## Workflow: preflight first
 
 Before writing or running any SDK code in a session, keep the exact `PYTHON`
-reported by the root bootstrap, resolve this skill's directory to an absolute
+supplied by the calling bootstrap, resolve this skill's directory to an absolute
 path, and run the bundled configuration diagnostic **from the user's project
 directory**. It is fast and makes no network or package-management calls; on
 the Enterprise path it may create an empty `./.env`:
@@ -61,7 +61,7 @@ the configuration state from malformed output.
 
 | STATUS        | Meaning                             | What to do                                                                                                                                       |
 |---------------|-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ready`       | installation and credentials configured | proceed with the root bootstrap's `PYTHON`                                                                                         |
+| `ready`       | installation and credentials configured | proceed with the supplied `PYTHON`                                                                                                 |
 | `needs_input` | installation choice is unresolved       | ask the one missing question (yc or Enterprise), then rerun preflight                                                              |
 | `blocked`     | configuration action required           | relay the one-line instruction (install `yc` CLI, provide static YC credentials, or provide the Enterprise base URL); do not work around it |
 
@@ -136,13 +136,13 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 
 ## Hard rules
 
-1. **Root bootstrap, then preflight, before code.** Use the exact `PYTHON`
-   already reported by the root `datalens-skills` bootstrap. Run this bundled
+1. **Calling bootstrap, then preflight, before code.** Use the exact `PYTHON`
+   supplied by the calling bootstrap. Run this bundled
    `scripts/preflight.sh` through its absolute path, from the user's project
    directory, before the first SDK call of a session.
 2. **No package management here.** Never run pip, uv, or Poetry from this
    bundled skill and never suggest `--break-system-packages`; installation
-   and version decisions belong to the root bootstrap.
+   and version decisions belong to the calling bootstrap.
 3. **Tokens are opaque.** Never print, log, echo, hash, or measure a token;
    never ask the user to paste one into chat. Secrets live in `.env`, which
    the user edits themselves. The only permitted checks are existence
@@ -202,7 +202,7 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 
 ## Common scenarios
 
-- **Configure:** root bootstrap → bundled preflight → resolve `ready`,
+- **Configure:** calling bootstrap → bundled preflight → resolve `ready`,
   `needs_input`, or `blocked` → construct the matching client.
 - **Create:** identify the entity and chart family → build dependencies from
   left to right → persist → re-fetch and verify.

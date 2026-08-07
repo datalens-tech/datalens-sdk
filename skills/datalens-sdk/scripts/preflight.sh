@@ -2,8 +2,8 @@
 # Preflight for the datalens-sdk skill.
 #
 # Configuration-only (~10 ms): no network calls, environment creation, or
-# package management. The root datalens-skills bootstrap already selected the
-# interpreter and SDK version before loading this bundled skill. The only
+# package management. The calling bootstrap already selected the interpreter
+# and SDK version before loading this bundled skill. The only
 # permitted state change is creating an empty ./.env for Enterprise so the
 # user has a file to configure. Never prints secret values — existence checks
 # only.

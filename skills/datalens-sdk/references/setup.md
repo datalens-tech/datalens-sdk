@@ -9,10 +9,10 @@ Read this when configuring the environment, interpreting `scripts/preflight.sh` 
 | Yandex Cloud (`yc`) | `datalens_sdk.DataLensClientYC` | `datalens-sdk` | `datalens_sdk` |
 | Enterprise / on-premise (`enterprise`) | `datalens_sdk.DataLensClientEnterprise` | `datalens-sdk` | `datalens_sdk` |
 
-The root `datalens-skills` bootstrap selects the interpreter and owns package
-installation and version decisions before loading this bundled skill. Keep
-using the exact `PYTHON` it reported; never install or upgrade the package from
-the bundled skill.
+The calling bootstrap selects the interpreter and owns package installation
+and version decisions before loading this bundled skill. Keep using the exact
+`PYTHON` it supplied; never install or upgrade the package from the bundled
+skill.
 
 ## Preflight
 
@@ -52,7 +52,7 @@ malformed output.
 
 | Condition | STATUS | Agent action |
 |---|---|---|
-| Installation resolved and credentials present | `ready` | Proceed to the task with the exact `PYTHON` reported by the root bootstrap. |
+| Installation resolved and credentials present | `ready` | Proceed to the task with the exact `PYTHON` supplied by the calling bootstrap. |
 | `INSTALLATION=ambiguous` (see `INSTALLATION_HINTS`) | `needs_input` | Ask the user which installation to target, offering the hints; rerun `preflight.sh <choice>`. |
 | `INSTALLATION=unknown` | `needs_input` | Ask the user: yc or enterprise; rerun with the answer. |
 | yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Relay one line: install the `yc` CLI (https://yandex.cloud/docs/cli/quickstart) or provide `DATALENS_YC_ORG_ID` + `DATALENS_YC_IAM_TOKEN`. Do not work around it. |

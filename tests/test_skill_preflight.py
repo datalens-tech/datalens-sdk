@@ -1,7 +1,8 @@
 from pathlib import Path
 import subprocess
 
-PREFLIGHT = Path(__file__).parents[1] / "skills" / "datalens-sdk" / "scripts" / "preflight.sh"
+SKILL_DIR = Path(__file__).parents[1] / "skills" / "datalens-sdk"
+PREFLIGHT = SKILL_DIR / "scripts" / "preflight.sh"
 
 
 def run_preflight(tmp_path: Path, *args: str, env: dict[str, str] | None = None) -> dict[str, str]:
@@ -110,3 +111,13 @@ def test_preflight_never_invokes_environment_or_package_tools(tmp_path: Path) ->
     assert fields["STATUS"] == "ready"
     assert not sentinel.exists()
     assert not (tmp_path / ".venv").exists()
+
+
+def test_bundled_skill_does_not_name_external_wrapper_repository() -> None:
+    coupled_files = [
+        path.relative_to(SKILL_DIR)
+        for path in SKILL_DIR.rglob("*")
+        if path.is_file() and "datalens-skills" in path.read_text(errors="ignore").lower()
+    ]
+
+    assert coupled_files == []

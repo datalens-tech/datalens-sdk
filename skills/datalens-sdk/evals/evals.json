@@ -81,12 +81,12 @@
     {
       "id": 5,
       "name": "enterprise-configuration",
-      "prompt": "The root datalens-skills bootstrap installed the SDK and reported /project/.venv/bin/python. Configure it for our on-premise installation at https://datalens.corp.example so we can start scripting against DataLens.",
-      "expected_output": "Uses the exact Python reported by the root bootstrap, runs scripts/preflight.sh for Enterprise configuration, acts on its STATUS without performing package management, and tells the user to put DATALENS_API_TOKEN into .env themselves if their deployment needs OAuth — the token is never requested or echoed in chat.",
+      "prompt": "The calling bootstrap installed the SDK and supplied /project/.venv/bin/python. Configure it for our on-premise installation at https://datalens.corp.example so we can start scripting against DataLens.",
+      "expected_output": "Uses the exact Python supplied by the calling bootstrap, runs scripts/preflight.sh for Enterprise configuration, acts on its STATUS without performing package management, and tells the user to put DATALENS_API_TOKEN into .env themselves if their deployment needs OAuth — the token is never requested or echoed in chat.",
       "files": [],
       "assertions": [
         {"text": "Runs scripts/preflight.sh first and parses the KEY=VALUE output after the ---PREFLIGHT--- marker", "type": "workflow"},
-        {"text": "Uses /project/.venv/bin/python as reported by the root bootstrap for every SDK command; never substitutes a bare python", "type": "workflow"},
+        {"text": "Uses /project/.venv/bin/python as supplied by the calling bootstrap for every SDK command; never substitutes a bare python", "type": "workflow"},
         {"text": "Does not run pip, uv, Poetry, create a venv, or otherwise install or change the SDK from the bundled skill", "type": "workflow"},
         {"text": "Never asks the user to paste a token into chat and never prints, echoes, or inspects token values", "type": "workflow"},
         {"text": "Instructs the user to add DATALENS_API_TOKEN to the .env file themselves (pointing at ENV_FILE) if OAuth is needed; non-secret vars like DATALENS_BASE_URL may be written only with consent", "type": "workflow"},
