@@ -135,13 +135,14 @@ client = DataLensClientYC(
 )
 ```
 
-The timeout applies separately to `yc config get organization-id` and
-`yc iam create-token`. A timeout terminates that CLI process. If a cached token
-is still valid after the command stops, the provider emits a `RuntimeWarning`
-and sends the DataLens request with that token. Otherwise it raises
-`DatalensConfigurationError` before a DataLens request is sent. Do not launch a
-duplicate SDK process: ensure the retry has the required network or sandbox
-access, then retry once. Increase
+`command_timeout_seconds` is one shared setting for both
+`yc config get organization-id` and `yc iam create-token`; each invocation gets
+the full configured timeout budget. A timeout terminates that CLI process. If a
+cached token is still valid after the command stops, the provider emits a
+`RuntimeWarning` and sends the DataLens request with that token. Otherwise it
+raises `DatalensConfigurationError` before a DataLens request is sent. Do not
+launch a duplicate SDK process: ensure the retry has the required network or
+sandbox access, then retry once. Increase
 `command_timeout_seconds` only when the environment is known to be slow.
 
 ### Enterprise

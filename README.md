@@ -55,7 +55,7 @@ with DataLensClientEnterprise(base_url="https://datalens.example.com") as client
 
 Yandex Cloud users can choose among the following providers:
 
-- `YCIAMAuthProvider` uses a `yc` CLI profile and refreshes IAM tokens automatically. This is the default for `DataLensClientYC`; each CLI command has a configurable 30-second timeout.
+- `YCIAMAuthProvider` uses a `yc` CLI profile and refreshes IAM tokens automatically. This is the default for `DataLensClientYC`; its `yc` CLI invocations share one configurable timeout value, which defaults to 30 seconds.
 - `YCServiceAccountCredentialsAuthProvider` exchanges service-account credentials for refreshable IAM tokens.
 - `StaticYCIAMAuthProvider` accepts an existing IAM token and organization ID.
 
