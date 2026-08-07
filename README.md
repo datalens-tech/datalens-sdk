@@ -22,6 +22,16 @@ The package is available from PyPI:
 pip install datalens-sdk
 ```
 
+### Using the SDK with coding agents
+
+Install the [`datalens-skills`](https://github.com/datalens-tech/datalens-skills)
+plugin when using this SDK through Claude Code, Codex, OpenCode, or another
+Agent Skills-compatible coding agent. Its root `datalens-sdk` skill selects a
+safe project environment, installs or updates this package with explicit
+version decisions, and then loads the version-matched instructions bundled in
+the installed SDK. Do not install or invoke the bundled skill directly; follow
+the plugin repository's installation instructions instead.
+
 ## Quick start
 
 `DataLensClientYC` uses the active [`yc` CLI](https://yandex.cloud/en/docs/cli/quickstart) profile by default. Configure

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Bound `YCIAMAuthProvider` CLI calls with a configurable timeout.
+- Delegate SDK environment and version management to the root `datalens-skills` skill, leaving the bundled preflight configuration-only.
 
 ## 0.4.0 - 2026-08-06
 
