@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Document strict, prototype-safe JSON serialization for dynamic Editor chart values.
+- Bound `YCIAMAuthProvider` CLI calls with a configurable timeout.
 
 ## 0.4.0 - 2026-08-06
 
