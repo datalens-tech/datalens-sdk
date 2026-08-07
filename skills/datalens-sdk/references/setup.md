@@ -125,9 +125,22 @@ client = DataLensClientYC(
 ```python
 from datalens_sdk import DataLensClientYC, YCIAMAuthProvider
 
-# Explicit yc profile and/or org id instead of the CLI defaults.
-client = DataLensClientYC(auth=YCIAMAuthProvider(org_id="...", profile="my-profile"))
+# Explicit yc profile, org id, and optional per-command timeout.
+client = DataLensClientYC(
+    auth=YCIAMAuthProvider(
+        org_id="...",
+        profile="my-profile",
+        command_timeout_seconds=30.0,
+    )
+)
 ```
+
+The timeout applies separately to `yc config get organization-id` and
+`yc iam create-token`. A timeout terminates that CLI process and raises
+`DatalensConfigurationError` before a DataLens request is sent. Do not launch
+a duplicate SDK process: ensure the retry has the required network or sandbox
+access, then retry once. Increase
+`command_timeout_seconds` only when the environment is known to be slow.
 
 ### Enterprise
 
@@ -166,7 +179,7 @@ All providers are keyword-only and expose `get_headers()`; pass an instance as `
 | `AuthorizationTokenAuthProvider` | `token=`, `token_type=` | `Authorization: <type> <token>` | generic scheme |
 | `OAuthAuthProvider` | `token=None` | `Authorization: OAuth ...` | falls back to `DATALENS_API_TOKEN`; raises `DatalensConfigurationError` if neither |
 | `StaticYCIAMAuthProvider` | `org_id=`, `token=` | `Authorization: Bearer ...` + `x-dl-org-id` | no refresh |
-| `YCIAMAuthProvider` | `org_id=None`, `profile=None` | Bearer + org id | uses the `yc` CLI; caches and auto-refreshes with a 60 s expiry margin |
+| `YCIAMAuthProvider` | `org_id=None`, `profile=None`, `command_timeout_seconds=30.0` | Bearer + org id | uses the `yc` CLI; caches and auto-refreshes with a 60 s expiry margin |
 | `YCServiceAccountCredentialsAuthProvider` | `org_id=`, `key_id=`, `service_account_id=`, `private_key=` | Bearer + org id | JWT → IAM exchange, auto-refreshes |
 
 ## Environment variables

@@ -6,6 +6,7 @@ from collections.abc import AsyncGenerator, Generator, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 import json
+import math
 import os
 import re
 import subprocess
@@ -23,6 +24,7 @@ _DATALENS_API_TOKEN_ENV = "DATALENS_API_TOKEN"
 _IAM_TOKEN_ENDPOINT = "https://iam.api.cloud.yandex.net/iam/v1/tokens"
 _IAM_TOKEN_EXPIRY_MARGIN_SECONDS = 60
 _JWT_LIFETIME_SECONDS = 3600
+_YC_CLI_COMMAND_TIMEOUT_SECONDS = 30.0
 _RFC3339_SUBSECOND_OVERFLOW_RE = re.compile(r"(\.\d{6})\d+(?=(?:Z|[+-]\d{2}:\d{2})$)")
 
 
@@ -183,23 +185,43 @@ class YCServiceAccountCredentialsAuthProvider(_RefreshingIAMAuthProvider):
         return _parse_iam_token(payload, token_field="iamToken", expiry_field="expiresAt", source="YC IAM")
 
 
-def _run_yc_command(command: list[str], *, action: str) -> subprocess.CompletedProcess[str]:
+def _run_yc_command(
+    command: list[str],
+    *,
+    action: str,
+    timeout_seconds: float,
+) -> subprocess.CompletedProcess[str]:
     try:
-        return subprocess.run(command, check=True, capture_output=True, text=True)
+        return subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
     except FileNotFoundError as exc:
         raise DatalensConfigurationError(
             "yc CLI was not found. Install it from https://yandex.cloud/docs/cli/quickstart."
+        ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise DatalensConfigurationError(
+            f"{action} timed out after {timeout_seconds:g} seconds. "
+            "Check that the yc CLI can complete in the current environment before retrying."
         ) from exc
     except subprocess.CalledProcessError as exc:
         detail = exc.stderr.strip() if exc.stderr else "unknown error"
         raise DatalensConfigurationError(f"{action} failed: {detail}") from exc
 
 
-def _get_yc_org_id(*, profile: str | None) -> str:
+def _get_yc_org_id(*, profile: str | None, command_timeout_seconds: float) -> str:
     command = ["yc", "config", "get", "organization-id"]
     if profile is not None:
         command.extend(["--profile", profile])
-    org_id = _run_yc_command(command, action="yc config get organization-id").stdout.strip()
+    org_id = _run_yc_command(
+        command,
+        action="yc config get organization-id",
+        timeout_seconds=command_timeout_seconds,
+    ).stdout.strip()
     if not org_id:
         raise DatalensConfigurationError(
             "YC organization ID is required: pass org_id= or run "
@@ -215,16 +237,31 @@ class YCIAMAuthProvider(_RefreshingIAMAuthProvider):
         org_id: str | None = None,
         profile: str | None = None,
         token_expiry_margin_seconds: int = _IAM_TOKEN_EXPIRY_MARGIN_SECONDS,
+        command_timeout_seconds: float = _YC_CLI_COMMAND_TIMEOUT_SECONDS,
     ) -> None:
-        resolved_org_id = org_id if org_id is not None else _get_yc_org_id(profile=profile)
+        if not math.isfinite(command_timeout_seconds) or command_timeout_seconds <= 0:
+            raise DatalensConfigurationError("command_timeout_seconds must be a finite positive number.")
+        resolved_org_id = (
+            org_id
+            if org_id is not None
+            else _get_yc_org_id(
+                profile=profile,
+                command_timeout_seconds=command_timeout_seconds,
+            )
+        )
         super().__init__(org_id=resolved_org_id, token_expiry_margin_seconds=token_expiry_margin_seconds)
         self._profile = profile
+        self._command_timeout_seconds = command_timeout_seconds
 
     def _fetch_token(self) -> _IAMToken:
         command = ["yc", "iam", "create-token", "--format", "json"]
         if self._profile is not None:
             command.extend(["--profile", self._profile])
-        result = _run_yc_command(command, action="yc iam create-token")
+        result = _run_yc_command(
+            command,
+            action="yc iam create-token",
+            timeout_seconds=self._command_timeout_seconds,
+        )
         try:
             payload: object = json.loads(result.stdout)
         except json.JSONDecodeError as exc:

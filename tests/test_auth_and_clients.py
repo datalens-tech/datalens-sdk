@@ -162,10 +162,10 @@ def _expiry(timestamp: float) -> str:
 
 
 def test_yc_iam_provider_fetches_with_profile_and_caches_token(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[list[str]] = []
+    calls: list[tuple[list[str], object]] = []
 
-    def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
-        calls.append(command)
+    def fake_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append((command, kwargs.get("timeout")))
         if command[:4] == ["yc", "config", "get", "organization-id"]:
             return subprocess.CompletedProcess(command, 0, stdout="org-1\n", stderr="")
         return subprocess.CompletedProcess(
@@ -182,9 +182,67 @@ def test_yc_iam_provider_fetches_with_profile_and_caches_token(monkeypatch: pyte
     assert provider.get_headers() == expected_headers
     assert provider.get_headers() == expected_headers
     assert calls == [
-        ["yc", "config", "get", "organization-id", "--profile", "sdk"],
-        ["yc", "iam", "create-token", "--format", "json", "--profile", "sdk"],
+        (["yc", "config", "get", "organization-id", "--profile", "sdk"], 30.0),
+        (["yc", "iam", "create-token", "--format", "json", "--profile", "sdk"], 30.0),
     ]
+
+
+def test_yc_iam_provider_passes_custom_command_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    timeouts: list[object] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        timeouts.append(kwargs.get("timeout"))
+        if command[:4] == ["yc", "config", "get", "organization-id"]:
+            return subprocess.CompletedProcess(command, 0, stdout="org-1\n", stderr="")
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=json.dumps({"iam_token": "iam-1", "expires_at": _expiry(time.time() + 3600)}),
+            stderr="",
+        )
+
+    monkeypatch.setattr("datalens_sdk.auth.subprocess.run", fake_run)
+    provider = YCIAMAuthProvider(command_timeout_seconds=12.5)
+
+    provider.get_headers()
+
+    assert timeouts == [12.5, 12.5]
+
+
+@pytest.mark.parametrize("timeout", [0.0, -1.0, float("inf"), float("-inf"), float("nan")])
+def test_yc_iam_provider_rejects_invalid_command_timeout(timeout: float) -> None:
+    with pytest.raises(DatalensConfigurationError, match="finite positive"):
+        YCIAMAuthProvider(org_id="org-1", command_timeout_seconds=timeout)
+
+
+def test_yc_iam_provider_reports_org_discovery_timeout_without_command_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    secret = "timeout-secret-sentinel"
+
+    def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(command, 4.5, output=secret, stderr=secret)
+
+    monkeypatch.setattr("datalens_sdk.auth.subprocess.run", fake_run)
+
+    with pytest.raises(DatalensConfigurationError, match="yc config get organization-id timed out") as error:
+        YCIAMAuthProvider(command_timeout_seconds=4.5)
+
+    assert secret not in str(error.value)
+
+
+def test_yc_iam_provider_reports_token_timeout_without_command_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    secret = "timeout-secret-sentinel"
+
+    def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(command, 6.0, output=secret, stderr=secret)
+
+    monkeypatch.setattr("datalens_sdk.auth.subprocess.run", fake_run)
+
+    with pytest.raises(DatalensConfigurationError, match="yc iam create-token timed out") as error:
+        YCIAMAuthProvider(org_id="org-1", command_timeout_seconds=6.0).get_headers()
+
+    assert secret not in str(error.value)
 
 
 def test_yc_iam_provider_requires_org_id_in_profile(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -277,6 +335,32 @@ def test_yc_iam_provider_uses_unexpired_cache_when_refresh_fails(monkeypatch: py
     now[0] = 1121
     with pytest.raises(DatalensConfigurationError, match="temporary failure"):
         provider.get_headers()
+
+
+def test_yc_iam_provider_uses_unexpired_cache_when_refresh_times_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    now = [1000.0]
+    calls = 0
+
+    def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        nonlocal calls
+        calls += 1
+        if calls > 1:
+            raise subprocess.TimeoutExpired(command, 30.0)
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=json.dumps({"iam_token": "cached", "expires_at": _expiry(1120)}),
+            stderr="",
+        )
+
+    monkeypatch.setattr("datalens_sdk.auth.time.time", lambda: now[0])
+    monkeypatch.setattr("datalens_sdk.auth.subprocess.run", fake_run)
+    provider = YCIAMAuthProvider(org_id="org-1")
+
+    assert provider.get_headers()["Authorization"] == "Bearer cached"
+    now[0] = 1061
+    with pytest.warns(RuntimeWarning, match="cached token"):
+        assert provider.get_headers()["Authorization"] == "Bearer cached"
 
 
 def test_yc_iam_provider_reports_missing_cli(monkeypatch: pytest.MonkeyPatch) -> None:
