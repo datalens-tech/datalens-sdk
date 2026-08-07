@@ -70,6 +70,37 @@ Code tabs contain JavaScript with
 each reference. Treat the renderer references as minimum working examples,
 not complete documentation for every optional tab.
 
+## Safely embed dynamic values
+
+Keep executable JavaScript in a trusted, fixed template. Never concatenate or
+interpolate user-provided strings, lists, or mappings directly into that code:
+quotes, backslashes, and newlines can break the source or turn data into code.
+Serialize dynamic values with `json.dumps(..., ensure_ascii=False)` and insert
+only the resulting JSON literal:
+
+```python
+import json
+
+title = "User-provided title"
+rows = [{"name": "A", "value": 1}]
+
+title_literal = json.dumps(title, ensure_ascii=False)
+rows_literal = json.dumps(rows, ensure_ascii=False)
+prepare = f"""\
+const title = {title_literal};
+const rows = {rows_literal};
+
+module.exports = {{
+    title: {{text: title}},
+    rows,
+}};
+"""
+```
+
+Use this pattern for titles, labels, table cells, parameter values, and chart
+data. JSON cannot represent JavaScript functions: keep functions in the
+trusted template, and never accept executable function bodies as data.
+
 ## Shared builder signatures
 
 All create factories expose:

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Document safe JSON serialization for dynamic Editor chart values.
+
 ## 0.4.0 - 2026-08-06
 
 - Translate `ERR.US.DB.UNIQUE_VIOLATION` responses to `ConflictError` while preserving their original API context.
