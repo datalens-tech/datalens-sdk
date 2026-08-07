@@ -17,7 +17,7 @@ description: >-
 # DataLens SDK
 
 Operate Yandex DataLens through the official Python SDK. This skill covers
-environment setup (venv, package install, credentials), the full entity
+installation configuration and credentials, the full entity
 lifecycle (connection → dataset → chart → dashboard), and safe editing
 practices. Write Python against the SDK — never hand-built HTTP requests.
 For UI viewing or screenshots, business metric interpretation, embedding, or
@@ -26,28 +26,29 @@ improvising an SDK solution.
 
 ## Version and stability
 
-Work against the pinned version **`datalens-sdk==0.4.0`** (import name
-`datalens_sdk`). The 0.x series is an alpha: minor releases may rename
-classes and methods, so an unpinned install can silently break every snippet
-in this skill. The preflight script pins the version for you; do not install
-or upgrade the package unpinned.
+These instructions ship inside `datalens-sdk` and therefore match the
+installed package. The root `datalens-skills` skill owns interpreter
+selection, package installation, freshness checks, and upgrades before it
+loads this bundled skill. Do not install, downgrade, or upgrade the package
+from this skill.
 
 ## Workflow: preflight first
 
-Before writing or running any SDK code in a session, resolve this skill's
-directory to an absolute path and run the bundled diagnostic **from the user's
-project directory**. It is fast and makes no network calls; it may create
-`./.venv`, and on the Enterprise path it may create an empty `./.env`:
+Before writing or running any SDK code in a session, keep the exact `PYTHON`
+reported by the root bootstrap, resolve this skill's directory to an absolute
+path, and run the bundled configuration diagnostic **from the user's project
+directory**. It is fast and makes no network or package-management calls; on
+the Enterprise path it may create an empty `./.env`:
 
 ```bash
 bash "/absolute/path/to/datalens-sdk/scripts/preflight.sh"
 # or append the explicit installation: yc | enterprise
 ```
 
-Tell the user you are running a quick environment check first, then parse
+Tell the user you are running a quick configuration check first, then parse
 the `KEY=VALUE` lines after the `---PREFLIGHT---` marker and act on `STATUS`.
-The current working directory deliberately controls where `./.venv` and
-`./.env` live; never `cd` into the skill directory. To inspect only the
+The current working directory deliberately controls where `./.env` lives;
+never `cd` into the skill directory. To inspect only the
 machine-readable block:
 
 ```bash
@@ -56,18 +57,17 @@ bash "/absolute/path/to/datalens-sdk/scripts/preflight.sh" |
 ```
 
 If the marker or `STATUS` is absent, stop and show the raw output. Do not infer
-the environment state or run an install command from malformed output.
+the configuration state from malformed output.
 
 | STATUS        | Meaning                             | What to do                                                                                                                                       |
 |---------------|-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ready`       | venv, SDK, and credentials in place | proceed to the task                                                                                                                              |
-| `needs_input` | one actionable gap                  | run `INSTALL_CMD` verbatim as a separate visible command, or ask the user the one missing question (for example, installation choice or base URL) |
-| `blocked`     | user action required                | relay the one-line instruction (add token to `.env`, install `yc` CLI, provide base URL); do not work around it                                  |
+| `ready`       | installation and credentials configured | proceed with the root bootstrap's `PYTHON`                                                                                         |
+| `needs_input` | installation choice is unresolved       | ask the one missing question (yc or Enterprise), then rerun preflight                                                              |
+| `blocked`     | configuration action required           | relay the one-line instruction (install `yc` CLI, provide static YC credentials, or provide the Enterprise base URL); do not work around it |
 
-Key output fields: `INSTALLATION`, `VENV`, `PYTHON` (the interpreter to use
-for everything — never substitute a bare `python3`), `SDK`, `INSTALL_CMD`,
-`TOKEN`/`YC_CLI`/`BASE_URL` (per installation), `ENV_FILE`. Full state
-table and interpretation: [references/setup.md](references/setup.md).
+Key output fields: `INSTALLATION`, `TOKEN`/`YC_CLI`/`YC_STATIC`/`BASE_URL`
+(per installation), and `ENV_FILE`. Full state table and interpretation:
+[references/setup.md](references/setup.md).
 
 ## Constructing a client
 
@@ -136,12 +136,13 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 
 ## Hard rules
 
-1. **Preflight before code.** Run the bundled `scripts/preflight.sh` through
-   its absolute path, from the user's project directory, before the first SDK
-   call of a session; use the `PYTHON` it reports for every script.
-2. **pip only into the resolved venv.** Never install into system Python,
-   never suggest `--break-system-packages`, always pin
-   `datalens-sdk==0.4.0`.
+1. **Root bootstrap, then preflight, before code.** Use the exact `PYTHON`
+   already reported by the root `datalens-skills` bootstrap. Run this bundled
+   `scripts/preflight.sh` through its absolute path, from the user's project
+   directory, before the first SDK call of a session.
+2. **No package management here.** Never run pip, uv, or Poetry from this
+   bundled skill and never suggest `--break-system-packages`; installation
+   and version decisions belong to the root bootstrap.
 3. **Tokens are opaque.** Never print, log, echo, hash, or measure a token;
    never ask the user to paste one into chat. Secrets live in `.env`, which
    the user edits themselves. The only permitted checks are existence
@@ -201,8 +202,8 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 
 ## Common scenarios
 
-- **Configure:** preflight → resolve `ready`, `needs_input`, or `blocked` →
-  construct the matching client.
+- **Configure:** root bootstrap → bundled preflight → resolve `ready`,
+  `needs_input`, or `blocked` → construct the matching client.
 - **Create:** identify the entity and chart family → build dependencies from
   left to right → persist → re-fetch and verify.
 - **Get/List:** use `client.get.*` for a known id and `client.navigation` for
@@ -220,7 +221,7 @@ Read this file plus the one reference the task needs — not everything.
 
 | Task involves                                                              | Read                                                                     |
 |----------------------------------------------------------------------------|--------------------------------------------------------------------------|
-| Environment, install, auth, tokens, preflight states                       | [references/setup.md](references/setup.md)                               |
+| Installation configuration, auth, tokens, preflight states                | [references/setup.md](references/setup.md)                               |
 | Object model unclear; lifecycle, errors, retries, pagination               | [references/core-concepts.md](references/core-concepts.md)               |
 | Creating/updating a connection or data source                              | [references/connections.md](references/connections.md)                   |
 | Datasets: fields, calculations, parameters, joins, RLS                     | [references/datasets.md](references/datasets.md)                         |
@@ -319,7 +320,7 @@ from [references/setup.md](references/setup.md).
 
 | File                                            | Read when                                                                                          |
 |-------------------------------------------------|----------------------------------------------------------------------------------------------------|
-| `references/setup.md`                           | configuring the environment, interpreting preflight output, anything about auth or tokens          |
+| `references/setup.md`                           | configuring the installation, interpreting preflight output, anything about auth or tokens          |
 | `references/core-concepts.md`                   | you need the object model: namespaces, lifecycle, field references, retries, pagination, sentinels |
 | `references/connections.md`                     | creating or editing connections to the databases                                                   |
 | `references/datasets.md`                        | dataset creation, the fields update DSL, joins, parameters, RLS, formulas                          |
@@ -345,7 +346,7 @@ from [references/setup.md](references/setup.md).
 ## Bundled examples
 
 Runnable end-to-end scripts in `examples/` (each is self-contained; run
-with the preflight-resolved `PYTHON`, config via env per the table above):
+with the root-bootstrap-resolved `PYTHON`, config via env per the table above):
 
 - `end_to_end_dashboard.py` — connection → source → dataset → chart →
   dashboard, including the re-get-after-build step. Read it when you need

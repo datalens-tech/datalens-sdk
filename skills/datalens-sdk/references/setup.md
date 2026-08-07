@@ -9,7 +9,10 @@ Read this when configuring the environment, interpreting `scripts/preflight.sh` 
 | Yandex Cloud (`yc`) | `datalens_sdk.DataLensClientYC` | `datalens-sdk` | `datalens_sdk` |
 | Enterprise / on-premise (`enterprise`) | `datalens_sdk.DataLensClientEnterprise` | `datalens-sdk` | `datalens_sdk` |
 
-The package is pinned to **`datalens-sdk==0.4.0`**. Preflight verifies the pin and emits the exact reinstall command on drift — never install or upgrade unpinned.
+The root `datalens-skills` bootstrap selects the interpreter and owns package
+installation and version decisions before loading this bundled skill. Keep
+using the exact `PYTHON` it reported; never install or upgrade the package from
+the bundled skill.
 
 ## Preflight
 
@@ -22,16 +25,14 @@ bash "/absolute/path/to/datalens-sdk/scripts/preflight.sh"
 
 Resolve the skill directory to an absolute path, but run the command from the
 user's project directory. The current working directory intentionally owns
-`./.venv` and `./.env`; never `cd` into the skill directory.
+`./.env`; never `cd` into the skill directory.
 
-It is diagnostic-only (~100 ms, zero network, no pip): it may create
-`./.venv` for either installation (one-time `python3 -m venv`; `VENV=created`
-is normal, mention it to the user in one phrase) and may create an empty
-`./.env` when Enterprise configuration needs a file for the user to fill. It
-always exits 0 — read state from the `KEY=VALUE` lines after the
-`---PREFLIGHT---` marker. If that marker or `STATUS` is absent, stop and show
-the raw output; do not infer state or run an install command from malformed
-output.
+It is configuration-only (~10 ms, zero network, no environment or package
+management). It may create an empty `./.env` when Enterprise configuration
+needs a file for the user to fill. It always exits 0 — read state from the
+`KEY=VALUE` lines after the `---PREFLIGHT---` marker. If that marker or
+`STATUS` is absent, stop and show the raw output; do not infer state from
+malformed output.
 
 ### Output keys
 
@@ -40,11 +41,6 @@ output.
 | `INSTALLATION` | `yc` / `enterprise` / `ambiguous` / `unknown` — resolved via arg → `DATALENS_INSTALLATION` → detection (base URL set → enterprise; `yc` on PATH → yc) |
 | `INSTALLATION_HINTS` | csv of detection signals, only with `INSTALLATION=ambiguous` |
 | `ARG_INVALID` | the positional arg was not `yc`/`enterprise`; resolution fell through to env/detection |
-| `VENV` | `active` (user's `$VIRTUAL_ENV`) / `reused` (`./.venv` existed) / `created` (just made) / `failed` |
-| `PYTHON` | absolute path to the venv python — **the interpreter for every install and script; never substitute a bare `python3`** |
-| `SDK` | `installed` / `needs_install` |
-| `ACTUAL` | version found in the venv, when the package is importable |
-| `INSTALL_CMD` | verbatim pip command, present when `SDK=needs_install` |
 | `YC_CLI` | yc: `found` / `missing` — PATH lookup only |
 | `YC_STATIC` | yc: `ok` when both `DATALENS_YC_ORG_ID` and `DATALENS_YC_IAM_TOKEN` are present, else `absent` |
 | `BASE_URL` | enterprise: `set` / `missing` for `DATALENS_BASE_URL` |
@@ -56,17 +52,16 @@ output.
 
 | Condition | STATUS | Agent action |
 |---|---|---|
-| `SDK=installed` and credentials present | `ready` | Proceed to the task. Use `PYTHON` for everything. |
-| `SDK=needs_install`, credentials present | `needs_input` | After `INSTALLATION` is resolved, run `INSTALL_CMD` verbatim as a separate, visible bash call (so the user sees pip progress). Do not change the interpreter or drop the version pin. |
-| `ACTUAL` present but not `0.4.0` (reported as `SDK=needs_install`) | `needs_input` | Version drift. Run `INSTALL_CMD` — it reinstalls the pinned `datalens-sdk==0.4.0`. |
+| Installation resolved and credentials present | `ready` | Proceed to the task with the exact `PYTHON` reported by the root bootstrap. |
 | `INSTALLATION=ambiguous` (see `INSTALLATION_HINTS`) | `needs_input` | Ask the user which installation to target, offering the hints; rerun `preflight.sh <choice>`. |
 | `INSTALLATION=unknown` | `needs_input` | Ask the user: yc or enterprise; rerun with the answer. |
 | yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Relay one line: install the `yc` CLI (https://yandex.cloud/docs/cli/quickstart) or provide `DATALENS_YC_ORG_ID` + `DATALENS_YC_IAM_TOKEN`. Do not work around it. |
 | enterprise, `BASE_URL=missing` | `blocked` | Ask the user for the API endpoint; they set `DATALENS_BASE_URL` (non-secret — with their consent you may write it to the file at `ENV_FILE`). |
 | enterprise, `TOKEN=absent` | (unchanged) | Informational, not a blocker. Proceed without auth; if the deployment then rejects calls with 401, ask the user to add `DATALENS_API_TOKEN=<their token>` to the file at `ENV_FILE` **themselves** and construct the client with `OAuthAuthProvider()`. |
-| `VENV=failed` | `blocked` | `python3 -m venv` is unavailable (typical: Debian/Ubuntu without `python3-venv`). Relay the install instruction or ask the user to create and activate a venv, then rerun preflight (it will report `VENV=active`). |
 
-Two rules the preflight itself follows and you must too: never run `yc iam create-token` during diagnostics (the SDK mints IAM tokens lazily at request time), and `SDK=installed` is authoritative — do not re-verify with extra imports elsewhere.
+Two rules apply: never run `yc iam create-token` during diagnostics (the SDK
+mints IAM tokens lazily at request time), and never perform package management
+from this bundled skill.
 
 After constructing the client, inspect the local generated
 `client.capabilities`. Check connection and source factories in `connectors`

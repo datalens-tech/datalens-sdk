@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Preflight for the datalens-sdk skill.
 #
-# Diagnostic-only (~100 ms): no network calls, no pip installs inside this
-# script. The only permitted state changes are creating ./.venv (one-time
-# `python3 -m venv`) and creating an empty ./.env (enterprise, so the user
-# has a file to add configuration to). Never prints secret values —
-# existence checks only.
+# Configuration-only (~10 ms): no network calls, environment creation, or
+# package management. The root datalens-skills bootstrap already selected the
+# interpreter and SDK version before loading this bundled skill. The only
+# permitted state change is creating an empty ./.env for Enterprise so the
+# user has a file to configure. Never prints secret values — existence checks
+# only.
 #
 # Usage: preflight.sh [yc|enterprise]
 #
@@ -19,12 +20,6 @@
 #   INSTALLATION=yc|enterprise|ambiguous|unknown
 #   INSTALLATION_HINTS=<csv>     (only for INSTALLATION=ambiguous)
 #   ARG_INVALID=<arg>            (positional arg was not yc|enterprise)
-#   VENV=active|reused|created|failed
-#   PYTHON=<abs path>            (venv python; use it for every install/run)
-#   SDK=installed|needs_install
-#   ACTUAL=<version>             (when the package is importable)
-#   INSTALL_CMD=<command>        (when SDK=needs_install; run verbatim,
-#                                 as a separate visible bash call)
 #   YC_CLI=found|missing         (yc; PATH lookup only, never runs `yc`)
 #   YC_STATIC=ok|absent          (yc; both DATALENS_YC_ORG_ID and
 #                                 DATALENS_YC_IAM_TOKEN present)
@@ -41,7 +36,6 @@
 
 set -u
 
-PIN_VERSION="0.4.0"
 CWD="$(pwd -P)"
 ENV_FILE_PATH="${CWD}/.env"
 
@@ -84,47 +78,6 @@ if [ -z "$INSTALLATION" ]; then
         *,*) INSTALLATION="ambiguous"; INSTALLATION_HINTS="$HINTS" ;;
         *)   INSTALLATION="$HINTS" ;;
     esac
-fi
-
-# --- venv cascade: $VIRTUAL_ENV -> ./.venv -> create ./.venv ------------------
-#
-# Hard rule: pip installs go ONLY into a venv, never into system python
-# (PEP 668 externally-managed). Bare `python3` is used solely to create
-# the venv itself. Pre-existing venvs under other names (e.g. .skill_venv)
-# are picked up only via an activated $VIRTUAL_ENV.
-
-VENV=""
-PY=""
-if [ -n "${VIRTUAL_ENV:-}" ] && [ -x "${VIRTUAL_ENV}/bin/python3" ]; then
-    PY="${VIRTUAL_ENV}/bin/python3"
-    VENV="active"
-elif [ -x "${CWD}/.venv/bin/python3" ]; then
-    PY="${CWD}/.venv/bin/python3"
-    VENV="reused"
-elif python3 -m venv "${CWD}/.venv" 2>/dev/null && [ -x "${CWD}/.venv/bin/python3" ]; then
-    PY="${CWD}/.venv/bin/python3"
-    VENV="created"
-else
-    VENV="failed"
-fi
-
-# --- SDK import check in the resolved venv (no network, no pip) ---------------
-
-SDK=""
-ACTUAL=""
-INSTALL_CMD=""
-if [ -n "$PY" ]; then
-    ACTUAL="$("$PY" -c 'import datalens_sdk; print(datalens_sdk.__version__)' 2>/dev/null)"
-    if [ "$ACTUAL" = "$PIN_VERSION" ]; then
-        SDK="installed"
-    else
-        # Covers both fresh install and version drift: pip reinstalls
-        # the pinned version either way.
-        SDK="needs_install"
-        # printf %q keeps the command runnable verbatim even when the venv
-        # path contains spaces or shell metacharacters.
-        INSTALL_CMD="$(printf '%q' "$PY") -m pip install datalens-sdk==${PIN_VERSION}"
-    fi
 fi
 
 # --- per-installation credential checks (existence only, zero network) --------
@@ -176,16 +129,12 @@ esac
 
 # --- STATUS -------------------------------------------------------------------
 #
-#   blocked     - user action required: venv failed, or credentials missing
-#                 (yc CLI with no static creds / enterprise base URL);
-#   needs_input - one actionable gap for the agent: installation choice
-#                 (ambiguous/unknown) or INSTALL_CMD to run;
-#   ready       - SDK importable at the pinned version + credentials present.
+#   blocked     - credentials or Enterprise base URL missing;
+#   needs_input - installation choice is ambiguous or unknown;
+#   ready       - installation and credentials are configured.
 
 STATUS=""
-if [ "$VENV" = "failed" ]; then
-    STATUS="blocked"
-elif [ "$INSTALLATION" = "ambiguous" ] || [ "$INSTALLATION" = "unknown" ]; then
+if [ "$INSTALLATION" = "ambiguous" ] || [ "$INSTALLATION" = "unknown" ]; then
     STATUS="needs_input"
 else
     CREDS_OK=0
@@ -199,11 +148,8 @@ else
     esac
     if [ "$CREDS_OK" = "0" ]; then
         STATUS="blocked"
-    elif [ "$SDK" = "installed" ]; then
-        STATUS="ready"
     else
-        # needs_install: INSTALL_CMD is present, run it verbatim.
-        STATUS="needs_input"
+        STATUS="ready"
     fi
 fi
 
@@ -213,11 +159,6 @@ echo "---PREFLIGHT---"
 echo "INSTALLATION=$INSTALLATION"
 [ -n "$INSTALLATION_HINTS" ] && echo "INSTALLATION_HINTS=$INSTALLATION_HINTS"
 [ -n "$ARG_INVALID" ] && echo "ARG_INVALID=$ARG_INVALID"
-echo "VENV=$VENV"
-[ -n "$PY" ] && echo "PYTHON=$PY"
-[ -n "$SDK" ] && echo "SDK=$SDK"
-[ -n "$ACTUAL" ] && echo "ACTUAL=$ACTUAL"
-[ -n "$INSTALL_CMD" ] && echo "INSTALL_CMD=$INSTALL_CMD"
 [ -n "$YC_CLI" ] && echo "YC_CLI=$YC_CLI"
 [ -n "$YC_STATIC" ] && echo "YC_STATIC=$YC_STATIC"
 [ -n "$BASE_URL" ] && echo "BASE_URL=$BASE_URL"
