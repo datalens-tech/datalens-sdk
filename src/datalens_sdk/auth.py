@@ -126,7 +126,8 @@ class _RefreshingIAMAuthProvider(BaseAuthProvider, abc.ABC):
             try:
                 refreshed_token = self._fetch_token()
             except Exception:
-                if cached_token is not None and now < cached_token.expires_at:
+                fallback_now = time.time()
+                if cached_token is not None and fallback_now < cached_token.expires_at:
                     warnings.warn(
                         "Failed to refresh the YC IAM token; using the cached token until it expires.",
                         RuntimeWarning,
