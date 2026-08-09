@@ -9,6 +9,7 @@ from datalens_sdk.domain.dashboard_types import KNOWN_DASHBOARD_ITEM_TYPES, Vali
 from datalens_sdk.domain.dashboard_update import DashboardUpdate
 from datalens_sdk.domain.dashboard_validate import validate_dashboard
 from datalens_sdk.domain.entry_location import EntryLocation, key_from_location, validate_entry_name
+from datalens_sdk.domain.entry_types import EntryBranch
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import DashboardOperations
 from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
@@ -408,17 +409,18 @@ class Dashboard:
             raise DatalensConfigurationError(_UNBOUND)
         return self._operations.export_dashboard_with_dependencies(self, path)
 
-    def refresh(self) -> Dashboard:
-        """Re-read the current default revision of this dashboard.
+    def refresh(self, *, branch: EntryBranch | None = None) -> Dashboard:
+        """Re-read this dashboard, optionally from an explicit branch.
 
-        The branch/rev_id used to load this object is not remembered: refresh
-        never replays it and always returns the API's current revision.
+        ``branch=None`` preserves the existing default-revision behavior. The
+        branch/rev_id used to load this object is not remembered, so pass
+        ``branch="saved"`` when refreshing a draft immediately before edit.
         """
         if self._operations is None:
             raise DatalensConfigurationError(_UNBOUND)
         if not self.id:
             raise DatalensValidationError("Cannot refresh a dashboard without an id")
-        return self._operations.get_dashboard(self.id, workbook_id=self.workbook_id)
+        return self._operations.get_dashboard(self.id, workbook_id=self.workbook_id, branch=branch)
 
     def validate(self) -> tuple[ValidationIssue, ...]:
         """Collect structural problems without HTTP and without raising.

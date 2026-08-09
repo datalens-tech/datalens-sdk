@@ -29,6 +29,7 @@ from datalens_sdk.domain.dashboard_types import (
 )
 from datalens_sdk.domain.dashboard_update_adders import _StructuralAddersMixin
 from datalens_sdk.domain.dashboard_update_layout import _LayoutOpsMixin
+from datalens_sdk.domain.dashboard_update_selector_adders import _SelectorMemberAddersMixin
 from datalens_sdk.domain.dashboard_update_support import (
     _GLOBAL_ITEMS_FIELD,
     _ITEMS_FIELD,
@@ -74,7 +75,7 @@ __all__ = ["DashboardUpdate"]
 _MIN_AUTOUPDATE_INTERVAL = 30
 
 
-class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixin):
+class DashboardUpdate(_StructuralAddersMixin, _SelectorMemberAddersMixin, _WiringAddersMixin, _LayoutOpsMixin):
     """Accumulates point-wise operations over a loaded dashboard revision.
 
     Created via :attr:`Dashboard.update`. Every mutator validates its
