@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.6.0 - 2026-08-10
+
+- Rename public SDK identifiers from the noncanonical `Datalens...` spelling to `DataLens...`; update imports to use the new names.
+
 ## 0.5.0 - 2026-08-07
 
 - Bound `YCIAMAuthProvider` CLI calls with a configurable timeout.
