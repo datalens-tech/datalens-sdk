@@ -22,7 +22,7 @@ from datalens_sdk.domain.entry_location import (
 from datalens_sdk.domain.ports import ConnectionOperations
 from datalens_sdk.domain.specs.connection import ConnectionCreateSpec, ConnectionUpdateSpec
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
-from datalens_sdk.errors import DatalensValidationError, NotSupportedError
+from datalens_sdk.errors import DataLensValidationError, NotSupportedError
 from datalens_sdk.serialization.connection import ConnectionSnapshotView
 from datalens_sdk.serialization.json_types import JsonObject, JsonValue, normalize_json_object
 
@@ -145,7 +145,7 @@ class ConnectionConverter:
         source = ConnectionSnapshotView.from_raw(spec.response_snapshot)
         source_connector = source.connector
         if source_connector != target_connector_type:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 "Connection connector type mismatch: "
                 f"source is {source_connector!r}, target is {target_connector_type!r}"
             )

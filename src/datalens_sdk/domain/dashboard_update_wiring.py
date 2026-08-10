@@ -35,7 +35,7 @@ from datalens_sdk.domain.specs.dashboard import (
     RemoveSelectorMemberOp,
     UpdateSelectorOp,
 )
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.dashboard_update_support import _ItemOccurrence
@@ -73,12 +73,12 @@ class _WiringAddersMixin:
         for item_id, widget_tabs in self._item_widget_tab_ids.items():
             if ref in widget_tabs:
                 return item_id
-        raise DatalensValidationError(f"Unknown item id {ref!r}")
+        raise DataLensValidationError(f"Unknown item id {ref!r}")
 
     def _wire_endpoint_expansion(self, ref: str) -> tuple[str, ...]:
         """Expand a logical reference into server-accepted wire endpoints."""
         if not isinstance(ref, str) or not ref:
-            raise DatalensValidationError(f"connection endpoint must be a non-empty string, got {ref!r}")
+            raise DataLensValidationError(f"connection endpoint must be a non-empty string, got {ref!r}")
         if ref not in self._item_occurrences:
             self._owning_item_id(ref)  # fail-loud on unknown ids
             return (ref,)  # already a member or chart-tab id
@@ -86,16 +86,16 @@ class _WiringAddersMixin:
         if item_type == "group_control":
             children = self._item_group_children.get(ref)
             if not children:
-                raise DatalensValidationError(f"group_control {ref!r} has no members to connect")
+                raise DataLensValidationError(f"group_control {ref!r} has no members to connect")
             return tuple(sorted(children))
         if item_type == "widget":
             widget_tabs = self._item_widget_tab_ids.get(ref)
             if not widget_tabs:
-                raise DatalensValidationError(f"widget {ref!r} has no chart tabs to connect")
+                raise DataLensValidationError(f"widget {ref!r} has no chart tabs to connect")
             return tuple(sorted(widget_tabs))
         if item_type == "control":
             return (ref,)
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"Item {ref!r} of type {item_type!r} cannot be a connection endpoint "
             "(text/title/image items cannot filter or be filtered)"
         )
@@ -109,12 +109,12 @@ class _WiringAddersMixin:
         if tab is not None:
             tab_id = self._resolve_tab(tab)
             if tab_id not in common:
-                raise DatalensValidationError(f"Items {list(refs)!r} do not share tab {tab_id!r}")
+                raise DataLensValidationError(f"Items {list(refs)!r} do not share tab {tab_id!r}")
             return tab_id
         if not common:
-            raise DatalensValidationError(f"Items {list(refs)!r} do not share any tab")
+            raise DataLensValidationError(f"Items {list(refs)!r} do not share any tab")
         if len(common) > 1:
-            raise DatalensValidationError(f"Items {list(refs)!r} share several tabs {sorted(common)!r}; pass tab=")
+            raise DataLensValidationError(f"Items {list(refs)!r} share several tabs {sorted(common)!r}; pass tab=")
         return next(iter(common))
 
     def _connection_present(self, tab_id: str, from_id: str, to_id: str) -> bool:
@@ -147,7 +147,7 @@ class _WiringAddersMixin:
         References are logical ids — widgets expand to all their chart tabs,
         groups to all members."""
         if from_item == to_item:
-            raise DatalensValidationError("from_item and to_item must differ")
+            raise DataLensValidationError("from_item and to_item must differ")
         from_endpoints = self._wire_endpoint_expansion(from_item)
         to_endpoints = self._wire_endpoint_expansion(to_item)
         tab_id = self._wiring_tab_id((from_item, to_item), tab)
@@ -161,9 +161,9 @@ class _WiringAddersMixin:
         """Fully sever every pair among ``item_ids``: the full mesh of
         directed ignore edges in both directions."""
         if len(item_ids) < 2:
-            raise DatalensValidationError("disconnect_all needs at least two item ids")
+            raise DataLensValidationError("disconnect_all needs at least two item ids")
         if len(set(item_ids)) != len(item_ids):
-            raise DatalensValidationError("disconnect_all item ids must be unique")
+            raise DataLensValidationError("disconnect_all item ids must be unique")
         expansions = {ref: self._wire_endpoint_expansion(ref) for ref in item_ids}
         tab_id = self._wiring_tab_id(tuple(item_ids), tab)
         pairs: list[tuple[str, str]] = []
@@ -194,17 +194,17 @@ class _WiringAddersMixin:
         """Declare ≥2 dataset field guids equivalent on one tab; groups
         already present on the dashboard (any member order) are skipped."""
         if len(fields) < 2:
-            raise DatalensValidationError("add_alias needs at least two field guids")
+            raise DataLensValidationError("add_alias needs at least two field guids")
         if not all(isinstance(entry, str) and entry for entry in fields):
-            raise DatalensValidationError(f"alias fields must be non-empty strings, got {fields!r}")
+            raise DataLensValidationError(f"alias fields must be non-empty strings, got {fields!r}")
         if len(set(fields)) != len(fields):
-            raise DatalensValidationError("alias fields must be unique")
+            raise DataLensValidationError("alias fields must be unique")
         if tab is not None:
             tab_id = self._resolve_tab(tab)
         elif len(self._tabs) == 1:
             tab_id = self._tabs[0].tab_id
         else:
-            raise DatalensValidationError("The dashboard has several tabs; pass tab= for add_alias")
+            raise DataLensValidationError("The dashboard has several tabs; pass tab= for add_alias")
         group = frozenset(fields)
         if self._alias_present(tab_id, group):
             return self
@@ -230,14 +230,14 @@ class _WiringAddersMixin:
                 children = self._item_group_children.get(item_id, set())
                 if len(children) == 1:
                     return item_id, next(iter(children))
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"group_control {item_id!r} has {len(children)} members; pass the member id"
                 )
-            raise DatalensValidationError(f"Item {item_id!r} of type {item_type!r} is not a selector")
+            raise DataLensValidationError(f"Item {item_id!r} of type {item_type!r} is not a selector")
         for wrapper_id, children in self._item_group_children.items():
             if item_id in children:
                 return wrapper_id, item_id
-        raise DatalensValidationError(f"Unknown item id {item_id!r}")
+        raise DataLensValidationError(f"Unknown item id {item_id!r}")
 
     def update_selector(
         self,
@@ -254,21 +254,21 @@ class _WiringAddersMixin:
         standalone control id).
         """
         if title is None and default_value is None and operation is None and required is None and hint is None:
-            raise DatalensValidationError("update_selector needs at least one field to change")
+            raise DataLensValidationError("update_selector needs at least one field to change")
         if title is not None and not title:
-            raise DatalensValidationError("Selector title must not be an empty string")
+            raise DataLensValidationError("Selector title must not be an empty string")
         if operation is not None and operation not in get_args(SelectorOperation):
-            raise DatalensValidationError(f"Unknown selector operation {operation!r}")
+            raise DataLensValidationError(f"Unknown selector operation {operation!r}")
         wrapper_id, member_id = self._selector_target(item_id)
         if self._selector_source_type(wrapper_id, member_id) == "external" and (
             default_value is not None or operation is not None or required is not None
         ):
-            raise DatalensValidationError("External selectors only support title/hint patches")
+            raise DataLensValidationError("External selectors only support title/hint patches")
         normalized_default: SelectorDefaultValue | None = None
         if isinstance(default_value, Sequence) and not isinstance(default_value, str):
             values = tuple(default_value)
             if not all(isinstance(entry, str) for entry in values):
-                raise DatalensValidationError(f"Select default values must be strings, got {default_value!r}")
+                raise DataLensValidationError(f"Select default values must be strings, got {default_value!r}")
             normalized_default = values
         elif default_value is not None:
             normalized_default = default_value
@@ -305,7 +305,7 @@ class _WiringAddersMixin:
         if item_id in self._item_occurrences:
             item_type = self._item_types.get(item_id)
             if item_type not in ("control", "group_control"):
-                raise DatalensValidationError(f"Item {item_id!r} of type {item_type!r} is not a selector")
+                raise DataLensValidationError(f"Item {item_id!r} of type {item_type!r} is not a selector")
             return cast("Self", cast(object, self).remove_item(item_id))  # type: ignore[attr-defined]
         wrapper_id, member_id = self._selector_target(item_id)
         assert member_id is not None

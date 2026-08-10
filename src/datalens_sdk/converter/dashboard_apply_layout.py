@@ -30,13 +30,13 @@ from datalens_sdk.domain.specs.dashboard import (
     SwapItemsOp,
     UnpinItemOp,
 )
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 
 def _data_tabs(data: dict[str, object]) -> list[dict[str, object]]:
     tabs = data.get("tabs")
     if not isinstance(tabs, list):
-        raise DatalensValidationError("Dashboard data tabs is not a list; cannot apply update ops")
+        raise DataLensValidationError("Dashboard data tabs is not a list; cannot apply update ops")
     return cast("list[dict[str, object]]", [tab for tab in tabs if isinstance(tab, dict)])
 
 
@@ -87,17 +87,17 @@ def _resolve_auto_layout(
 def _entry_int(entry: dict[str, object], key: str) -> int:
     value = entry.get(key)
     if isinstance(value, bool) or not isinstance(value, int):
-        raise DatalensValidationError(f"layout entry {entry.get('i')!r} has a non-integer {key}")
+        raise DataLensValidationError(f"layout entry {entry.get('i')!r} has a non-integer {key}")
     return value
 
 
 def _check_bounds(item_id: str, x: int, y: int, w: int, h: int) -> None:
     if x < 0 or y < 0:
-        raise DatalensValidationError(f"Item {item_id!r} would leave the grid: x={x}, y={y} (must be >= 0)")
+        raise DataLensValidationError(f"Item {item_id!r} would leave the grid: x={x}, y={y} (must be >= 0)")
     if w <= 0 or h <= 0:
-        raise DatalensValidationError(f"Item {item_id!r} must keep w and h > 0, got w={w}, h={h}")
+        raise DataLensValidationError(f"Item {item_id!r} must keep w and h > 0, got w={w}, h={h}")
     if x + w > GRID_COLUMNS:
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"Item {item_id!r} would exceed the {GRID_COLUMNS}-column grid: x={x} + w={w} = {x + w}"
         )
 
@@ -128,7 +128,7 @@ def _require_occurrence_layout_entries(
     identical-id replicas."""
     entries = _item_layout_entries(data, item_id)
     if not entries:
-        raise DatalensValidationError(f"{op_name}: no layout entry for {item_id!r}")
+        raise DataLensValidationError(f"{op_name}: no layout entry for {item_id!r}")
     counts: dict[object, int] = {}
     for tab, _ in entries:
         tab_id = tab.get("id")
@@ -146,7 +146,7 @@ def _require_occurrence_layout_entries(
             continue
         count = counts.get(tab.get("id"), 0)
         if count != 1:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"{op_name}: item {item_id!r} occurs on tab {tab.get('id')!r} but has {count} layout entries there "
                 "(validate() reports this as missing_layout/duplicate_layout); cannot apply to all occurrences"
             )
@@ -193,14 +193,14 @@ def _apply_swap_items(data: dict[str, object], op: SwapItemsOp, affected: set[tu
             shared[tab_id] = found
     if op.tab_id is not None:
         if op.tab_id not in shared:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"swap_items: {op.first_item_id!r} and {op.second_item_id!r} are not both on tab {op.tab_id!r}"
             )
         targets = [op.tab_id]
     elif len(shared) == 1:
         targets = list(shared)
     else:
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"swap_items: {op.first_item_id!r} and {op.second_item_id!r} appear together on "
             f"{sorted(shared)}; pass tab= to disambiguate"
         )
@@ -231,7 +231,7 @@ def _apply_shift_below(data: dict[str, object], op: ShiftBelowOp, affected: set[
             if isinstance(y, int) and not isinstance(y, bool) and y >= op.y_threshold:
                 new_y = y + op.dy
                 if new_y < 0:
-                    raise DatalensValidationError(
+                    raise DataLensValidationError(
                         f"shift_below moved item {entry.get('i')!r} above the grid (y={new_y})"
                     )
                 entry["y"] = new_y
@@ -288,7 +288,7 @@ def _apply_apply_layout(data: dict[str, object], op: ApplyLayoutOp, affected: se
     unmatched = sorted(set(positions) - matched)
     if unmatched:
         scope = f" on tab {op.tab_id!r}" if op.tab_id is not None else ""
-        raise DatalensValidationError(f"apply_layout: items {unmatched!r} have no layout entry{scope}")
+        raise DataLensValidationError(f"apply_layout: items {unmatched!r} have no layout entry{scope}")
 
 
 def _apply_compact_layout(data: dict[str, object], op: CompactLayoutOp, affected: set[tuple[str, str]]) -> None:
@@ -342,4 +342,4 @@ def _check_final_overlaps(
             continue
         first, second = sorted(pair)
         if (tab_id, first) in affected or (tab_id, second) in affected:
-            raise DatalensValidationError(f"Tab {tab_id!r}: items {first!r} and {second!r} overlap")
+            raise DataLensValidationError(f"Tab {tab_id!r}: items {first!r} and {second!r} overlap")

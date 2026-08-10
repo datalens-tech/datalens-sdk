@@ -69,7 +69,7 @@ from datalens_sdk.domain.specs.dashboard import (
     WidgetItem,
 )
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 __all__ = ["DashboardChartTab", "DashboardTab"]
 
@@ -123,9 +123,9 @@ class DashboardTab(TabLayoutFlow):
 
     def __post_init__(self) -> None:
         if not self.title:
-            raise DatalensValidationError("Tab title must not be an empty string")
+            raise DataLensValidationError("Tab title must not be an empty string")
         if self.tab_id is not None and not self.tab_id:
-            raise DatalensValidationError("tab id must not be an empty string")
+            raise DataLensValidationError("tab id must not be an empty string")
 
     def _pending_snapshot(self) -> tuple[_PendingItem, ...]:
         """Package-internal seam: builders consume the tab through this snapshot."""
@@ -137,9 +137,9 @@ class DashboardTab(TabLayoutFlow):
         if item_id is None:
             return None
         if not item_id:
-            raise DatalensValidationError("item id must not be an empty string")
+            raise DataLensValidationError("item id must not be an empty string")
         if item_id in self._explicit_item_ids:
-            raise DatalensValidationError(f"Duplicate item id {item_id!r}")
+            raise DataLensValidationError(f"Duplicate item id {item_id!r}")
         return item_id
 
     def _append(
@@ -240,10 +240,10 @@ class DashboardTab(TabLayoutFlow):
     ) -> Self:
         entries = tuple(charts)
         if not entries:
-            raise DatalensValidationError("add_chart_group requires at least one chart")
+            raise DataLensValidationError("add_chart_group requires at least one chart")
         marked = [index for index, entry in enumerate(entries) if entry.default]
         if len(marked) > 1:
-            raise DatalensValidationError("add_chart_group allows exactly one chart marked default=True")
+            raise DataLensValidationError("add_chart_group allows exactly one chart marked default=True")
         default_index = marked[0] if marked else 0
         explicit_id = self._validated_item_id(item_id)
         resolved = tuple(
@@ -295,9 +295,9 @@ class DashboardTab(TabLayoutFlow):
         layout ``size=(w, h)`` the other adders take, so custom title geometry
         goes through explicit ``at=(x, y, w, h)`` instead."""
         if not text:
-            raise DatalensValidationError("Title text must not be an empty string")
+            raise DataLensValidationError("Title text must not be an empty string")
         if size not in get_args(DashboardTitleSize):
-            raise DatalensValidationError(f"Unknown title size {size!r}")
+            raise DataLensValidationError(f"Unknown title size {size!r}")
         explicit_id = self._validated_item_id(item_id)
         item = TitleItem(
             id=_PENDING_ID,
@@ -326,7 +326,7 @@ class DashboardTab(TabLayoutFlow):
         pinned: bool | PinZone = False,
     ) -> Self:
         if not text:
-            raise DatalensValidationError("Text must not be an empty string")
+            raise DataLensValidationError("Text must not be an empty string")
         explicit_id = self._validated_item_id(item_id)
         item = TextItem(
             id=_PENDING_ID,
@@ -352,7 +352,7 @@ class DashboardTab(TabLayoutFlow):
         pinned: bool | PinZone = False,
     ) -> Self:
         if not src:
-            raise DatalensValidationError("Image src must not be an empty string")
+            raise DataLensValidationError("Image src must not be an empty string")
         explicit_id = self._validated_item_id(item_id)
         item = ImageItem(
             id=_PENDING_ID,
@@ -471,9 +471,9 @@ class DashboardTab(TabLayoutFlow):
         )
         if group is not None:
             if at is not None or size is not None:
-                raise DatalensValidationError("at=/size= belong to add_group_selector when group= is used")
+                raise DataLensValidationError("at=/size= belong to add_group_selector when group= is used")
             if auto_height:
-                raise DatalensValidationError("auto_height belongs to add_group_selector when group= is used")
+                raise DataLensValidationError("auto_height belongs to add_group_selector when group= is used")
         member = SelectorMemberSpec(
             id=member_id if member_id is not None else _PENDING_ID,
             title=resolved_title,
@@ -524,12 +524,12 @@ class DashboardTab(TabLayoutFlow):
         P018). ``at=None`` auto-places the group full-width; ``auto_height``
         defaults to True when auto-placed, False otherwise."""
         if not group:
-            raise DatalensValidationError("group must not be an empty string")
+            raise DataLensValidationError("group must not be an empty string")
         members = self._pending_groups.get(group)
         if not members:
             known = sorted(self._pending_groups)
             hint = f" Known groups: {', '.join(known)}." if known else ""
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Selector group {group!r} has no registered members; call add_selector(group={group!r}) first.{hint}"
             )
         wrapper_id = self._validated_item_id(item_id)
@@ -565,9 +565,9 @@ class DashboardTab(TabLayoutFlow):
     ) -> Self:
         offending = sorted(name for name, value in forbidden.items() if value is not None)
         if offending:
-            raise DatalensValidationError(f"chart= (external selector) does not combine with: {', '.join(offending)}")
+            raise DataLensValidationError(f"chart= (external selector) does not combine with: {', '.join(offending)}")
         if show_on_tabs != "current":
-            raise DatalensValidationError("show_on_tabs sharing is not supported for external selectors")
+            raise DataLensValidationError("show_on_tabs sharing is not supported for external selectors")
         chart_id, resolved_title, installation = _resolve_chart_ref(chart, title=title)
         item = ExternalControlItem(id=_PENDING_ID, title=resolved_title, chart_id=chart_id)
         placement = resolve_placement(self._cursors, at, item_type="control", pinned=False, size=size)
@@ -603,9 +603,9 @@ class DashboardTab(TabLayoutFlow):
         """
         for name, value in (("from_item", from_item), ("to_item", to_item)):
             if not value:
-                raise DatalensValidationError(f"{name} must not be an empty string")
+                raise DataLensValidationError(f"{name} must not be an empty string")
         if from_item == to_item:
-            raise DatalensValidationError("from_item and to_item must differ")
+            raise DataLensValidationError("from_item and to_item must differ")
         pairs = [(from_item, to_item)]
         if mutual:
             pairs.append((to_item, from_item))
@@ -618,12 +618,12 @@ class DashboardTab(TabLayoutFlow):
         """Fully sever every pair among ``item_ids``: the full N·(N-1) mesh
         of directed ignore edges (both directions per pair)."""
         if len(item_ids) < 2:
-            raise DatalensValidationError("disconnect_all needs at least two item ids")
+            raise DataLensValidationError("disconnect_all needs at least two item ids")
         if len(set(item_ids)) != len(item_ids):
-            raise DatalensValidationError("disconnect_all item ids must be unique")
+            raise DataLensValidationError("disconnect_all item ids must be unique")
         for item_id in item_ids:
             if not item_id:
-                raise DatalensValidationError("item ids must not be empty strings")
+                raise DataLensValidationError("item ids must not be empty strings")
         for source in item_ids:
             for target in item_ids:
                 if source != target and (source, target) not in self._pending_connections:
@@ -634,11 +634,11 @@ class DashboardTab(TabLayoutFlow):
         """Declare ≥2 dataset field guids equivalent (one alias group);
         repeated groups (any order) are deduplicated silently."""
         if len(fields) < 2:
-            raise DatalensValidationError("add_alias needs at least two field guids")
+            raise DataLensValidationError("add_alias needs at least two field guids")
         if not all(isinstance(entry, str) and entry for entry in fields):
-            raise DatalensValidationError(f"alias fields must be non-empty strings, got {fields!r}")
+            raise DataLensValidationError(f"alias fields must be non-empty strings, got {fields!r}")
         if len(set(fields)) != len(fields):
-            raise DatalensValidationError("alias fields must be unique")
+            raise DataLensValidationError("alias fields must be unique")
         group = tuple(fields)
         if not any(frozenset(existing) == frozenset(group) for existing in self._pending_aliases):
             self._pending_aliases.append(group)

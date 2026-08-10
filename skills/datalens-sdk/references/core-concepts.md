@@ -175,7 +175,7 @@ chart = (
 )
 ```
 
-Strings *can* also resolve against the bound dataset schema (guid first, then title/name), but a title shared by several fields raises `DatalensValidationError` ("ambiguous"), and on the update path only already-placed fields are known — so `DatasetField` objects are the reliable form for anything that lives in the dataset. Unresolvable strings fail at build/execute time with a message that suggests close matches and the `fields.by_name` pattern.
+Strings *can* also resolve against the bound dataset schema (guid first, then title/name), but a title shared by several fields raises `DataLensValidationError` ("ambiguous"), and on the update path only already-placed fields are known — so `DatasetField` objects are the reliable form for anything that lives in the dataset. Unresolvable strings fail at build/execute time with a message that suggests close matches and the `fields.by_name` pattern.
 
 ## Critical behaviors
 
@@ -204,7 +204,7 @@ The transport picks a `RetryPolicy` per operation:
 - **Writes** (create/update/delete/validate) use the default policy with `max_attempts=1` — one shot, no retry.
 - **Reads** (all getters, listings) use an internal 3-attempt policy with exponential backoff, retrying 429/5xx and transport errors automatically.
 
-The retry policy is not a constructor knob. To change write retries you must inject a custom transport via `http_client=` (an object implementing `post_json`/`post_json_object` that overrides `retry_policy` before delegating). `http_client=` is mutually exclusive with `auth=`, `base_url=`, `transport=`, and `event_hooks=` — combining them raises `DatalensConfigurationError`. Think twice: creates are not idempotent, so blind write retries can produce 409s.
+The retry policy is not a constructor knob. To change write retries you must inject a custom transport via `http_client=` (an object implementing `post_json`/`post_json_object` that overrides `retry_policy` before delegating). `http_client=` is mutually exclusive with `auth=`, `base_url=`, `transport=`, and `event_hooks=` — combining them raises `DataLensConfigurationError`. Think twice: creates are not idempotent, so blind write retries can produce 409s.
 
 ### `UNSET` and `REMOVE_PARAM` — tri-state update channels
 

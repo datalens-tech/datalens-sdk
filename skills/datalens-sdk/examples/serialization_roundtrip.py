@@ -29,7 +29,7 @@ from pathlib import Path
 import sys
 
 from datalens_sdk import (
-    DatalensAPIError,
+    DataLensAPIError,
     DataLensClientEnterprise,
     DataLensClientYC,
     EntryLocation,
@@ -80,7 +80,7 @@ def main() -> None:
             source = client.get.dataset(by_id=args.dataset_id)
 
             # to_file never overwrites: an existing '<name> [<id>]' directory
-            # under the parent raises DatalensValidationError.
+            # under the parent raises DataLensValidationError.
             artifact = source.to_file(export_parent)
             print(f"Exported artifact: {artifact}")
 
@@ -98,7 +98,7 @@ def main() -> None:
             print(f"Source dataset id: {source.id}")
             print(f"Clone dataset id: {clone.id}")
             print("Note: raw import does not remap ids — the clone still references the original connection id.")
-    except DatalensAPIError as e:
+    except DataLensAPIError as e:
         # Hard rule 9: the request id is what DataLens support needs.
         print(
             f"DataLens API error {e.context.status_code} {e.context.code}: "

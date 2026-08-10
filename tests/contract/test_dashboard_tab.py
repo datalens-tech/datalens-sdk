@@ -30,7 +30,7 @@ from datalens_sdk.domain.specs.dashboard import (
     WidgetItem,
 )
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 _AT = (0, 0, 12, 6)
 
@@ -55,7 +55,7 @@ def test_failed_auto_adder_does_not_advance_the_cursor() -> None:
     # a rejected add must leave the auto-cursor untouched: the next valid item
     # flows into the slot the failed one would have taken, not past it
     tab = DashboardTab("T").add_text("first", item_id="dup")  # auto -> (0, 0, 12, 6)
-    with pytest.raises(DatalensValidationError, match="Duplicate item id"):
+    with pytest.raises(DataLensValidationError, match="Duplicate item id"):
         tab.add_text("again", item_id="dup")  # rejected AFTER the cursor would have moved
     tab.add_text("second", item_id="ok")  # auto -> should be (12, 0), not (24, 0)
     layout = {entry.i: entry for entry in _builder().add_tab(tab).to_spec().tabs[0].layout}
@@ -77,9 +77,9 @@ def test_at_accepts_a_list_of_four() -> None:
 
 
 def test_tab_rejects_empty_title_and_empty_tab_id() -> None:
-    with pytest.raises(DatalensValidationError, match="Tab title"):
+    with pytest.raises(DataLensValidationError, match="Tab title"):
         DashboardTab("")
-    with pytest.raises(DatalensValidationError, match="tab id"):
+    with pytest.raises(DataLensValidationError, match="tab id"):
         DashboardTab("Tabbed", tab_id="")
 
 
@@ -97,9 +97,9 @@ def test_item_methods_chain_on_the_same_instance() -> None:
 def test_add_chart_with_string_id_requires_non_empty_title() -> None:
     tab = DashboardTab("One")
 
-    with pytest.raises(DatalensValidationError, match="title is required"):
+    with pytest.raises(DataLensValidationError, match="title is required"):
         tab.add_chart("ch-raw", at=_AT)
-    with pytest.raises(DatalensValidationError, match="title is required"):
+    with pytest.raises(DataLensValidationError, match="title is required"):
         tab.add_chart("ch-raw", title="", at=_AT)
 
     tab.add_chart("ch-raw", title="Raw chart", at=_AT)
@@ -110,9 +110,9 @@ def test_add_chart_with_string_id_requires_non_empty_title() -> None:
 
 
 def test_add_chart_rejects_domain_chart_without_id_or_title() -> None:
-    with pytest.raises(DatalensValidationError, match="without an id"):
+    with pytest.raises(DataLensValidationError, match="without an id"):
         DashboardTab("One").add_chart(_chart(id=None), at=_AT)
-    with pytest.raises(DatalensValidationError, match="has no name"):
+    with pytest.raises(DataLensValidationError, match="has no name"):
         DashboardTab("One").add_chart(_chart(name=None), at=_AT)
 
 
@@ -135,14 +135,14 @@ def test_chart_params_normalization_keeps_strings_whole() -> None:
 
 
 def test_chart_params_reject_non_string_values() -> None:
-    with pytest.raises(DatalensValidationError, match="param 'limit'"):
+    with pytest.raises(DataLensValidationError, match="param 'limit'"):
         DashboardTab("One").add_chart(_chart(), at=_AT, params={"limit": 10})  # type: ignore[dict-item]
 
 
 def test_add_chart_group_default_policy() -> None:
-    with pytest.raises(DatalensValidationError, match="at least one chart"):
+    with pytest.raises(DataLensValidationError, match="at least one chart"):
         DashboardTab("One").add_chart_group([], at=_AT)
-    with pytest.raises(DatalensValidationError, match="exactly one chart marked"):
+    with pytest.raises(DataLensValidationError, match="exactly one chart marked"):
         DashboardTab("One").add_chart_group(
             [
                 DashboardChartTab(chart="ch-1", title="A", default=True),
@@ -174,7 +174,7 @@ def test_add_chart_group_default_policy() -> None:
 
 
 def test_add_chart_group_member_uses_the_shared_chart_resolver() -> None:
-    with pytest.raises(DatalensValidationError, match="title is required"):
+    with pytest.raises(DataLensValidationError, match="title is required"):
         DashboardTab("One").add_chart_group([DashboardChartTab(chart="ch-1")], at=_AT)
 
 
@@ -189,34 +189,34 @@ def test_add_chart_group_member_uses_the_shared_chart_resolver() -> None:
     ],
 )
 def test_empty_hint_and_description_are_rejected(bad_call: Callable[[DashboardTab], object]) -> None:
-    with pytest.raises(DatalensValidationError, match="must not be an empty string"):
+    with pytest.raises(DataLensValidationError, match="must not be an empty string"):
         bad_call(DashboardTab("One"))
 
 
 def test_add_title_rejects_empty_text_and_unknown_size() -> None:
-    with pytest.raises(DatalensValidationError, match="Title text"):
+    with pytest.raises(DataLensValidationError, match="Title text"):
         DashboardTab("One").add_title("", at=_AT)
-    with pytest.raises(DatalensValidationError, match="Unknown title size"):
+    with pytest.raises(DataLensValidationError, match="Unknown title size"):
         DashboardTab("One").add_title("x", at=_AT, size="xxl")  # type: ignore[arg-type]
 
 
 def test_add_text_and_image_reject_empty_payloads() -> None:
-    with pytest.raises(DatalensValidationError, match="Text must not be"):
+    with pytest.raises(DataLensValidationError, match="Text must not be"):
         DashboardTab("One").add_text("", at=_AT)
-    with pytest.raises(DatalensValidationError, match="Image src"):
+    with pytest.raises(DataLensValidationError, match="Image src"):
         DashboardTab("One").add_image(src="", at=_AT)
 
 
 def test_malformed_at_is_rejected() -> None:
-    with pytest.raises(DatalensValidationError, match="at must be"):
+    with pytest.raises(DataLensValidationError, match="at must be"):
         DashboardTab("One").add_text("hello", at=(0, 0, 12))  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("bad", ["", "#12345Z", "#fff", "#12345678aa"])
 def test_color_validation_rejects_bad_values(bad: str) -> None:
-    with pytest.raises(DatalensValidationError):
+    with pytest.raises(DataLensValidationError):
         DashboardTab("One").add_title("x", at=_AT, text_color=bad)
-    with pytest.raises(DatalensValidationError):
+    with pytest.raises(DataLensValidationError):
         ThemedColor(light=bad, dark="#ffffff")
 
 
@@ -241,16 +241,16 @@ def test_color_validation_accepts_hex_and_opaque_tokens(good: str) -> None:
     ],
 )
 def test_border_radius_validation(value: object, match: str) -> None:
-    with pytest.raises(DatalensValidationError, match=match):
+    with pytest.raises(DataLensValidationError, match=match):
         DashboardTab("One").add_text("x", at=_AT, border_radius=value)  # type: ignore[arg-type]
 
 
 def test_duplicate_explicit_item_id_is_rejected_at_call_site() -> None:
     tab = DashboardTab("One").add_text("a", item_id="shared", at=_AT)
 
-    with pytest.raises(DatalensValidationError, match="Duplicate item id 'shared'"):
+    with pytest.raises(DataLensValidationError, match="Duplicate item id 'shared'"):
         tab.add_text("b", item_id="shared", at=(0, 6, 12, 6))
-    with pytest.raises(DatalensValidationError, match="item id must not be an empty string"):
+    with pytest.raises(DataLensValidationError, match="item id must not be an empty string"):
         tab.add_text("b", item_id="", at=(0, 6, 12, 6))
 
 
@@ -264,7 +264,7 @@ def test_failed_add_leaves_tab_pending_unchanged() -> None:
         lambda: tab.add_chart("ch-1", at=_AT),
     )
     for bad_call in bad_calls:
-        with pytest.raises(DatalensValidationError):
+        with pytest.raises(DataLensValidationError):
             bad_call()
 
     items = _attached_tab(tab)
@@ -367,7 +367,7 @@ def test_add_selector_rejects_measure_fields() -> None:
     # a measure has no value dictionary: the UI renders an empty list, so the
     # SDK fails loud instead of shipping a dead selector
     ds = _dataset(result_schema=({"guid": "sales_g1", "title": "sales", "data_type": "integer", "type": "MEASURE"},))
-    with pytest.raises(DatalensValidationError, match="MEASURE"):
+    with pytest.raises(DataLensValidationError, match="MEASURE"):
         DashboardTab("T").add_selector(dataset=ds, field="sales", at=_AT)
 
 
@@ -409,7 +409,7 @@ def test_add_selector_resolves_field_by_guid_and_title_with_suggestions() -> Non
     # part for them (only fieldType == "date" gets date-only edges)
     assert source.field_type == "genericdatetime"
 
-    with pytest.raises(DatalensValidationError, match="Did you mean: category"):
+    with pytest.raises(DataLensValidationError, match="Did you mean: category"):
         DashboardTab("T").add_selector(dataset=_dataset(), field="catgory", at=_AT)
 
 
@@ -421,16 +421,16 @@ def test_add_selector_manual_derives_title_from_param_name() -> None:
 
 
 def test_add_selector_manual_select_requires_options() -> None:
-    with pytest.raises(DatalensValidationError, match="options are required"):
+    with pytest.raises(DataLensValidationError, match="options are required"):
         DashboardTab("T").add_selector(param_name="region", element="select", at=_AT)
 
 
 def test_add_selector_source_xor_is_enforced() -> None:
-    with pytest.raises(DatalensValidationError, match="exactly one selector source"):
+    with pytest.raises(DataLensValidationError, match="exactly one selector source"):
         DashboardTab("T").add_selector(at=_AT)
-    with pytest.raises(DatalensValidationError, match="exactly one selector source"):
+    with pytest.raises(DataLensValidationError, match="exactly one selector source"):
         DashboardTab("T").add_selector(dataset=_dataset(), field="category", param_name="region", at=_AT)
-    with pytest.raises(DatalensValidationError, match="both dataset= and field="):
+    with pytest.raises(DataLensValidationError, match="both dataset= and field="):
         DashboardTab("T").add_selector(dataset=_dataset(), at=_AT)
 
 
@@ -452,13 +452,13 @@ def test_add_selector_source_xor_is_enforced() -> None:
     ],
 )
 def test_add_selector_fail_loud_matrix(kwargs: dict[str, object], match: str) -> None:
-    with pytest.raises(DatalensValidationError, match=match):
+    with pytest.raises(DataLensValidationError, match=match):
         DashboardTab("T").add_selector(**kwargs)  # type: ignore[arg-type]
 
 
 def test_add_selector_failed_call_leaves_tab_unchanged() -> None:
     tab = DashboardTab("T")
-    with pytest.raises(DatalensValidationError):
+    with pytest.raises(DataLensValidationError):
         tab.add_selector(item_id="sel_1", param_name="p", element="select", at=_AT)  # no options
     assert tab._pending_snapshot() == ()
     # the failed call must not have burned the explicit id
@@ -468,21 +468,21 @@ def test_add_selector_failed_call_leaves_tab_unchanged() -> None:
 
 def test_add_selector_duplicate_member_id_fails_early() -> None:
     tab = DashboardTab("T").add_selector(item_id="sel_1", param_name="p", element="input", at=_AT)
-    with pytest.raises(DatalensValidationError, match="Duplicate item id"):
+    with pytest.raises(DataLensValidationError, match="Duplicate item id"):
         tab.add_selector(item_id="sel_1", param_name="q", element="input", at=_AT)
 
 
 def test_add_selector_group_registration_defers_and_requires_assembly() -> None:
     tab = DashboardTab("T").add_selector(param_name="p", element="input", group="filters")
     assert tab._pending_snapshot() == ()  # nothing attached yet
-    with pytest.raises(DatalensValidationError, match="never assembled"):
+    with pytest.raises(DataLensValidationError, match="never assembled"):
         _attached_tab(tab)
 
 
 def test_add_selector_group_rejects_at_and_auto_height() -> None:
-    with pytest.raises(DatalensValidationError, match="at=/size= belong to add_group_selector"):
+    with pytest.raises(DataLensValidationError, match="at=/size= belong to add_group_selector"):
         DashboardTab("T").add_selector(param_name="p", element="input", group="g", at=_AT)
-    with pytest.raises(DatalensValidationError, match="auto_height belongs to add_group_selector"):
+    with pytest.raises(DataLensValidationError, match="auto_height belongs to add_group_selector"):
         DashboardTab("T").add_selector(param_name="p", element="input", group="g", auto_height=True)
 
 
@@ -542,22 +542,22 @@ def test_add_selector_external_explicit_item_id_names_the_item() -> None:
 
 
 def test_add_selector_external_requires_title_for_str_chart() -> None:
-    with pytest.raises(DatalensValidationError, match="title is required"):
+    with pytest.raises(DataLensValidationError, match="title is required"):
         DashboardTab("T").add_selector(chart="ch-ext", at=_AT)
 
 
 def test_add_selector_external_rejects_selector_only_params() -> None:
-    with pytest.raises(DatalensValidationError, match="does not combine with: element, options"):
+    with pytest.raises(DataLensValidationError, match="does not combine with: element, options"):
         DashboardTab("T").add_selector(chart="ch-ext", title="X", at=_AT, element="select", options=["a"])
-    with pytest.raises(DatalensValidationError, match="does not combine with: group"):
+    with pytest.raises(DataLensValidationError, match="does not combine with: group"):
         DashboardTab("T").add_selector(chart="ch-ext", title="X", at=_AT, group="filters")
-    with pytest.raises(DatalensValidationError, match="does not combine with: dataset"):
+    with pytest.raises(DataLensValidationError, match="does not combine with: dataset"):
         DashboardTab("T").add_selector(chart="ch-ext", title="X", at=_AT, dataset=_dataset())
 
 
 def test_add_selector_external_checks_installation_at_attach() -> None:
     tab = DashboardTab("T").add_selector(chart=_chart(id="ch-ext", installation="yateam"), at=_AT)
-    with pytest.raises(DatalensValidationError, match="Cannot place a 'yateam' chart"):
+    with pytest.raises(DataLensValidationError, match="Cannot place a 'yateam' chart"):
         _attached_tab(tab)
 
 
@@ -645,9 +645,9 @@ def test_add_group_selector_assembles_registered_members_in_order() -> None:
 
 def test_add_group_selector_unknown_or_empty_group_fails_loud() -> None:
     tab = DashboardTab("T").add_selector(param_name="alpha", element="input", group="filters")
-    with pytest.raises(DatalensValidationError, match=r"no registered members.*Known groups: filters"):
+    with pytest.raises(DataLensValidationError, match=r"no registered members.*Known groups: filters"):
         tab.add_group_selector(group="other", at=_AT)
-    with pytest.raises(DatalensValidationError, match="must not be an empty string"):
+    with pytest.raises(DataLensValidationError, match="must not be an empty string"):
         tab.add_group_selector(group="", at=_AT)
 
 
@@ -658,13 +658,13 @@ def test_add_group_selector_consumes_the_group() -> None:
         .add_group_selector(group="filters", at=_AT)
     )
     assert tab._unclaimed_group_names() == ()
-    with pytest.raises(DatalensValidationError, match="no registered members"):
+    with pytest.raises(DataLensValidationError, match="no registered members"):
         tab.add_group_selector(group="filters", at=(0, 2, 12, 2))
 
 
 def test_add_group_selector_failed_call_keeps_members_registered() -> None:
     tab = DashboardTab("T").add_selector(param_name="alpha", element="input", group="filters")
-    with pytest.raises(DatalensValidationError, match="at must be"):
+    with pytest.raises(DataLensValidationError, match="at must be"):
         tab.add_group_selector(group="filters", at=(0, 0, 12))  # type: ignore[arg-type]
     assert tab._unclaimed_group_names() == ("filters",)
     tab.add_group_selector(group="filters", at=_AT)
@@ -797,21 +797,21 @@ def test_disconnect_all_builds_the_full_mesh_both_directions() -> None:
 def test_connection_refs_must_be_explicit_ids_of_connectable_items() -> None:
     tab = _wired_tab().add_text("note", item_id="txt", at=(12, 0, 12, 2))
     tab.add_connection(from_item="txt", to_item="sel_cat")
-    with pytest.raises(DatalensValidationError, match="cannot filter or be filtered"):
+    with pytest.raises(DataLensValidationError, match="cannot filter or be filtered"):
         _tab_spec(tab)
 
     dangling = _wired_tab().add_connection(from_item="nope", to_item="sel_cat")
-    with pytest.raises(DatalensValidationError, match="not an explicit item_id"):
+    with pytest.raises(DataLensValidationError, match="not an explicit item_id"):
         _tab_spec(dangling)
 
 
 def test_add_connection_call_time_validations() -> None:
     tab = _wired_tab()
-    with pytest.raises(DatalensValidationError, match="must differ"):
+    with pytest.raises(DataLensValidationError, match="must differ"):
         tab.add_connection(from_item="a", to_item="a")
-    with pytest.raises(DatalensValidationError, match="must not be an empty string"):
+    with pytest.raises(DataLensValidationError, match="must not be an empty string"):
         tab.add_connection(from_item="", to_item="a")
-    with pytest.raises(DatalensValidationError, match="at least two"):
+    with pytest.raises(DataLensValidationError, match="at least two"):
         tab.disconnect_all("only")
 
 
@@ -820,9 +820,9 @@ def test_add_alias_dedup_and_validation() -> None:
     spec = _tab_spec(tab)
     assert spec.aliases == (("guid_a", "guid_b"),)
 
-    with pytest.raises(DatalensValidationError, match="at least two"):
+    with pytest.raises(DataLensValidationError, match="at least two"):
         _wired_tab().add_alias("only")
-    with pytest.raises(DatalensValidationError, match="must be unique"):
+    with pytest.raises(DataLensValidationError, match="must be unique"):
         _wired_tab().add_alias("same", "same")
 
 

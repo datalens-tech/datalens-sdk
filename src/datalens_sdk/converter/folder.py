@@ -9,7 +9,7 @@ from datalens_sdk.domain.entry_location import key_from_location
 from datalens_sdk.domain.folder import Folder
 from datalens_sdk.domain.ports import FolderOperations
 from datalens_sdk.domain.specs.folder import FolderCreateSpec, FolderUpdateSpec
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 
 class FolderWriteDTOProtocol(Protocol):
@@ -71,7 +71,7 @@ class FolderConverter:
         generated = _dto_module(dto_module)
         key = key_from_location(spec.location, name=spec.name)
         if key is None:
-            raise DatalensValidationError("Folder creation requires a path location")
+            raise DataLensValidationError("Folder creation requires a path location")
         return generated.FolderCreateDTO(key=key)
 
     @staticmethod
@@ -104,7 +104,7 @@ class FolderConverter:
         read_dto = generated.FolderReadDTO.model_validate(raw) if isinstance(raw, Mapping) else raw
         name = read_dto.name or name_from_key(read_dto.key)
         if not name:
-            raise DatalensValidationError("Folder response does not contain a name")
+            raise DataLensValidationError("Folder response does not contain a name")
         return Folder(
             id=read_dto.id,
             name=name,

@@ -9,7 +9,7 @@ Skill hard rules demonstrated:
   * Rule 4 (validate, don't just create): the dataset is re-fetched with
     ``client.get.dataset`` before field operations, and ``dashboard.validate()``
     must return an empty tuple before the script reports success.
-  * Rule 9 (report request_id on API failures): every ``DatalensAPIError``
+  * Rule 9 (report request_id on API failures): every ``DataLensAPIError``
     is reported with ``e.context.request_id``.
 
 Required environment variables:
@@ -31,7 +31,7 @@ import sys
 
 from datalens_sdk import (
     DashboardTab,
-    DatalensAPIError,
+    DataLensAPIError,
     DataLensClientEnterprise,
     DataLensClientYC,
     EntryLocation,
@@ -145,7 +145,7 @@ def main() -> None:
             print(f"Dataset id: {dataset.id}")
             print(f"Chart id: {chart.id}")
             print(f"Dashboard id: {dashboard.id}")
-    except DatalensAPIError as e:
+    except DataLensAPIError as e:
         # Hard rule 9: the request id is what DataLens support needs.
         print(
             f"DataLens API error {e.context.status_code} {e.context.code}: "

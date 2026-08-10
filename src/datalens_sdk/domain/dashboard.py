@@ -11,7 +11,7 @@ from datalens_sdk.domain.dashboard_validate import validate_dashboard
 from datalens_sdk.domain.entry_location import EntryLocation, key_from_location, validate_entry_name
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import DashboardOperations
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.artifacts import ArtifactPath, write_dashboard_artifact
 from datalens_sdk.serialization.json_types import JsonValue
 
@@ -388,7 +388,7 @@ class Dashboard:
         concurrent edits made after this fetch are silently overwritten.
         """
         if not self.id:
-            raise DatalensValidationError("Cannot update a dashboard without an id")
+            raise DataLensValidationError("Cannot update a dashboard without an id")
         return DashboardUpdate(dashboard=self, operations=self._operations)
 
     def to_file(
@@ -405,7 +405,7 @@ class Dashboard:
                 resource_id=self.id,
             )
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         return self._operations.export_dashboard_with_dependencies(self, path)
 
     def refresh(self) -> Dashboard:
@@ -415,9 +415,9 @@ class Dashboard:
         never replays it and always returns the API's current revision.
         """
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot refresh a dashboard without an id")
+            raise DataLensValidationError("Cannot refresh a dashboard without an id")
         return self._operations.get_dashboard(self.id, workbook_id=self.workbook_id)
 
     def validate(self) -> tuple[ValidationIssue, ...]:
@@ -440,26 +440,26 @@ class Dashboard:
         publish, use ``.update(...).execute(publish=True)`` instead.
         """
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot publish a dashboard without an id")
+            raise DataLensValidationError("Cannot publish a dashboard without an id")
         effective_rev_id = rev_id if rev_id is not None else self.rev_id
         if not effective_rev_id:
-            raise DatalensValidationError("Cannot publish: no rev_id given and the dashboard carries none")
+            raise DataLensValidationError("Cannot publish: no rev_id given and the dashboard carries none")
         return self._operations.publish_dashboard(self, effective_rev_id, lock_token=lock_token)
 
     def delete(self, lock_token: str | None = None) -> None:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot delete a dashboard without an id")
+            raise DataLensValidationError("Cannot delete a dashboard without an id")
         self._operations.delete_dashboard(self.id, lock_token=lock_token)
 
     def rename(self, name: str) -> Dashboard:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot rename a dashboard without an id")
+            raise DataLensValidationError("Cannot rename a dashboard without an id")
         validate_entry_name(name=name, location=self.location)
         return self._operations.rename_dashboard(self, name)
 
@@ -472,9 +472,9 @@ class Dashboard:
         scope: EntryScope | None = None,
     ) -> Pager[EntryRelation]:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot get relations for a dashboard without an id")
+            raise DataLensValidationError("Cannot get relations for a dashboard without an id")
         return self._operations.get_entry_relations(
             self.id,
             RelationOptions(

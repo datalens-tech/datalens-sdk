@@ -13,7 +13,7 @@ import pytest
 
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 
 def _chart_with_viz(viz_id: str, *, fields: list[dict[str, Any]] | None = None) -> WizardChart:
@@ -88,7 +88,7 @@ def test_update_color_by_dimension_routes_cartesian_color_to_data() -> None:
 
 def test_update_dimension_color_rejected_for_measure_only_viz() -> None:
     chart = _chart_with_viz("flatTable")
-    with pytest.raises(DatalensConfigurationError, match="not applicable"):
+    with pytest.raises(DataLensConfigurationError, match="not applicable"):
         chart.update.color_by_dimension("Region")
 
 
@@ -176,12 +176,12 @@ def test_smart_labels_position_not_applied_without_labels_edit() -> None:
 
 
 def test_labels_applicability_gate_on_metric() -> None:
-    """`.labels([...])` on a viz without allowLabels (metric) -> DatalensConfigurationError."""
+    """`.labels([...])` on a viz without allowLabels (metric) -> DataLensConfigurationError."""
     chart = WizardChart(
         id="metric-chart",
         installation="yacloud",
         wire_type="metric_wizard_node",
         data={"visualization": {"id": "metric", "placeholders": []}},
     )
-    with pytest.raises(DatalensConfigurationError, match="labels"):
+    with pytest.raises(DataLensConfigurationError, match="labels"):
         chart.update.labels(["Amount"])

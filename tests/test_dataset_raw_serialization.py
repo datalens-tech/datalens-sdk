@@ -12,7 +12,7 @@ import pytest
 import datalens_sdk as dl
 from datalens_sdk.domain.dataset import SourcesProxy
 from datalens_sdk.domain.raw_resource import RawDatasetCreate, RawDatasetReplace
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 from datalens_sdk.serialization import artifacts, json_io
 from datalens_sdk.serialization.json_types import normalize_json_object
 
@@ -137,7 +137,7 @@ def test_dataset_get_captures_owned_response_snapshot_before_typed_normalization
     assert artifact == tmp_path / "Source [source-id]"
     assert json.loads((artifact / "dataset.json").read_text(encoding="utf-8")) == expected_snapshot
     assert [request.url.path for request in recorder.requests] == ["/rpc/getDataset"]
-    with pytest.raises(DatalensValidationError, match="already exists"):
+    with pytest.raises(DataLensValidationError, match="already exists"):
         dataset.to_file(tmp_path)
 
 
@@ -177,7 +177,7 @@ def test_dataset_to_file_rejects_short_mutation_response(tmp_path: Path) -> None
         .build()
     )
 
-    with pytest.raises(DatalensValidationError, match=r"client\.get\.dataset"):
+    with pytest.raises(DataLensValidationError, match=r"client\.get\.dataset"):
         dataset.to_file(tmp_path)
 
     assert [request.url.path for request in recorder.requests] == ["/rpc/createDataset"]
@@ -188,7 +188,7 @@ def test_dataset_empty_mapping_does_not_reconstruct_snapshot_from_dto_dump(tmp_p
     dataset = _client(recorder).get.dataset(by_id="source-id")
 
     assert dataset.response_snapshot == {}
-    with pytest.raises(DatalensValidationError, match="complete 'dataset' content"):
+    with pytest.raises(DataLensValidationError, match="complete 'dataset' content"):
         dataset.to_file(tmp_path)
 
 
@@ -423,7 +423,7 @@ def test_raw_dataset_builder_revalidates_forged_snapshot_view_before_http(bounda
                 response_snapshot=forged,
             )
 
-    with pytest.raises(DatalensValidationError, match="source id"):
+    with pytest.raises(DataLensValidationError, match="source id"):
         construct_with_forged_snapshot()
 
     assert recorder.requests == []
@@ -593,7 +593,7 @@ def test_raw_dataset_replace_rejects_target_installation_mismatch_before_http() 
     recorder = RecordedTransport({})
     client = _client(recorder)
 
-    with pytest.raises(DatalensValidationError, match=r"'enterprise'.*'yacloud'"):
+    with pytest.raises(DataLensValidationError, match=r"'enterprise'.*'yacloud'"):
         client.raw.replace.dataset(
             target=dl.Dataset(id="target-id", installation="enterprise"),
             response_snapshot=cast(Mapping[str, dl.JsonValue], _snapshot()),
@@ -655,7 +655,7 @@ def test_raw_dataset_rejects_incomplete_snapshot_before_builder_or_http(tmp_path
     recorder = RecordedTransport({})
     client = _client(recorder)
 
-    with pytest.raises(DatalensValidationError, match="complete 'dataset' content"):
+    with pytest.raises(DataLensValidationError, match="complete 'dataset' content"):
         client.raw.create.dataset(
             response_snapshot={"id": "source-id"},
             name="Clone",
@@ -664,7 +664,7 @@ def test_raw_dataset_rejects_incomplete_snapshot_before_builder_or_http(tmp_path
 
     assert recorder.requests == []
 
-    with pytest.raises(DatalensValidationError, match="source id"):
+    with pytest.raises(DataLensValidationError, match="source id"):
         client.raw.create.dataset(
             response_snapshot={"dataset": {}},
             name="Clone",
@@ -676,7 +676,7 @@ def test_raw_dataset_rejects_incomplete_snapshot_before_builder_or_http(tmp_path
     artifact = tmp_path / "Incomplete [source-id]"
     artifact.mkdir()
     (artifact / "dataset.json").write_text('{"id": "source-id"}', encoding="utf-8")
-    with pytest.raises(DatalensValidationError, match="complete 'dataset' content"):
+    with pytest.raises(DataLensValidationError, match="complete 'dataset' content"):
         client.raw.create.dataset.from_file(
             artifact,
             name="Clone",

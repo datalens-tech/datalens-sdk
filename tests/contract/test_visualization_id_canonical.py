@@ -24,7 +24,7 @@ from datalens_sdk._runtime.method_specs import METHOD_SPECS
 from datalens_sdk._runtime.viz_specs import VIZ_SPECS
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 # Representative method_specs scoped to a viz_ids set, one per viz where
 # possible. Used to exercise the update applicability guard with the wire-id
@@ -95,7 +95,7 @@ def test_update_applicability_resolves_for_every_wire_viz(visualization_id: str)
     """Finding 1 regression: no spec-key/wire-id mismatch in the applicability guard.
 
     For each wizard wire-id, exercising the universal helper methods must not
-    raise ``DatalensConfigurationError``. Universal helpers carry no ``viz_ids``
+    raise ``DataLensConfigurationError``. Universal helpers carry no ``viz_ids``
     restriction, so they are applicable to every viz — if the property read
     failed or the lookup used a stale spec-key, this would raise.
     """
@@ -138,7 +138,7 @@ def test_update_applicability_guard_rejects_inapplicable_scoped_helper(visualiza
     if excluded is None:
         pytest.skip(f"{visualization_id}: no viz-scoped helper to exclude")
     chart = _wizard_chart_with_visualization(visualization_id)
-    with pytest.raises(DatalensConfigurationError):
+    with pytest.raises(DataLensConfigurationError):
         chart.update._check_viz_applicability(excluded)
 
 

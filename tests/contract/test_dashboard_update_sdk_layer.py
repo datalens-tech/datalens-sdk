@@ -242,7 +242,7 @@ def test_publish_without_any_rev_id_fails_loud() -> None:
     recorder = _RecordedTransport({"/rpc/getDashboard": httpx.Response(200, json={"entry": entry})})
     dashboard = _client(recorder).get.dashboard(by_id=cast(str, entry["entryId"]))
     assert dashboard.rev_id is None
-    with pytest.raises(dl.DatalensValidationError, match="no rev_id given"):
+    with pytest.raises(dl.DataLensValidationError, match="no rev_id given"):
         dashboard.publish_revision()
     assert recorder.paths() == ["/rpc/getDashboard"]  # nothing was posted
 
@@ -255,7 +255,7 @@ def test_unbound_update_and_publish_raise_configuration_error() -> None:
         data=cast("dict[str, object]", entry["data"]),
         raw=entry,
     )
-    with pytest.raises(dl.DatalensConfigurationError):
+    with pytest.raises(dl.DataLensConfigurationError):
         dashboard.update.execute(publish=False)
-    with pytest.raises(dl.DatalensConfigurationError):
+    with pytest.raises(dl.DataLensConfigurationError):
         dashboard.publish_revision(rev_id="rev-1")

@@ -24,7 +24,7 @@ from datalens_sdk.converter.wizard._common import (
 )
 from datalens_sdk.converter.wizard._normalizer import _Normalizer
 from datalens_sdk.domain.chart_types import ShapeStyle
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 # Wizard encoding config is stateful on read/update.  These keys are the
 # complete ownership boundary for the semantic Color modes: a new encoding
@@ -95,7 +95,7 @@ def _validate_palette_color_items(palette_id: str, color_items: list[dict[str, o
     """Reject a palette whose kind does not match the Color field type."""
     actual_types = frozenset(item_type for item in color_items if isinstance(item_type := item.get("type"), str))
     if not actual_types:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             f"palette(id={palette_id!r}) requires a field in Color before build() or execute()."
         )
     if palette_id in VALID_DISCRETE_PALETTES:
@@ -106,7 +106,7 @@ def _validate_palette_color_items(palette_id: str, color_items: list[dict[str, o
         expected = "a MEASURE"
     if not actual_types <= allowed_types:
         got = ", ".join(sorted(actual_types))
-        raise DatalensConfigurationError(f"palette(id={palette_id!r}) requires {expected} in Color; got {got}.")
+        raise DataLensConfigurationError(f"palette(id={palette_id!r}) requires {expected} in Color; got {got}.")
 
 
 def _placeholder_by_id(data: dict[str, object], placeholder_id: str) -> dict[str, object] | None:
@@ -128,13 +128,13 @@ def _write_encoding_items(
         data[data_key] = [dict(item) for item in items]
         return
     if target != "placeholder":
-        raise DatalensConfigurationError(f"Unsupported Wizard encoding target {target!r}.")
+        raise DataLensConfigurationError(f"Unsupported Wizard encoding target {target!r}.")
     placeholder_id = rule.get("placeholder")
     if not isinstance(placeholder_id, str):
-        raise DatalensConfigurationError("Wizard placeholder encoding is missing its placeholder id.")
+        raise DataLensConfigurationError("Wizard placeholder encoding is missing its placeholder id.")
     placeholder = _placeholder_by_id(data, placeholder_id)
     if placeholder is None:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             f"Wizard visualization is missing the declared {placeholder_id!r} placeholder."
         )
     placeholder["items"] = [dict(item) for item in items]
@@ -145,7 +145,7 @@ def _write_encoding_items(
 def _validate_field_type(item: Mapping[str, object], *, method_name: str, expected_type: str) -> None:
     actual_type = item.get("type")
     if actual_type != expected_type:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             f"{method_name}() requires a {expected_type} field; got {actual_type or 'UNKNOWN'}."
         )
 
@@ -163,7 +163,7 @@ def _validate_required_membership(
     placeholder = _placeholder_by_id(data, placeholder_id)
     if placeholder is not None and any(_item_matches_ref(item, field) for item in _items_list(placeholder)):
         return
-    raise DatalensConfigurationError(
+    raise DataLensConfigurationError(
         f"{method_name}() requires the field to already be placed in the {placeholder_id!r} section."
     )
 
@@ -215,13 +215,13 @@ def _apply_color_field(
     normalizer: _Normalizer,
 ) -> None:
     if encoding.field is None:
-        raise DatalensConfigurationError(f"color_by_{encoding.kind}() requires a field.")
+        raise DataLensConfigurationError(f"color_by_{encoding.kind}() requires a field.")
     rule = get_wizard_encoding(visualization_id, "color", encoding.kind)
     if rule is None:
-        raise DatalensConfigurationError(f"color_by_{encoding.kind}() is not applicable to viz {visualization_id!r}.")
+        raise DataLensConfigurationError(f"color_by_{encoding.kind}() is not applicable to viz {visualization_id!r}.")
     normalized = normalizer.normalize([encoding.field])
     if not normalized:
-        raise DatalensConfigurationError(f"color_by_{encoding.kind}() could not resolve its field.")
+        raise DataLensConfigurationError(f"color_by_{encoding.kind}() could not resolve its field.")
     item = normalized[0]
     expected_type = "DIMENSION" if encoding.kind == "dimension" else "MEASURE"
     method_name = f"color_by_{encoding.kind}"
@@ -267,11 +267,11 @@ def _measure_items(
 ) -> list[dict[str, object]]:
     measure_placeholders = rule.get("measure_placeholders")
     if not measure_placeholders:
-        raise DatalensConfigurationError(f"{method_name}() has no measure placeholders configured.")
+        raise DataLensConfigurationError(f"{method_name}() has no measure placeholders configured.")
     measures = _collect_measures(data, list(measure_placeholders))
     if len(measures) < 2:
         joined = ", ".join(f".{placeholder}()" for placeholder in measure_placeholders)
-        raise DatalensConfigurationError(f"{method_name}() requires at least two measures across {joined}.")
+        raise DataLensConfigurationError(f"{method_name}() requires at least two measures across {joined}.")
     return measures
 
 
@@ -281,12 +281,12 @@ def _append_measure_names_to_category(data: dict[str, object], rule: WizardEncod
         return
     placeholder = _placeholder_by_id(data, category_placeholder)
     if placeholder is None:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             f"Wizard visualization is missing the declared {category_placeholder!r} category placeholder."
         )
     items = placeholder.setdefault("items", [])
     if not isinstance(items, list):
-        raise DatalensConfigurationError(f"Placeholder {category_placeholder!r} has invalid items.")
+        raise DataLensConfigurationError(f"Placeholder {category_placeholder!r} has invalid items.")
     if not any(isinstance(item, dict) and item.get("type") == "PSEUDO" for item in items):
         items.append(build_pseudo_measure_names_for_placeholder())
 
@@ -299,7 +299,7 @@ def _apply_color_by_measure_name(
 ) -> None:
     rule = get_wizard_encoding(visualization_id, "color", "measure_name")
     if rule is None:
-        raise DatalensConfigurationError(f"color_by_measure_name() is not applicable to viz {visualization_id!r}.")
+        raise DataLensConfigurationError(f"color_by_measure_name() is not applicable to viz {visualization_id!r}.")
     measures = _measure_items(data, rule=rule, method_name="color_by_measure_name")
     mounted_colors: dict[str, str] = {
         title: str(index)
@@ -308,13 +308,13 @@ def _apply_color_by_measure_name(
     }
     for field_ref, color in encoding.colors_map.items():
         if re.fullmatch(r"#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?", color) is None and not color.isdigit():
-            raise DatalensConfigurationError(
+            raise DataLensConfigurationError(
                 "color_by_measure_name(colors_map=...): colors must be #RRGGBB or #RRGGBBAA values "
                 "or non-negative palette indexes."
             )
         matched_measure = next((item for item in measures if _item_matches_ref(item, field_ref)), None)
         if matched_measure is None:
-            raise DatalensConfigurationError(
+            raise DataLensConfigurationError(
                 f"color_by_measure_name(colors_map=...): field {field_ref!r} is not placed as a measure."
             )
         title = matched_measure.get("title")
@@ -398,12 +398,12 @@ def _apply_shape_encoding(
     if shape_encoding.kind == "dimension":
         rule = get_wizard_encoding(visualization_id, "shape", "dimension")
         if rule is None:
-            raise DatalensConfigurationError(f"shape_by_dimension() is not applicable to viz {visualization_id!r}.")
+            raise DataLensConfigurationError(f"shape_by_dimension() is not applicable to viz {visualization_id!r}.")
         if shape_encoding.field is None:
-            raise DatalensConfigurationError("shape_by_dimension() requires a field.")
+            raise DataLensConfigurationError("shape_by_dimension() requires a field.")
         normalized = normalizer.normalize([shape_encoding.field])
         if not normalized:
-            raise DatalensConfigurationError("shape_by_dimension() could not resolve its field.")
+            raise DataLensConfigurationError("shape_by_dimension() could not resolve its field.")
         item = normalized[0]
         _validate_field_type(item, method_name="shape_by_dimension", expected_type="DIMENSION")
         _write_encoding_items(data, data_key="shapes", rule=rule, items=[item])
@@ -417,14 +417,14 @@ def _apply_shape_encoding(
 
     rule = get_wizard_encoding(visualization_id, "shape", "measure_name")
     if rule is None:
-        raise DatalensConfigurationError(f"shape_by_measure_name() is not applicable to viz {visualization_id!r}.")
+        raise DataLensConfigurationError(f"shape_by_measure_name() is not applicable to viz {visualization_id!r}.")
     measures = _measure_items(data, rule=rule, method_name="shape_by_measure_name")
     mounted_shapes: dict[str, ShapeStyle] = {}
     if shape_encoding.shapes_map is not None:
         for field_ref, shape in shape_encoding.shapes_map.items():
             matched_measure = next((item for item in measures if _item_matches_ref(item, field_ref)), None)
             if matched_measure is None:
-                raise DatalensConfigurationError(
+                raise DataLensConfigurationError(
                     f"shape_by_measure_name(shapes_map=...): field {field_ref!r} is not placed as a measure."
                 )
             title = matched_measure.get("title")

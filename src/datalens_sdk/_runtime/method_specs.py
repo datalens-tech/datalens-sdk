@@ -7,7 +7,7 @@ from datalens_sdk._runtime.viz_specs import (
     viz_ids_for_wizard_encoding,
     viz_ids_with_color_encoding,
 )
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 MethodKind = Literal["placeholder", "data_field", "extra_setting", "ph_setting", "helper"]
 
@@ -344,7 +344,7 @@ def validate_method_applicability(method_name: str, visualization_id: str) -> No
     spec = METHOD_SPECS.get(method_name)
     viz_ids = spec.get("viz_ids") if spec is not None else None
     if visualization_id and viz_ids and visualization_id not in viz_ids:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             f"Method {method_name!r} is not applicable to viz {visualization_id!r}. Applicable vizs: {sorted(viz_ids)}"
         )
 

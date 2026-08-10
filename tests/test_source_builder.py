@@ -298,5 +298,5 @@ def test_source_create_build_without_operations_raises_configuration_error() -> 
     )
     unbound = SourceCreate(source=source, operations=None)
 
-    with pytest.raises(dl.DatalensConfigurationError):
+    with pytest.raises(dl.DataLensConfigurationError):
         unbound.build()

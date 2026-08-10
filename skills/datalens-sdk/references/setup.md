@@ -135,14 +135,14 @@ client = DataLensClientYC(
 the full configured timeout budget. A timeout terminates that CLI process. If a
 cached token is still valid after the command stops, the provider emits a
 `RuntimeWarning` and sends the DataLens request with that token. Otherwise it
-raises `DatalensConfigurationError` before a DataLens request is sent. Do not
+raises `DataLensConfigurationError` before a DataLens request is sent. Do not
 launch a duplicate SDK process: ensure the retry has the required network or
 sandbox access, then retry once. Increase
 `command_timeout_seconds` only when the environment is known to be slow.
 
 ### Enterprise
 
-`base_url=` is mandatory — the client raises `DatalensConfigurationError` without it. The default is no auth headers; add a provider only when the deployment requires one:
+`base_url=` is mandatory — the client raises `DataLensConfigurationError` without it. The default is no auth headers; add a provider only when the deployment requires one:
 
 ```python
 import os
@@ -175,7 +175,7 @@ All providers are keyword-only and expose `get_headers()`; pass an instance as `
 |---|---|---|---|
 | `NoAuthProvider` | — | nothing | also selected by `auth=None` |
 | `AuthorizationTokenAuthProvider` | `token=`, `token_type=` | `Authorization: <type> <token>` | generic scheme |
-| `OAuthAuthProvider` | `token=None` | `Authorization: OAuth ...` | falls back to `DATALENS_API_TOKEN`; raises `DatalensConfigurationError` if neither |
+| `OAuthAuthProvider` | `token=None` | `Authorization: OAuth ...` | falls back to `DATALENS_API_TOKEN`; raises `DataLensConfigurationError` if neither |
 | `StaticYCIAMAuthProvider` | `org_id=`, `token=` | `Authorization: Bearer ...` + `x-dl-org-id` | no refresh |
 | `YCIAMAuthProvider` | `org_id=None`, `profile=None`, `command_timeout_seconds=30.0` | Bearer + org id | uses the `yc` CLI; caches and auto-refreshes with a 60 s expiry margin |
 | `YCServiceAccountCredentialsAuthProvider` | `org_id=`, `key_id=`, `service_account_id=`, `private_key=` | Bearer + org id | JWT → IAM exchange, auto-refreshes |

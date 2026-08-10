@@ -13,7 +13,7 @@ from datalens_sdk import DashboardChartTab, DashboardTab, Position
 from datalens_sdk.converter.dashboard_apply import _apply_update
 from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.specs.dashboard import AddItemsOp, GroupControlItem, WidgetItem
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 _FIXTURES_DIR = Path(__file__).parent / "fixtures" / "dashboards"
 
@@ -129,9 +129,9 @@ def test_add_items_into_tab_with_global_items_passes_validation() -> None:
 
 def test_explicit_item_id_collision_with_existing_raw_id_fails_at_call() -> None:
     update = _seeded_dashboard().update
-    with pytest.raises(DatalensValidationError, match="Duplicate item id 'el_1'"):
+    with pytest.raises(DataLensValidationError, match="Duplicate item id 'el_1'"):
         update.add_text("x", tab="tab_1", at=(0, 10, 8, 4), item_id="el_1")
-    with pytest.raises(DatalensValidationError, match="Duplicate tab id"):
+    with pytest.raises(DataLensValidationError, match="Duplicate tab id"):
         update.add_tab(DashboardTab("T", tab_id="tab_1"))
     assert update.ops == ()
 
@@ -168,7 +168,7 @@ def test_add_chart_group_and_seeded_widget_tab_ids() -> None:
 def test_grid_overflow_of_staged_items_fails_fast() -> None:
     update = _seeded_dashboard().update
     # Position validates at the add_* call site (fail-fast), before apply.
-    with pytest.raises(DatalensValidationError, match="must be <= 36"):
+    with pytest.raises(DataLensValidationError, match="must be <= 36"):
         update.add_text("wide", tab="tab_1", at=(30, 0, 12, 4))  # 30 + 12 > 36
 
 
@@ -272,7 +272,7 @@ def test_update_add_selector_lands_as_singleton_group_control() -> None:
 def test_update_group_registration_requires_assembly_before_spec() -> None:
     builder = _seeded_dashboard().update
     builder.add_selector(group="filters", param_name="region", element="input")
-    with pytest.raises(DatalensValidationError, match="never assembled"):
+    with pytest.raises(DataLensValidationError, match="never assembled"):
         builder.to_spec()
     builder.add_group_selector(group="filters", tab="tab_1", at=(0, 4, 24, 2))
     data = _apply_update(builder.to_spec())
@@ -312,9 +312,9 @@ def test_update_absorb_standalone_controls_into_a_group() -> None:
 
 def test_update_absorb_prechecks() -> None:
     builder = _fixture_dashboard("selectors_dataset").update
-    with pytest.raises(DatalensValidationError, match="Unknown item id"):
+    with pytest.raises(DataLensValidationError, match="Unknown item id"):
         builder.add_group_selector(tab=_first_tab_id("selectors_dataset"), at=(0, 0, 12, 2), include=("nope",))
-    with pytest.raises(DatalensValidationError, match="needs group= members and/or include"):
+    with pytest.raises(DataLensValidationError, match="needs group= members and/or include"):
         builder.add_group_selector(tab=_first_tab_id("selectors_dataset"), at=(0, 0, 12, 2))
 
 
@@ -573,7 +573,7 @@ def test_update_add_item_overlapping_existing_fails_loud() -> None:
     # the create-side overlap rejection (previously shipped silently)
     builder = _seeded_dashboard().update
     builder.add_text("on top", tab="tab_1", at=(0, 0, 12, 6))
-    with pytest.raises(DatalensValidationError, match="overlap"):
+    with pytest.raises(DataLensValidationError, match="overlap"):
         _apply_update(builder.to_spec())
 
 
@@ -583,7 +583,7 @@ def test_update_add_tab_with_overlapping_items_fails_loud() -> None:
     tab.add_text("b", at=(0, 0, 12, 6))  # identical rectangle
     builder = _seeded_dashboard().update
     builder.add_tab(tab)
-    with pytest.raises(DatalensValidationError, match="overlap"):
+    with pytest.raises(DataLensValidationError, match="overlap"):
         _apply_update(builder.to_spec())
 
 
@@ -628,7 +628,7 @@ def test_update_group_include_validates_member_affects_unknown_tab() -> None:
     builder = dashboard.update
     builder.add_selector(group="g", item_id="m_bad", param_name="p", element="input", affects=("ghost",))
     builder.add_group_selector(group="g", tab=tab_id, item_id="grp", at=None, include=(control_id,))
-    with pytest.raises(DatalensValidationError, match="unknown tab ids"):
+    with pytest.raises(DataLensValidationError, match="unknown tab ids"):
         _apply_update(builder.to_spec())
 
 
@@ -643,7 +643,7 @@ def test_update_group_member_affects_unknown_tab_fails_loud() -> None:
     builder.add_selector(group="flt", item_id="m_bad", param_name="region", element="input", affects=("ghost",))
     builder.add_selector(group="flt", item_id="m_ok", param_name="cat", element="input")
     builder.add_group_selector(group="flt", tab=home, at=(0, 50, 36, 2), show_on_tabs="all")
-    with pytest.raises(DatalensValidationError, match="unknown tab ids"):
+    with pytest.raises(DataLensValidationError, match="unknown tab ids"):
         _apply_update(builder.to_spec())
 
 
@@ -707,13 +707,13 @@ def test_update_group_with_explicit_member_ids_assembles_and_wires() -> None:
 def test_update_duplicate_pending_member_id_fails_at_call() -> None:
     builder = _seeded_dashboard().update
     builder.add_selector(group="g", item_id="sel_a", param_name="p1", element="input")
-    with pytest.raises(DatalensValidationError, match="Duplicate item id"):
+    with pytest.raises(DataLensValidationError, match="Duplicate item id"):
         builder.add_selector(group="h", item_id="sel_a", param_name="p2", element="input")
 
 
 def test_update_add_selector_rejects_tab_with_group() -> None:
     builder = _seeded_dashboard().update
-    with pytest.raises(DatalensValidationError, match="tab= belongs to add_group_selector"):
+    with pytest.raises(DataLensValidationError, match="tab= belongs to add_group_selector"):
         builder.add_selector(tab="tab_1", group="g", param_name="p", element="input")
 
 
@@ -723,13 +723,13 @@ def test_update_include_only_group_validates_placement_and_border_radius() -> No
     tab_id = cast(str, tab_raw["id"])
     control_id = next(cast(str, it["id"]) for it in _as_dicts(tab_raw["items"]) if it.get("type") == "control")
 
-    with pytest.raises(DatalensValidationError, match="at must be"):
+    with pytest.raises(DataLensValidationError, match="at must be"):
         _dashboard_from(entry).update.add_group_selector(
             tab=tab_id,
             at=cast("tuple[int, int, int, int]", (0, 0, 12)),
             include=(control_id,),
         )
-    with pytest.raises(DatalensValidationError, match="border_radius"):
+    with pytest.raises(DataLensValidationError, match="border_radius"):
         _dashboard_from(entry).update.add_group_selector(
             tab=tab_id, at=(0, 0, 12, 2), include=(control_id,), border_radius=3
         )
@@ -934,7 +934,7 @@ def test_add_tab_does_not_register_phantom_occurrence_for_member_all_tabs() -> N
     ]
     builder = _synthetic(tabs, counter=3).update
     builder.add_tab(DashboardTab("New", tab_id="tab_new"))
-    with pytest.raises(DatalensValidationError, match="not on tab"):
+    with pytest.raises(DataLensValidationError, match="not on tab"):
         builder.apply_layout({"flt": Position(0, 10, 36, 2)}, tab="tab_new")
 
 
@@ -1047,7 +1047,7 @@ def test_remove_tab_keeps_display_pin_pinned() -> None:
     builder = _synthetic(tabs, counter=3).update
     builder.remove_tab("tab_2")
     builder.add_tab(DashboardTab("New", tab_id="tab_new"))
-    with pytest.raises(DatalensValidationError, match="not on tab"):
+    with pytest.raises(DataLensValidationError, match="not on tab"):
         builder.apply_layout({"flt": Position(0, 10, 36, 2)}, tab="tab_new")
 
 

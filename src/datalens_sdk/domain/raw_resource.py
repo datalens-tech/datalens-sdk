@@ -10,7 +10,7 @@ from datalens_sdk.domain.entry_location import EntryLocation, resolve_entry_loca
 from datalens_sdk.domain.entry_types import EntryUpdateMode
 from datalens_sdk.domain.ports import ChartOperations, ConnectionOperations, DatasetOperations
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.artifacts import (
     ChartSnapshotView,
     DatasetSnapshotView,
@@ -33,7 +33,7 @@ def _validate_target_installation(
     client_installation: str,
 ) -> None:
     if target_installation and target_installation != client_installation:
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"Cannot replace a {target_installation!r} {resource} through a {client_installation!r} client"
         )
 
@@ -43,7 +43,7 @@ _OperationsT = TypeVar("_OperationsT")
 
 def _require_operations(operations: _OperationsT | None) -> _OperationsT:
     if operations is None:
-        raise DatalensConfigurationError("Object is not bound to client operations. Use a client namespace.")
+        raise DataLensConfigurationError("Object is not bound to client operations. Use a client namespace.")
     return operations
 
 
@@ -92,12 +92,12 @@ class RawConnectionReplace:
             client_installation=installation,
         )
         if not target.id:
-            raise DatalensValidationError("Cannot replace a connection without an id")
+            raise DataLensValidationError("Cannot replace a connection without an id")
         if not target.type:
-            raise DatalensValidationError("Cannot replace a connection without a connector type")
+            raise DataLensValidationError("Cannot replace a connection without a connector type")
         source = ConnectionSnapshotView.capture(response_snapshot)
         if source.connector != target.type:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Connection connector type mismatch: source is {source.connector!r}, target is {target.type!r}"
             )
         self._spec = RawReplaceSpec(
@@ -156,7 +156,7 @@ class RawDatasetReplace:
             client_installation=installation,
         )
         if not target.id:
-            raise DatalensValidationError("Cannot replace a dataset without an id")
+            raise DataLensValidationError("Cannot replace a dataset without an id")
         self._spec = RawReplaceSpec(
             response_snapshot=DatasetSnapshotView.capture(response_snapshot),
             target_id=target.id,
@@ -272,9 +272,9 @@ class _RawChartReplace:
         operations: ChartOperations | None,
     ) -> None:
         if not target_id:
-            raise DatalensValidationError(f"Cannot replace a {target_category} chart without an id")
+            raise DataLensValidationError(f"Cannot replace a {target_category} chart without an id")
         if not target_wire_type:
-            raise DatalensValidationError(f"Cannot replace a {target_category} chart without a wire type")
+            raise DataLensValidationError(f"Cannot replace a {target_category} chart without a wire type")
         self._spec = RawReplaceSpec(
             response_snapshot=source,
             target_id=target_id,
@@ -287,7 +287,7 @@ class _RawChartReplace:
 
     def mode(self, value: EntryUpdateMode) -> Self:
         if value not in get_args(EntryUpdateMode):
-            raise DatalensValidationError(f"mode must be one of {get_args(EntryUpdateMode)}, got {value!r}")
+            raise DataLensValidationError(f"mode must be one of {get_args(EntryUpdateMode)}, got {value!r}")
         self._mode = value
         return self
 
@@ -385,10 +385,10 @@ def _init_raw_chart_replace(
         client_installation=installation,
     )
     if target.category != category:
-        raise DatalensValidationError(f"Chart category mismatch: expected {category!r}, target is {target.category!r}")
+        raise DataLensValidationError(f"Chart category mismatch: expected {category!r}, target is {target.category!r}")
     source = ChartSnapshotView.capture(response_snapshot, expected_category=category)
     if target.wire_type and source.wire_type != target.wire_type:
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"{category.capitalize()} chart wire type mismatch: "
             f"source is {source.wire_type!r}, target is {target.wire_type!r}"
         )

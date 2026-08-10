@@ -14,7 +14,7 @@ import pytest
 from datalens_sdk import (
     DataLensClientEnterprise,
     DataLensClientYC,
-    DatalensConfigurationError,
+    DataLensConfigurationError,
     EntryLocation,
     NoAuthProvider,
     NotSupportedError,
@@ -46,7 +46,7 @@ def test_oauth_provider_reads_default_token_from_environment(monkeypatch: pytest
 def test_oauth_provider_requires_explicit_or_environment_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("DATALENS_API_TOKEN", raising=False)
 
-    with pytest.raises(DatalensConfigurationError, match="DATALENS_API_TOKEN"):
+    with pytest.raises(DataLensConfigurationError, match="DATALENS_API_TOKEN"):
         OAuthAuthProvider()
 
 
@@ -211,7 +211,7 @@ def test_yc_iam_provider_passes_custom_command_timeout(monkeypatch: pytest.Monke
 
 @pytest.mark.parametrize("timeout", [0.0, -1.0, float("inf"), float("-inf"), float("nan")])
 def test_yc_iam_provider_rejects_invalid_command_timeout(timeout: float) -> None:
-    with pytest.raises(DatalensConfigurationError, match="finite positive"):
+    with pytest.raises(DataLensConfigurationError, match="finite positive"):
         YCIAMAuthProvider(org_id="org-1", command_timeout_seconds=timeout)
 
 
@@ -225,7 +225,7 @@ def test_yc_iam_provider_reports_org_discovery_timeout_without_command_output(
 
     monkeypatch.setattr("datalens_sdk.auth.subprocess.run", fake_run)
 
-    with pytest.raises(DatalensConfigurationError, match="yc config get organization-id timed out") as error:
+    with pytest.raises(DataLensConfigurationError, match="yc config get organization-id timed out") as error:
         YCIAMAuthProvider(command_timeout_seconds=4.5)
 
     assert secret not in str(error.value)
@@ -239,7 +239,7 @@ def test_yc_iam_provider_reports_token_timeout_without_command_output(monkeypatc
 
     monkeypatch.setattr("datalens_sdk.auth.subprocess.run", fake_run)
 
-    with pytest.raises(DatalensConfigurationError, match="yc iam create-token timed out") as error:
+    with pytest.raises(DataLensConfigurationError, match="yc iam create-token timed out") as error:
         YCIAMAuthProvider(org_id="org-1", command_timeout_seconds=6.0).get_headers()
 
     assert secret not in str(error.value)
@@ -251,7 +251,7 @@ def test_yc_iam_provider_requires_org_id_in_profile(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr("datalens_sdk.auth.subprocess.run", fake_run)
 
-    with pytest.raises(DatalensConfigurationError, match=r"yc config set organization-id <org-id>"):
+    with pytest.raises(DataLensConfigurationError, match=r"yc config set organization-id <org-id>"):
         YCIAMAuthProvider()
 
 
@@ -333,7 +333,7 @@ def test_yc_iam_provider_uses_unexpired_cache_when_refresh_fails(monkeypatch: py
     with pytest.warns(RuntimeWarning, match="cached token"):
         assert provider.get_headers()["Authorization"] == "Bearer cached"
     now[0] = 1121
-    with pytest.raises(DatalensConfigurationError, match="temporary failure"):
+    with pytest.raises(DataLensConfigurationError, match="temporary failure"):
         provider.get_headers()
 
 
@@ -389,7 +389,7 @@ def test_yc_iam_provider_does_not_use_cache_that_expires_during_timeout(
 
     assert provider.get_headers()["Authorization"] == "Bearer expired"
     now[0] = 1061.0
-    with pytest.raises(DatalensConfigurationError, match="yc iam create-token timed out"):
+    with pytest.raises(DataLensConfigurationError, match="yc iam create-token timed out"):
         provider.get_headers()
 
 
@@ -399,7 +399,7 @@ def test_yc_iam_provider_reports_missing_cli(monkeypatch: pytest.MonkeyPatch) ->
 
     monkeypatch.setattr("datalens_sdk.auth.subprocess.run", fake_run)
 
-    with pytest.raises(DatalensConfigurationError, match="yc CLI was not found"):
+    with pytest.raises(DataLensConfigurationError, match="yc CLI was not found"):
         YCIAMAuthProvider(org_id="org-1").get_headers()
 
 
@@ -421,7 +421,7 @@ def test_yc_iam_provider_rejects_invalid_cli_output(
 
     monkeypatch.setattr("datalens_sdk.auth.subprocess.run", fake_run)
 
-    with pytest.raises(DatalensConfigurationError, match=message):
+    with pytest.raises(DataLensConfigurationError, match=message):
         YCIAMAuthProvider(org_id="org-1").get_headers()
 
 
@@ -587,7 +587,7 @@ def test_explicit_none_disables_yacloud_default_auth() -> None:
 
 
 def test_enterprise_client_requires_base_url() -> None:
-    with pytest.raises(DatalensConfigurationError, match="DataLensClientEnterprise requires base_url"):
+    with pytest.raises(DataLensConfigurationError, match="DataLensClientEnterprise requires base_url"):
         DataLensClientEnterprise(auth=None)
 
 

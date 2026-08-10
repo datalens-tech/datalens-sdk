@@ -35,7 +35,7 @@ from datalens_sdk.domain.specs.dashboard import (
     TabSpec,
     WidgetItem,
 )
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.dashboard import Dashboard
@@ -88,10 +88,10 @@ class _DashboardIdAllocator:
 
     def claim(self, namespace: str, value: str) -> str:
         if not value:
-            raise DatalensValidationError(f"{namespace} id must not be an empty string")
+            raise DataLensValidationError(f"{namespace} id must not be an empty string")
         used = self._used[namespace]
         if value in used:
-            raise DatalensValidationError(f"Duplicate {namespace} id {value!r}")
+            raise DataLensValidationError(f"Duplicate {namespace} id {value!r}")
         used.add(value)
         return value
 
@@ -163,7 +163,7 @@ def _snapshot_items(
     """
     unclaimed_groups = tab._unclaimed_group_names()
     if unclaimed_groups:
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"Selector groups {list(unclaimed_groups)!r} were registered via add_selector(group=...) "
             "but never assembled with add_group_selector"
         )
@@ -171,13 +171,13 @@ def _snapshot_items(
     # phase A — validate without touching allocator state
     for entry in pending:
         if entry.explicit_id is not None and allocator.is_used(_ITEM_NAMESPACE, entry.explicit_id):
-            raise DatalensValidationError(f"Duplicate item id {entry.explicit_id!r}")
+            raise DataLensValidationError(f"Duplicate item id {entry.explicit_id!r}")
         for member_id in _explicit_member_ids(entry):
             if allocator.is_used(_ITEM_NAMESPACE, member_id):
-                raise DatalensValidationError(f"Duplicate item id {member_id!r}")
+                raise DataLensValidationError(f"Duplicate item id {member_id!r}")
         for chart_installation in entry.chart_installations:
             if chart_installation and chart_installation != installation:
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"Cannot place a {chart_installation!r} chart on a {installation!r} dashboard"
                 )
     # phase B — claim ALL explicit ids first so autos can't take them
@@ -244,7 +244,7 @@ def _translated_connections(
     for from_ref, to_ref in logical_pairs:
         for name, ref in (("from_item", from_ref), ("to_item", to_ref)):
             if ref not in endpoints:
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"Connection {name} {ref!r} is not an explicit item_id of a selector or chart "
                     f"on tab {tab.title!r} (text/title/image items cannot filter or be filtered)"
                 )
@@ -270,13 +270,13 @@ def _snapshot_tab(
     so the applier can place them below the allTabs selectors the new tab inherits.
     """
     if not isinstance(tab, DashboardTab):
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"add_tab expects a DashboardTab, got {type(tab).__name__!r}. "
             'Build the tab first: DashboardTab("Overview").add_chart(...), '
             "then add_tab(tab)."
         )
     if tab.tab_id is not None and allocator.is_used(_TAB_NAMESPACE, tab.tab_id):
-        raise DatalensValidationError(f"Duplicate tab id {tab.tab_id!r}")
+        raise DataLensValidationError(f"Duplicate tab id {tab.tab_id!r}")
     items, raw_layout = _snapshot_items(tab, allocator=allocator, installation=installation, defer_auto=defer_auto)
     layout = raw_layout if defer_auto else cast("tuple[LayoutItemSpec, ...]", raw_layout)
     connections = _translated_connections(tab, tab._pending_snapshot(), items)
@@ -342,7 +342,7 @@ class DashboardCreate:
     @property
     def last_tab_id(self) -> str:
         if self._last_tab_id is None:
-            raise DatalensValidationError("No tabs have been added yet")
+            raise DataLensValidationError("No tabs have been added yet")
         return self._last_tab_id
 
     # -- plumbing ----------------------------------------------------------
@@ -380,23 +380,23 @@ class DashboardCreate:
         }
         for name, value in flags.items():
             if value is not None and not isinstance(value, bool):
-                raise DatalensValidationError(f"{name} must be a bool or None, got {value!r}")
+                raise DataLensValidationError(f"{name} must be a bool or None, got {value!r}")
         if autoupdate_interval is not None:
             if isinstance(autoupdate_interval, bool) or not isinstance(autoupdate_interval, int):
-                raise DatalensValidationError(f"autoupdate_interval must be an int, got {autoupdate_interval!r}")
+                raise DataLensValidationError(f"autoupdate_interval must be an int, got {autoupdate_interval!r}")
             if autoupdate_interval < _MIN_AUTOUPDATE_INTERVAL:
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"autoupdate_interval must be >= {_MIN_AUTOUPDATE_INTERVAL}, got {autoupdate_interval}"
                 )
         if max_concurrent_requests is not None:
             if isinstance(max_concurrent_requests, bool) or not isinstance(max_concurrent_requests, int):
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"max_concurrent_requests must be an int, got {max_concurrent_requests!r}"
                 )
             if max_concurrent_requests < 1:
-                raise DatalensValidationError(f"max_concurrent_requests must be >= 1, got {max_concurrent_requests}")
+                raise DataLensValidationError(f"max_concurrent_requests must be >= 1, got {max_concurrent_requests}")
         if load_priority is not None and load_priority not in get_args(DashboardLoadPriority):
-            raise DatalensValidationError(f"Unknown load_priority {load_priority!r}")
+            raise DataLensValidationError(f"Unknown load_priority {load_priority!r}")
         updated = self._settings
         if silent_loading is not None:
             updated = replace(updated, silent_loading=silent_loading)
@@ -439,5 +439,5 @@ class DashboardCreate:
 
     def build(self) -> Dashboard:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         return self._operations.create_dashboard(self)

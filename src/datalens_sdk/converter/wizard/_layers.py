@@ -10,7 +10,7 @@ from datalens_sdk.converter.wizard._common import FieldRef
 from datalens_sdk.converter.wizard._normalizer import _Normalizer
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.specs.wizard_chart import WizardChartCreateSpec
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 
 def _local_fields_map(local_fields: Sequence[Mapping[str, object]]) -> dict[str, dict[str, object]]:
@@ -57,7 +57,7 @@ def _build_combined_visualization(
 
     x_fields: tuple[FieldRef, ...] = spec.placeholders.get("x", ())
     if len(x_fields) > 1:
-        raise DatalensConfigurationError("Combined chart .x() accepts at most one field.")
+        raise DataLensConfigurationError("Combined chart .x() accepts at most one field.")
     normalized_x = normalizer.normalize(x_fields)
 
     layers: list[dict[str, object]] = []
@@ -72,7 +72,7 @@ def _build_combined_visualization(
             continue
         layer_spec = get_layer_spec(layer_type)
         if not layer_spec:
-            raise DatalensConfigurationError(f"Unsupported combined layer type: {layer_type!r}.")
+            raise DataLensConfigurationError(f"Unsupported combined layer type: {layer_type!r}.")
         layer: dict[str, object] = dict(cast(dict[str, object], layer_spec.get("viz", {})))
         layer_id = str(uuid.uuid4())
         configured_name = layer_input.get("name")
@@ -146,7 +146,7 @@ def _build_geolayer_visualization(
             continue
         layer_spec = get_geo_layer_spec(layer_type)
         if not layer_spec:
-            raise DatalensConfigurationError(f"Unsupported geo layer type: {layer_type!r}.")
+            raise DataLensConfigurationError(f"Unsupported geo layer type: {layer_type!r}.")
         layer_dataset = layer_input.get("dataset")
         normalizer = (
             _Normalizer(dataset=layer_dataset, local_fields=local_fields)

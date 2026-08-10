@@ -8,7 +8,7 @@ from datalens_sdk.errors import (
     APIErrorContext,
     BadRequestError,
     ConflictError,
-    DatalensAPIError,
+    DataLensAPIError,
     ForbiddenError,
     LockedError,
     NotFoundError,
@@ -19,7 +19,7 @@ from datalens_sdk.errors import (
 
 
 class ErrorTransformerProtocol(Protocol):
-    def transform(self, exception: DatalensAPIError) -> Exception | None: ...
+    def transform(self, exception: DataLensAPIError) -> Exception | None: ...
 
 
 class ExceptionFactoryProtocol(Protocol):
@@ -28,7 +28,7 @@ class ExceptionFactoryProtocol(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class NullErrorTransformer:
-    def transform(self, exception: DatalensAPIError) -> Exception | None:
+    def transform(self, exception: DataLensAPIError) -> Exception | None:
         return None
 
 
@@ -39,7 +39,7 @@ NULL_ERROR_TRANSFORMER: Final[ErrorTransformerProtocol] = NullErrorTransformer()
 class ChainTransformer:
     transformers: Sequence[ErrorTransformerProtocol]
 
-    def transform(self, exception: DatalensAPIError) -> Exception | None:
+    def transform(self, exception: DataLensAPIError) -> Exception | None:
         for transformer in self.transformers:
             transformed = transformer.transform(exception)
             if transformed is not None:
@@ -51,7 +51,7 @@ class ChainTransformer:
 class CodeMapTransformer:
     code_map: Mapping[str, ExceptionFactoryProtocol]
 
-    def transform(self, exception: DatalensAPIError) -> Exception | None:
+    def transform(self, exception: DataLensAPIError) -> Exception | None:
         if exception.context.code is None:
             return None
         factory = self.code_map.get(exception.context.code)
@@ -64,7 +64,7 @@ class CodeMapTransformer:
 class StatusMapTransformer:
     status_map: Mapping[int, ExceptionFactoryProtocol]
 
-    def transform(self, exception: DatalensAPIError) -> Exception | None:
+    def transform(self, exception: DataLensAPIError) -> Exception | None:
         factory = self.status_map.get(exception.context.status_code)
         if factory is None:
             return None

@@ -27,7 +27,7 @@ from datalens_sdk.domain.specs.dashboard import (
     SwapItemsOp,
     UnpinItemOp,
 )
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.dashboard_update_support import _ItemOccurrence
@@ -38,7 +38,7 @@ _PINNABLE_TYPES = frozenset({"widget", "text", "title", "image"})
 
 def _checked_int(value: object, *, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
-        raise DatalensValidationError(f"{field} must be an int, got {value!r}")
+        raise DataLensValidationError(f"{field} must be an int, got {value!r}")
     return value
 
 
@@ -46,9 +46,9 @@ def _checked_axis(name: str, absolute: int | None, delta: int | None) -> None:
     if absolute is not None:
         _checked_int(absolute, field=name)
     if delta is not None and _checked_int(delta, field=f"d{name}") == 0:
-        raise DatalensValidationError(f"d{name}=0 is a no-op")
+        raise DataLensValidationError(f"d{name}=0 is a no-op")
     if absolute is not None and delta is not None:
-        raise DatalensValidationError(f"pass either {name}= (absolute) or d{name}= (delta), not both")
+        raise DataLensValidationError(f"pass either {name}= (absolute) or d{name}= (delta), not both")
 
 
 class _LayoutOpsMixin:
@@ -83,7 +83,7 @@ class _LayoutOpsMixin:
             # tab-scoped: fail loud at CALL time if the item isn't on that tab,
             # so a typo'd/foreign target never looks like a silent success
             if tab_id is not None and tab_id not in {occ.tab_id for occ in self._item_occurrences.get(item_id, ())}:
-                raise DatalensValidationError(f"apply_layout: item {item_id!r} is not on tab {tab_id!r}")
+                raise DataLensValidationError(f"apply_layout: item {item_id!r} is not on tab {tab_id!r}")
             resolved = Position.coerce(position)
             positions.append((item_id, resolved.x, resolved.y, resolved.w, resolved.h))
         self._ops.append(ApplyLayoutOp(tab_id=tab_id, positions=tuple(positions)))
@@ -99,7 +99,7 @@ class _LayoutOpsMixin:
         _checked_axis("x", x, dx)
         _checked_axis("y", y, dy)
         if x is None and y is None and dx is None and dy is None:
-            raise DatalensValidationError("move_item needs at least one of x/y/dx/dy")
+            raise DataLensValidationError("move_item needs at least one of x/y/dx/dy")
         self._ops.append(MoveItemOp(item_id=item_id, x=x, y=y, dx=dx, dy=dy))
         return self
 
@@ -113,7 +113,7 @@ class _LayoutOpsMixin:
         _checked_axis("w", w, dw)
         _checked_axis("h", h, dh)
         if w is None and h is None and dw is None and dh is None:
-            raise DatalensValidationError("resize_item needs at least one of w/h/dw/dh")
+            raise DataLensValidationError("resize_item needs at least one of w/h/dw/dh")
         self._ops.append(ResizeItemOp(item_id=item_id, w=w, h=h, dw=dw, dh=dh))
         return self
 
@@ -122,7 +122,7 @@ class _LayoutOpsMixin:
         first = self._resolve_update_layout_ref(first)
         second = self._resolve_update_layout_ref(second)
         if first == second:
-            raise DatalensValidationError("swap_items needs two different items")
+            raise DataLensValidationError("swap_items needs two different items")
         self._require_item(first)
         self._require_item(second)
         tab_id = self._resolve_tab(tab) if tab is not None else None
@@ -133,9 +133,9 @@ class _LayoutOpsMixin:
         """Shift every item at ``y >= y_threshold`` down by ``dy`` (one tab, or
         all tabs when ``tab`` is omitted)."""
         if isinstance(y_threshold, bool) or not isinstance(y_threshold, int) or y_threshold < 0:
-            raise DatalensValidationError(f"y_threshold must be a non-negative int, got {y_threshold!r}")
+            raise DataLensValidationError(f"y_threshold must be a non-negative int, got {y_threshold!r}")
         if isinstance(dy, bool) or not isinstance(dy, int) or dy == 0:
-            raise DatalensValidationError(f"dy must be a non-zero int, got {dy!r}")
+            raise DataLensValidationError(f"dy must be a non-zero int, got {dy!r}")
         tab_id = self._resolve_tab(tab) if tab is not None else None
         self._ops.append(ShiftBelowOp(tab_id=tab_id, y_threshold=y_threshold, dy=dy))
         return self
@@ -147,13 +147,13 @@ class _LayoutOpsMixin:
         item_id = self._resolve_update_layout_ref(item_id)
         item_type = self._require_item(item_id)
         if item_type not in _PINNABLE_TYPES:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"pin_item does not support {item_type!r} items yet (item {item_id!r}); "
                 "pinning selectors is deferred to D5.6"
             )
         parent = pin_parent(zone)
         if parent is None:
-            raise DatalensValidationError('zone must be "fixed" or "collapsible"; use unpin_item to unpin')
+            raise DataLensValidationError('zone must be "fixed" or "collapsible"; use unpin_item to unpin')
         self._ops.append(PinItemOp(item_id=item_id, parent=parent))
         return self
 
@@ -182,9 +182,9 @@ class _LayoutOpsMixin:
             if ref in children:
                 if len(children) == 1:
                     return wrapper
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"apply_layout: {ref!r} is a member of a multi-selector group; "
                     "reposition the group by its item_id instead"
                 )
         known = sorted(self._item_occurrences)
-        raise DatalensValidationError(f"apply_layout: unknown item id {ref!r}; known ids: {known}")
+        raise DataLensValidationError(f"apply_layout: unknown item id {ref!r}; known ids: {known}")

@@ -15,8 +15,8 @@ from datalens_sdk.error_transformers import (
 )
 from datalens_sdk.errors import (
     APIErrorContext,
-    DatalensAPIError,
-    DatalensTransportError,
+    DataLensAPIError,
+    DataLensTransportError,
     translate_invalid_response_error,
 )
 
@@ -107,7 +107,7 @@ class HTTPClientProtocol(Protocol):
     ) -> dict[str, object]: ...
 
 
-class DatalensHTTPClient:
+class DataLensHTTPClient:
     """Thin synchronous transport shared by the DataLens API namespaces."""
 
     def __init__(
@@ -138,7 +138,7 @@ class DatalensHTTPClient:
     def close(self) -> None:
         self._client.close()
 
-    def __enter__(self) -> DatalensHTTPClient:
+    def __enter__(self) -> DataLensHTTPClient:
         return self
 
     def __exit__(
@@ -182,7 +182,7 @@ class DatalensHTTPClient:
             return None
         return self._timeout_for_remaining_budget(policy=policy, remaining=remaining)
 
-    def _log_api_error(self, error: DatalensAPIError, *, operation: str) -> None:
+    def _log_api_error(self, error: DataLensAPIError, *, operation: str) -> None:
         context = error.context
         LOGGER.error(
             "DataLens request failed: installation=%s operation=%s method=%s url=%s status=%s code=%s "
@@ -200,7 +200,7 @@ class DatalensHTTPClient:
         )
 
     @staticmethod
-    def _api_error(exc: httpx.HTTPStatusError, *, attempts: int) -> DatalensAPIError:
+    def _api_error(exc: httpx.HTTPStatusError, *, attempts: int) -> DataLensAPIError:
         response = exc.response
         payload: dict[str, object] = {}
         try:
@@ -212,7 +212,7 @@ class DatalensHTTPClient:
         code = payload.get("code")
         message = payload.get("message") or payload.get("error") or response.text or "Request failed"
         details = _dict_with_string_keys(payload.get("details"))
-        return DatalensAPIError(
+        return DataLensAPIError(
             APIErrorContext(
                 status_code=response.status_code,
                 code=str(code) if code is not None else None,
@@ -227,7 +227,7 @@ class DatalensHTTPClient:
 
     def _transform_api_error(
         self,
-        error: DatalensAPIError,
+        error: DataLensAPIError,
     ) -> Exception:
         transformed = self._error_transformer.transform(error)
         if transformed is not None:
@@ -284,7 +284,7 @@ class DatalensHTTPClient:
                     )
                     attempt_timeout = next_timeout
                     continue
-                transport_error = DatalensTransportError(
+                transport_error = DataLensTransportError(
                     method="POST",
                     url=url,
                     attempts=attempt,

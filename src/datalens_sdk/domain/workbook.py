@@ -16,7 +16,7 @@ from datalens_sdk.domain.navigation import (
 )
 from datalens_sdk.domain.ports import WorkbookOperations
 from datalens_sdk.domain.specs.workbook import WorkbookCreateSpec, WorkbookUpdateSpec
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 _UNBOUND = "Object is not bound to client operations. Use a client namespace."
 
@@ -33,7 +33,7 @@ class WorkbookCreate:
         operations: WorkbookOperations | None = None,
     ) -> None:
         if not name:
-            raise DatalensValidationError("name must not be empty")
+            raise DataLensValidationError("name must not be empty")
         resolved_collection = None
         if collection is not None:
             resolved_collection = resolve_entry_location(
@@ -61,7 +61,7 @@ class WorkbookCreate:
 
     def build(self) -> Workbook:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         return self._operations.create_workbook(self)
 
 
@@ -85,35 +85,35 @@ class Workbook(EntryLocation):
 
     def _as_entry_location(self) -> EntryLocation:
         if not self.id:
-            raise DatalensValidationError("Cannot use a workbook without an id as a destination")
+            raise DataLensValidationError("Cannot use a workbook without an id as a destination")
         return EntryLocation.workbook(self.id)
 
     @property
     def update(self) -> WorkbookUpdate:
         if not self.id:
-            raise DatalensValidationError("Cannot update a workbook without an id")
+            raise DataLensValidationError("Cannot update a workbook without an id")
         return WorkbookUpdate(workbook=self, operations=self._operations)
 
     def delete(self) -> None:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot delete a workbook without an id")
+            raise DataLensValidationError("Cannot delete a workbook without an id")
         self._operations.delete_workbook(self.id)
 
     def rename(self, name: str) -> Workbook:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot rename a workbook without an id")
+            raise DataLensValidationError("Cannot rename a workbook without an id")
         validate_entry_name(name=name)
         return self.update.name(name).execute()
 
     def move(self, location: EntryLocation | None, *, name: str | None = None) -> Workbook:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot move a workbook without an id")
+            raise DataLensValidationError("Cannot move a workbook without an id")
         resolved_location = None
         if location is not None:
             resolved_location = resolve_entry_location(
@@ -123,7 +123,7 @@ class Workbook(EntryLocation):
                 context="Workbook move",
             )
         if name is not None and not name:
-            raise DatalensValidationError("name must not be empty")
+            raise DataLensValidationError("name must not be empty")
         return self._operations.move_workbook(self, resolved_location, name=name)
 
     def list_entries(
@@ -138,9 +138,9 @@ class Workbook(EntryLocation):
         scope: str | Sequence[str] | None = None,
     ) -> Pager[EntrySummary]:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot list entries for a workbook without an id")
+            raise DataLensValidationError("Cannot list entries for a workbook without an id")
         return self._operations.list_workbook_entries(
             self.id,
             WorkbookListOptions.create(
@@ -163,7 +163,7 @@ class WorkbookUpdate:
 
     def name(self, value: str) -> Self:
         if not value:
-            raise DatalensValidationError("name must not be empty")
+            raise DataLensValidationError("name must not be empty")
         self._changes["name"] = value
         return self
 
@@ -173,7 +173,7 @@ class WorkbookUpdate:
 
     def to_spec(self) -> WorkbookUpdateSpec:
         if not self._workbook.id:
-            raise DatalensValidationError("Cannot update a workbook without an id")
+            raise DataLensValidationError("Cannot update a workbook without an id")
         return WorkbookUpdateSpec(
             workbook_id=self._workbook.id,
             changes=dict(self._changes),
@@ -181,7 +181,7 @@ class WorkbookUpdate:
 
     def execute(self) -> Workbook:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self._changes:
-            raise DatalensValidationError("Workbook update must contain at least one change")
+            raise DataLensValidationError("Workbook update must contain at least one change")
         return self._operations.update_workbook(self)

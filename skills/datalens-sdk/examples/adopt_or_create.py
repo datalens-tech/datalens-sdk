@@ -31,7 +31,7 @@ import sys
 from datalens_sdk import (
     ConflictError,
     DashboardTab,
-    DatalensAPIError,
+    DataLensAPIError,
     DataLensClientEnterprise,
     DataLensClientYC,
     EntryLocation,
@@ -111,7 +111,7 @@ def main() -> None:
 
             print(f"Dashboard id: {dashboard.id}")
             print(f"Dashboard name: {dashboard.name}")
-    except DatalensAPIError as e:
+    except DataLensAPIError as e:
         # Hard rule 9: the request id is what DataLens support needs.
         print(
             f"DataLens API error {e.context.status_code} {e.context.code}: "

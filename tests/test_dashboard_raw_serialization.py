@@ -14,7 +14,7 @@ import datalens_sdk as dl
 from datalens_sdk._generated.dto import DashboardReadDTO
 from datalens_sdk.converter.dashboard import DashboardConverter
 from datalens_sdk.domain.raw_dashboard import RawDashboardCreate, RawDashboardReplace
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 from datalens_sdk.serialization.artifacts import DashboardSnapshotView
 
 
@@ -559,7 +559,7 @@ def test_raw_dashboard_builder_revalidates_forged_snapshot_view_before_http(boun
                 response_snapshot=forged,
             )
 
-    with pytest.raises(DatalensValidationError, match="source id"):
+    with pytest.raises(DataLensValidationError, match="source id"):
         construct_with_forged_snapshot()
 
     assert recorder.requests == []
@@ -615,7 +615,7 @@ def test_raw_dashboard_namespace_direct_and_file_payloads_match(tmp_path: Path) 
 def test_raw_dashboard_namespace_rejects_target_installation_mismatch_before_http() -> None:
     recorder = RecordedTransport({})
 
-    with pytest.raises(DatalensValidationError, match=r"'enterprise'.*'yacloud'"):
+    with pytest.raises(DataLensValidationError, match=r"'enterprise'.*'yacloud'"):
         _client(recorder).raw.replace.dashboard(
             target=dl.Dashboard(id="target-id", installation="enterprise"),
             response_snapshot=cast(Mapping[str, dl.JsonValue], _snapshot()),
@@ -686,7 +686,7 @@ def test_dashboard_typed_and_raw_builders_have_separate_surfaces() -> None:
 def test_raw_dashboard_rejects_incomplete_snapshot_before_http() -> None:
     recorder = RecordedTransport({})
 
-    with pytest.raises(DatalensValidationError, match="complete 'data' content"):
+    with pytest.raises(DataLensValidationError, match="complete 'data' content"):
         _client(recorder).raw.create.dashboard(
             response_snapshot={"entry": {"entryId": "source-id"}},
             name="Clone",

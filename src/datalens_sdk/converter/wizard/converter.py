@@ -25,7 +25,7 @@ from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
 from datalens_sdk.domain.specs.wizard_chart import WizardChartCreateSpec
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 from datalens_sdk.serialization.artifacts import ChartSnapshotView
 from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object
 
@@ -151,7 +151,7 @@ class WizardChartConverter:
         source: ChartSnapshotView,
     ) -> RawWizardChartReplaceEnvelope:
         if source.wire_type != target_wire_type:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Wizard chart wire type mismatch: source is {source.wire_type!r}, target is {target_wire_type!r}"
             )
         return RawWizardChartReplaceEnvelope(

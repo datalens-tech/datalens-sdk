@@ -21,7 +21,7 @@ editor_chart.to_file(path, split_tabs=False)
 dashboard.to_file(path, with_dependencies=False)
 ```
 
-`path` is the **parent** directory and must already exist (create it yourself; a missing parent raises `DatalensValidationError`). The artifact itself is a directory named `<name> [<id>]` (both components sanitized for portability) containing one main JSON file:
+`path` is the **parent** directory and must already exist (create it yourself; a missing parent raises `DataLensValidationError`). The artifact itself is a directory named `<name> [<id>]` (both components sanitized for portability) containing one main JSON file:
 
 | Entity | Main file |
 |---|---|
@@ -30,11 +30,11 @@ dashboard.to_file(path, with_dependencies=False)
 | chart (any family) | `chart.json` |
 | dashboard | `dashboard.json` |
 
-Export **never overwrites**: if the artifact directory already exists, `to_file` raises `DatalensValidationError` ("Artifact path already exists"). Re-exporting the same entity requires removing the old artifact or using a fresh parent. The write is atomic — you never observe a half-written artifact.
+Export **never overwrites**: if the artifact directory already exists, `to_file` raises `DataLensValidationError` ("Artifact path already exists"). Re-exporting the same entity requires removing the old artifact or using a fresh parent. The write is atomic — you never observe a half-written artifact.
 
 ### Editor charts: `split_tabs=True`
 
-`editor_chart.to_file(path, split_tabs=True)` additionally writes a `Tabs/` directory with one file per editor tab (`.js`, documentation tabs as `.md`) — **for human review only**. Only `chart.json` is importable; edits under `Tabs/` are ignored by `from_file`. `split_tabs=True` on a non-editor chart raises `DatalensValidationError`.
+`editor_chart.to_file(path, split_tabs=True)` additionally writes a `Tabs/` directory with one file per editor tab (`.js`, documentation tabs as `.md`) — **for human review only**. Only `chart.json` is importable; edits under `Tabs/` are ignored by `from_file`. `split_tabs=True` on a non-editor chart raises `DataLensValidationError`.
 
 ### Dashboards: `with_dependencies=True`
 
@@ -74,7 +74,7 @@ So each factory is *callable* (in-memory snapshot) and also has a `.from_file(..
 - **dashboard** replace terminates with `.execute(publish=..., lock_token=None)` — `publish` is a required keyword, same as dashboard updates.
 - **chart** replace supports `.mode("save" | "publish")` before `.execute()` (default `"save"`).
 
-For `from_file`, `path` is the **artifact directory** (`My Dash [abc123]/`), not the JSON file inside it. Chart artifacts are category-checked: loading a wizard artifact through `client.raw.create.ql_chart.from_file` raises `DatalensValidationError`.
+For `from_file`, `path` is the **artifact directory** (`My Dash [abc123]/`), not the JSON file inside it. Chart artifacts are category-checked: loading a wizard artifact through `client.raw.create.ql_chart.from_file` raises `DataLensValidationError`.
 
 Builders validate at construction time, before any HTTP: snapshot completeness, entry name rules, and installation — you cannot replace a `yacloud` entity through an `enterprise` client, replace a connection with a snapshot of a different connector type, or replace a chart with a snapshot of a different category/wire type.
 
@@ -198,4 +198,4 @@ Name collisions on import behave like any create: same name in the same location
 
 - [core-concepts.md](core-concepts.md) — `client.raw` in the namespace map, locations, lifecycle
 - [navigation.md](navigation.md) — finding source entities and target workbooks/folders
-- [troubleshooting.md](troubleshooting.md) — `DatalensValidationError`, conflict adoption, any API error
+- [troubleshooting.md](troubleshooting.md) — `DataLensValidationError`, conflict adoption, any API error

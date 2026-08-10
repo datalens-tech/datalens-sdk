@@ -13,8 +13,8 @@ from datalens_sdk.converter.dataset import DatasetConverter
 from datalens_sdk.domain.dataset import Source
 from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
 from datalens_sdk.domain.ports import NavigationOperations
-from datalens_sdk.errors import DatalensValidationError
-from datalens_sdk.http import DatalensHTTPClient
+from datalens_sdk.errors import DataLensValidationError
+from datalens_sdk.http import DataLensHTTPClient
 
 SOURCE_ID = "src-test-1"
 
@@ -57,7 +57,7 @@ def _source_response(valid: bool = True, raw_schema: list[dict[str, object]] | N
 def _make_service(routes: dict[str, list[httpx.Response] | httpx.Response]) -> tuple[DatasetService, RecordedTransport]:
     recorder = RecordedTransport(routes)
     transport = httpx.MockTransport(handler=recorder.handler)
-    client = DatalensHTTPClient(
+    client = DataLensHTTPClient(
         installation="test",
         sdk_version="1.2.3",
         api_version="2",
@@ -111,7 +111,7 @@ def test_validate_source_invalid_strict_raises() -> None:
     )
     service, _ = _make_service({"/rpc/validateDataset": httpx.Response(200, json=_source_response(valid=False))})
 
-    with pytest.raises(DatalensValidationError, match=SOURCE_ID):
+    with pytest.raises(DataLensValidationError, match=SOURCE_ID):
         service.validate_source(source, strict=True)
 
 

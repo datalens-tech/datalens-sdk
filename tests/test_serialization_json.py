@@ -9,7 +9,7 @@ from typing import cast
 
 import pytest
 
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization import json_io
 from datalens_sdk.serialization.artifacts import artifact_directory_path, sanitize_artifact_component
 from datalens_sdk.serialization.json_io import read_json_object, write_artifact_directory
@@ -45,7 +45,7 @@ def test_normalize_json_object_accepts_every_json_value_type_and_preserves_key_o
 
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
 def test_normalize_json_object_rejects_non_finite_numbers(value: float) -> None:
-    with pytest.raises(DatalensValidationError, match="non-finite"):
+    with pytest.raises(DataLensValidationError, match="non-finite"):
         normalize_json_object({"value": value})
 
 
@@ -58,7 +58,7 @@ def test_normalize_json_object_rejects_non_finite_numbers(value: float) -> None:
     ],
 )
 def test_normalize_json_object_rejects_non_json_shapes(value: object, message: str) -> None:
-    with pytest.raises(DatalensValidationError, match=message):
+    with pytest.raises(DataLensValidationError, match=message):
         normalize_json_object(value)
 
 
@@ -66,7 +66,7 @@ def test_normalize_json_object_rejects_cycles() -> None:
     value: list[object] = []
     value.append(value)
 
-    with pytest.raises(DatalensValidationError, match="cycle"):
+    with pytest.raises(DataLensValidationError, match="cycle"):
         normalize_json_object({"value": value})
 
 
@@ -75,7 +75,7 @@ def test_read_json_object_rejects_nonstandard_constants(tmp_path: Path, constant
     path = tmp_path / "invalid.json"
     path.write_text(f'{{"value": {constant}}}', encoding="utf-8")
 
-    with pytest.raises(DatalensValidationError, match="invalid JSON"):
+    with pytest.raises(DataLensValidationError, match="invalid JSON"):
         read_json_object(path)
 
 
@@ -83,7 +83,7 @@ def test_read_json_object_rejects_invalid_utf8_and_non_object_root(tmp_path: Pat
     invalid_utf8 = tmp_path / "invalid-utf8.json"
     invalid_utf8.write_bytes(b'{"value":"\xff"}')
 
-    with pytest.raises(DatalensValidationError, match="invalid JSON"):
+    with pytest.raises(DataLensValidationError, match="invalid JSON"):
         read_json_object(invalid_utf8)
 
 
@@ -92,7 +92,7 @@ def test_read_json_object_rejects_non_object_roots(tmp_path: Path, document: str
     path = tmp_path / "non-object.json"
     path.write_text(document, encoding="utf-8")
 
-    with pytest.raises(DatalensValidationError, match="must be an object"):
+    with pytest.raises(DataLensValidationError, match="must be an object"):
         read_json_object(path)
 
 
@@ -101,7 +101,7 @@ def test_read_json_object_reports_broken_json_without_echoing_content(tmp_path: 
     path = tmp_path / "broken.json"
     path.write_text(f'{{"secret": "{secret_marker}"', encoding="utf-8")
 
-    with pytest.raises(DatalensValidationError, match="invalid JSON") as exc_info:
+    with pytest.raises(DataLensValidationError, match="invalid JSON") as exc_info:
         read_json_object(path)
 
     assert secret_marker not in str(exc_info.value)
@@ -123,7 +123,7 @@ def test_write_artifact_directory_formats_utf8_and_commits_exclusively(tmp_path:
         assert target.stat().st_mode & 0o777 == 0o700
         assert main_file.stat().st_mode & 0o777 == 0o600
 
-    with pytest.raises(DatalensValidationError, match="already exists"):
+    with pytest.raises(DataLensValidationError, match="already exists"):
         write_artifact_directory(target, filename="dataset.json", value=value)
     assert not tuple(tmp_path.glob(".artifact.staging-*"))
 
@@ -136,7 +136,7 @@ def test_write_artifact_directory_rejects_existing_empty_target(tmp_path: Path, 
     else:
         target.touch()
 
-    with pytest.raises(DatalensValidationError, match="already exists"):
+    with pytest.raises(DataLensValidationError, match="already exists"):
         write_artifact_directory(target, filename="dataset.json", value={"dataset": {}})
 
     assert target.exists()
@@ -154,7 +154,7 @@ def test_write_artifact_directory_rejects_existing_symlink(tmp_path: Path, dangl
     except OSError as exc:
         pytest.skip(f"Directory symlinks are not available: {exc}")
 
-    with pytest.raises(DatalensValidationError, match="already exists"):
+    with pytest.raises(DataLensValidationError, match="already exists"):
         write_artifact_directory(target, filename="dataset.json", value={"dataset": {}})
 
     assert target.is_symlink()
@@ -206,7 +206,7 @@ def test_artifact_directory_path_requires_nonblank_resource_name(
     tmp_path: Path,
     name: str | None,
 ) -> None:
-    with pytest.raises(DatalensValidationError, match="requires a resource name"):
+    with pytest.raises(DataLensValidationError, match="requires a resource name"):
         artifact_directory_path(tmp_path, name=name, resource_id="dataset-id", resource="Dataset")
 
 
@@ -215,7 +215,7 @@ def test_artifact_directory_path_requires_nonblank_resource_id(
     tmp_path: Path,
     resource_id: str | None,
 ) -> None:
-    with pytest.raises(DatalensValidationError, match="requires a resource id"):
+    with pytest.raises(DataLensValidationError, match="requires a resource id"):
         artifact_directory_path(tmp_path, name=None, resource_id=resource_id, resource="Dataset")
 
 
@@ -228,11 +228,11 @@ def test_write_artifact_directory_cleans_staging_when_atomic_commit_loses_race(
     def lose_race(source: Path, destination: Path) -> None:
         destination.mkdir()
         (destination / "foreign.txt").write_text("belongs to another writer", encoding="utf-8")
-        raise DatalensValidationError(f"Artifact path already exists: {destination}")
+        raise DataLensValidationError(f"Artifact path already exists: {destination}")
 
     monkeypatch.setattr(json_io, "_rename_directory_no_replace", lose_race)
 
-    with pytest.raises(DatalensValidationError, match="already exists"):
+    with pytest.raises(DataLensValidationError, match="already exists"):
         write_artifact_directory(target, filename="dataset.json", value={"dataset": {}})
 
     assert target.is_dir()
@@ -272,5 +272,5 @@ def test_atomic_commit_reports_unsupported_operating_system_or_filesystem(
         pytest.skip(f"{error_name} is not defined on this platform")
     monkeypatch.setattr(ctypes, "get_errno", lambda: error_number)
 
-    with pytest.raises(DatalensConfigurationError, match="operating system or filesystem"):
+    with pytest.raises(DataLensConfigurationError, match="operating system or filesystem"):
         json_io._raise_rename_error(tmp_path / "artifact")

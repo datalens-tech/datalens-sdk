@@ -13,7 +13,7 @@ from datalens_sdk.domain.dashboard_layout import (
     rects_overlap,
 )
 from datalens_sdk.domain.dashboard_types import KNOWN_DASHBOARD_ITEM_TYPES
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 # -- Position validation -----------------------------------------------------
 
@@ -24,21 +24,21 @@ def test_position_accepts_valid_rect() -> None:
 
 
 def test_position_rejects_negative_x_y() -> None:
-    with pytest.raises(DatalensValidationError, match="x and y must be >= 0"):
+    with pytest.raises(DataLensValidationError, match="x and y must be >= 0"):
         Position(-1, 0, 4, 4)
-    with pytest.raises(DatalensValidationError, match="x and y must be >= 0"):
+    with pytest.raises(DataLensValidationError, match="x and y must be >= 0"):
         Position(0, -1, 4, 4)
 
 
 def test_position_rejects_nonpositive_w_h() -> None:
-    with pytest.raises(DatalensValidationError, match="w and h must be > 0"):
+    with pytest.raises(DataLensValidationError, match="w and h must be > 0"):
         Position(0, 0, 0, 4)
-    with pytest.raises(DatalensValidationError, match="w and h must be > 0"):
+    with pytest.raises(DataLensValidationError, match="w and h must be > 0"):
         Position(0, 0, 4, 0)
 
 
 def test_position_rejects_grid_overflow() -> None:
-    with pytest.raises(DatalensValidationError, match=f"x \\+ w must be <= {GRID_COLUMNS}"):
+    with pytest.raises(DataLensValidationError, match=f"x \\+ w must be <= {GRID_COLUMNS}"):
         Position(30, 0, 10, 4)
 
 
@@ -50,7 +50,7 @@ def test_position_allows_full_width_row() -> None:
 def test_position_rejects_bool(field: str) -> None:
     kwargs: dict[str, object] = {"x": 0, "y": 0, "w": 4, "h": 4}
     kwargs[field] = True
-    with pytest.raises(DatalensValidationError, match=f"Position.{field} must be an int"):
+    with pytest.raises(DataLensValidationError, match=f"Position.{field} must be an int"):
         Position(**kwargs)  # type: ignore[arg-type]
 
 
@@ -58,7 +58,7 @@ def test_position_rejects_bool(field: str) -> None:
 def test_position_rejects_non_int(field: str) -> None:
     kwargs: dict[str, object] = {"x": 0, "y": 0, "w": 4, "h": 4}
     kwargs[field] = 1.5
-    with pytest.raises(DatalensValidationError, match=f"Position.{field} must be an int"):
+    with pytest.raises(DataLensValidationError, match=f"Position.{field} must be an int"):
         Position(**kwargs)  # type: ignore[arg-type]
 
 
@@ -85,7 +85,7 @@ def test_coerce_from_tuple() -> None:
     ],
 )
 def test_coerce_rejects_non_tuple(bad: object) -> None:
-    with pytest.raises(DatalensValidationError, match="must be a Position or an"):
+    with pytest.raises(DataLensValidationError, match="must be a Position or an"):
         Position.coerce(bad)  # type: ignore[arg-type]
 
 

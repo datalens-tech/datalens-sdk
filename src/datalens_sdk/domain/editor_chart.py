@@ -11,7 +11,7 @@ from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.chart_types import ChartCategory
 from datalens_sdk.domain.entry_types import EntryUpdateMode
 from datalens_sdk.domain.ports import ChartOperations
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.artifacts import ArtifactPath
 
 _UNBOUND = "Object is not bound to client operations. Use a client namespace."
@@ -43,7 +43,7 @@ class EditorChartUpdate:
 
     def mode(self, value: EntryUpdateMode) -> Self:
         if value not in get_args(EntryUpdateMode):
-            raise DatalensValidationError(f"mode must be one of {get_args(EntryUpdateMode)}, got {value!r}")
+            raise DataLensValidationError(f"mode must be one of {get_args(EntryUpdateMode)}, got {value!r}")
         self._mode = value
         return self
 
@@ -99,7 +99,7 @@ class EditorChartUpdate:
 
     def execute(self) -> EditorChart:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         return self._operations.update_editor_chart(self)
 
 
@@ -120,12 +120,12 @@ class EditorChart(Chart):
     @property
     def update(self) -> EditorChartUpdate:
         if not self.id:
-            raise DatalensValidationError("Cannot update an editor chart without an id")
+            raise DataLensValidationError("Cannot update an editor chart without an id")
         return EditorChartUpdate(chart=self, operations=self._operations)
 
     def delete(self) -> None:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot delete an editor chart without an id")
+            raise DataLensValidationError("Cannot delete an editor chart without an id")
         self._operations.delete_editor_chart(self.id)

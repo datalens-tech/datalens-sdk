@@ -17,7 +17,7 @@ from datalens_sdk.domain.navigation import (
 from datalens_sdk.domain.ports import FolderOperations, NavigationOperations
 from datalens_sdk.errors import (
     APIErrorContext,
-    DatalensValidationError,
+    DataLensValidationError,
     NotFoundError,
     translate_dto_validation_error,
     translate_invalid_response_error,
@@ -68,7 +68,7 @@ class FolderService(FolderOperations):
                 operations=self,
                 dto_module=self._dto_module,
             )
-        except (ValidationError, DatalensValidationError) as exc:
+        except (ValidationError, DataLensValidationError) as exc:
             raise translate_dto_validation_error(operation=operation, reason=str(exc)) from exc
         if folder.scope != "folder":
             raise translate_invalid_response_error(operation=operation, reason="entry scope is not 'folder'")
@@ -116,7 +116,7 @@ class FolderService(FolderOperations):
     def get_folder(self, path: str) -> Folder:
         normalized_path = path.strip("/")
         if not normalized_path:
-            raise DatalensValidationError("path must identify a folder")
+            raise DataLensValidationError("path must identify a folder")
         if "/" in normalized_path:
             parent_path, name = normalized_path.rsplit("/", 1)
         else:
@@ -159,7 +159,7 @@ class FolderService(FolderOperations):
         name: str | None = None,
     ) -> Folder:
         if not folder.id:
-            raise DatalensValidationError("Cannot move a folder without an id")
+            raise DataLensValidationError("Cannot move a folder without an id")
         self._navigation_operations.move_folder_entry(entry_id=folder.id, location=location, name=name)
         return self._get_folder_by_id(folder.id)
 

@@ -23,7 +23,7 @@ from datalens_sdk.domain.entry_types import EntryUpdateMode
 from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.specs.editor_chart import EditorChartCreateSpec
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
-from datalens_sdk.errors import DatalensValidationError, NotSupportedError
+from datalens_sdk.errors import DataLensValidationError, NotSupportedError
 from datalens_sdk.serialization.artifacts import ChartSnapshotView, chart_entry_from_normalized_snapshot
 from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object
 
@@ -323,7 +323,7 @@ class EditorChartConverter:
                 f"Editor chart type {source.wire_type!r} is not available on installation {installation!r}"
             )
         if source.wire_type != target_wire_type:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Editor chart wire type mismatch: source is {source.wire_type!r}, target is {target_wire_type!r}"
             )
         return RawEditorChartReplaceEnvelope(

@@ -32,7 +32,7 @@ import sys
 from datalens_sdk import (
     DashboardChartTab,
     DashboardTab,
-    DatalensAPIError,
+    DataLensAPIError,
     DataLensClientEnterprise,
     DataLensClientYC,
     Dataset,
@@ -230,7 +230,7 @@ def main() -> None:
                 raise SystemExit("Dashboard persisted but failed validation; see issues above")
 
             print(f"Dashboard id: {dashboard.id}")
-    except DatalensAPIError as e:
+    except DataLensAPIError as e:
         print(
             f"DataLens API error {e.context.status_code} {e.context.code}: "
             f"{e.context.message} (request_id={e.context.request_id})",

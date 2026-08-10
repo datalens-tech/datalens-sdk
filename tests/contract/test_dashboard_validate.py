@@ -18,7 +18,7 @@ from datalens_sdk.domain.specs.dashboard import (
     TabSpec,
     TextItem,
 )
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 _FIXTURES = Path(__file__).parent / "fixtures" / "dashboards"
 
@@ -324,7 +324,7 @@ def test_drift_out_of_grid() -> None:
             layout=(LayoutItemSpec(i="a", x=30, y=0, w=12, h=6),),
         )
     )
-    with pytest.raises(DatalensValidationError, match="x \\+ w must be <= 36"):
+    with pytest.raises(DataLensValidationError, match="x \\+ w must be <= 36"):
         DashboardConverter.from_domain_create(spec)
     assert "out_of_grid" in _kinds(_data(_tab(items=[_text("a")], layout=[_lay("a", x=30, w=12)])))
 
@@ -338,7 +338,7 @@ def test_drift_overlap() -> None:
             layout=(LayoutItemSpec(i="a", x=0, y=0, w=20, h=10), LayoutItemSpec(i="b", x=5, y=5, w=20, h=10)),
         )
     )
-    with pytest.raises(DatalensValidationError, match="overlap"):
+    with pytest.raises(DataLensValidationError, match="overlap"):
         DashboardConverter.from_domain_create(spec)
     assert "overlap" in _kinds(
         _data(_tab(items=[_text("a"), _text("b")], layout=[_lay("a", w=20, h=10), _lay("b", x=5, y=5, w=20, h=10)]))
@@ -354,21 +354,21 @@ def test_drift_duplicate_id() -> None:
             layout=(LayoutItemSpec(i="dup", x=0, y=0, w=12, h=6),),
         )
     )
-    with pytest.raises(DatalensValidationError, match="Duplicate item id"):
+    with pytest.raises(DataLensValidationError, match="Duplicate item id"):
         DashboardConverter.from_domain_create(spec)
     assert "duplicate_id" in _kinds(_data(_tab(items=[_text("dup"), _text("dup")], layout=[_lay("dup")])))
 
 
 def test_drift_missing_layout() -> None:
     spec = _spec(TabSpec(id="t1", title="T", items=(TextItem(id="a", text="x"),), layout=()))
-    with pytest.raises(DatalensValidationError, match="items without layout"):
+    with pytest.raises(DataLensValidationError, match="items without layout"):
         DashboardConverter.from_domain_create(spec)
     assert "missing_layout" in _kinds(_data(_tab(items=[_text("a")], layout=[])))
 
 
 def test_drift_orphan_layout() -> None:
     spec = _spec(TabSpec(id="t1", title="T", items=(), layout=(LayoutItemSpec(i="ghost", x=0, y=0, w=6, h=6),)))
-    with pytest.raises(DatalensValidationError, match="layout without items"):
+    with pytest.raises(DataLensValidationError, match="layout without items"):
         DashboardConverter.from_domain_create(spec)
     assert "orphan_layout" in _kinds(_data(_tab(items=[], layout=[_lay("ghost")])))
 
@@ -383,7 +383,7 @@ def test_drift_alias_group_too_small() -> None:
             aliases=(("only",),),
         )
     )
-    with pytest.raises(DatalensValidationError, match=">=2 unique fields"):
+    with pytest.raises(DataLensValidationError, match=">=2 unique fields"):
         DashboardConverter.from_domain_create(spec)
     assert "alias_group_too_small" in _kinds(
         _data(_tab(items=[_text("a")], layout=[_lay("a")], aliases={"default": [["only"]]}))

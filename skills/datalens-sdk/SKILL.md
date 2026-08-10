@@ -168,7 +168,7 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 8. **Probes go to tmp.** When experimenting, create scratch entities in a
    dedicated tmp folder/workbook, not next to the user's deliverables, and
    tell the user where the probes are.
-9. **Report `request_id` on API failures.** Every `DatalensAPIError`
+9. **Report `request_id` on API failures.** Every `DataLensAPIError`
    carries `context.request_id` — include it whenever you report a failed
    call; it is what support needs.
 10. **A persisted formula is not necessarily valid.** Dataset and Wizard
@@ -233,7 +233,7 @@ Read this file plus the one reference the task needs — not everything.
 | Dashboards: tabs, widgets, selectors, layout, read model                   | [references/dashboards.md](references/dashboards.md)                     |
 | Finding, listing, moving, renaming entities; collections/workbooks/folders | [references/navigation.md](references/navigation.md)                     |
 | Export, import, clone, copy across workbooks                               | [references/serialization.md](references/serialization.md)               |
-| Any `DatalensAPIError` or unexpected SDK exception                         | [references/troubleshooting.md](references/troubleshooting.md)           |
+| Any `DataLensAPIError` or unexpected SDK exception                         | [references/troubleshooting.md](references/troubleshooting.md)           |
 | "Make it look good" — visual design, palettes, dashboard composition       | [references/design-guide.md](references/design-guide.md)                 |
 
 ### Formula work
@@ -286,11 +286,11 @@ index first, then exactly the one per-type file it points to.
 
 ## Errors in brief
 
-All SDK exceptions derive from `DatalensError`. Two families:
+All SDK exceptions derive from `DataLensError`. Two families:
 
-- **Client-side** (`DatalensValidationError`, `DatalensConfigurationError`,
+- **Client-side** (`DataLensValidationError`, `DataLensConfigurationError`,
   `NotSupportedError`): your code or setup is wrong — fix it, never retry.
-- **Server-side** (`DatalensAPIError` and typed subclasses:
+- **Server-side** (`DataLensAPIError` and typed subclasses:
   `UnauthorizedError` 401, `ForbiddenError` 403, `NotFoundError` 404,
   `ConflictError` (usually 409; unique-name conflicts may retain legacy 400),
   `LockedError` 423, `RateLimitError` 429,

@@ -196,9 +196,9 @@ def test_chart_create_rejects_unsupported_or_foreign_destinations() -> None:
         transport=httpx.MockTransport(lambda request: httpx.Response(200, json={})),
     )
 
-    with pytest.raises(dl.DatalensValidationError, match="Wizard chart creation requires location kind"):
+    with pytest.raises(dl.DataLensValidationError, match="Wizard chart creation requires location kind"):
         client.create.wizard_chart.line(name="Chart", location=dl.EntryLocation.collection("collection-1"))
-    with pytest.raises(dl.DatalensValidationError, match="Editor chart creation requires location kind"):
+    with pytest.raises(dl.DataLensValidationError, match="Editor chart creation requires location kind"):
         client.create.editor_chart.advanced_chart(name="Chart", location=dl.EntryLocation.collection("collection-1"))
     with pytest.raises(dl.NotSupportedError, match="destination"):
         client.create.wizard_chart.line(
@@ -410,13 +410,13 @@ def test_update_invalid_mode_raises() -> None:
     client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
 
     chart = client.get.wizard_chart(by_id="chart-1")
-    with pytest.raises(dl.DatalensValidationError, match="mode must be"):
+    with pytest.raises(dl.DataLensValidationError, match="mode must be"):
         chart.update.mode("invalid")  # type: ignore[arg-type]
 
 
 def test_update_without_id_raises() -> None:
     chart = WizardChart(id=None, installation="yacloud")
-    with pytest.raises(dl.DatalensValidationError, match="Cannot update a chart without an id"):
+    with pytest.raises(dl.DataLensValidationError, match="Cannot update a chart without an id"):
         _ = chart.update
 
 

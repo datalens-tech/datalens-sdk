@@ -20,7 +20,7 @@ from datalens_sdk.domain.entry_location import (
 )
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import ChartOperations
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.artifacts import ArtifactPath, write_chart_artifact
 from datalens_sdk.serialization.json_types import JsonValue
 
@@ -79,9 +79,9 @@ class Chart(ABC):
         scope: EntryScope | None = None,
     ) -> Pager[EntryRelation]:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot get relations for a chart without an id")
+            raise DataLensValidationError("Cannot get relations for a chart without an id")
         return self._operations.get_entry_relations(
             self.id,
             RelationOptions(
@@ -94,9 +94,9 @@ class Chart(ABC):
 
     def rename(self, name: str) -> Self:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot rename a chart without an id")
+            raise DataLensValidationError("Cannot rename a chart without an id")
         validate_entry_name(name=name, location=self.location)
         return cast(Self, self._operations.rename_chart(self, name))
 

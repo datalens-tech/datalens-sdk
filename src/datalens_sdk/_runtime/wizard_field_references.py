@@ -5,7 +5,7 @@ import copy
 from dataclasses import dataclass
 from typing import Literal, TypeAlias
 
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 FieldCarrier = Literal[
     "placeholder",
@@ -192,7 +192,7 @@ class WizardFieldReferences:
                 and existing[key] != snapshot[key]
             }
             if conflicts:
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"Wizard chart contains conflicting snapshots for field guid {guid!r}: "
                     f"{sorted(conflicts)} differ between active carriers."
                 )
@@ -201,13 +201,13 @@ class WizardFieldReferences:
     def replace_field(self, old_guid: str, replacement: Mapping[str, object]) -> None:
         replacement_guid = _guid(replacement)
         if replacement_guid is None:
-            raise DatalensValidationError("Replacement field snapshot must contain a non-empty guid.")
+            raise DataLensValidationError("Replacement field snapshot must contain a non-empty guid.")
         if replacement_guid == old_guid:
-            raise DatalensValidationError(f"Replacement field guid must differ from {old_guid!r}.")
+            raise DataLensValidationError(f"Replacement field guid must differ from {old_guid!r}.")
         snapshots = [location for location in self.snapshot_locations() if location.guid == old_guid]
         pointers = [location for location in self.guid_locations() if location.guid == old_guid]
         if not snapshots and not pointers:
-            raise DatalensValidationError(f"Field guid {old_guid!r} is not referenced by this Wizard chart.")
+            raise DataLensValidationError(f"Field guid {old_guid!r} is not referenced by this Wizard chart.")
         for snapshot_location in snapshots:
             snapshot_location.replace(replacement)
         for pointer_location in pointers:
@@ -218,7 +218,7 @@ class WizardFieldReferences:
         snapshots = [location for location in self.snapshot_locations() if location.guid == guid]
         pointers = [location for location in self.guid_locations() if location.guid == guid]
         if not snapshots and not pointers:
-            raise DatalensValidationError(f"Field guid {guid!r} is not referenced by this Wizard chart.")
+            raise DataLensValidationError(f"Field guid {guid!r} is not referenced by this Wizard chart.")
         removals: dict[int, tuple[list[object], set[int]]] = {}
         for location in snapshots:
             key = id(location._removal_container)
@@ -241,7 +241,7 @@ class WizardFieldReferences:
         stale_snapshots = [location.path for location in self.snapshot_locations() if location.guid == guid]
         stale_pointers = [location.path for location in self.guid_locations() if location.guid == guid]
         if stale_snapshots or stale_pointers:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Wizard field mutation left stale guid {guid!r} at {stale_snapshots + stale_pointers!r}."
             )
 
@@ -252,7 +252,7 @@ class WizardFieldReferences:
             if location.snapshot.get("datasetId") == dataset_id
         ]
         if stale:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Wizard dataset replacement left stale datasetId {dataset_id!r} at {stale!r}."
             )
 

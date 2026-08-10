@@ -17,7 +17,7 @@ import pytest
 from datalens_sdk.converter.dashboard_apply import _apply_update
 from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.dashboard_types import REMOVE_PARAM, DateInterval
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 
 def _tabs(data: dict[str, object]) -> list[dict[str, object]]:
@@ -413,12 +413,12 @@ def test_update_selector_select_scalar_default_becomes_lists() -> None:
 def test_update_selector_rejects_element_incompatible_defaults_on_apply() -> None:
     bool_update = _group_manual_dashboard().update
     bool_update.update_selector(item_id="no", default_value=True)  # "no" is an input element
-    with pytest.raises(DatalensValidationError, match="checkbox"):
+    with pytest.raises(DataLensValidationError, match="checkbox"):
         _apply_update(bool_update.to_spec())
 
     interval_update = _group_manual_dashboard().update
     interval_update.update_selector(item_id="no", default_value=DateInterval("2024-01-01", "2024-02-01"))
-    with pytest.raises(DatalensValidationError, match="element='date'"):
+    with pytest.raises(DataLensValidationError, match="element='date'"):
         _apply_update(interval_update.to_spec())
 
 

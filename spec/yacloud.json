@@ -3691,7 +3691,7 @@
           {
             "properties": {
               "operation": {
-                "$ref": "#/components/schemas/DatalensOperation"
+                "$ref": "#/components/schemas/DataLensOperation"
               }
             },
             "type": "object"
@@ -4523,7 +4523,7 @@
           {
             "properties": {
               "operation": {
-                "$ref": "#/components/schemas/DatalensOperation"
+                "$ref": "#/components/schemas/DataLensOperation"
               }
             },
             "required": [
@@ -8302,6 +8302,64 @@
         ],
         "type": "object"
       },
+      "DataLensOperation": {
+        "properties": {
+          "createdAt": {
+            "properties": {
+              "nanos": {
+                "type": "number"
+              },
+              "seconds": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "seconds"
+            ],
+            "type": "object"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "done": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "properties": {},
+            "type": "object"
+          },
+          "modifiedAt": {
+            "properties": {
+              "nanos": {
+                "type": "number"
+              },
+              "seconds": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "seconds"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "createdBy",
+          "createdAt",
+          "modifiedAt",
+          "metadata",
+          "done"
+        ],
+        "type": "object"
+      },
       "DataSource": {
         "discriminator": {
           "mapping": {
@@ -8769,64 +8827,6 @@
             "type": "array"
           }
         },
-        "type": "object"
-      },
-      "DatalensOperation": {
-        "properties": {
-          "createdAt": {
-            "properties": {
-              "nanos": {
-                "type": "number"
-              },
-              "seconds": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "seconds"
-            ],
-            "type": "object"
-          },
-          "createdBy": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "done": {
-            "type": "boolean"
-          },
-          "id": {
-            "type": "string"
-          },
-          "metadata": {
-            "properties": {},
-            "type": "object"
-          },
-          "modifiedAt": {
-            "properties": {
-              "nanos": {
-                "type": "number"
-              },
-              "seconds": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "seconds"
-            ],
-            "type": "object"
-          }
-        },
-        "required": [
-          "id",
-          "description",
-          "createdBy",
-          "createdAt",
-          "modifiedAt",
-          "metadata",
-          "done"
-        ],
         "type": "object"
       },
       "DatasetContentInternal": {
@@ -35237,7 +35237,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DatalensOperation"
+                  "$ref": "#/components/schemas/DataLensOperation"
                 }
               }
             },
@@ -35733,7 +35733,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DatalensOperation"
+                  "$ref": "#/components/schemas/DataLensOperation"
                 }
               }
             },

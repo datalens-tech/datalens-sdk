@@ -10,7 +10,7 @@ import pytest
 from datalens_sdk import DashboardTab, Position
 from datalens_sdk.converter.dashboard_apply import _apply_update
 from datalens_sdk.domain.dashboard import Dashboard
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 
 def _text_item(item_id: str) -> dict[str, object]:
@@ -137,13 +137,13 @@ def test_apply_layout_resolves_singleton_member_to_wrapper() -> None:
 
 def test_apply_layout_rejects_multi_member_group_member() -> None:
     dash = _dashboard([_tab("tab_1", items=[_group_control("grp", ["m1", "m2"])], layout=[_lay("grp", 0, 0, 36, 2)])])
-    with pytest.raises(DatalensValidationError, match="member of a multi-selector group"):
+    with pytest.raises(DataLensValidationError, match="member of a multi-selector group"):
         dash.update.apply_layout({"m1": Position(0, 5, 12, 2)})
 
 
 def test_apply_layout_unknown_id_fails_loud() -> None:
     dash = _dashboard([_tab("tab_1", items=[_text_item("ex")], layout=[_lay("ex", 0, 0, 36, 10)])])
-    with pytest.raises(DatalensValidationError, match="unknown item id 'ghost'"):
+    with pytest.raises(DataLensValidationError, match="unknown item id 'ghost'"):
         dash.update.apply_layout({"ghost": Position(0, 0, 12, 4)})
 
 

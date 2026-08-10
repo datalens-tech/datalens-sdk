@@ -64,7 +64,7 @@ from datalens_sdk.domain.specs.dashboard import (
     SelectorMemberSpec,
     WidgetItem,
 )
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.dataset import Dataset
@@ -429,7 +429,7 @@ class _StructuralAddersMixin:
         )
         if group is not None:
             if tab is not None:
-                raise DatalensValidationError("tab= belongs to add_group_selector when group= is used")
+                raise DataLensValidationError("tab= belongs to add_group_selector when group= is used")
             members = staged._pending_groups[group]
             # no allocator reservation here: explicit member ids are CLAIMED
             # by the group assembly snapshot; duplicates are prechecked
@@ -442,11 +442,11 @@ class _StructuralAddersMixin:
             }
             for member in members:
                 if member.id and (self._id_allocator.is_used(_ITEM_NAMESPACE, member.id) or member.id in pending_ids):
-                    raise DatalensValidationError(f"Duplicate item id {member.id!r}")
+                    raise DataLensValidationError(f"Duplicate item id {member.id!r}")
             self._pending_update_groups.setdefault(group, []).extend(members)
             return self
         if tab is None:
-            raise DatalensValidationError("tab= is required for a standalone selector on update")
+            raise DataLensValidationError("tab= is required for a standalone selector on update")
         return self._add_staged_items(tab, staged)
 
     def add_group_selector(
@@ -479,16 +479,16 @@ class _StructuralAddersMixin:
         if group is not None and not members:
             known = sorted(self._pending_update_groups)
             hint = f" Known groups: {', '.join(known)}." if known else ""
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Selector group {group!r} has no registered members; call add_selector(group=...) first.{hint}"
             )
         include_ids = tuple(self._resolved_absorb_ref(ref) for ref in include)
         if not members and not include_ids:
-            raise DatalensValidationError("add_group_selector needs group= members and/or include= item ids")
+            raise DataLensValidationError("add_group_selector needs group= members and/or include= item ids")
         if include_ids and show_on_tabs != "current":
-            raise DatalensValidationError("show_on_tabs sharing does not combine with include= absorption")
+            raise DataLensValidationError("show_on_tabs sharing does not combine with include= absorption")
         if len(set(include_ids)) != len(include_ids):
-            raise DatalensValidationError("include item ids must be unique")
+            raise DataLensValidationError("include item ids must be unique")
         tab_id = self._resolve_tab(tab)
         for absorbed_id in include_ids:
             self._require_absorbable(absorbed_id, tab_id)
@@ -514,7 +514,7 @@ class _StructuralAddersMixin:
                 entry = AutoLayoutItemSpec(i="", w=w, h=h)
             else:
                 if size is not None:
-                    raise DatalensValidationError(
+                    raise DataLensValidationError(
                         "size= applies to auto placement (at=None) only; put the size inside at=(x, y, w, h)"
                     )
                 x, y, w, h = _validated_at(at)
@@ -587,7 +587,7 @@ class _StructuralAddersMixin:
             if ref in children:
                 if children == {ref}:
                     return wrapper_id
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"Selector {ref!r} is one of several members of group {wrapper_id!r}; "
                     "absorb the whole group by its wrapper id instead"
                 )
@@ -595,21 +595,21 @@ class _StructuralAddersMixin:
 
     def _require_absorbable(self, absorbed_id: str, tab_id: str) -> None:
         if not absorbed_id:
-            raise DatalensValidationError("include item ids must not be empty strings")
+            raise DataLensValidationError("include item ids must not be empty strings")
         occurrences = self._item_occurrences.get(absorbed_id)
         if not occurrences:
-            raise DatalensValidationError(f"Unknown item id {absorbed_id!r}")
+            raise DataLensValidationError(f"Unknown item id {absorbed_id!r}")
         item_type = self._item_types.get(absorbed_id)
         if item_type not in ("control", "group_control"):
-            raise DatalensValidationError(f"Item {absorbed_id!r} of type {item_type!r} is not a selector")
+            raise DataLensValidationError(f"Item {absorbed_id!r} of type {item_type!r} is not a selector")
         if len(occurrences) > 1 or occurrences[0].container == _GLOBAL_ITEMS_FIELD:
-            raise DatalensValidationError(f"Shared selector {absorbed_id!r} cannot be absorbed into a group")
+            raise DataLensValidationError(f"Shared selector {absorbed_id!r} cannot be absorbed into a group")
         if occurrences[0].tab_id != tab_id:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Item {absorbed_id!r} lives on tab {occurrences[0].tab_id!r}, not {tab_id!r}"
             )
         if self._raw_source_type(absorbed_id) == "external":
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"External selector {absorbed_id!r} cannot join a group (server schema, P017)"
             )
 

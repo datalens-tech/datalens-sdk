@@ -24,7 +24,7 @@ from datalens_sdk.domain.specs.dashboard import (
     ManualSelectorSource,
     SelectorMemberSpec,
 )
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 # -- DateInterval -----------------------------------------------------------------
 
@@ -52,7 +52,7 @@ def test_date_interval_supports_hybrid_absolute_relative() -> None:
 
 @pytest.mark.parametrize("bad", ["", "yesterday", "2024-1-1", "-3X", "--1d"])
 def test_date_interval_rejects_garbage_edges(bad: str) -> None:
-    with pytest.raises(DatalensValidationError):
+    with pytest.raises(DataLensValidationError):
         DateInterval(bad, "2024-01-01")
 
 
@@ -76,7 +76,7 @@ def test_relative_interval_accepts_signed_offsets(offset: str) -> None:
 
 @pytest.mark.parametrize("bad", ["2024-01-01", "-1x", "", "-d"])
 def test_relative_interval_rejects_non_offsets(bad: str) -> None:
-    with pytest.raises(DatalensValidationError):
+    with pytest.raises(DataLensValidationError):
         RelativeDateInterval(bad, "-0d")
 
 

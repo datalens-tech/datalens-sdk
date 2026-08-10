@@ -13,7 +13,7 @@ from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.dashboard_types import REMOVE_PARAM, UNSET
 from datalens_sdk.domain.dashboard_update import DashboardUpdate
 from datalens_sdk.domain.specs.dashboard import GlobalParamsOp
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 _FIXTURES_DIR = Path(__file__).parent / "fixtures" / "dashboards"
 _FIXTURE_PATHS = sorted(_FIXTURES_DIR.glob("*.json"))
@@ -55,7 +55,7 @@ def test_dashboard_update_property_returns_fresh_builder() -> None:
 
 def test_dashboard_update_without_id_raises() -> None:
     dashboard = Dashboard(id=None, installation="yacloud")
-    with pytest.raises(DatalensValidationError, match="without an id"):
+    with pytest.raises(DataLensValidationError, match="without an id"):
         _ = dashboard.update
 
 
@@ -121,11 +121,11 @@ def test_to_spec_is_repeatable_and_unaffected_by_later_calls() -> None:
 
 def test_description_setters_require_strings() -> None:
     update = _dashboard().update
-    with pytest.raises(DatalensValidationError, match="description must be a string"):
+    with pytest.raises(DataLensValidationError, match="description must be a string"):
         update.description(cast(str, None))
-    with pytest.raises(DatalensValidationError, match="access_description"):
+    with pytest.raises(DataLensValidationError, match="access_description"):
         update.access_description(cast(str, 42))
-    with pytest.raises(DatalensValidationError, match="support_description"):
+    with pytest.raises(DataLensValidationError, match="support_description"):
         update.support_description(cast(str, 42))
 
 
@@ -149,13 +149,13 @@ def test_settings_set_after_clear_wins() -> None:
 
 def test_settings_validation_mirrors_create() -> None:
     update = _dashboard().update
-    with pytest.raises(DatalensValidationError, match="hide_tabs must be a bool"):
+    with pytest.raises(DataLensValidationError, match="hide_tabs must be a bool"):
         update.settings(hide_tabs=cast(bool, "yes"))
-    with pytest.raises(DatalensValidationError, match="autoupdate_interval must be >= 30"):
+    with pytest.raises(DataLensValidationError, match="autoupdate_interval must be >= 30"):
         update.settings(autoupdate_interval=5)
-    with pytest.raises(DatalensValidationError, match="max_concurrent_requests must be >= 1"):
+    with pytest.raises(DataLensValidationError, match="max_concurrent_requests must be >= 1"):
         update.settings(max_concurrent_requests=0)
-    with pytest.raises(DatalensValidationError, match="Unknown load_priority"):
+    with pytest.raises(DataLensValidationError, match="Unknown load_priority"):
         update.settings(load_priority="everything")  # type: ignore[arg-type]
     assert update.to_spec().settings_cleared == frozenset()
 
@@ -174,9 +174,9 @@ def test_global_params_records_op_and_snapshots_input() -> None:
 
 def test_global_params_rejects_bad_keys_and_values() -> None:
     update = _dashboard().update
-    with pytest.raises(DatalensValidationError, match="non-empty strings"):
+    with pytest.raises(DataLensValidationError, match="non-empty strings"):
         update.global_params({"": "x"})
-    with pytest.raises(DatalensValidationError, match="string or a sequence of strings"):
+    with pytest.raises(DataLensValidationError, match="string or a sequence of strings"):
         update.global_params({"n": 5})
     assert update.ops == ()
 

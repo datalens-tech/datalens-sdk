@@ -8,7 +8,7 @@ from datalens_sdk.domain.entry_location import EntryLocation, collection_id_from
 from datalens_sdk.domain.ports import WorkbookOperations
 from datalens_sdk.domain.specs.workbook import WorkbookCreateSpec, WorkbookUpdateSpec
 from datalens_sdk.domain.workbook import Workbook, WorkbookStatus
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 
 class WorkbookWriteDTOProtocol(Protocol):
@@ -118,7 +118,7 @@ class WorkbookConverter:
         dto_module: WorkbookDtoModule | None = None,
     ) -> WorkbookWriteDTOProtocol:
         if not workbook.id:
-            raise DatalensValidationError("Cannot move a workbook without an id")
+            raise DataLensValidationError("Cannot move a workbook without an id")
         generated = _dto_module(dto_module)
         return generated.WorkbookMoveDTO(
             id=workbook.id,

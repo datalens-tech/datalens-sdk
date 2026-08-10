@@ -184,15 +184,15 @@ def test_license_argument_bounds_fail_before_requests() -> None:
     recorder = RecordedTransport({})
     client = _client(recorder)
 
-    with pytest.raises(dl.DatalensValidationError, match="between 1 and 1000"):
+    with pytest.raises(dl.DataLensValidationError, match="between 1 and 1000"):
         client.licenses.assign(user_ids=[])
-    with pytest.raises(dl.DatalensValidationError, match="at most 1000"):
+    with pytest.raises(dl.DataLensValidationError, match="at most 1000"):
         client.licenses.list(user_ids=["user"] * 1001)
-    with pytest.raises(dl.DatalensValidationError, match="between 1 and 200"):
+    with pytest.raises(dl.DataLensValidationError, match="between 1 and 200"):
         client.licenses.list(page_size=201)
-    with pytest.raises(dl.DatalensValidationError, match="status must be one of"):
+    with pytest.raises(dl.DataLensValidationError, match="status must be one of"):
         client.licenses.list(status=cast(dl.LicenseStatus, "unknown"))
-    with pytest.raises(dl.DatalensValidationError, match="between 1 and 10000"):
+    with pytest.raises(dl.DataLensValidationError, match="between 1 and 10000"):
         client.licenses.set_limit(value=0)
 
     assert recorder.requests == []

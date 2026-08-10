@@ -19,7 +19,7 @@ from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.ql_chart import QLChart, QLColumn, QLParam
 from datalens_sdk.domain.specs.ql_chart import QLChartCreateSpec
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -461,14 +461,14 @@ def test_ql_column_str_shortcut_defaults_to_string_cast() -> None:
 
 
 def test_ql_column_invalid_cast_raises() -> None:
-    with pytest.raises(DatalensValidationError, match="cast must be one of"):
+    with pytest.raises(DataLensValidationError, match="cast must be one of"):
         QLColumn("x", cast="bool")  # type: ignore[arg-type]
 
 
 def test_ql_build_without_required_placeholder_raises() -> None:
     ops = cast(ChartOperations, _FakeOps())
     builder = QLChartCreateFactory(ops).line(name="c", location=EntryLocation.path("/dir"))
-    with pytest.raises(DatalensValidationError, match="requires placeholder"):
+    with pytest.raises(DataLensValidationError, match="requires placeholder"):
         builder.build()
 
 
@@ -665,13 +665,13 @@ def test_from_domain_update_routes_pie_donut_metric_colors_to_placeholder(chart_
 
 def test_ql_chart_update_fails_closed_for_placeholder_outside_active_visualization() -> None:
     chart = _reference_chart_as_ql("h6eyoxeihu8c0")
-    with pytest.raises(DatalensConfigurationError, match=r"not applicable.*metric"):
+    with pytest.raises(DataLensConfigurationError, match=r"not applicable.*metric"):
         chart.update.x(["not-supported"])
 
 
 def test_ql_chart_update_fails_closed_for_decoration_outside_active_visualization() -> None:
     chart = _reference_chart_as_ql("h6eyw78tblag0")
-    with pytest.raises(DatalensConfigurationError, match=r"not applicable.*treemap"):
+    with pytest.raises(DataLensConfigurationError, match=r"not applicable.*treemap"):
         chart.update.labels(["not-supported"])
 
 
@@ -680,7 +680,7 @@ def test_ql_chart_update_fails_closed_for_unknown_active_visualization() -> None
         id="q1",
         data={"visualization": {"id": "future-viz", "placeholders": [{"id": "x", "items": []}]}},
     )
-    with pytest.raises(DatalensConfigurationError, match="Unsupported active QL visualization"):
+    with pytest.raises(DataLensConfigurationError, match="Unsupported active QL visualization"):
         chart.update.x(["not-supported"])
 
 
@@ -703,7 +703,7 @@ def test_from_domain_update_publish_mode() -> None:
 
 def test_ql_chart_update_invalid_mode_raises() -> None:
     chart = _reference_chart_as_ql("vks9wrtzto8ke")
-    with pytest.raises(DatalensValidationError, match="mode must be"):
+    with pytest.raises(DataLensValidationError, match="mode must be"):
         chart.update.mode("invalid_mode")  # type: ignore[arg-type]
 
 
@@ -912,12 +912,12 @@ def test_qlparam_date_interval_to_mapping() -> None:
 
 
 def test_qlparam_invalid_type_raises() -> None:
-    with pytest.raises(DatalensValidationError, match="QLParam type must be"):
+    with pytest.raises(DataLensValidationError, match="QLParam type must be"):
         QLParam(name="x", type="boolean", default_value="true")  # type: ignore[arg-type]
 
 
 def test_qlparam_date_interval_requires_mapping() -> None:
-    with pytest.raises(DatalensValidationError, match="default_value to be a Mapping"):
+    with pytest.raises(DataLensValidationError, match="default_value to be a Mapping"):
         QLParam(name="x", type="date-interval", default_value="not-a-mapping")
 
 
@@ -947,7 +947,7 @@ def test_create_builder_connection_without_id_raises() -> None:
     recorder = RecordedTransport({"/rpc/createQLChart": httpx.Response(200, json=_ql_chart_response())})
     client = dl.DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
     builder = client.create.ql_chart.line(name="Test", location=dl.EntryLocation.path("/dir"))
-    with pytest.raises(DatalensValidationError, match="requires a Connection with an id"):
+    with pytest.raises(DataLensValidationError, match="requires a Connection with an id"):
         builder.connection(Connection(id=None, type="ch_over_yt"))
 
 

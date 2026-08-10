@@ -13,7 +13,7 @@ from types import MappingProxyType
 from typing import Final
 
 from datalens_sdk.domain.dashboard_types import DashboardItemType
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 GRID_COLUMNS: Final[int] = 36
 
@@ -39,7 +39,7 @@ DEFAULT_ITEM_SIZES: Final[Mapping[DashboardItemType, tuple[int, int]]] = Mapping
 
 def _require_int(value: object, *, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
-        raise DatalensValidationError(f"Position.{field} must be an int, got {value!r}")
+        raise DataLensValidationError(f"Position.{field} must be an int, got {value!r}")
     return value
 
 
@@ -63,11 +63,11 @@ class Position:
         w = _require_int(self.w, field="w")
         h = _require_int(self.h, field="h")
         if x < 0 or y < 0:
-            raise DatalensValidationError(f"Position x and y must be >= 0, got x={x}, y={y}")
+            raise DataLensValidationError(f"Position x and y must be >= 0, got x={x}, y={y}")
         if w <= 0 or h <= 0:
-            raise DatalensValidationError(f"Position w and h must be > 0, got w={w}, h={h}")
+            raise DataLensValidationError(f"Position w and h must be > 0, got w={w}, h={h}")
         if x + w > GRID_COLUMNS:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Position x + w must be <= {GRID_COLUMNS} (the grid width), got x={x} + w={w} = {x + w}"
             )
 
@@ -78,7 +78,7 @@ class Position:
             return value
         if isinstance(value, tuple) and len(value) == 4:
             return cls(*value)
-        raise DatalensValidationError(f"position must be a Position or an (x, y, w, h) tuple, got {value!r}")
+        raise DataLensValidationError(f"position must be a Position or an (x, y, w, h) tuple, got {value!r}")
 
     def as_tuple(self) -> tuple[int, int, int, int]:
         return (self.x, self.y, self.w, self.h)
@@ -136,17 +136,17 @@ def is_in_grid(entry: LayoutEntry) -> bool:
 
 def _require_positive_int(value: object, *, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-        raise DatalensValidationError(f"{field} must be a positive int, got {value!r}")
+        raise DataLensValidationError(f"{field} must be a positive int, got {value!r}")
     return value
 
 
 def _validated_ids(item_ids: tuple[str, ...]) -> tuple[str, ...]:
     if not item_ids:
-        raise DatalensValidationError("Layout needs at least one item id")
+        raise DataLensValidationError("Layout needs at least one item id")
     if any(not isinstance(i, str) or not i for i in item_ids):
-        raise DatalensValidationError(f"Layout item ids must be non-empty strings, got {item_ids!r}")
+        raise DataLensValidationError(f"Layout item ids must be non-empty strings, got {item_ids!r}")
     if len(set(item_ids)) != len(item_ids):
-        raise DatalensValidationError(f"Layout item ids must be unique, got {item_ids!r}")
+        raise DataLensValidationError(f"Layout item ids must be unique, got {item_ids!r}")
     return item_ids
 
 
@@ -178,7 +178,7 @@ class Layout:
         """One full-width row of equal-width cells (≤ 36 items)."""
         ids = _validated_ids(item_ids)
         if len(ids) > GRID_COLUMNS:
-            raise DatalensValidationError(f"Layout.row fits at most {GRID_COLUMNS} items, got {len(ids)}")
+            raise DataLensValidationError(f"Layout.row fits at most {GRID_COLUMNS} items, got {len(ids)}")
         heights = _resolved_heights(h, len(ids))
         _require_non_negative(y, field="y")
         return _row_positions(ids, y=y, heights=heights)
@@ -189,7 +189,7 @@ class Layout:
         ids = _validated_ids(item_ids)
         _require_positive_int(cols, field="cols")
         if cols > GRID_COLUMNS:
-            raise DatalensValidationError(f"cols must be <= {GRID_COLUMNS}, got {cols}")
+            raise DataLensValidationError(f"cols must be <= {GRID_COLUMNS}, got {cols}")
         row_height = _require_positive_int(h, field="h")
         _require_non_negative(y, field="y")
         positions: dict[str, Position] = {}
@@ -215,7 +215,7 @@ class Layout:
 
 def _require_non_negative(value: object, *, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise DatalensValidationError(f"{field} must be a non-negative int, got {value!r}")
+        raise DataLensValidationError(f"{field} must be a non-negative int, got {value!r}")
     return value
 
 
@@ -226,9 +226,9 @@ def _resolved_heights(h: int | Sequence[int], count: int) -> tuple[int, ...]:
     if isinstance(h, Sequence) and not isinstance(h, (str, bytes)):
         heights = tuple(h)
         if len(heights) != count:
-            raise DatalensValidationError(f"heights must have one entry per item ({count}), got {len(heights)}")
+            raise DataLensValidationError(f"heights must have one entry per item ({count}), got {len(heights)}")
         return tuple(_require_positive_int(value, field="h") for value in heights)
-    raise DatalensValidationError(f"h must be an int or a sequence of ints, got {h!r}")
+    raise DataLensValidationError(f"h must be an int or a sequence of ints, got {h!r}")
 
 
 def rects_overlap(a: LayoutEntry, b: LayoutEntry) -> bool:

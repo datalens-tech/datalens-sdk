@@ -32,7 +32,7 @@ from datalens_sdk.domain.specs.dashboard import (
     WidgetItem,
     WidgetTabSpec,
 )
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 # -- encode_selector_default -------------------------------------------------------
 
@@ -258,5 +258,5 @@ def test_member_id_colliding_with_item_id_is_rejected() -> None:
         items=(widget, group),
         layout=(LayoutItemSpec("el_1", 0, 0, 12, 2), LayoutItemSpec("g1", 12, 0, 12, 2)),
     )
-    with pytest.raises(DatalensValidationError, match="Duplicate item id 'el_1'"):
+    with pytest.raises(DataLensValidationError, match="Duplicate item id 'el_1'"):
         _validate_unique_ids(_create_spec(tab))
