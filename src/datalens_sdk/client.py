@@ -71,9 +71,9 @@ from datalens_sdk.domain.ports import (
 from datalens_sdk.domain.ql_chart import QLChart
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.domain.workbook import Workbook, WorkbookCreate
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError, NotSupportedError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError, NotSupportedError
 from datalens_sdk.http import (
-    DatalensHTTPClient,
+    DataLensHTTPClient,
     HTTPClientProtocol,
     HTTPEventHooks,
 )
@@ -501,7 +501,7 @@ class LicensesNamespace:
     def assign(self, *, user_ids: Sequence[str]) -> tuple[License, ...]:
         ids = tuple(user_ids)
         if not 1 <= len(ids) <= 1000:
-            raise DatalensValidationError("user_ids must contain between 1 and 1000 items")
+            raise DataLensValidationError("user_ids must contain between 1 and 1000 items")
         return self._operations.assign_licenses(ids)
 
     def list(
@@ -528,11 +528,11 @@ class LicensesNamespace:
 
     def set_limit(self, *, value: int) -> LicenseLimits:
         if not 1 <= value <= 10000:
-            raise DatalensValidationError("value must be between 1 and 10000")
+            raise DataLensValidationError("value must be between 1 and 10000")
         return self._operations.set_license_limit(value)
 
 
-class DatalensClientBase:
+class DataLensClientBase:
     INSTALLATION = ""
     GENERATED_PACKAGE = "datalens_sdk._generated"
     SDK_DISTRIBUTION = "datalens-sdk"
@@ -563,7 +563,7 @@ class DatalensClientBase:
             if auth is not _DEFAULT_AUTH_PROVIDER or any(
                 value is not None for value in (base_url, transport, event_hooks)
             ):
-                raise DatalensConfigurationError(
+                raise DataLensConfigurationError(
                     "http_client cannot be combined with auth, base_url, transport, or event_hooks"
                 )
             self._http = http_client
@@ -571,14 +571,14 @@ class DatalensClientBase:
         else:
             resolved_base_url = base_url or self.DEFAULT_BASE_URL
             if not resolved_base_url:
-                raise DatalensConfigurationError(f"{type(self).__name__} requires base_url.")
+                raise DataLensConfigurationError(f"{type(self).__name__} requires base_url.")
             if auth is _DEFAULT_AUTH_PROVIDER:
                 auth_provider = self._get_default_auth_provider()
             elif auth is None:
                 auth_provider = NoAuthProvider()
             else:
                 auth_provider = auth
-            self._http = DatalensHTTPClient(
+            self._http = DataLensHTTPClient(
                 installation=self.INSTALLATION,
                 sdk_version=_distribution_version(self.SDK_DISTRIBUTION),
                 api_version=_API_VERSION,
@@ -722,9 +722,9 @@ class DatalensClientBase:
 
     def close(self) -> None:
         if self._owns_http_client:
-            cast(DatalensHTTPClient, self._http).close()
+            cast(DataLensHTTPClient, self._http).close()
 
-    def __enter__(self) -> DatalensClientBase:
+    def __enter__(self) -> DataLensClientBase:
         return self
 
     def __exit__(
@@ -777,7 +777,7 @@ class DatalensClientBase:
         raise AttributeError(name)
 
 
-class DataLensClientYC(DatalensClientBase):
+class DataLensClientYC(DataLensClientBase):
     INSTALLATION = "yacloud"
     DEFAULT_BASE_URL = "https://api.datalens.tech"
 
@@ -792,7 +792,7 @@ class DataLensClientYC(DatalensClientBase):
         licenses: LicensesNamespace
 
 
-class DataLensClientEnterprise(DatalensClientBase):
+class DataLensClientEnterprise(DataLensClientBase):
     INSTALLATION = "enterprise"
     DEFAULT_BASE_URL = ""
     if TYPE_CHECKING:

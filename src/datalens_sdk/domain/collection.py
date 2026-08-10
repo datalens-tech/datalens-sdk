@@ -16,7 +16,7 @@ from datalens_sdk.domain.navigation import (
 )
 from datalens_sdk.domain.ports import CollectionOperations
 from datalens_sdk.domain.specs.collection import CollectionCreateSpec, CollectionUpdateSpec
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 _UNBOUND = "Object is not bound to client operations. Use a client namespace."
 
@@ -31,7 +31,7 @@ class CollectionCreate:
         operations: CollectionOperations | None = None,
     ) -> None:
         if not name:
-            raise DatalensValidationError("name must not be empty")
+            raise DataLensValidationError("name must not be empty")
         resolved_parent = None
         if parent is not None:
             resolved_parent = resolve_entry_location(
@@ -59,7 +59,7 @@ class CollectionCreate:
 
     def build(self) -> Collection:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         return self._operations.create_collection(self)
 
 
@@ -82,35 +82,35 @@ class Collection(EntryLocation):
 
     def _as_entry_location(self) -> EntryLocation:
         if not self.id:
-            raise DatalensValidationError("Cannot use a collection without an id as a destination")
+            raise DataLensValidationError("Cannot use a collection without an id as a destination")
         return EntryLocation.collection(self.id)
 
     @property
     def update(self) -> CollectionUpdate:
         if not self.id:
-            raise DatalensValidationError("Cannot update a collection without an id")
+            raise DataLensValidationError("Cannot update a collection without an id")
         return CollectionUpdate(collection=self, operations=self._operations)
 
     def delete(self) -> None:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot delete a collection without an id")
+            raise DataLensValidationError("Cannot delete a collection without an id")
         self._operations.delete_collection(self.id)
 
     def rename(self, name: str) -> Collection:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot rename a collection without an id")
+            raise DataLensValidationError("Cannot rename a collection without an id")
         validate_entry_name(name=name)
         return self.update.name(name).execute()
 
     def move(self, location: EntryLocation | None, *, name: str | None = None) -> Collection:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot move a collection without an id")
+            raise DataLensValidationError("Cannot move a collection without an id")
         resolved_location = None
         if location is not None:
             resolved_location = resolve_entry_location(
@@ -120,7 +120,7 @@ class Collection(EntryLocation):
                 context="Collection move",
             )
         if name is not None and not name:
-            raise DatalensValidationError("name must not be empty")
+            raise DataLensValidationError("name must not be empty")
         return self._operations.move_collection(self, resolved_location, name=name)
 
     def list_entries(
@@ -135,9 +135,9 @@ class Collection(EntryLocation):
         page_size: int = 100,
     ) -> Pager[StructureSummary]:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot list entries for a collection without an id")
+            raise DataLensValidationError("Cannot list entries for a collection without an id")
         return self._operations.list_collection_entries(
             self.id,
             CollectionListOptions(
@@ -160,7 +160,7 @@ class CollectionUpdate:
 
     def name(self, value: str) -> Self:
         if not value:
-            raise DatalensValidationError("name must not be empty")
+            raise DataLensValidationError("name must not be empty")
         self._changes["name"] = value
         return self
 
@@ -170,7 +170,7 @@ class CollectionUpdate:
 
     def to_spec(self) -> CollectionUpdateSpec:
         if not self._collection.id:
-            raise DatalensValidationError("Cannot update a collection without an id")
+            raise DataLensValidationError("Cannot update a collection without an id")
         return CollectionUpdateSpec(
             collection_id=self._collection.id,
             changes=dict(self._changes),
@@ -178,7 +178,7 @@ class CollectionUpdate:
 
     def execute(self) -> Collection:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self._changes:
-            raise DatalensValidationError("Collection update must contain at least one change")
+            raise DataLensValidationError("Collection update must contain at least one change")
         return self._operations.update_collection(self)

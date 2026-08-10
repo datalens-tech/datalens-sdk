@@ -9,7 +9,7 @@ import pytest
 
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 _REFERENCE_CHARTS_DIR = Path(__file__).parent / "fixtures" / "reference_charts" / "wizard"
 
@@ -166,7 +166,7 @@ def test_add_hierarchy_viz_applicability_gate_on_metric() -> None:
         wire_type="d3_wizard_node",
         data={"visualization": {"id": "metric", "placeholders": []}},
     )
-    with pytest.raises(DatalensConfigurationError, match="add_hierarchy"):
+    with pytest.raises(DataLensConfigurationError, match="add_hierarchy"):
         chart.update.add_hierarchy("X", ["f1"])
 
 

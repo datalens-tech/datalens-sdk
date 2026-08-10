@@ -12,7 +12,7 @@ from datalens_sdk.domain.folder import Folder
 from datalens_sdk.domain.navigation import CollectionSummary, EntrySummary, WorkbookSummary
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.domain.workbook import Workbook
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 
 class RecordedTransport:
@@ -354,9 +354,9 @@ def test_unbound_domain_navigation_fails_before_request() -> None:
     collection = Collection(id="collection-1", name="Collection")
     workbook = Workbook(id="workbook-1", name="Workbook")
 
-    with pytest.raises(DatalensConfigurationError):
+    with pytest.raises(DataLensConfigurationError):
         folder.list_entries()
-    with pytest.raises(DatalensConfigurationError):
+    with pytest.raises(DataLensConfigurationError):
         collection.list_entries()
-    with pytest.raises(DatalensConfigurationError):
+    with pytest.raises(DataLensConfigurationError):
         workbook.list_entries()

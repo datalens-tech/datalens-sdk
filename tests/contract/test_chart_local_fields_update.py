@@ -5,7 +5,7 @@ and ``add_aggregated_measure`` against an existing chart payload:
 
 * ``add_field`` entries are appended to ``data["updates"]`` (P1-UPDATES: legacy
   operations preserved via ``setdefault``).
-* guid collisions raise ``DatalensValidationError`` (P1-DROP: no silent drop).
+* guid collisions raise ``DataLensValidationError`` (P1-DROP: no silent drop).
 * New local fields are visible to every ref-resolving normalizer so
   ``.add_local_field(...).add_sort(guid)`` resolves in the same update
   (P1-RACE).
@@ -22,7 +22,7 @@ import pytest
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.fields import DatasetField
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 
 def _flat_table_chart_with_data(data: dict[str, Any]) -> WizardChart:
@@ -258,7 +258,7 @@ def test_change_aggregation_rejects_automatic_measure() -> None:
         }
     )
     chart = _flat_table_chart_with_data(data_in)
-    with pytest.raises(DatalensValidationError, match="automatic aggregation"):
+    with pytest.raises(DataLensValidationError, match="automatic aggregation"):
         chart.update.change_aggregation(chart.fields.by_guid("g_trips"), aggregation="sum", name="Trips sum")
 
 
@@ -294,7 +294,7 @@ def test_add_local_field_collision_raises() -> None:
     data_in["updates"] = [{"action": "add_field", "field": {"guid": "dup", "title": "Old"}}]
     chart = _flat_table_chart_with_data(data_in)
     update = chart.update.add_local_field(title="New", formula="[x]", guid="dup")
-    with pytest.raises(DatalensValidationError):
+    with pytest.raises(DataLensValidationError):
         _payload(update)
 
 

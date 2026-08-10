@@ -276,7 +276,7 @@ def test_entry_location_resolver_builds_destination_only_locations() -> None:
         workbook_id=None,
     ) == dl.EntryLocation.collection("coll-1")
 
-    with pytest.raises(dl.DatalensValidationError, match="collection_id and workbook_id"):
+    with pytest.raises(dl.DataLensValidationError, match="collection_id and workbook_id"):
         resolve_entry_location_from_api_fields(
             dir_path="/Users/me",
             key=None,
@@ -289,9 +289,9 @@ def test_entry_location_factories_validate_destination_values() -> None:
     assert dl.EntryLocation.path("/Users/me/") == dl.EntryLocation.path("/Users/me")
     assert dl.EntryLocation.workbook("wb-1") == dl.EntryLocation.workbook("wb-1")
     assert dl.EntryLocation.collection("coll-1") == dl.EntryLocation.collection("coll-1")
-    with pytest.raises(dl.DatalensValidationError, match="dir_path must not be empty"):
+    with pytest.raises(dl.DataLensValidationError, match="dir_path must not be empty"):
         dl.EntryLocation.path("")
-    with pytest.raises(dl.DatalensValidationError, match="workbook_id must not be empty"):
+    with pytest.raises(dl.DataLensValidationError, match="workbook_id must not be empty"):
         dl.EntryLocation.workbook("")
 
 
@@ -747,7 +747,7 @@ def test_generated_builders_validate_fields_before_transport() -> None:
     assert "dir_path" not in builder.optional_fields()
     assert "workbook_id" not in builder.optional_fields()
 
-    with pytest.raises(dl.DatalensValidationError, match="missing required fields"):
+    with pytest.raises(dl.DataLensValidationError, match="missing required fields"):
         builder.build()
     with pytest.raises(dl.NotSupportedError, match=r"postgres\.raw_sql_level='bad' is not allowed"):
         builder._set("raw_sql_level", "bad")
@@ -804,7 +804,7 @@ def test_source_factory_rejects_wrong_or_unbound_connections_before_transport() 
 
     connection_without_id = client.domain_connection(id="", type="postgres")
     unbound_source_factory = client.create.source(using=connection_without_id)
-    with pytest.raises(dl.DatalensValidationError, match="requires a connection with an id"):
+    with pytest.raises(dl.DataLensValidationError, match="requires a connection with an id"):
         unbound_source_factory.pg_table(alias="orders", table_name="orders")
 
 
@@ -835,7 +835,7 @@ def test_read_dtos_ignore_unknown_fields_while_domain_raw_preserves_response(tmp
     assert dataset.response_snapshot == {}
     raw_dataset = cast(dict[str, object], dataset.raw["dataset"])
     assert raw_dataset["future_nested"] == 1
-    with pytest.raises(dl.DatalensValidationError, match=r"client\.get\.dataset"):
+    with pytest.raises(dl.DataLensValidationError, match=r"client\.get\.dataset"):
         dataset.to_file(tmp_path)
 
 
@@ -1161,7 +1161,7 @@ def test_public_exports_cover_user_visible_errors() -> None:
         name
         for name, value in vars(dl).items()
         if isinstance(value, type)
-        and issubclass(value, dl.DatalensError)
+        and issubclass(value, dl.DataLensError)
         and value.__module__.startswith("datalens_sdk")
         and not name.startswith("_")
         and name not in public_names

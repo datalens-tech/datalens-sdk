@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 from datalens_sdk._runtime.viz_specs import VIZ_SPECS
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 
 class WizardVisualizationTransition(TypedDict):
@@ -35,17 +35,17 @@ def validate_visualization_transition(
 ) -> WizardVisualizationTransition:
     """Return one verified transition or fail before an RPC is built."""
     if source_visualization_id not in VIZ_SPECS:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             f"{method}: active visualization {source_visualization_id!r} is unknown. "
             f"Supported visualizations: {sorted(VIZ_SPECS)}."
         )
     if target_visualization_id not in VIZ_SPECS:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             f"{method}: target visualization {target_visualization_id!r} is unknown for active visualization "
             f"{source_visualization_id!r}. Supported visualizations: {sorted(VIZ_SPECS)}."
         )
     if target_visualization_id == source_visualization_id:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             f"{method}: target visualization {target_visualization_id!r} is already active; "
             "choose a different supported transition."
         )
@@ -53,7 +53,7 @@ def validate_visualization_transition(
     if transition is not None:
         return transition
     targets = sorted(target for source, target in WIZARD_VISUALIZATION_TRANSITIONS if source == source_visualization_id)
-    raise DatalensConfigurationError(
+    raise DataLensConfigurationError(
         f"{method}: transition from active visualization {source_visualization_id!r} to "
         f"{target_visualization_id!r} is not supported. Verified targets: {targets}."
     )

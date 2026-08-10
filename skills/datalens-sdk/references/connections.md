@@ -16,7 +16,7 @@ Builder behavior (same for every connector):
   Passing a value outside a generated enum's allowed values raises
   `NotSupportedError` immediately. Use `fields_help()` and
   `allowed_values(field)` instead of guessing.
-- `.build()` raises `DatalensValidationError` listing the missing required fields before any HTTP call.
+- `.build()` raises `DataLensValidationError` listing the missing required fields before any HTTP call.
 - Every builder self-describes: `required_fields()`, `optional_fields()`, `missing_required()`, `allowed_values(field)`, and `fields_help()` (a `dict[str, FieldHelp]` with required/default/allowed per field). Use these instead of guessing — connector fields vary a lot.
 
 **Credentials are secrets.** `password`, `token`, `access_token`, and similar builder values must come from the environment (`os.environ[...]`) — never hardcode them in scripts, never print or echo them, and never write them into `.env` yourself (the user does that).
@@ -112,7 +112,7 @@ ds = client.create.dataset(name="Sales", location=wb).sources([src]).build()
 ```
 
 - `alias` becomes the source title — it is how you find the source later (`dataset.sources.by_alias("sales")`) and how join sides read in the UI.
-- **Always pass `strict=True`.** `.build()` validates the source against the server; with `strict=True` an empty or invalid schema raises `DatalensValidationError` at once. The default (`strict=False`) only warns and returns a `Source` with `valid=False` and an empty schema, which then fails later and less clearly inside dataset creation.
+- **Always pass `strict=True`.** `.build()` validates the source against the server; with `strict=True` an empty or invalid schema raises `DataLensValidationError` at once. The default (`strict=False`) only warns and returns a `Source` with `valid=False` and an empty schema, which then fails later and less clearly inside dataset creation.
 - The source type must match the connection type (`ch_table` needs a `clickhouse` connection) — mismatch raises `NotSupportedError`.
 
 ### Main source types
@@ -160,4 +160,4 @@ conn.delete()  # hard rule 6: confirm before deleting
 - [core-concepts.md](core-concepts.md) — namespaces, locations, `client.capabilities`, error families
 - [datasets.md](datasets.md) — feeding sources into datasets, joins, `replace_connection`
 - [wizard-charts/_index.md](wizard-charts/_index.md) — charts on top of the datasets you build
-- [troubleshooting.md](troubleshooting.md) — any `DatalensAPIError`, before retrying anything
+- [troubleshooting.md](troubleshooting.md) — any `DataLensAPIError`, before retrying anything

@@ -26,7 +26,7 @@ from datalens_sdk.domain.chart_types import (
 from datalens_sdk.domain.entry_types import EntryUpdateMode
 from datalens_sdk.domain.fields import DatasetField, FieldRef
 from datalens_sdk.domain.ports import ChartOperations
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.wizard_chart import WizardChart
@@ -271,7 +271,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
     ) -> Self:
         self._check_viz_applicability("axis_scale")
         if mode == "manual" and min is None and max is None:
-            raise DatalensConfigurationError(
+            raise DataLensConfigurationError(
                 "axis_scale(mode='manual') requires at least one of min= or max= to be specified."
             )
         self._set_ph_setting("axis_scale", ph_id, "type", scale)
@@ -545,7 +545,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
     def font_color(self, *, color: str) -> Self:
         self._check_viz_applicability("font_color")
         if not HEX_COLOR_RE.fullmatch(color):
-            raise DatalensConfigurationError(f"font_color: color must be a hex string like #RRGGBB, got {color!r}")
+            raise DataLensConfigurationError(f"font_color: color must be a hex string like #RRGGBB, got {color!r}")
         return self._set_extra("metricFontColor", color)
 
     def measure_title_mode(self, *, mode: Literal["by-field", "manual", "hide"]) -> Self:
@@ -554,7 +554,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
 
     def mode(self, value: EntryUpdateMode) -> Self:
         if value not in get_args(EntryUpdateMode):
-            raise DatalensValidationError(f"mode must be one of {get_args(EntryUpdateMode)}, got {value!r}")
+            raise DataLensValidationError(f"mode must be one of {get_args(EntryUpdateMode)}, got {value!r}")
         self._mode = value
         return self
 
@@ -615,5 +615,5 @@ class WizardChartUpdate(_ChartMutationsMixin):
 
     def execute(self) -> WizardChart:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         return self._operations.update_wizard_chart(self)

@@ -16,8 +16,8 @@ from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.fields import DatasetField
 from datalens_sdk.domain.ports import NavigationOperations
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DatalensAPIError
-from datalens_sdk.http import DatalensHTTPClient
+from datalens_sdk.errors import DataLensAPIError
+from datalens_sdk.http import DataLensHTTPClient
 
 _REFERENCE_CHARTS_DIR = Path(__file__).parent / "fixtures" / "reference_charts" / "wizard"
 
@@ -455,7 +455,7 @@ def test_update_raises_on_conflict() -> None:
             return httpx.Response(423, json={"message": "locked"})
         return httpx.Response(404, json={})
 
-    client = DatalensHTTPClient(
+    client = DataLensHTTPClient(
         installation="yacloud",
         sdk_version="1.2.3",
         api_version="2",
@@ -476,7 +476,7 @@ def test_update_raises_on_conflict() -> None:
         _operations=service,
     )
     update = chart.update.chart_title(text="Changed")
-    with pytest.raises(DatalensAPIError):
+    with pytest.raises(DataLensAPIError):
         service.update_wizard_chart(update)
 
 
@@ -723,7 +723,7 @@ def test_update_raises_on_409() -> None:
             },
         )
 
-    client = DatalensHTTPClient(
+    client = DataLensHTTPClient(
         installation="yacloud",
         sdk_version="1.2.3",
         api_version="2",
@@ -744,5 +744,5 @@ def test_update_raises_on_409() -> None:
         _operations=service,
     )
     update = chart.update.chart_title(text="Changed")
-    with pytest.raises(DatalensAPIError):
+    with pytest.raises(DataLensAPIError):
         service.update_wizard_chart(update)

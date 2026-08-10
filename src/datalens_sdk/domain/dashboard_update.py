@@ -58,7 +58,7 @@ from datalens_sdk.domain.specs.dashboard import (
     SetChartParamsOp,
     UpdateTabOp,
 )
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 _UNBOUND = "Object is not bound to client operations. Use a client namespace."
 
@@ -89,7 +89,7 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
 
     def __init__(self, *, dashboard: Dashboard, operations: DashboardOperations | None = None) -> None:
         if not dashboard.id:
-            raise DatalensValidationError("Cannot update a dashboard without an id")
+            raise DataLensValidationError("Cannot update a dashboard without an id")
         self._dashboard_id: str = dashboard.id
         self._installation = dashboard.installation
         # JSON round-trip: raw wire data holds only JSON types; the builder must
@@ -193,31 +193,31 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
     def _resolve_tab(self, ref: str) -> str:
         """Resolve a tab reference: id first, then title (must be unambiguous)."""
         if not isinstance(ref, str) or not ref:
-            raise DatalensValidationError(f"tab reference must be a non-empty string, got {ref!r}")
+            raise DataLensValidationError(f"tab reference must be a non-empty string, got {ref!r}")
         for tab in self._tabs:
             if tab.tab_id == ref:
                 return tab.tab_id
         matches = [tab.tab_id for tab in self._tabs if tab.title == ref]
         if len(matches) > 1:
-            raise DatalensValidationError(f"Tab title {ref!r} is ambiguous (tabs {matches!r}); use the tab id instead")
+            raise DataLensValidationError(f"Tab title {ref!r} is ambiguous (tabs {matches!r}); use the tab id instead")
         if not matches:
             known = [tab.tab_id for tab in self._tabs]
-            raise DatalensValidationError(f"Unknown tab {ref!r}; known tab ids: {known!r}")
+            raise DataLensValidationError(f"Unknown tab {ref!r}; known tab ids: {known!r}")
         return matches[0]
 
     def _require_item(self, item_id: str) -> str:
         """Return the item's type after checking it still exists in the index."""
         if not isinstance(item_id, str) or not item_id:
-            raise DatalensValidationError(f"item_id must be a non-empty string, got {item_id!r}")
+            raise DataLensValidationError(f"item_id must be a non-empty string, got {item_id!r}")
         if item_id not in self._item_occurrences:
-            raise DatalensValidationError(f"Unknown item id {item_id!r}")
+            raise DataLensValidationError(f"Unknown item id {item_id!r}")
         return self._item_types.get(item_id) or ""
 
     def _tab_index(self, tab_id: str) -> _TabIndex:
         for entry in self._tabs:
             if entry.tab_id == tab_id:
                 return entry
-        raise DatalensValidationError(f"Unknown tab {tab_id!r}")  # pragma: no cover - guarded by _resolve_tab
+        raise DataLensValidationError(f"Unknown tab {tab_id!r}")  # pragma: no cover - guarded by _resolve_tab
 
     def _drop_item_from_index(self, item_id: str) -> None:
         for occurrence in self._item_occurrences.pop(item_id, []):
@@ -240,11 +240,11 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         """Partial patch of an existing tab; omitted kwargs stay untouched."""
         tab_id = self._resolve_tab(tab)
         if title is None and hidden is None:
-            raise DatalensValidationError("update_tab requires at least one of title= or hidden=")
+            raise DataLensValidationError("update_tab requires at least one of title= or hidden=")
         if title is not None and (not isinstance(title, str) or not title.strip()):
-            raise DatalensValidationError(f"tab title must be a non-empty string, got {title!r}")
+            raise DataLensValidationError(f"tab title must be a non-empty string, got {title!r}")
         if hidden is not None and not isinstance(hidden, bool):
-            raise DatalensValidationError(f"hidden must be a bool or None, got {hidden!r}")
+            raise DataLensValidationError(f"hidden must be a bool or None, got {hidden!r}")
         self._ops.append(UpdateTabOp(tab_id=tab_id, title=title, hidden=hidden))
         if title is not None:
             self._tab_index(tab_id).title = title
@@ -259,7 +259,7 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
     def remove_tab(self, tab: str) -> Self:
         tab_id = self._resolve_tab(tab)
         if len(self._tabs) == 1:
-            raise DatalensValidationError("Cannot remove the last remaining tab")
+            raise DataLensValidationError("Cannot remove the last remaining tab")
         entry = self._tab_index(tab_id)
         for item_id in sorted(entry.item_ids):
             occurrences = self._item_occurrences.get(item_id, [])
@@ -278,11 +278,11 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
     def reorder_tabs(self, order: Sequence[str]) -> Self:
         """Reorder tabs; ``order`` must be an exact permutation of all tabs."""
         if isinstance(order, str) or not isinstance(order, Sequence):
-            raise DatalensValidationError(f"reorder_tabs expects a sequence of tab references, got {order!r}")
+            raise DataLensValidationError(f"reorder_tabs expects a sequence of tab references, got {order!r}")
         resolved = [self._resolve_tab(ref) for ref in order]
         current = [entry.tab_id for entry in self._tabs]
         if sorted(resolved) != sorted(current) or len(set(resolved)) != len(resolved):
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"reorder_tabs must list every tab exactly once; current tabs {current!r}, got {resolved!r}"
             )
         by_id = {entry.tab_id: entry for entry in self._tabs}
@@ -311,23 +311,23 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         """
         item_type = self._require_item(item_id)
         if item_type != "widget":
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"replace_chart targets widget items; item {item_id!r} has type {item_type!r}"
             )
         chart_id, chart_installation = _resolve_chart_id(chart)
         if chart_installation and chart_installation != self._installation:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Cannot place a {chart_installation!r} chart on a {self._installation!r} dashboard"
             )
         widget_tabs = self._item_widget_tab_ids.get(item_id, set())
         if widget_tab_id is None:
             if len(widget_tabs) > 1:
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"Widget {item_id!r} has {len(widget_tabs)} chart tabs "
                     f"({sorted(widget_tabs)!r}); pass widget_tab_id= to pick one"
                 )
         elif widget_tab_id not in widget_tabs:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Widget {item_id!r} has no chart tab {widget_tab_id!r}; known: {sorted(widget_tabs)!r}"
             )
         self._ops.append(ReplaceChartOp(item_id=item_id, chart_id=chart_id, widget_tab_id=widget_tab_id))
@@ -377,20 +377,20 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         """
         item_type = self._require_item(item_id)
         if item_type == "group_control":
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"set_chart_params does not support group_control items (item {item_id!r}): "
                 "defaults live on the nested controls; use update_selector(item_id=<member id>)"
             )
         if item_type not in ("widget", "control"):
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"set_chart_params targets widget/control items; item {item_id!r} has type {item_type!r}"
             )
         if not isinstance(params, Mapping):
-            raise DatalensValidationError(f"params expects a mapping, got {params!r}")
+            raise DataLensValidationError(f"params expects a mapping, got {params!r}")
         normalized: dict[str, tuple[str, ...]] = {}
         for key, value in params.items():
             if not isinstance(key, str) or not key:
-                raise DatalensValidationError(f"params keys must be non-empty strings, got {key!r}")
+                raise DataLensValidationError(f"params keys must be non-empty strings, got {key!r}")
             normalized[key] = _normalize_param_values(key, value)
         self._ops.append(SetChartParamsOp(item_id=item_id, params=normalized, merge=merge))
         return self
@@ -402,14 +402,14 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         widget chart-tab ids (live wire fact: widget endpoints are the chart
         TAB ids, not the widget item id)."""
         if not isinstance(ref, str) or not ref:
-            raise DatalensValidationError(f"connection endpoint must be a non-empty string, got {ref!r}")
+            raise DataLensValidationError(f"connection endpoint must be a non-empty string, got {ref!r}")
         if ref in self._item_occurrences:
             return
         if any(ref in children for children in self._item_group_children.values()):
             return
         if any(ref in widget_tabs for widget_tabs in self._item_widget_tab_ids.values()):
             return
-        raise DatalensValidationError(f"Unknown item id {ref!r}")
+        raise DataLensValidationError(f"Unknown item id {ref!r}")
 
     def remove_connection(self, *, from_item: str, to_item: str, tab: str | None = None) -> Self:
         self._require_connection_endpoint(from_item)
@@ -428,11 +428,11 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         if tab is not None:
             tab_id = self._resolve_tab(tab)
             if tab_id not in matches:
-                raise DatalensValidationError(f"Tab {tab_id!r} has no connection {from_item!r} -> {to_item!r}")
+                raise DataLensValidationError(f"Tab {tab_id!r} has no connection {from_item!r} -> {to_item!r}")
         elif not matches:
-            raise DatalensValidationError(f"No connection {from_item!r} -> {to_item!r} on any tab")
+            raise DataLensValidationError(f"No connection {from_item!r} -> {to_item!r} on any tab")
         elif len(matches) > 1:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Connection {from_item!r} -> {to_item!r} exists on several tabs {matches!r}; pass tab="
             )
         else:
@@ -443,10 +443,10 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
 
     def remove_alias(self, *fields: str, tab: str | None = None) -> Self:
         if len(fields) < 2:
-            raise DatalensValidationError("remove_alias requires at least two field names")
+            raise DataLensValidationError("remove_alias requires at least two field names")
         for field_name in fields:
             if not isinstance(field_name, str) or not field_name:
-                raise DatalensValidationError(f"alias fields must be non-empty strings, got {field_name!r}")
+                raise DataLensValidationError(f"alias fields must be non-empty strings, got {field_name!r}")
         wanted = set(fields)
         matches: list[str] = []
         for raw_tab in self._raw_tabs():
@@ -463,11 +463,11 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         if tab is not None:
             tab_id = self._resolve_tab(tab)
             if tab_id not in matches:
-                raise DatalensValidationError(f"Tab {tab_id!r} has no alias {sorted(wanted)!r}")
+                raise DataLensValidationError(f"Tab {tab_id!r} has no alias {sorted(wanted)!r}")
         elif not matches:
-            raise DatalensValidationError(f"No alias {sorted(wanted)!r} on any tab")
+            raise DataLensValidationError(f"No alias {sorted(wanted)!r} on any tab")
         elif len(matches) > 1:
-            raise DatalensValidationError(f"Alias {sorted(wanted)!r} exists on several tabs {matches!r}; pass tab=")
+            raise DataLensValidationError(f"Alias {sorted(wanted)!r} exists on several tabs {matches!r}; pass tab=")
         else:
             tab_id = matches[0]
         self._removed_aliases.add((tab_id, frozenset(wanted)))
@@ -479,21 +479,21 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
     def description(self, value: str) -> Self:
         """Set ``data.description``; ``""`` clears the field (key removal)."""
         if not isinstance(value, str):
-            raise DatalensValidationError(f"description must be a string, got {value!r}")
+            raise DataLensValidationError(f"description must be a string, got {value!r}")
         self._description = value
         return self
 
     def access_description(self, value: str) -> Self:
         """Set ``data.accessDescription``; ``""`` clears the field (key removal)."""
         if not isinstance(value, str):
-            raise DatalensValidationError(f"access_description must be a string, got {value!r}")
+            raise DataLensValidationError(f"access_description must be a string, got {value!r}")
         self._access_description = value
         return self
 
     def support_description(self, value: str) -> Self:
         """Set ``data.supportDescription``; ``""`` clears the field (key removal)."""
         if not isinstance(value, str):
-            raise DatalensValidationError(f"support_description must be a string, got {value!r}")
+            raise DataLensValidationError(f"support_description must be a string, got {value!r}")
         self._support_description = value
         return self
 
@@ -521,27 +521,27 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
             if isinstance(value, _Unset) or value is None:
                 continue
             if not isinstance(value, bool):
-                raise DatalensValidationError(f"{name} must be a bool or None, got {value!r}")
+                raise DataLensValidationError(f"{name} must be a bool or None, got {value!r}")
         if not isinstance(autoupdate_interval, _Unset) and autoupdate_interval is not None:
             if isinstance(autoupdate_interval, bool) or not isinstance(autoupdate_interval, int):
-                raise DatalensValidationError(f"autoupdate_interval must be an int, got {autoupdate_interval!r}")
+                raise DataLensValidationError(f"autoupdate_interval must be an int, got {autoupdate_interval!r}")
             if autoupdate_interval < _MIN_AUTOUPDATE_INTERVAL:
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"autoupdate_interval must be >= {_MIN_AUTOUPDATE_INTERVAL}, got {autoupdate_interval}"
                 )
         if not isinstance(max_concurrent_requests, _Unset) and max_concurrent_requests is not None:
             if isinstance(max_concurrent_requests, bool) or not isinstance(max_concurrent_requests, int):
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"max_concurrent_requests must be an int, got {max_concurrent_requests!r}"
                 )
             if max_concurrent_requests < 1:
-                raise DatalensValidationError(f"max_concurrent_requests must be >= 1, got {max_concurrent_requests}")
+                raise DataLensValidationError(f"max_concurrent_requests must be >= 1, got {max_concurrent_requests}")
         if (
             not isinstance(load_priority, _Unset)
             and load_priority is not None
             and load_priority not in get_args(DashboardLoadPriority)
         ):
-            raise DatalensValidationError(f"Unknown load_priority {load_priority!r}")
+            raise DataLensValidationError(f"Unknown load_priority {load_priority!r}")
 
         updated = self._settings
         if not isinstance(silent_loading, _Unset):
@@ -581,11 +581,11 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         """Deep-merge ``settings.globalParams`` by key; a ``REMOVE_PARAM``
         value deletes the key. Values are normalized to lists of strings."""
         if not isinstance(params, Mapping):
-            raise DatalensValidationError(f"global_params expects a mapping, got {params!r}")
+            raise DataLensValidationError(f"global_params expects a mapping, got {params!r}")
         changes: dict[str, tuple[str, ...] | _RemoveParam] = {}
         for key, value in params.items():
             if not isinstance(key, str) or not key:
-                raise DatalensValidationError(f"global_params keys must be non-empty strings, got {key!r}")
+                raise DataLensValidationError(f"global_params keys must be non-empty strings, got {key!r}")
             if isinstance(value, _RemoveParam):
                 changes[key] = value
             else:
@@ -607,7 +607,7 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         API cannot acquire locks yet, so ``lock_token`` is pass-through only.
         """
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         return self._operations.update_dashboard(self, publish=publish, lock_token=lock_token)
 
     # -- snapshot -------------------------------------------------------------
@@ -618,7 +618,7 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
 
     def _require_no_unclaimed_groups(self) -> None:
         if self._pending_update_groups:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Selector groups {sorted(self._pending_update_groups)!r} were registered via "
                 "add_selector(group=...) but never assembled with add_group_selector"
             )

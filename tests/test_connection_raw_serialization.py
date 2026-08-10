@@ -14,7 +14,7 @@ from datalens_sdk._generated.dto import ConnectionReadDTO
 from datalens_sdk.converter.connection import ConnectionConverter
 from datalens_sdk.domain.raw_resource import RawConnectionCreate, RawConnectionReplace
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec
-from datalens_sdk.errors import DatalensValidationError, NotSupportedError
+from datalens_sdk.errors import DataLensValidationError, NotSupportedError
 from datalens_sdk.serialization import connection as connection_serialization
 from datalens_sdk.serialization import json_io
 from datalens_sdk.serialization.json_types import normalize_json_object
@@ -149,7 +149,7 @@ def test_connection_to_file_rejects_short_mutation_response(tmp_path: Path) -> N
         .build()
     )
 
-    with pytest.raises(DatalensValidationError, match=r"client\.get\.connection"):
+    with pytest.raises(DataLensValidationError, match=r"client\.get\.connection"):
         connection.to_file(tmp_path)
     assert [request.url.path for request in recorder.requests] == ["/rpc/createConnection"]
 
@@ -406,9 +406,9 @@ def test_raw_connection_builder_revalidates_forged_snapshot_and_override_views_b
                 overrides=forged_overrides,
             )
 
-    with pytest.raises(DatalensValidationError, match="source id"):
+    with pytest.raises(DataLensValidationError, match="source id"):
         construct_with_forged_snapshot()
-    with pytest.raises(DatalensValidationError, match="cannot set identity"):
+    with pytest.raises(DataLensValidationError, match="cannot set identity"):
         construct_with_forged_overrides()
 
     assert recorder.requests == []
@@ -519,7 +519,7 @@ def test_raw_connection_direct_and_file_paths_capture_snapshot_at_builder_bounda
 def test_raw_connection_namespace_rejects_target_installation_mismatch_before_http() -> None:
     recorder = RecordedTransport({})
 
-    with pytest.raises(DatalensValidationError, match=r"'enterprise'.*'yacloud'"):
+    with pytest.raises(DataLensValidationError, match=r"'enterprise'.*'yacloud'"):
         _client(recorder).raw.replace.connection(
             target=dl.Connection(id="target-id", type="postgres", installation="enterprise"),
             response_snapshot=cast(Mapping[str, dl.JsonValue], _snapshot()),
@@ -565,7 +565,7 @@ def test_raw_connection_replace_rejects_connector_mismatch_before_http() -> None
     client = _client(recorder)
     target = client.domain_connection(id="target-id", type="postgres", name="Target")
 
-    with pytest.raises(DatalensValidationError, match="connector type mismatch"):
+    with pytest.raises(DataLensValidationError, match="connector type mismatch"):
         client.raw.replace.connection(
             target=target,
             response_snapshot=cast(Mapping[str, dl.JsonValue], _snapshot(connector="clickhouse")),
@@ -590,14 +590,14 @@ def test_raw_connection_overrides_cannot_replace_identity_or_connector(
     overrides: Mapping[str, dl.JsonValue],
 ) -> None:
     recorder = RecordedTransport({})
-    with pytest.raises(DatalensValidationError, match="cannot set identity"):
+    with pytest.raises(DataLensValidationError, match="cannot set identity"):
         _client(recorder).raw.create.connection(
             response_snapshot=cast(Mapping[str, dl.JsonValue], _snapshot()),
             name="Clone",
             location=dl.EntryLocation.path("/target"),
             overrides=overrides,
         )
-    with pytest.raises(DatalensValidationError, match="cannot set identity"):
+    with pytest.raises(DataLensValidationError, match="cannot set identity"):
         _client(recorder).raw.replace.connection(
             target=dl.Connection(id="target-id", type="postgres"),
             response_snapshot=cast(Mapping[str, dl.JsonValue], _snapshot()),
@@ -644,7 +644,7 @@ def test_raw_connection_rejects_incomplete_snapshot_before_http() -> None:
     recorder = RecordedTransport({})
     client = _client(recorder)
 
-    with pytest.raises(DatalensValidationError, match="connector type"):
+    with pytest.raises(DataLensValidationError, match="connector type"):
         client.raw.create.connection(
             response_snapshot={"id": "source-id", "name": "Source"},
             name="Clone",

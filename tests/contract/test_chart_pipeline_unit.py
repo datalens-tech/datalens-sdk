@@ -11,7 +11,7 @@ from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.fields import DatasetField
 from datalens_sdk.domain.wizard_chart import resolve_field_snapshot
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 
 def _dataset() -> Dataset:
@@ -47,12 +47,12 @@ def test_resolve_by_title() -> None:
 
 def test_resolve_fuzzy_error_suggests_close_match() -> None:
     dataset = _dataset()
-    with pytest.raises(DatalensValidationError, match="Did you mean: Amount"):
+    with pytest.raises(DataLensValidationError, match="Did you mean: Amount"):
         resolve_field_snapshot("Amout", fields=_fields(dataset))
 
 
 def test_resolve_without_dataset_raises() -> None:
-    with pytest.raises(DatalensValidationError, match="no dataset schema is available"):
+    with pytest.raises(DataLensValidationError, match="no dataset schema is available"):
         resolve_field_snapshot("g_x", fields=[])
 
 

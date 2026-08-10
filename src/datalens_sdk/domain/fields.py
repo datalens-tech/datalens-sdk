@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import difflib
 from typing import overload
 
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 
 def _str_or_none(value: object) -> str | None:
@@ -123,13 +123,13 @@ class FieldsProxy(Sequence[FieldLike]):
                 return item
         hints = ", ".join(difflib.get_close_matches(name, [f.title for f in self._fields if f.title], n=3))
         suffix = f" Did you mean: {hints}?" if hints else ""
-        raise DatalensValidationError(f"Field {name!r} not found.{suffix}")
+        raise DataLensValidationError(f"Field {name!r} not found.{suffix}")
 
     def by_guid(self, guid: str) -> FieldLike:
         for item in self._fields:
             if item.guid == guid:
                 return item
-        raise DatalensValidationError(f"Field with guid {guid!r} not found.")
+        raise DataLensValidationError(f"Field with guid {guid!r} not found.")
 
     def __iter__(self) -> Iterator[FieldLike]:
         return iter(self._fields)

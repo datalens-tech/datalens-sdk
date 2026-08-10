@@ -8,7 +8,7 @@ import re
 from typing import Literal, TypeAlias
 
 from datalens_sdk._runtime.chart_constants import is_ql_wire_type, is_wizard_wire_type
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 from datalens_sdk.serialization.connection import ConnectionSnapshotView
 from datalens_sdk.serialization.json_io import read_json_object, write_artifact_directory
 from datalens_sdk.serialization.json_types import JsonObject, JsonValue, normalize_json_object
@@ -45,7 +45,7 @@ class ChartSnapshotView(Mapping[str, JsonValue]):
     ) -> ChartSnapshotView:
         if isinstance(raw, cls):
             if raw.category != expected_category:
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"Chart category mismatch: expected {expected_category!r}, snapshot is {raw.category!r}"
                 )
             return raw
@@ -64,19 +64,19 @@ class ChartSnapshotView(Mapping[str, JsonValue]):
         data = entry.get("data")
         if not isinstance(data, dict):
             getter = f"client.get.{expected_category}_chart(...)"
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Chart response snapshot has no complete 'data' content; fetch it with {getter} first"
             )
         if not any(isinstance(entry.get(key), str) and entry[key] for key in _CHART_ID_KEYS):
             getter = f"client.get.{expected_category}_chart(...)"
-            raise DatalensValidationError(f"Chart response snapshot has no source id; fetch it with {getter} first")
+            raise DataLensValidationError(f"Chart response snapshot has no source id; fetch it with {getter} first")
         wire_type = entry.get("type")
         if not isinstance(wire_type, str) or not wire_type:
             getter = f"client.get.{expected_category}_chart(...)"
-            raise DatalensValidationError(f"Chart response snapshot has no wire type; fetch it with {getter} first")
+            raise DataLensValidationError(f"Chart response snapshot has no wire type; fetch it with {getter} first")
         actual_category = chart_category_from_wire_type(wire_type)
         if actual_category != expected_category:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Chart category mismatch: expected {expected_category!r}, snapshot is {actual_category!r}"
             )
         return cls(
@@ -101,7 +101,7 @@ class ChartSnapshotView(Mapping[str, JsonValue]):
         if value is None:
             return None
         if not isinstance(value, dict):
-            raise DatalensValidationError(f"Chart response snapshot field {field!r} must be an object")
+            raise DataLensValidationError(f"Chart response snapshot field {field!r} must be an object")
         return value
 
 
@@ -127,15 +127,15 @@ class DashboardSnapshotView(Mapping[str, JsonValue]):
         elif isinstance(entry_value, dict):
             entry = entry_value
         else:
-            raise DatalensValidationError("Dashboard response snapshot field 'entry' must be an object")
+            raise DataLensValidationError("Dashboard response snapshot field 'entry' must be an object")
         data = entry.get("data")
         if not isinstance(data, dict):
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 "Dashboard response snapshot has no complete 'data' content; "
                 "fetch it with client.get.dashboard(...) first"
             )
         if not any(isinstance(entry.get(key), str) and entry[key] for key in _DASHBOARD_ID_KEYS):
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 "Dashboard response snapshot has no source id; fetch it with client.get.dashboard(...) first"
             )
         return cls(snapshot=snapshot, entry=entry, data=data)
@@ -154,7 +154,7 @@ class DashboardSnapshotView(Mapping[str, JsonValue]):
         if value is None:
             return None
         if not isinstance(value, dict):
-            raise DatalensValidationError(f"Dashboard response snapshot field {field!r} must be an object or null")
+            raise DataLensValidationError(f"Dashboard response snapshot field {field!r} must be an object or null")
         return value
 
 
@@ -179,12 +179,12 @@ class DatasetSnapshotView(Mapping[str, JsonValue]):
     def _from_normalized(cls, snapshot: dict[str, JsonValue]) -> DatasetSnapshotView:
         dataset = snapshot.get("dataset")
         if not isinstance(dataset, dict):
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 "Dataset response snapshot has no complete 'dataset' content; "
                 "fetch it with client.get.dataset(...) first"
             )
         if not any(isinstance(snapshot.get(key), str) and snapshot[key] for key in _DATASET_ID_KEYS):
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 "Dataset response snapshot has no source id; fetch it with client.get.dataset(...) first"
             )
         return cls(snapshot=snapshot, dataset=dataset)
@@ -245,7 +245,7 @@ def write_chart_artifact(
     split_tabs: bool,
 ) -> Path:
     if split_tabs and category != "editor":
-        raise DatalensValidationError("split_tabs=True is supported only for Editor charts")
+        raise DataLensValidationError("split_tabs=True is supported only for Editor charts")
     source = ChartSnapshotView.from_raw(response_snapshot, expected_category=category)
     target = artifact_directory_path(path, name=name, resource_id=resource_id, resource="Chart")
     if not split_tabs:
@@ -270,11 +270,11 @@ def artifact_directory_path(
 ) -> Path:
     parent_path = Path(parent)
     if not parent_path.is_dir():
-        raise DatalensValidationError(f"Artifact parent directory does not exist: {parent_path}")
+        raise DataLensValidationError(f"Artifact parent directory does not exist: {parent_path}")
     if resource_id is None or not resource_id.strip():
-        raise DatalensValidationError(f"{resource} artifact requires a resource id")
+        raise DataLensValidationError(f"{resource} artifact requires a resource id")
     if name is None or not name.strip():
-        raise DatalensValidationError(f"{resource} artifact requires a resource name")
+        raise DataLensValidationError(f"{resource} artifact requires a resource name")
     sanitized_id = sanitize_artifact_component(resource_id)
     directory_name = f"{sanitize_artifact_component(name)} [{sanitized_id}]"
     return parent_path / directory_name
@@ -292,20 +292,20 @@ def sanitize_artifact_component(value: str) -> str:
 def read_dataset_artifact(path: ArtifactPath) -> DatasetSnapshotView:
     artifact_dir = Path(path)
     if not artifact_dir.is_dir():
-        raise DatalensValidationError(f"Dataset artifact path must be a directory: {artifact_dir}")
+        raise DataLensValidationError(f"Dataset artifact path must be a directory: {artifact_dir}")
     main_file = artifact_dir / DATASET_FILENAME
     if not main_file.is_file():
-        raise DatalensValidationError(f"Dataset artifact does not contain {DATASET_FILENAME}: {artifact_dir}")
+        raise DataLensValidationError(f"Dataset artifact does not contain {DATASET_FILENAME}: {artifact_dir}")
     return DatasetSnapshotView._from_normalized(read_json_object(main_file))
 
 
 def read_connection_artifact(path: ArtifactPath) -> ConnectionSnapshotView:
     artifact_dir = Path(path)
     if not artifact_dir.is_dir():
-        raise DatalensValidationError(f"Connection artifact path must be a directory: {artifact_dir}")
+        raise DataLensValidationError(f"Connection artifact path must be a directory: {artifact_dir}")
     main_file = artifact_dir / CONNECTION_FILENAME
     if not main_file.is_file():
-        raise DatalensValidationError(f"Connection artifact does not contain {CONNECTION_FILENAME}: {artifact_dir}")
+        raise DataLensValidationError(f"Connection artifact does not contain {CONNECTION_FILENAME}: {artifact_dir}")
     return ConnectionSnapshotView._from_normalized(read_json_object(main_file))
 
 
@@ -316,10 +316,10 @@ def read_chart_artifact(
 ) -> ChartSnapshotView:
     artifact_dir = Path(path)
     if not artifact_dir.is_dir():
-        raise DatalensValidationError(f"Chart artifact path must be a directory: {artifact_dir}")
+        raise DataLensValidationError(f"Chart artifact path must be a directory: {artifact_dir}")
     main_file = artifact_dir / CHART_FILENAME
     if not main_file.is_file():
-        raise DatalensValidationError(f"Chart artifact does not contain {CHART_FILENAME}: {artifact_dir}")
+        raise DataLensValidationError(f"Chart artifact does not contain {CHART_FILENAME}: {artifact_dir}")
     return ChartSnapshotView.from_raw(
         read_json_object(main_file),
         expected_category=expected_category,
@@ -329,10 +329,10 @@ def read_chart_artifact(
 def read_dashboard_artifact(path: ArtifactPath) -> dict[str, JsonValue]:
     artifact_dir = Path(path)
     if not artifact_dir.is_dir():
-        raise DatalensValidationError(f"Dashboard artifact path must be a directory: {artifact_dir}")
+        raise DataLensValidationError(f"Dashboard artifact path must be a directory: {artifact_dir}")
     main_file = artifact_dir / DASHBOARD_FILENAME
     if not main_file.is_file():
-        raise DatalensValidationError(f"Dashboard artifact does not contain {DASHBOARD_FILENAME}: {artifact_dir}")
+        raise DataLensValidationError(f"Dashboard artifact does not contain {DASHBOARD_FILENAME}: {artifact_dir}")
     return require_complete_dashboard_snapshot(read_json_object(main_file))
 
 
@@ -341,7 +341,7 @@ def chart_entry_from_normalized_snapshot(snapshot: dict[str, JsonValue]) -> dict
     if entry is None:
         return snapshot
     if not isinstance(entry, dict):
-        raise DatalensValidationError("Chart response snapshot field 'entry' must be an object")
+        raise DataLensValidationError("Chart response snapshot field 'entry' must be an object")
     return entry
 
 
@@ -359,23 +359,23 @@ def require_complete_chart_snapshot(
     expected_category: ChartArtifactCategory,
 ) -> dict[str, JsonValue]:
     if not isinstance(raw, Mapping):
-        raise DatalensValidationError("Chart response snapshot must be an object")
+        raise DataLensValidationError("Chart response snapshot must be an object")
     return ChartSnapshotView.from_raw(raw, expected_category=expected_category).snapshot
 
 
 def require_complete_dashboard_snapshot(raw: object) -> dict[str, JsonValue]:
     if not isinstance(raw, Mapping):
-        raise DatalensValidationError("Dashboard response snapshot must be an object")
+        raise DataLensValidationError("Dashboard response snapshot must be an object")
     return DashboardSnapshotView.from_raw(raw).snapshot
 
 
 def require_complete_connection_snapshot(raw: object) -> dict[str, JsonValue]:
     if not isinstance(raw, Mapping):
-        raise DatalensValidationError("Connection response snapshot must be an object")
+        raise DataLensValidationError("Connection response snapshot must be an object")
     return ConnectionSnapshotView.from_raw(raw).snapshot
 
 
 def require_complete_dataset_snapshot(raw: object) -> dict[str, JsonValue]:
     if not isinstance(raw, Mapping):
-        raise DatalensValidationError("Dataset response snapshot must be an object")
+        raise DataLensValidationError("Dataset response snapshot must be an object")
     return DatasetSnapshotView.from_raw(raw).snapshot

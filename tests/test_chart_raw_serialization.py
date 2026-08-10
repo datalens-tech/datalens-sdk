@@ -20,7 +20,7 @@ from datalens_sdk.domain.raw_resource import (
     RawWizardChartCreate,
     RawWizardChartReplace,
 )
-from datalens_sdk.errors import DatalensValidationError, NotSupportedError
+from datalens_sdk.errors import DataLensValidationError, NotSupportedError
 from datalens_sdk.serialization import artifacts as artifact_serialization
 from datalens_sdk.serialization.json_types import normalize_json_object
 
@@ -565,7 +565,7 @@ def test_raw_chart_builder_revalidates_forged_snapshot_view_before_http(boundary
                 response_snapshot=forged,
             )
 
-    with pytest.raises(DatalensValidationError, match="source id"):
+    with pytest.raises(DataLensValidationError, match="source id"):
         construct_with_forged_snapshot()
 
     assert recorder.requests == []
@@ -1030,13 +1030,13 @@ def test_chart_category_mismatch_fails_before_http() -> None:
     recorder = RecordedTransport({})
     client = _client(recorder)
 
-    with pytest.raises(DatalensValidationError, match="category mismatch"):
+    with pytest.raises(DataLensValidationError, match="category mismatch"):
         client.raw.create.wizard_chart(
             response_snapshot=_raw(_editor_snapshot()),
             name="Wrong",
             location=dl.EntryLocation.path("/target"),
         )
-    with pytest.raises(DatalensValidationError, match="category mismatch"):
+    with pytest.raises(DataLensValidationError, match="category mismatch"):
         client.raw.replace.wizard_chart(
             target=cast(dl.WizardChart, dl.QLChart(id="target", wire_type="d3_wizard_node")),
             response_snapshot=_raw(_wizard_snapshot()),
@@ -1053,7 +1053,7 @@ def test_raw_editor_rejects_incomplete_file_before_builder_or_http(tmp_path: Pat
     )
     recorder = RecordedTransport({})
 
-    with pytest.raises(DatalensValidationError, match="complete 'data' content"):
+    with pytest.raises(DataLensValidationError, match="complete 'data' content"):
         _client(recorder).raw.create.editor_chart.from_file(
             artifact,
             name="Editor Clone",
@@ -1082,7 +1082,7 @@ def test_editor_update_rejects_different_node_type_before_http() -> None:
     )
     client = _client(recorder)
     target = client.get.editor_chart(by_id="editor-target")
-    with pytest.raises(DatalensValidationError, match="wire type mismatch"):
+    with pytest.raises(DataLensValidationError, match="wire type mismatch"):
         client.raw.replace.editor_chart(
             target=target,
             response_snapshot=_raw(_editor_snapshot(wire_type="advanced-chart_node")),
@@ -1109,7 +1109,7 @@ def test_raw_chart_replace_rejects_wire_type_mismatch_before_http(category: str)
             response_snapshot=_raw(_ql_snapshot()),
         )
 
-    with pytest.raises(DatalensValidationError, match="wire type mismatch"):
+    with pytest.raises(DataLensValidationError, match="wire type mismatch"):
         replace_from_snapshot()
 
     assert recorder.requests == []
@@ -1142,7 +1142,7 @@ def test_raw_chart_replace_rejects_target_installation_mismatch_before_http(cate
             response_snapshot=_raw(_ql_snapshot()),
         )
 
-    with pytest.raises(DatalensValidationError, match=r"'enterprise'.*'yacloud'"):
+    with pytest.raises(DataLensValidationError, match=r"'enterprise'.*'yacloud'"):
         replace_from_snapshot()
 
     assert recorder.requests == []
@@ -1229,7 +1229,7 @@ def test_raw_editor_replace_rejects_target_installation_mismatch_before_http() -
     recorder = RecordedTransport({})
     client = _client(recorder)
 
-    with pytest.raises(DatalensValidationError, match=r"'enterprise'.*'yacloud'"):
+    with pytest.raises(DataLensValidationError, match=r"'enterprise'.*'yacloud'"):
         client.raw.replace.editor_chart(
             target=dl.EditorChart(
                 id="editor-target",
@@ -1248,7 +1248,7 @@ def test_raw_editor_replace_validates_mode_immediately() -> None:
         response_snapshot=_raw(_editor_snapshot()),
     )
 
-    with pytest.raises(DatalensValidationError, match="mode must be one of"):
+    with pytest.raises(DataLensValidationError, match="mode must be one of"):
         replace.mode(cast(dl.EntryUpdateMode, "invalid"))
 
 

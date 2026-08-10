@@ -8,7 +8,7 @@ from datalens_sdk.domain.connection import Connection
 from datalens_sdk.domain.entry_location import EntryLocation, resolve_entry_location, validate_entry_name
 from datalens_sdk.domain.ports import ConnectionOperations
 from datalens_sdk.domain.specs.connection import ConnectionCreateSpec
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError, NotSupportedError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError, NotSupportedError
 
 _LOCATION_FIELDS = frozenset({"name", "dir_path", "workbook_id", "collection_id"})
 
@@ -113,8 +113,8 @@ class BaseConnectionCreate:
 
     def build(self) -> Connection:
         if self._operations is None:
-            raise DatalensConfigurationError("Builder is not bound to client operations")
+            raise DataLensConfigurationError("Builder is not bound to client operations")
         missing = self.missing_required()
         if missing:
-            raise DatalensValidationError(f"Cannot build {self._connector!r}; missing required fields: {missing}")
+            raise DataLensValidationError(f"Cannot build {self._connector!r}; missing required fields: {missing}")
         return self._operations.create_connection(self)

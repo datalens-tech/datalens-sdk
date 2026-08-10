@@ -18,7 +18,7 @@ from datalens_sdk.domain.ql_chart import QLColumn, QLParam
 from datalens_sdk.domain.specs.editor_chart import EditorChartCreateSpec
 from datalens_sdk.domain.specs.ql_chart import QLChartCreateSpec
 from datalens_sdk.domain.specs.wizard_chart import WizardChartCreateSpec
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.chart_types import (
@@ -107,17 +107,17 @@ def build_aggregated_measure_entry(
     if field.type == "MEASURE":
         autoaggregated = bool(field.raw.get("autoaggregated")) or bool(field.raw.get("has_auto_aggregation"))
         if autoaggregated:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Cannot set an explicit aggregation for {field.title!r}: it is already a measure with "
                 "automatic aggregation. Place it directly instead."
             )
         if not allow_existing_measure:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Cannot create an aggregated measure from {field.title!r}: it is already a measure. "
                 "Pass a dimension instead."
             )
     elif field.type != "DIMENSION":
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"Cannot create an aggregated measure from {field.title!r}: expected a dimension, got {field.type!r}."
         )
 
@@ -138,7 +138,7 @@ def build_aggregated_measure_entry(
     if field.calc_mode == "direct":
         source = field.source or field.guid
         if not source:
-            raise DatalensValidationError(f"Cannot aggregate {field.title!r}: its direct source is missing.")
+            raise DataLensValidationError(f"Cannot aggregate {field.title!r}: its direct source is missing.")
         entry.update(
             {
                 "calc_mode": "direct",
@@ -152,7 +152,7 @@ def build_aggregated_measure_entry(
 
     if field.calc_mode == "formula":
         if not field.formula:
-            raise DatalensValidationError(f"Cannot aggregate {field.title!r}: its formula is missing.")
+            raise DataLensValidationError(f"Cannot aggregate {field.title!r}: its formula is missing.")
         entry.update(
             {
                 "calc_mode": "formula",
@@ -163,7 +163,7 @@ def build_aggregated_measure_entry(
         )
         return entry
 
-    raise DatalensValidationError(f"Cannot aggregate {field.title!r}: calc_mode {field.calc_mode!r} is not supported.")
+    raise DataLensValidationError(f"Cannot aggregate {field.title!r}: calc_mode {field.calc_mode!r} is not supported.")
 
 
 def stage_aggregation_change(
@@ -176,11 +176,11 @@ def stage_aggregation_change(
 ) -> None:
     """Create and stage a replacement local measure for a placed chart field."""
     if not isinstance(field, DatasetField):
-        raise DatalensValidationError("change_aggregation expects a DatasetField from chart.fields.by_guid(...).")
+        raise DataLensValidationError("change_aggregation expects a DatasetField from chart.fields.by_guid(...).")
     try:
         placed_field = update._chart.fields.by_guid(field.guid)
-    except DatalensValidationError as error:
-        raise DatalensValidationError(
+    except DataLensValidationError as error:
+        raise DataLensValidationError(
             f"Cannot change aggregation for {field.title!r}: the field is not placed in this chart."
         ) from error
     entry = build_aggregated_measure_entry(
@@ -388,7 +388,7 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
         max: str | None = None,
     ) -> Self:
         if mode == "manual" and min is None and max is None:
-            raise DatalensConfigurationError(
+            raise DataLensConfigurationError(
                 "axis_scale(mode='manual') requires at least one of min= or max= to be specified."
             )
         self._set_ph_setting(ph_id, "type", scale)
@@ -511,7 +511,7 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
             self._field_ref_matches(placed, field) for ph_fields in self._placeholders.values() for placed in ph_fields
         )
         if not found:
-            raise DatalensConfigurationError(
+            raise DataLensConfigurationError(
                 f"Field {field!r} not found in any placeholder. Call .columns()/.measures()/.rows() before this method."
             )
         self._item_mutations.append((field, setting_key, value))
@@ -549,7 +549,7 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
 
     def build(self) -> WizardChart:
         if self._operations is None:
-            raise DatalensConfigurationError("Builder is not bound to client operations")
+            raise DataLensConfigurationError("Builder is not bound to client operations")
         return self._operations.create_wizard_chart(self)
 
 
@@ -650,7 +650,7 @@ class _MetricWizardChartCreate(_BaseWizardChartCreate):
 
     def _font_color(self, *, color: str) -> Self:
         if not HEX_COLOR_RE.match(color):
-            raise DatalensConfigurationError(f"font_color: color must be a hex string like #RRGGBB, got {color!r}")
+            raise DataLensConfigurationError(f"font_color: color must be a hex string like #RRGGBB, got {color!r}")
         return self._set_extra("metricFontColor", color)
 
     def _measure_title_mode(self, *, mode: Literal["by-field", "manual", "hide"]) -> Self:
@@ -676,7 +676,7 @@ class _CombinedWizardChartCreate(_BaseWizardChartCreate):
         name: str | None = None,
     ) -> Self:
         if y is None and y2 is None:
-            raise DatalensConfigurationError("add_layer() requires at least one of y= or y2=.")
+            raise DataLensConfigurationError("add_layer() requires at least one of y= or y2=.")
         self._combined_layers.append(
             {
                 "layer_type": layer_type,
@@ -712,7 +712,7 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
         dataset: Dataset | None = None,
     ) -> Self:
         if layer_type not in ("geopoint", "geopolygon", "heatmap", "polyline"):
-            raise DatalensConfigurationError(f"Unsupported geo layer type: {layer_type!r}.")
+            raise DataLensConfigurationError(f"Unsupported geo layer type: {layer_type!r}.")
         required_field = {
             "geopoint": geopoint,
             "heatmap": geopoint,
@@ -723,7 +723,7 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
             parameter = (
                 "polygon" if layer_type == "geopolygon" else "polyline" if layer_type == "polyline" else "geopoint"
             )
-            raise DatalensConfigurationError(f"add_layer({layer_type!r}) requires {parameter}=.")
+            raise DataLensConfigurationError(f"add_layer({layer_type!r}) requires {parameter}=.")
         if dataset is not None:
             self._geo_add_dataset(dataset)
         self._geo_layers.append(
@@ -801,7 +801,7 @@ class _BaseEditorNodeCreate:
 
     def build(self) -> EditorChart:
         if self._operations is None:
-            raise DatalensConfigurationError("Builder is not bound to client operations")
+            raise DataLensConfigurationError("Builder is not bound to client operations")
         return self._operations.create_editor_chart(self)
 
 
@@ -836,7 +836,7 @@ class _BaseQLChartCreate:
 
     def connection(self, connection: Connection) -> Self:
         if not connection.id:
-            raise DatalensValidationError("QL chart connection requires a Connection with an id")
+            raise DataLensValidationError("QL chart connection requires a Connection with an id")
         self._connection_obj = connection
         return self
 
@@ -901,7 +901,7 @@ class _BaseQLChartCreate:
 
     def build(self) -> QLChart:
         if self._operations is None:
-            raise DatalensConfigurationError("Builder is not bound to client operations")
+            raise DataLensConfigurationError("Builder is not bound to client operations")
         self._validate_required_placeholders()
         return self._operations.create_ql_chart(self)
 
@@ -918,7 +918,7 @@ class _BaseQLChartCreate:
                 if not self._columns.get(ph_id):
                     missing.append(ph_id)
         if missing:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"QL chart {self._viz_id!r} requires placeholder(s) {missing} to be filled "
                 "before build(); pass columns to the corresponding builder method."
             )

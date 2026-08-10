@@ -11,7 +11,7 @@ import sys
 import tempfile
 from typing import NoReturn
 
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.json_types import JsonObject, JsonValue, normalize_json_object
 
 _ATOMIC_NO_REPLACE_UNSUPPORTED_ERRNOS = frozenset(
@@ -36,9 +36,9 @@ def read_json_object(path: Path) -> dict[str, JsonValue]:
         with path.open("r", encoding="utf-8") as stream:
             value: object = json.load(stream, parse_constant=_reject_json_constant)
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
-        raise DatalensValidationError(f"Cannot read JSON object from {path}: invalid JSON") from exc
+        raise DataLensValidationError(f"Cannot read JSON object from {path}: invalid JSON") from exc
     except OSError as exc:
-        raise DatalensValidationError(f"Cannot read JSON object from {path}: {exc.strerror or exc}") from exc
+        raise DataLensValidationError(f"Cannot read JSON object from {path}: {exc.strerror or exc}") from exc
     return normalize_json_object(value, context=f"JSON file {path}")
 
 
@@ -52,9 +52,9 @@ def write_artifact_directory(
     target = Path(path)
     parent = target.parent
     if target.exists():
-        raise DatalensValidationError(f"Artifact path already exists: {target}")
+        raise DataLensValidationError(f"Artifact path already exists: {target}")
     if not parent.is_dir():
-        raise DatalensValidationError(f"Artifact parent directory does not exist: {parent}")
+        raise DataLensValidationError(f"Artifact parent directory does not exist: {parent}")
 
     snapshot = normalize_json_object(value, context=f"{filename} snapshot")
     staging = Path(tempfile.mkdtemp(prefix=f".{target.name}.staging-", dir=parent))
@@ -100,7 +100,7 @@ def _rename_directory_no_replace(source: Path, target: Path) -> None:
     if _is_windows():
         _rename_directory_windows(source, target)
         return
-    raise DatalensConfigurationError(
+    raise DataLensConfigurationError(
         f"Atomic no-replace artifact commit is not supported on platform {platform_name!r}"
     )
 
@@ -117,7 +117,7 @@ def _rename_directory_linux(source: Path, target: Path) -> None:
     library = ctypes.CDLL(None, use_errno=True)
     renameat2 = getattr(library, "renameat2", None)
     if renameat2 is None:
-        raise DatalensConfigurationError("Atomic no-replace artifact commit requires renameat2 on Linux")
+        raise DataLensConfigurationError("Atomic no-replace artifact commit requires renameat2 on Linux")
     renameat2.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
     renameat2.restype = ctypes.c_int
     result = renameat2(
@@ -135,7 +135,7 @@ def _rename_directory_macos(source: Path, target: Path) -> None:
     library = ctypes.CDLL(None, use_errno=True)
     renamex_np = getattr(library, "renamex_np", None)
     if renamex_np is None:
-        raise DatalensConfigurationError("Atomic no-replace artifact commit requires renamex_np on macOS")
+        raise DataLensConfigurationError("Atomic no-replace artifact commit requires renamex_np on macOS")
     renamex_np.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint]
     renamex_np.restype = ctypes.c_int
     result = renamex_np(os.fsencode(source), os.fsencode(target), 0x00000004)
@@ -148,16 +148,16 @@ def _rename_directory_windows(source: Path, target: Path) -> None:
         os.rename(source, target)
     except OSError as exc:
         if exc.errno in (errno.EEXIST, errno.ENOTEMPTY) or target.exists():
-            raise DatalensValidationError(f"Artifact path already exists: {target}") from exc
+            raise DataLensValidationError(f"Artifact path already exists: {target}") from exc
         raise
 
 
 def _raise_rename_error(target: Path) -> NoReturn:
     error_number = ctypes.get_errno()
     if error_number in (errno.EEXIST, errno.ENOTEMPTY):
-        raise DatalensValidationError(f"Artifact path already exists: {target}")
+        raise DataLensValidationError(f"Artifact path already exists: {target}")
     if error_number in _ATOMIC_NO_REPLACE_UNSUPPORTED_ERRNOS:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             "Atomic no-replace artifact commit is not supported by the current operating system or filesystem"
         )
     raise OSError(error_number, os.strerror(error_number), target)

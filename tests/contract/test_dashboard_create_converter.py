@@ -29,7 +29,7 @@ from datalens_sdk.domain.specs.dashboard import (
     WidgetItem,
     WidgetTabSpec,
 )
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 _AT = (0, 0, 12, 6)
 
@@ -324,7 +324,7 @@ def test_chart_group_wire_shape() -> None:
 )
 def test_grid_validator_rejects_bad_placements(at: tuple[int, int, int, int], match: str) -> None:
     # Position validates at the add_* call site now (fail-fast), before convert.
-    with pytest.raises(DatalensValidationError, match=match):
+    with pytest.raises(DataLensValidationError, match=match):
         _tab().add_text("a", at=at)
 
 
@@ -338,7 +338,7 @@ def test_converter_grid_validator_defends_against_raw_spec() -> None:
             layout=(LayoutItemSpec(i="el_1", x=30, y=0, w=12, h=6),),
         )
     )
-    with pytest.raises(DatalensValidationError, match="x \\+ w must be <= 36"):
+    with pytest.raises(DataLensValidationError, match="x \\+ w must be <= 36"):
         DashboardConverter.from_domain_create(spec)
 
 
@@ -350,7 +350,7 @@ def test_grid_validator_accepts_full_width() -> None:
 
 def test_overlap_in_default_group_is_rejected() -> None:
     tab = _tab().add_text("a", at=(0, 0, 12, 6)).add_text("b", at=(6, 2, 12, 6))
-    with pytest.raises(DatalensValidationError, match="items 'el_1' and 'el_2' overlap"):
+    with pytest.raises(DataLensValidationError, match="items 'el_1' and 'el_2' overlap"):
         DashboardConverter.from_domain_create(_builder().add_tab(tab).to_spec())
 
 
@@ -369,14 +369,14 @@ def test_position_and_tuple_at_produce_identical_payload() -> None:
 def test_duplicate_tab_ids_are_rejected() -> None:
     spec = _spec(_text_tab("tab_1", "el_1"), _text_tab("tab_1", "el_2"))
 
-    with pytest.raises(DatalensValidationError, match="Duplicate tab id 'tab_1'"):
+    with pytest.raises(DataLensValidationError, match="Duplicate tab id 'tab_1'"):
         DashboardConverter.from_domain_create(spec)
 
 
 def test_duplicate_item_ids_across_tabs_are_rejected() -> None:
     spec = _spec(_text_tab("tab_1", "el_1"), _text_tab("tab_2", "el_1"))
 
-    with pytest.raises(DatalensValidationError, match="Duplicate item id 'el_1'"):
+    with pytest.raises(DataLensValidationError, match="Duplicate item id 'el_1'"):
         DashboardConverter.from_domain_create(spec)
 
 
@@ -395,7 +395,7 @@ def test_duplicate_widget_tab_ids_are_rejected() -> None:
 
     spec = _spec(widget_tab("tab_1", "el_1"), widget_tab("tab_2", "el_2"))
 
-    with pytest.raises(DatalensValidationError, match="Duplicate widget tab id 'wt_1'"):
+    with pytest.raises(DataLensValidationError, match="Duplicate widget tab id 'wt_1'"):
         DashboardConverter.from_domain_create(spec)
 
 
@@ -406,7 +406,7 @@ def test_items_layout_bijection_is_enforced() -> None:
         items=(TextItem(id="el_1", text="x"),),
         layout=(),
     )
-    with pytest.raises(DatalensValidationError, match="items without layout \\['el_1'\\]"):
+    with pytest.raises(DataLensValidationError, match="items without layout \\['el_1'\\]"):
         DashboardConverter.from_domain_create(_spec(missing_layout))
 
     orphan_layout = TabSpec(
@@ -415,7 +415,7 @@ def test_items_layout_bijection_is_enforced() -> None:
         items=(),
         layout=(LayoutItemSpec(i="ghost", x=0, y=0, w=6, h=6),),
     )
-    with pytest.raises(DatalensValidationError, match="layout without items \\['ghost'\\]"):
+    with pytest.raises(DataLensValidationError, match="layout without items \\['ghost'\\]"):
         DashboardConverter.from_domain_create(_spec(orphan_layout))
 
     duplicated_layout = TabSpec(
@@ -427,7 +427,7 @@ def test_items_layout_bijection_is_enforced() -> None:
             LayoutItemSpec(i="el_1", x=6, y=0, w=6, h=6),
         ),
     )
-    with pytest.raises(DatalensValidationError, match="more than once"):
+    with pytest.raises(DataLensValidationError, match="more than once"):
         DashboardConverter.from_domain_create(_spec(duplicated_layout))
 
 
@@ -562,7 +562,7 @@ def test_shared_tab_list_maps_to_selected_tabs_and_targets_only_those_tabs() -> 
 
 
 def test_shared_unknown_tab_id_fails_loud() -> None:
-    with pytest.raises(DatalensValidationError, match="unknown tab ids"):
+    with pytest.raises(DataLensValidationError, match="unknown tab ids"):
         _payload(_shared_builder(("nope",)))
 
 
@@ -639,7 +639,7 @@ def test_affects_reproduces_mixed_scope_group() -> None:
 
 
 def test_affects_unknown_tab_id_fails_loud() -> None:
-    with pytest.raises(DatalensValidationError, match="unknown tab ids"):
+    with pytest.raises(DataLensValidationError, match="unknown tab ids"):
         _payload(_affects_group(("nope",), "as_group"))
 
 
@@ -647,7 +647,7 @@ def test_affects_single_member_group_rejects_conflicting_axes() -> None:
     # a single-member shared group serializes ONE impact slot (data.group[0]):
     # setting both the group show_on_tabs and a member affects is rejected rather
     # than silently dropping one axis
-    with pytest.raises(DatalensValidationError, match="single-member shared group"):
+    with pytest.raises(DataLensValidationError, match="single-member shared group"):
         _affects_group(("other",))
 
 
@@ -661,13 +661,13 @@ def test_affects_single_member_as_group_inherits_group_scope_cleanly() -> None:
 
 def test_affects_rejected_on_group_show_on_tabs_member() -> None:
     home = DashboardTab("Home", tab_id="home")
-    with pytest.raises(DatalensValidationError, match="show_on_tabs is a group-level"):
+    with pytest.raises(DataLensValidationError, match="show_on_tabs is a group-level"):
         home.add_selector(param_name="p", element="input", group="g", show_on_tabs=("home",))
 
 
 def test_affects_rejected_on_standalone_selector() -> None:
     home = DashboardTab("Home", tab_id="home")
-    with pytest.raises(DatalensValidationError, match="affects applies to group members"):
+    with pytest.raises(DataLensValidationError, match="affects applies to group members"):
         home.add_selector(param_name="p", element="input", affects="all_tabs", at=(0, 0, 12, 2))
 
 
@@ -694,14 +694,14 @@ def test_shared_selector_overlapping_a_target_tab_item_is_rejected() -> None:
     )
     other = DashboardTab("Other", tab_id="other").add_text("hi", at=(0, 0, 12, 2))
     builder = DashboardCreate(installation="yacloud", name="D", location=EntryLocation.path("/Users/me"))
-    with pytest.raises(DatalensValidationError, match="overlap"):
+    with pytest.raises(DataLensValidationError, match="overlap"):
         DashboardConverter.from_domain_create(builder.add_tab(home).add_tab(other).to_spec())
 
 
 def test_connection_to_shared_selector_that_left_its_home_tab_fails_loud() -> None:
     # sel_1 moves to globalItems of "other" ONLY: the home-tab edge would ship
     # a dangling endpoint (HTTP 500 territory, P019)
-    with pytest.raises(DatalensValidationError, match="show_on_tabs target"):
+    with pytest.raises(DataLensValidationError, match="show_on_tabs target"):
         _payload(_shared_wiring_builder(("other",)))
 
 

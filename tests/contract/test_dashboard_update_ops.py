@@ -12,7 +12,7 @@ import pytest
 from datalens_sdk.converter.dashboard_apply import _apply_update
 from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.specs.dashboard import AddAliasOp, AddConnectionOp
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 _FIXTURES_DIR = Path(__file__).parent / "fixtures" / "dashboards"
 
@@ -74,18 +74,18 @@ def test_update_tab_by_title_renames_and_toggles_hidden() -> None:
 
 def test_update_tab_requires_a_change_and_valid_title() -> None:
     update = _dashboard("selectors_manual_two_tabs").update
-    with pytest.raises(DatalensValidationError, match="at least one of"):
+    with pytest.raises(DataLensValidationError, match="at least one of"):
         update.update_tab("tab_1")
-    with pytest.raises(DatalensValidationError, match="non-empty string"):
+    with pytest.raises(DataLensValidationError, match="non-empty string"):
         update.update_tab("tab_1", title="   ")
-    with pytest.raises(DatalensValidationError, match="hidden must be a bool"):
+    with pytest.raises(DataLensValidationError, match="hidden must be a bool"):
         update.update_tab("tab_1", hidden=cast(bool, "yes"))
     assert update.ops == ()
 
 
 def test_update_tab_unknown_and_ambiguous_title_fail_loud() -> None:
     update = _dashboard("selectors_manual_two_tabs").update
-    with pytest.raises(DatalensValidationError, match="Unknown tab"):
+    with pytest.raises(DataLensValidationError, match="Unknown tab"):
         update.update_tab("no-such-tab", hidden=True)
     dashboard = _synthetic(
         [
@@ -93,7 +93,7 @@ def test_update_tab_unknown_and_ambiguous_title_fail_loud() -> None:
             {"id": "tab_2", "title": "Same", "items": [], "layout": []},
         ]
     )
-    with pytest.raises(DatalensValidationError, match="ambiguous"):
+    with pytest.raises(DataLensValidationError, match="ambiguous"):
         dashboard.update.update_tab("Same", hidden=True)
 
 
@@ -101,7 +101,7 @@ def test_rename_shifts_title_resolution_immediately() -> None:
     update = _dashboard("selectors_manual_two_tabs").update
     update.update_tab("Title 11", title="Renamed")
     update.update_tab("Renamed", hidden=True)  # new title resolves
-    with pytest.raises(DatalensValidationError, match="Unknown tab"):
+    with pytest.raises(DataLensValidationError, match="Unknown tab"):
         update.update_tab("Title 11", hidden=True)  # old title does not
     applied = _apply_update(update.to_spec())
     assert _tabs(applied)[0]["hidden"] is True
@@ -121,24 +121,24 @@ def test_remove_tab_and_last_tab_guard() -> None:
     update.remove_tab("tab_2")
     applied = _apply_update(update.to_spec())
     assert [tab["id"] for tab in _tabs(applied)] == ["tab_1"]
-    with pytest.raises(DatalensValidationError, match="last remaining tab"):
+    with pytest.raises(DataLensValidationError, match="last remaining tab"):
         update.remove_tab("tab_1")
 
 
 def test_removed_tab_is_not_addressable_afterwards() -> None:
     update = _dashboard("selectors_manual_two_tabs").update
     update.remove_tab("tab_2")
-    with pytest.raises(DatalensValidationError, match="Unknown tab"):
+    with pytest.raises(DataLensValidationError, match="Unknown tab"):
         update.update_tab("tab_2", hidden=True)
-    with pytest.raises(DatalensValidationError, match="Unknown item"):
+    with pytest.raises(DataLensValidationError, match="Unknown item"):
         update.remove_item("item_12")  # lived on the removed tab
 
 
 def test_reorder_tabs_applies_and_requires_exact_permutation() -> None:
     update = _dashboard("selectors_manual_two_tabs").update
-    with pytest.raises(DatalensValidationError, match="every tab exactly once"):
+    with pytest.raises(DataLensValidationError, match="every tab exactly once"):
         update.reorder_tabs(["tab_1"])
-    with pytest.raises(DatalensValidationError, match="every tab exactly once"):
+    with pytest.raises(DataLensValidationError, match="every tab exactly once"):
         update.reorder_tabs(["tab_1", "tab_1"])
     update.reorder_tabs(["Title 12", "tab_1"])  # titles resolve too
     applied = _apply_update(update.to_spec())
@@ -164,11 +164,11 @@ def test_replace_chart_swaps_only_chart_id() -> None:
 
 def test_replace_chart_prechecks() -> None:
     update = _dashboard("selectors_manual_two_tabs").update
-    with pytest.raises(DatalensValidationError, match="Unknown item"):
+    with pytest.raises(DataLensValidationError, match="Unknown item"):
         update.replace_chart(item_id="nope", chart="c")
-    with pytest.raises(DatalensValidationError, match="targets widget items"):
+    with pytest.raises(DataLensValidationError, match="targets widget items"):
         update.replace_chart(item_id="item_1", chart="c")  # a control
-    with pytest.raises(DatalensValidationError, match="chart id must not be an empty string"):
+    with pytest.raises(DataLensValidationError, match="chart id must not be an empty string"):
         update.replace_chart(item_id="item_3", chart="")
     assert update.ops == ()
 
@@ -185,9 +185,9 @@ def test_replace_chart_multi_tab_widget_requires_widget_tab_id() -> None:
     widget_id = cast(str, widget["id"])
     widget_tab_ids = [cast(str, t["id"]) for t in _as_dicts(_as_dict(widget["data"])["tabs"])]
     update = _dashboard_from(entry).update
-    with pytest.raises(DatalensValidationError, match="pass widget_tab_id="):
+    with pytest.raises(DataLensValidationError, match="pass widget_tab_id="):
         update.replace_chart(item_id=widget_id, chart="c")
-    with pytest.raises(DatalensValidationError, match="no chart tab"):
+    with pytest.raises(DataLensValidationError, match="no chart tab"):
         update.replace_chart(item_id=widget_id, chart="c", widget_tab_id="wt_nope")
     update.replace_chart(item_id=widget_id, chart="new-id", widget_tab_id=widget_tab_ids[1])
     applied = _apply_update(update.to_spec())
@@ -227,7 +227,7 @@ def test_replace_chart_rejects_foreign_installation_chart() -> None:
         installation = "enterprise"
 
     update = _dashboard("selectors_manual_two_tabs").update
-    with pytest.raises(DatalensValidationError, match="Cannot place a 'enterprise' chart"):
+    with pytest.raises(DataLensValidationError, match="Cannot place a 'enterprise' chart"):
         update.replace_chart(item_id="item_3", chart=cast("str", _FakeChart()))
 
 
@@ -264,7 +264,7 @@ def test_remove_item_on_shared_global_item_cleans_every_tab() -> None:
         for connection in _as_dicts(tab.get("connections", [])):
             assert connection.get("from") != "item_1"
             assert connection.get("to") != "item_1"
-    with pytest.raises(DatalensValidationError, match="Unknown item"):
+    with pytest.raises(DataLensValidationError, match="Unknown item"):
         update.remove_item("item_1")  # already gone from the index
 
 
@@ -272,7 +272,7 @@ def test_remove_item_then_remove_connection_referencing_it_fails() -> None:
     entry = _load_entry("group_control_manual")
     update = _dashboard_from(entry).update
     update.remove_item("2j")
-    with pytest.raises(DatalensValidationError, match="Unknown item"):
+    with pytest.raises(DataLensValidationError, match="Unknown item"):
         update.remove_connection(from_item="2j", to_item="rB")
 
 
@@ -305,15 +305,15 @@ def test_set_chart_params_prechecks() -> None:
     tab0 = _tabs(_as_dict(entry["data"]))[0]
     _as_dicts(tab0["items"]).append({"id": "txt_x", "type": "text", "namespace": "default", "data": {"text": "t"}})
     update = _dashboard_from(entry).update
-    with pytest.raises(DatalensValidationError, match="targets widget/control items"):
+    with pytest.raises(DataLensValidationError, match="targets widget/control items"):
         update.set_chart_params(item_id="txt_x", params={"a": "b"})
-    with pytest.raises(DatalensValidationError, match="string or a sequence of strings"):
+    with pytest.raises(DataLensValidationError, match="string or a sequence of strings"):
         update.set_chart_params(item_id="item_3", params={"a": 5})
 
 
 def test_set_chart_params_rejects_group_control() -> None:
     update = _dashboard("group_control_manual").update
-    with pytest.raises(DatalensValidationError, match="does not support group_control"):
+    with pytest.raises(DataLensValidationError, match="does not support group_control"):
         update.set_chart_params(item_id="2j", params={"a": "b"})
     assert update.ops == ()
 
@@ -349,12 +349,12 @@ def test_remove_connection_by_search_and_ambiguity_rules() -> None:
 def test_remove_connection_missing_fails_loud() -> None:
     entry = _load_entry("group_control_manual")
     update = _dashboard_from(entry).update
-    with pytest.raises(DatalensValidationError, match="No connection"):
+    with pytest.raises(DataLensValidationError, match="No connection"):
         update.remove_connection(from_item="no", to_item="Lp")
-    with pytest.raises(DatalensValidationError, match="Unknown tab"):
+    with pytest.raises(DataLensValidationError, match="Unknown tab"):
         update.remove_connection(from_item="no", to_item="rB", tab="no-such")
     other_tab = next(t["id"] for t in _tabs(_as_dict(entry["data"])) if not t.get("connections"))
-    with pytest.raises(DatalensValidationError, match="has no connection"):
+    with pytest.raises(DataLensValidationError, match="has no connection"):
         update.remove_connection(from_item="no", to_item="rB", tab=cast(str, other_tab))
 
 
@@ -371,9 +371,9 @@ def test_remove_alias_matches_exact_member_set() -> None:
         {"id": "tab_2", "title": "Two", "items": [], "layout": [], "connections": [], "aliases": {"default": []}},
     ]
     update = _synthetic(tabs).update
-    with pytest.raises(DatalensValidationError, match="at least two"):
+    with pytest.raises(DataLensValidationError, match="at least two"):
         update.remove_alias("region")
-    with pytest.raises(DatalensValidationError, match="No alias"):
+    with pytest.raises(DataLensValidationError, match="No alias"):
         update.remove_alias("region", "b")
     update.remove_alias("city", "region")  # order-insensitive
     applied = _apply_update(update.to_spec())
@@ -384,7 +384,7 @@ def test_repeat_remove_connection_fails_at_call_time() -> None:
     entry = _load_entry("group_control_manual")
     update = _dashboard_from(entry).update
     update.remove_connection(from_item="no", to_item="rB")
-    with pytest.raises(DatalensValidationError, match="No connection"):
+    with pytest.raises(DataLensValidationError, match="No connection"):
         update.remove_connection(from_item="no", to_item="rB")
     assert len(update.ops) == 1
     _apply_update(update.to_spec())  # the single recorded op still applies cleanly
@@ -397,7 +397,7 @@ def test_repeat_remove_alias_fails_at_call_time() -> None:
     ]
     update = _synthetic(tabs).update
     update.remove_alias("x", "y")
-    with pytest.raises(DatalensValidationError, match="No alias"):
+    with pytest.raises(DataLensValidationError, match="No alias"):
         update.remove_alias("y", "x")
     assert len(update.ops) == 1
     _apply_update(update.to_spec())
@@ -421,7 +421,7 @@ def test_remove_connection_ambiguous_across_tabs_requires_tab() -> None:
         },
     ]
     update = _synthetic(tabs).update
-    with pytest.raises(DatalensValidationError, match="several tabs"):
+    with pytest.raises(DataLensValidationError, match="several tabs"):
         update.remove_connection(from_item="a", to_item="b")
     update.remove_connection(from_item="a", to_item="b", tab="tab_2")
     applied = _apply_update(update.to_spec())
@@ -435,7 +435,7 @@ def test_remove_alias_ambiguous_across_tabs_requires_tab() -> None:
         {"id": "tab_2", "title": "Two", "items": [], "layout": [], "aliases": {"default": [["x", "y"]]}},
     ]
     update = _synthetic(tabs).update
-    with pytest.raises(DatalensValidationError, match="several tabs"):
+    with pytest.raises(DataLensValidationError, match="several tabs"):
         update.remove_alias("x", "y")
     update.remove_alias("x", "y", tab="tab_2")
     applied = _apply_update(update.to_spec())
@@ -522,7 +522,7 @@ def test_update_add_connection_group_reference_expands_to_members() -> None:
 
 def test_update_add_connection_rejects_text_and_unknown_endpoints() -> None:
     update = _dashboard("group_control_manual").update
-    with pytest.raises(DatalensValidationError, match="Unknown item id"):
+    with pytest.raises(DataLensValidationError, match="Unknown item id"):
         update.add_connection(from_item="nope", to_item="no")
 
 
@@ -547,7 +547,7 @@ def test_update_disconnect_all_full_mesh_over_expansions() -> None:
 
 def test_update_add_alias_dedup_and_tab_requirements() -> None:
     update = _dashboard("group_control_manual").update
-    with pytest.raises(DatalensValidationError, match="pass tab="):
+    with pytest.raises(DataLensValidationError, match="pass tab="):
         update.add_alias("guid_x", "guid_y")  # the fixture has several tabs
     update.add_alias("guid_x", "guid_y", tab="GJ")
     update.add_alias("guid_y", "guid_x", tab="GJ")  # same set: silent skip
@@ -557,7 +557,7 @@ def test_update_add_alias_dedup_and_tab_requirements() -> None:
     default = _tabs(data)[0]["aliases"]["default"]  # type: ignore[index]
     assert ["guid_x", "guid_y"] in default
 
-    with pytest.raises(DatalensValidationError, match="at least two"):
+    with pytest.raises(DataLensValidationError, match="at least two"):
         update.add_alias("only")
 
 
@@ -593,15 +593,15 @@ def test_update_selector_patches_every_occurrence_of_a_shared_selector() -> None
 
 def test_update_selector_wrapper_shorthand_needs_single_member() -> None:
     update = _dashboard("group_control_manual").update
-    with pytest.raises(DatalensValidationError, match="pass the member id"):
+    with pytest.raises(DataLensValidationError, match="pass the member id"):
         update.update_selector(item_id="2j", title="X")
 
 
 def test_update_selector_requires_a_change_and_known_id() -> None:
     update = _dashboard("group_control_manual").update
-    with pytest.raises(DatalensValidationError, match="at least one field"):
+    with pytest.raises(DataLensValidationError, match="at least one field"):
         update.update_selector(item_id="om")
-    with pytest.raises(DatalensValidationError, match="Unknown item id"):
+    with pytest.raises(DataLensValidationError, match="Unknown item id"):
         update.update_selector(item_id="nope", title="X")
 
 
@@ -627,5 +627,5 @@ def test_remove_selector_wrapper_removes_the_whole_item() -> None:
 
 def test_remove_selector_rejects_non_selectors() -> None:
     update = _dashboard("group_control_manual").update
-    with pytest.raises(DatalensValidationError, match="is not a selector"):
+    with pytest.raises(DataLensValidationError, match="is not a selector"):
         update.remove_selector(item_id="1l")  # a widget

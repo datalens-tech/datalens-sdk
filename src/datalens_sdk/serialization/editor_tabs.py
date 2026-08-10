@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 from datalens_sdk.serialization.artifacts import sanitize_artifact_component
 from datalens_sdk.serialization.json_io import _write_text_file_exclusive
 
@@ -24,4 +24,4 @@ def materialize_editor_tabs(artifact_root: Path, data: Mapping[str, object]) -> 
         try:
             _write_text_file_exclusive(tabs_directory / filename, content)
         except FileExistsError as exc:
-            raise DatalensValidationError(f"Editor tab names collide after artifact sanitization: {tab!r}") from exc
+            raise DataLensValidationError(f"Editor tab names collide after artifact sanitization: {tab!r}") from exc

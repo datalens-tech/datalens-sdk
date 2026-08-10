@@ -22,7 +22,7 @@ from datalens_sdk.domain.specs.dashboard import (
     TitleItem,
     WidgetItem,
 )
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 _ITEM_NAMESPACE_VALUE = "default"
 
@@ -122,7 +122,7 @@ def _wire_item(tab: TabSpec, item: DashboardItemSpec) -> dict[str, object]:
         # standalone control format: defaults live at item level (P017)
         return _external_control_wire(item, namespace=_ITEM_NAMESPACE_VALUE)
     else:
-        raise DatalensValidationError(f"Tab {tab.id!r} carries an unsupported item spec {type(item).__name__!r}")
+        raise DataLensValidationError(f"Tab {tab.id!r} carries an unsupported item spec {type(item).__name__!r}")
     return {"id": item.id, "type": wire_type, "namespace": _ITEM_NAMESPACE_VALUE, "data": data}
 
 
@@ -130,7 +130,7 @@ def _concrete_layout(entry: LayoutItemSpec | AutoLayoutItemSpec, tab_id: str) ->
     """Narrow a layout entry to a resolved one. A deferred (at=None) entry must be
     resolved before wiring/validation reaches it; this fails loud if one leaks."""
     if isinstance(entry, AutoLayoutItemSpec):
-        raise DatalensValidationError(f"Tab {tab_id!r} item {entry.i!r}: auto layout position was not resolved")
+        raise DataLensValidationError(f"Tab {tab_id!r} item {entry.i!r}: auto layout position was not resolved")
     return entry
 
 
@@ -182,15 +182,15 @@ def _validate_grid(tab: TabSpec) -> None:
         values = {"x": entry.x, "y": entry.y, "w": entry.w, "h": entry.h}
         for name, value in values.items():
             if isinstance(value, bool) or not isinstance(value, int):
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"Tab {tab.id!r} item {entry.i!r}: layout {name} must be an int, got {value!r}"
                 )
         if entry.x < 0 or entry.y < 0:
-            raise DatalensValidationError(f"Tab {tab.id!r} item {entry.i!r}: layout x and y must be >= 0")
+            raise DataLensValidationError(f"Tab {tab.id!r} item {entry.i!r}: layout x and y must be >= 0")
         if entry.w <= 0 or entry.h <= 0:
-            raise DatalensValidationError(f"Tab {tab.id!r} item {entry.i!r}: layout w and h must be > 0")
+            raise DataLensValidationError(f"Tab {tab.id!r} item {entry.i!r}: layout w and h must be > 0")
         if entry.x + entry.w > GRID_COLUMNS:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"Tab {tab.id!r} item {entry.i!r}: x + w must be <= {GRID_COLUMNS}, got {entry.x + entry.w}"
             )
 
@@ -199,11 +199,11 @@ def _validate_items_layout_bijection(tab: TabSpec) -> None:
     item_ids = [item.id for item in tab.items]
     layout_ids = [entry.i for entry in tab.layout]
     if len(set(layout_ids)) != len(layout_ids):
-        raise DatalensValidationError(f"Tab {tab.id!r} layout references an item more than once")
+        raise DataLensValidationError(f"Tab {tab.id!r} layout references an item more than once")
     if set(item_ids) != set(layout_ids):
         missing = sorted(set(item_ids) - set(layout_ids))
         orphaned = sorted(set(layout_ids) - set(item_ids))
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"Tab {tab.id!r} items and layout must match exactly: "
             f"items without layout {missing!r}, layout without items {orphaned!r}"
         )

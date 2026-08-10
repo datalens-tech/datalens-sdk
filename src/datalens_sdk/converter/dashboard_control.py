@@ -27,7 +27,7 @@ from datalens_sdk.domain.specs.dashboard import (
     ManualSelectorSource,
     SelectorMemberSpec,
 )
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 _MEMBER_NAMESPACE = "default"
 
@@ -122,7 +122,7 @@ def _member_source_wire(member: SelectorMemberSpec) -> tuple[str, str, str, dict
         if spec.element == "select":
             source["acceptableValues"] = [{"title": title, "value": value} for value, title in spec.options]
     else:  # pragma: no cover - union is closed
-        raise DatalensValidationError(f"Unsupported selector source {type(spec).__name__!r}")
+        raise DataLensValidationError(f"Unsupported selector source {type(spec).__name__!r}")
 
     if spec.element == "select":
         source["multiselectable"] = spec.multiselect

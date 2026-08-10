@@ -18,7 +18,7 @@ import warnings
 import httpx
 import jwt
 
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 _DATALENS_API_TOKEN_ENV = "DATALENS_API_TOKEN"
 _IAM_TOKEN_ENDPOINT = "https://iam.api.cloud.yandex.net/iam/v1/tokens"
@@ -61,7 +61,7 @@ class OAuthAuthProvider(AuthorizationTokenAuthProvider):
     def __init__(self, *, token: str | None = None) -> None:
         resolved_token = token if token is not None else os.getenv(_DATALENS_API_TOKEN_ENV)
         if not resolved_token:
-            raise DatalensConfigurationError(f"OAuth token is required: pass token= or set {_DATALENS_API_TOKEN_ENV}.")
+            raise DataLensConfigurationError(f"OAuth token is required: pass token= or set {_DATALENS_API_TOKEN_ENV}.")
         super().__init__(token=resolved_token, token_type="OAuth")
 
 
@@ -92,7 +92,7 @@ class _RefreshingIAMAuthProvider(BaseAuthProvider, abc.ABC):
     ) -> None:
         resolved_org_id = org_id.strip()
         if not resolved_org_id:
-            raise DatalensConfigurationError("YC organization ID is required: pass org_id=.")
+            raise DataLensConfigurationError("YC organization ID is required: pass org_id=.")
         self._org_id = resolved_org_id
         self._cached_token: _IAMToken | None = None
         self._refresh_lock = threading.Lock()
@@ -180,7 +180,7 @@ class YCServiceAccountCredentialsAuthProvider(_RefreshingIAMAuthProvider):
         try:
             payload: object = response.json()
         except ValueError as exc:
-            raise DatalensConfigurationError(
+            raise DataLensConfigurationError(
                 "YC IAM returned invalid JSON while exchanging the service-account JWT."
             ) from exc
         return _parse_iam_token(payload, token_field="iamToken", expiry_field="expiresAt", source="YC IAM")
@@ -201,17 +201,17 @@ def _run_yc_command(
             timeout=timeout_seconds,
         )
     except FileNotFoundError as exc:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             "yc CLI was not found. Install it from https://yandex.cloud/docs/cli/quickstart."
         ) from exc
     except subprocess.TimeoutExpired as exc:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             f"{action} timed out after {timeout_seconds:g} seconds. "
             "Check that the yc CLI can complete in the current environment before retrying."
         ) from exc
     except subprocess.CalledProcessError as exc:
         detail = exc.stderr.strip() if exc.stderr else "unknown error"
-        raise DatalensConfigurationError(f"{action} failed: {detail}") from exc
+        raise DataLensConfigurationError(f"{action} failed: {detail}") from exc
 
 
 def _get_yc_org_id(*, profile: str | None, command_timeout_seconds: float) -> str:
@@ -224,7 +224,7 @@ def _get_yc_org_id(*, profile: str | None, command_timeout_seconds: float) -> st
         timeout_seconds=command_timeout_seconds,
     ).stdout.strip()
     if not org_id:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             "YC organization ID is required: pass org_id= or run "
             "`yc config set organization-id <org-id>` for the selected yc profile."
         )
@@ -241,7 +241,7 @@ class YCIAMAuthProvider(_RefreshingIAMAuthProvider):
         command_timeout_seconds: float = _YC_CLI_COMMAND_TIMEOUT_SECONDS,
     ) -> None:
         if not math.isfinite(command_timeout_seconds) or command_timeout_seconds <= 0:
-            raise DatalensConfigurationError("command_timeout_seconds must be a finite positive number.")
+            raise DataLensConfigurationError("command_timeout_seconds must be a finite positive number.")
         resolved_org_id = (
             org_id
             if org_id is not None
@@ -266,7 +266,7 @@ class YCIAMAuthProvider(_RefreshingIAMAuthProvider):
         try:
             payload: object = json.loads(result.stdout)
         except json.JSONDecodeError as exc:
-            raise DatalensConfigurationError("yc iam create-token returned invalid JSON.") from exc
+            raise DataLensConfigurationError("yc iam create-token returned invalid JSON.") from exc
         return _parse_iam_token(
             payload,
             token_field="iam_token",
@@ -277,16 +277,16 @@ class YCIAMAuthProvider(_RefreshingIAMAuthProvider):
 
 def _parse_iam_token(payload: object, *, token_field: str, expiry_field: str, source: str) -> _IAMToken:
     if not isinstance(payload, Mapping):
-        raise DatalensConfigurationError(f"{source} returned a JSON value that is not an object.")
+        raise DataLensConfigurationError(f"{source} returned a JSON value that is not an object.")
 
     raw_token = payload.get(token_field)
     token = raw_token.strip() if isinstance(raw_token, str) else ""
     if not token:
-        raise DatalensConfigurationError(f"{source} returned an empty {token_field}.")
+        raise DataLensConfigurationError(f"{source} returned an empty {token_field}.")
 
     raw_expiry = payload.get(expiry_field)
     if not isinstance(raw_expiry, str):
-        raise DatalensConfigurationError(f"{source} returned an invalid {expiry_field}.")
+        raise DataLensConfigurationError(f"{source} returned an invalid {expiry_field}.")
     try:
         normalized_expiry = _RFC3339_SUBSECOND_OVERFLOW_RE.sub(r"\1", raw_expiry)
         parsed_expiry = datetime.fromisoformat(normalized_expiry.replace("Z", "+00:00"))
@@ -294,9 +294,9 @@ def _parse_iam_token(payload: object, *, token_field: str, expiry_field: str, so
             raise ValueError("timezone is missing")
         expires_at = parsed_expiry.timestamp()
     except ValueError as exc:
-        raise DatalensConfigurationError(f"{source} returned an invalid {expiry_field}.") from exc
+        raise DataLensConfigurationError(f"{source} returned an invalid {expiry_field}.") from exc
     if expires_at <= time.time():
-        raise DatalensConfigurationError(f"{source} returned an already expired token.")
+        raise DataLensConfigurationError(f"{source} returned an already expired token.")
     return _IAMToken(value=token, expires_at=expires_at)
 
 

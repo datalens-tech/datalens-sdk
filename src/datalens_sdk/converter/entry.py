@@ -4,7 +4,7 @@ from typing import Protocol, cast
 
 from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.domain.entry_location import EntryLocation, dir_path_from_location
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 
 class EntryMutationWriteDTOProtocol(Protocol):
@@ -45,7 +45,7 @@ class EntryMutationConverter:
     ) -> EntryMutationWriteDTOProtocol:
         destination = dir_path_from_location(location)
         if destination is None:
-            raise DatalensValidationError("Folder move requires a path location")
+            raise DataLensValidationError("Folder move requires a path location")
         generated = _dto_module(dto_module)
         return generated.EntryMoveDTO(entry_id=entry_id, destination=destination, name=name)
 

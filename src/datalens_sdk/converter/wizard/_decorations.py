@@ -8,7 +8,7 @@ from datalens_sdk.converter.wizard._common import FieldRef, _item_matches_ref, _
 from datalens_sdk.converter.wizard._normalizer import _Normalizer
 from datalens_sdk.domain.chart_types import MeasureFormat
 from datalens_sdk.domain.dataset import Dataset
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 
 def _visualization_items(visualization: dict[str, object]) -> list[dict[str, object]]:
@@ -95,7 +95,7 @@ def _apply_item_mutations(
             else:
                 item[setting_key] = value
         if not matched:
-            raise DatalensConfigurationError(
+            raise DataLensConfigurationError(
                 f"Field {ref!r} not found in any placeholder. Call .columns()/.measures()/.rows() before this method."
             )
 
@@ -124,7 +124,7 @@ def _apply_measure_formats(
             else:
                 item["formatting"] = dict(wire_fmt)
         if not matched:
-            raise DatalensConfigurationError(
+            raise DataLensConfigurationError(
                 f"Field {ref!r} not found in any placeholder. Call .columns()/.measures()/.rows() before this method."
             )
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Literal, TypedDict, cast
 
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.chart_types import QLCast
@@ -1322,7 +1322,7 @@ def validate_placeholder_id(*, method: str, visualization_id: str, placeholder_i
     """
     spec = VIZ_SPECS.get(visualization_id)
     if spec is None:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             f"{method}: active visualization {visualization_id!r} is unknown. "
             f"Supported visualizations: {sorted(VIZ_SPECS)}."
         )
@@ -1335,7 +1335,7 @@ def validate_placeholder_id(*, method: str, visualization_id: str, placeholder_i
     aliases = spec.get("placeholder_aliases")
     alias_names = sorted(aliases) if isinstance(aliases, dict) else []
     allowed = sorted(set(placeholders) | set(alias_names))
-    raise DatalensConfigurationError(
+    raise DataLensConfigurationError(
         f"{method}: placeholder {placeholder_id!r} is not applicable to active visualization "
         f"{visualization_id!r}. Allowed placeholders: {allowed}."
     )

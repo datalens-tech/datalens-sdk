@@ -8,7 +8,7 @@ from datalens_sdk._runtime.viz_specs import VIZ_SPECS
 from datalens_sdk._runtime.wizard_visualization_transitions import WIZARD_VISUALIZATION_TRANSITIONS
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 
 def _chart(*, visualization_id: str = "line", placeholders: list[dict[str, object]] | None = None) -> WizardChart:
@@ -31,7 +31,7 @@ def _payload_data(update: object) -> dict[str, object]:
 
 def test_placeholder_typo_is_rejected_at_the_public_update_call() -> None:
     with pytest.raises(
-        DatalensConfigurationError,
+        DataLensConfigurationError,
         match=r"axis_visibility: placeholder 'typo'.*active visualization 'line'.*Allowed placeholders",
     ):
         _chart().update.axis_visibility("typo", mode="show")
@@ -41,13 +41,13 @@ def test_converter_rejects_an_invalid_staged_placeholder_as_defense_in_depth() -
     update = _chart().update
     update._placeholder_edits["typo"] = []
 
-    with pytest.raises(DatalensConfigurationError, match=r"typo.*Allowed placeholders"):
+    with pytest.raises(DataLensConfigurationError, match=r"typo.*Allowed placeholders"):
         _payload_data(update)
 
 
 def test_change_visualization_to_rejects_unknown_target_locally() -> None:
     with pytest.raises(
-        DatalensConfigurationError,
+        DataLensConfigurationError,
         match=r"change_visualization_to: target visualization 'not-a-viz'.*Supported visualizations",
     ):
         _chart().update.change_visualization_to(visualization_id="not-a-viz")
@@ -55,12 +55,12 @@ def test_change_visualization_to_rejects_unknown_target_locally() -> None:
 
 def test_change_visualization_to_rejects_unknown_source_and_active_target_locally() -> None:
     with pytest.raises(
-        DatalensConfigurationError,
+        DataLensConfigurationError,
         match=r"active visualization 'not-a-viz' is unknown.*Supported visualizations",
     ):
         _chart(visualization_id="not-a-viz").update.change_visualization_to(visualization_id="line")
     with pytest.raises(
-        DatalensConfigurationError,
+        DataLensConfigurationError,
         match=r"target visualization 'line' is already active",
     ):
         _chart().update.change_visualization_to(visualization_id="line")
@@ -68,12 +68,12 @@ def test_change_visualization_to_rejects_unknown_source_and_active_target_locall
 
 def test_change_visualization_to_rejects_unsupported_and_funnel_transitions_locally() -> None:
     with pytest.raises(
-        DatalensConfigurationError,
+        DataLensConfigurationError,
         match=r"transition from active visualization 'line' to 'pie'.*Verified targets",
     ):
         _chart().update.change_visualization_to(visualization_id="pie")
     with pytest.raises(
-        DatalensConfigurationError,
+        DataLensConfigurationError,
         match=r"transition from active visualization 'line' to 'funnel'.*Verified targets",
     ):
         _chart().update.change_visualization_to(visualization_id="funnel")
@@ -176,7 +176,7 @@ def test_change_visualization_to_rebuilds_metadata_maps_axes_and_drops_incompati
 def test_change_visualization_to_validates_retained_target_placeholder_capacity_before_rpc() -> None:
     chart = _chart(placeholders=[{"id": "x", "items": [{"guid": "a"}, {"guid": "b"}, {"guid": "c"}]}])
 
-    with pytest.raises(DatalensValidationError, match=r"transition to 'bar'.*placeholder 'y'.*capacity is 2"):
+    with pytest.raises(DataLensValidationError, match=r"transition to 'bar'.*placeholder 'y'.*capacity is 2"):
         _payload_data(chart.update.change_visualization_to(visualization_id="bar"))
 
 
@@ -184,5 +184,5 @@ def test_update_method_after_transition_uses_target_applicability() -> None:
     update = _chart().update.change_visualization_to(visualization_id="bar")
 
     update.axis_scale("x", scale="linear")
-    with pytest.raises(DatalensConfigurationError, match=r"shape_by_dimension.*not applicable.*viz 'bar'"):
+    with pytest.raises(DataLensConfigurationError, match=r"shape_by_dimension.*not applicable.*viz 'bar'"):
         update.shape_by_dimension("g_category")

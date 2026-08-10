@@ -12,9 +12,9 @@ from datalens_sdk import (
     BadRequestError,
     ConflictError,
     DataLensClientYC,
-    DatalensConfigurationError,
-    DatalensHTTPClient,
-    DatalensTransportError,
+    DataLensConfigurationError,
+    DataLensHTTPClient,
+    DataLensTransportError,
     LockedError,
     NotFoundError,
     ResponseAcceptancePredicate,
@@ -70,7 +70,7 @@ def test_read_rpc_retries_transient_response_and_sets_canonical_headers(
     monkeypatch.setattr("datalens_sdk.http.time.sleep", sleeps.append)
     caplog.set_level(logging.DEBUG, logger="datalens_sdk.http")
 
-    with DatalensHTTPClient(
+    with DataLensHTTPClient(
         installation="yacloud",
         sdk_version="1.2.3",
         api_version="42",
@@ -97,7 +97,7 @@ def test_mutating_rpc_is_not_retried_and_logs_no_request_body(caplog: pytest.Log
 
     caplog.set_level(logging.DEBUG, logger="datalens_sdk.http")
     with (
-        DatalensHTTPClient(
+        DataLensHTTPClient(
             installation="yacloud",
             sdk_version="1.2.3",
             api_version="2",
@@ -126,7 +126,7 @@ def test_retry_policy_applies_distinct_request_and_connect_timeouts() -> None:
         requests.append(request)
         return httpx.Response(200, json={})
 
-    with DatalensHTTPClient(
+    with DataLensHTTPClient(
         installation="yacloud",
         sdk_version="1.2.3",
         api_version="2",
@@ -169,7 +169,7 @@ def test_retry_attempt_timeouts_are_capped_by_remaining_total_budget(monkeypatch
     monkeypatch.setattr("datalens_sdk.http.time.perf_counter", perf_counter)
     monkeypatch.setattr("datalens_sdk.http.time.sleep", sleep)
 
-    with DatalensHTTPClient(
+    with DataLensHTTPClient(
         installation="yacloud",
         sdk_version="1.2.3",
         api_version="2",
@@ -215,7 +215,7 @@ def test_exhausted_total_timeout_prevents_another_attempt(monkeypatch: pytest.Mo
     monkeypatch.setattr("datalens_sdk.http.time.perf_counter", perf_counter)
 
     with (
-        DatalensHTTPClient(
+        DataLensHTTPClient(
             installation="yacloud",
             sdk_version="1.2.3",
             api_version="2",
@@ -246,7 +246,7 @@ def test_conflict_status_is_not_retried_even_for_read_rpc() -> None:
         )
 
     with (
-        DatalensHTTPClient(
+        DataLensHTTPClient(
             installation="yacloud",
             sdk_version="1.2.3",
             api_version="2",
@@ -272,7 +272,7 @@ def test_unlisted_server_status_is_not_retried_for_read_rpc() -> None:
         return httpx.Response(505, json={"message": "HTTP version not supported"})
 
     with (
-        DatalensHTTPClient(
+        DataLensHTTPClient(
             installation="yacloud",
             sdk_version="1.2.3",
             api_version="2",
@@ -301,14 +301,14 @@ def test_transport_errors_retry_then_raise_typed_context(
     caplog.set_level(logging.WARNING, logger="datalens_sdk.http")
 
     with (
-        DatalensHTTPClient(
+        DataLensHTTPClient(
             installation="yacloud",
             sdk_version="1.2.3",
             api_version="2",
             base_url="https://example.test",
             transport=httpx.MockTransport(handler),
         ) as http_client,
-        pytest.raises(DatalensTransportError) as exc_info,
+        pytest.raises(DataLensTransportError) as exc_info,
     ):
         DatasetAPI(http_client).get("dataset-1")
 
@@ -328,7 +328,7 @@ def test_dataset_http_400_with_component_errors_is_returned_with_base_log(
     component_errors = {"items": [{"code": "ERR.DATASET.SOURCE", "message": "source failed"}]}
     caplog.set_level(logging.WARNING, logger="datalens_sdk.http")
 
-    with DatalensHTTPClient(
+    with DataLensHTTPClient(
         installation="yacloud",
         sdk_version="1.2.3",
         api_version="2",
@@ -371,7 +371,7 @@ def test_validate_dataset_http_400_error_envelope_is_unwrapped_and_logs_componen
     }
     caplog.set_level(logging.WARNING, logger="datalens_sdk.http")
 
-    with DatalensHTTPClient(
+    with DataLensHTTPClient(
         installation="yacloud",
         sdk_version="1.2.3",
         api_version="2",
@@ -398,7 +398,7 @@ def test_validate_dataset_http_400_error_envelope_is_unwrapped_and_logs_componen
 
 def test_validate_dataset_http_400_error_envelope_without_component_errors_still_raises() -> None:
     with (
-        DatalensHTTPClient(
+        DataLensHTTPClient(
             installation="yacloud",
             sdk_version="1.2.3",
             api_version="2",
@@ -421,7 +421,7 @@ def test_validate_dataset_http_400_error_envelope_without_component_errors_still
 
 def test_dataset_http_400_without_component_errors_still_raises() -> None:
     with (
-        DatalensHTTPClient(
+        DataLensHTTPClient(
             installation="yacloud",
             sdk_version="1.2.3",
             api_version="2",
@@ -437,7 +437,7 @@ def test_dataset_http_400_without_component_errors_still_raises() -> None:
 
 def test_unique_violation_http_400_raises_conflict_with_original_context() -> None:
     with (
-        DatalensHTTPClient(
+        DataLensHTTPClient(
             installation="yacloud",
             sdk_version="1.2.3",
             api_version="2",
@@ -469,7 +469,7 @@ def test_unique_violation_http_400_raises_conflict_with_original_context() -> No
 
 def test_non_dataset_http_400_still_raises() -> None:
     with (
-        DatalensHTTPClient(
+        DataLensHTTPClient(
             installation="yacloud",
             sdk_version="1.2.3",
             api_version="2",
@@ -496,7 +496,7 @@ def test_http_client_uses_its_error_transformer() -> None:
     client_transformer = StatusMapTransformer(status_map={404: _ClientLevelError})
 
     with (
-        DatalensHTTPClient(
+        DataLensHTTPClient(
             installation="yacloud",
             sdk_version="1.2.3",
             api_version="2",
@@ -590,7 +590,7 @@ def test_sdk_client_injection_is_caller_owned_and_construction_options_are_exclu
     assert injected.paths == ["/rpc/getConnection"]
     assert injected.closed is False
 
-    with pytest.raises(DatalensConfigurationError, match="http_client cannot be combined"):
+    with pytest.raises(DataLensConfigurationError, match="http_client cannot be combined"):
         DataLensClientYC(http_client=injected, auth=None)
 
 

@@ -4,24 +4,24 @@ Read this when any SDK call raised an exception — before retrying anything, an
 
 ## The canonical handling shape
 
-All SDK exceptions derive from `DatalensError`. Server-side failures are `DatalensAPIError` subclasses and carry `e.context` (an `APIErrorContext` with `status_code`, `code`, `message`, `details`, `request_url`, `request_id`, `request_method`, `attempts`). Transport failures are `DatalensTransportError` — **not** an API error, no `context`, no request id. Reuse this shape everywhere:
+All SDK exceptions derive from `DataLensError`. Server-side failures are `DataLensAPIError` subclasses and carry `e.context` (an `APIErrorContext` with `status_code`, `code`, `message`, `details`, `request_url`, `request_id`, `request_method`, `attempts`). Transport failures are `DataLensTransportError` — **not** an API error, no `context`, no request id. Reuse this shape everywhere:
 
 ```python
-from datalens_sdk import DatalensAPIError, DatalensTransportError, DatalensError
+from datalens_sdk import DataLensAPIError, DataLensTransportError, DataLensError
 
 try:
     result = do_sdk_call()
-except DatalensAPIError as e:
+except DataLensAPIError as e:
     # ALWAYS surface the request id when reporting a failed call to the user:
     print(
         f"DataLens API error {e.context.status_code} {e.context.code}: "
         f"{e.context.message} (request_id={e.context.request_id})"
     )
     raise
-except DatalensTransportError as e:
+except DataLensTransportError as e:
     print(f"Transport failure: {e.reason} ({e.method} {e.url}, {e.attempts} attempt(s))")
     raise
-except DatalensError as e:
+except DataLensError as e:
     print(f"Client-side SDK error: {e}")  # configuration/validation — fix code, no retry
     raise
 ```
@@ -37,11 +37,11 @@ verification process, re-fetch the entity by id, and correct only the
 inspection/assertion logic. This matters especially for creates and publish
 updates, where replay can create a conflict or an unnecessary revision.
 
-If the terminal call itself raised `DatalensTransportError`, persistence is
+If the terminal call itself raised `DataLensTransportError`, persistence is
 ambiguous instead; follow section 8. If it raised an API or client-side SDK
 exception, classify that exception below.
 
-## 1. `DatalensConfigurationError` — the client cannot even be built or used
+## 1. `DataLensConfigurationError` — the client cannot even be built or used
 
 **Symptoms:** raised before any HTTP happens. The message names the gap precisely:
 
@@ -125,15 +125,15 @@ The entity is locked, typically because a person has it open for editing in the 
 
 **What NOT to do:** do not wrap calls in an unbounded `while: retry` — you will extend the throttling window — and do not raise write retry counts globally via a custom `http_client` just to push through a 429.
 
-## 7. `DatalensValidationError` — your code is wrong; the server was never asked
+## 7. `DataLensValidationError` — your code is wrong; the server was never asked
 
-Raised client-side at build/execute time (and sometimes at the offending builder call): unresolvable or ambiguous field references (the message suggests close matches and the `dataset.fields.by_name(...)` pattern), an entry `name` containing `/` for a path location, placeholder methods that do not apply to the visualization, malformed `global_params` payloads. Closely related, chart palette misuse — a non-gradient palette passed to `color_by_measure`, an unknown palette id, a palette/mode mismatch — raises `DatalensConfigurationError` instead; treat both identically:
+Raised client-side at build/execute time (and sometimes at the offending builder call): unresolvable or ambiguous field references (the message suggests close matches and the `dataset.fields.by_name(...)` pattern), an entry `name` containing `/` for a path location, placeholder methods that do not apply to the visualization, malformed `global_params` payloads. Closely related, chart palette misuse — a non-gradient palette passed to `color_by_measure`, an unknown palette id, a palette/mode mismatch — raises `DataLensConfigurationError` instead; treat both identically:
 
 **Handling:** read the message — these errors are written to name the exact fix — correct the code, and re-run. Nothing was persisted, nothing is half-created.
 
 **What NOT to do:** never retry (the same input fails the same way), never catch-and-suppress to "let the server decide" — the validation exists because the server would either reject the payload or, worse, persist a broken entity.
 
-## 8. `DatalensTransportError` — the request may or may not have arrived
+## 8. `DataLensTransportError` — the request may or may not have arrived
 
 DNS failure, connection refused, TLS problems, timeouts. There is **no `e.context` and no `request_id`** — use `e.method`, `e.url`, `e.attempts`, `e.reason`. Reads were already retried up to 3 times before this surfaced.
 
@@ -143,7 +143,7 @@ DNS failure, connection refused, TLS problems, timeouts. There is **no `e.contex
 
 ## 9. `InvalidResponseError` / `DTOValidationError` — the server answered, but not in the API's language
 
-Both are `DatalensAPIError` subclasses with a **synthetic 502** context (`e.context.status_code == 502`), codes `ERR.DATALENS_SDK.INVALID_RESPONSE` and `ERR.DATALENS_SDK.DTO_VALIDATION`. They mean the HTTP exchange succeeded but the body was unusable: not JSON at all / wrong root shape (`InvalidResponseError`), or JSON that fails the SDK's response schema (`DTOValidationError`).
+Both are `DataLensAPIError` subclasses with a **synthetic 502** context (`e.context.status_code == 502`), codes `ERR.DATALENS_SDK.INVALID_RESPONSE` and `ERR.DATALENS_SDK.DTO_VALIDATION`. They mean the HTTP exchange succeeded but the body was unusable: not JSON at all / wrong root shape (`InvalidResponseError`), or JSON that fails the SDK's response schema (`DTOValidationError`).
 
 **Typical causes:** `base_url` pointing at a web UI, a proxy, or a captive portal that returns an HTML page; an enterprise API version the pinned SDK does not understand; a corporate middlebox rewriting responses.
 
@@ -155,12 +155,12 @@ Both are `DatalensAPIError` subclasses with a **synthetic 502** context (`e.cont
 
 ```
 exception raised
-├─ DatalensConfigurationError → env/wiring problem → fix per message, see setup.md; never retry
-├─ DatalensValidationError    → builder input wrong → fix code; never retry
+├─ DataLensConfigurationError → env/wiring problem → fix per message, see setup.md; never retry
+├─ DataLensValidationError    → builder input wrong → fix code; never retry
 ├─ NotSupportedError          → surface absent on this installation → check client.capabilities
-├─ DatalensTransportError     → network; no request_id → verify url/VPN, re-run;
+├─ DataLensTransportError     → network; no request_id → verify url/VPN, re-run;
 │                                write re-run conflicts? → first attempt landed → adopt (sec. 4)
-└─ DatalensAPIError           → report e.context.request_id, then branch on type:
+└─ DataLensAPIError           → report e.context.request_id, then branch on type:
    ├─ 400 BadRequestError     → server rejected payload → fix code; never retry
    ├─ ConflictError           → entry exists; status may be legacy 400 or 409 → adopt (sec. 4)
    ├─ 401 UnauthorizedError   → token invalid/expired → setup.md

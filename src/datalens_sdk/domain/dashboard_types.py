@@ -5,7 +5,7 @@ import datetime
 import re
 from typing import Literal, TypeAlias, get_args
 
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 DashboardItemType = Literal["text", "title", "widget", "image", "neuro_widget", "control", "group_control"]
 """Wire ``type`` of a dashboard item; also keys :data:`DEFAULT_ITEM_SIZES`."""
@@ -131,9 +131,9 @@ def validate_color_value(value: str, *, field: str) -> str:
     non-empty string is an opaque theme token and passes through unvalidated.
     """
     if not value:
-        raise DatalensValidationError(f"{field} must not be an empty string")
+        raise DataLensValidationError(f"{field} must not be an empty string")
     if value.startswith("#") and not _HEX_COLOR_RE.fullmatch(value):
-        raise DatalensValidationError(f"{field} must be a #RRGGBB or #RRGGBBAA hex color, got {value!r}")
+        raise DataLensValidationError(f"{field} must be a #RRGGBB or #RRGGBBAA hex color, got {value!r}")
     return value
 
 
@@ -171,14 +171,14 @@ def _validated_interval_edge(value: str | datetime.date, *, field: str) -> str:
     if isinstance(value, datetime.date):
         return value.isoformat()
     if not isinstance(value, str):
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"{field} must be an ISO date, a datetime.date, or a relative offset, got {value!r}"
         )
     if _RELATIVE_OFFSET_RE.fullmatch(value):
         return _signed_offset(value)
     if _ISO_DATE_RE.fullmatch(value):
         return value
-    raise DatalensValidationError(
+    raise DataLensValidationError(
         f"{field} must be an ISO date like '2024-01-01' (optionally with time) or a relative "
         f"offset like '-7d'/'+0d' (units d/w/M/Q/y), got {value!r}"
     )
@@ -211,7 +211,7 @@ class RelativeDateInterval:
         for field_name in ("start", "end"):
             value = getattr(self, field_name)
             if not isinstance(value, str) or not _RELATIVE_OFFSET_RE.fullmatch(value):
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"{field_name} must be a relative offset like '-1M'/'+0d' (units d/w/M/Q/y), got {value!r}"
                 )
             object.__setattr__(self, field_name, _signed_offset(value))
@@ -230,9 +230,9 @@ def validate_border_radius(value: int | None) -> int | None:
     if value is None:
         return None
     if isinstance(value, bool) or not isinstance(value, int):
-        raise DatalensValidationError(f"border_radius must be an int, got {value!r}")
+        raise DataLensValidationError(f"border_radius must be an int, got {value!r}")
     if not 0 <= value <= 24 or value % 2 != 0:
-        raise DatalensValidationError(f"border_radius must be between 0 and 24 with step 2, got {value}")
+        raise DataLensValidationError(f"border_radius must be between 0 and 24 with step 2, got {value}")
     return value
 
 
@@ -240,5 +240,5 @@ def validate_optional_text(value: str | None, *, field: str) -> str | None:
     if value is None:
         return None
     if not value:
-        raise DatalensValidationError(f"{field} must not be an empty string")
+        raise DataLensValidationError(f"{field} must not be an empty string")
     return value

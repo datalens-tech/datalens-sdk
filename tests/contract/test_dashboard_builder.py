@@ -13,7 +13,7 @@ from datalens_sdk import DashboardCreate, DashboardTab, EntryLocation
 from datalens_sdk.domain.dashboard_types import PARENT_FIX_GCONT
 from datalens_sdk.domain.specs.dashboard import DashboardSettingsSpec, WidgetItem
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 _AT = (0, 0, 12, 6)
 
@@ -30,7 +30,7 @@ def _builder(*, location: EntryLocation | None = None, name: str = "Dash") -> Da
 
 
 def test_collection_location_is_rejected() -> None:
-    with pytest.raises(DatalensValidationError, match="location kind"):
+    with pytest.raises(DataLensValidationError, match="location kind"):
         _builder(location=EntryLocation.collection("collection-1"))
 
 
@@ -41,7 +41,7 @@ def test_workbook_location_is_accepted() -> None:
 
 
 def test_name_with_slash_is_rejected_for_path_locations() -> None:
-    with pytest.raises(DatalensValidationError, match="must not contain '/'"):
+    with pytest.raises(DataLensValidationError, match="must not contain '/'"):
         _builder(name="a/b")
 
 
@@ -51,7 +51,7 @@ def test_name_with_slash_is_rejected_for_path_locations() -> None:
 def test_add_tab_generates_deterministic_ids_and_tracks_last_tab_id() -> None:
     builder = _builder()
 
-    with pytest.raises(DatalensValidationError, match="No tabs"):
+    with pytest.raises(DataLensValidationError, match="No tabs"):
         _ = builder.last_tab_id
 
     builder.add_tab(DashboardTab("Overview"))
@@ -69,7 +69,7 @@ def test_add_tab_generates_deterministic_ids_and_tracks_last_tab_id() -> None:
 def test_add_tab_rejects_non_tab_arguments_with_actionable_message() -> None:
     builder = _builder()
 
-    with pytest.raises(DatalensValidationError, match="Build the tab first: DashboardTab"):
+    with pytest.raises(DataLensValidationError, match="Build the tab first: DashboardTab"):
         builder.add_tab("Overview")  # type: ignore[arg-type]
 
     assert builder.to_spec().tabs == ()
@@ -87,7 +87,7 @@ def test_explicit_tab_id_reserves_the_value_for_the_auto_counter() -> None:
 def test_duplicate_tab_id_across_attaches_is_rejected() -> None:
     builder = _builder().add_tab(DashboardTab("First", tab_id="intro"))
 
-    with pytest.raises(DatalensValidationError, match="Duplicate tab id 'intro'"):
+    with pytest.raises(DataLensValidationError, match="Duplicate tab id 'intro'"):
         builder.add_tab(DashboardTab("Second", tab_id="intro"))
 
 
@@ -126,7 +126,7 @@ def test_explicit_ids_are_claimed_before_autos_within_one_attach() -> None:
 def test_duplicate_explicit_item_id_across_attaches_is_rejected() -> None:
     builder = _builder().add_tab(DashboardTab("One").add_text("a", item_id="shared", at=_AT))
 
-    with pytest.raises(DatalensValidationError, match="Duplicate item id 'shared'"):
+    with pytest.raises(DataLensValidationError, match="Duplicate item id 'shared'"):
         builder.add_tab(DashboardTab("Two").add_text("b", item_id="shared", at=_AT))
 
 
@@ -155,7 +155,7 @@ def test_failed_add_tab_leaves_builder_untouched() -> None:
     baseline = builder.to_spec()
 
     conflicting = DashboardTab("Two", tab_id="tab_9").add_text("b", item_id="taken", at=_AT)
-    with pytest.raises(DatalensValidationError, match="Duplicate item id 'taken'"):
+    with pytest.raises(DataLensValidationError, match="Duplicate item id 'taken'"):
         builder.add_tab(conflicting)
 
     spec = builder.to_spec()
@@ -196,7 +196,7 @@ def test_reattaching_tab_with_explicit_ids_fails_loud() -> None:
     tab = DashboardTab("Pinned ids", tab_id="fixed").add_text("a", item_id="el_x", at=_AT)
     builder = _builder().add_tab(tab)
 
-    with pytest.raises(DatalensValidationError, match="Duplicate"):
+    with pytest.raises(DataLensValidationError, match="Duplicate"):
         builder.add_tab(tab)
 
 
@@ -205,7 +205,7 @@ def test_installation_mismatch_is_checked_at_attach() -> None:
     tab = DashboardTab("One").add_chart(foreign_chart, at=_AT)
 
     builder = _builder()
-    with pytest.raises(DatalensValidationError, match="'yateam' chart"):
+    with pytest.raises(DataLensValidationError, match="'yateam' chart"):
         builder.add_tab(tab)
     assert builder.to_spec().tabs == ()
 
@@ -263,7 +263,7 @@ def test_settings_calls_merge_and_keep_unset_fields_none() -> None:
     ],
 )
 def test_settings_runtime_validation(kwargs: dict[str, object], match: str) -> None:
-    with pytest.raises(DatalensValidationError, match=match):
+    with pytest.raises(DataLensValidationError, match=match):
         _builder().settings(**kwargs)  # type: ignore[arg-type]
 
 

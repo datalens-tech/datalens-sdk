@@ -9,7 +9,7 @@ from datalens_sdk.domain.dashboard import ControlView, Dashboard, DashboardItemV
 from datalens_sdk.domain.dashboard_types import PARENT_FIX_GCONT, PARENT_FIX_HEAD
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.ports import DashboardOperations
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 _WIDGET_ITEM = {
     "id": "it-widget",
@@ -295,15 +295,15 @@ def test_refresh_and_delete_delegate_to_operations() -> None:
 def test_unbound_dashboard_raises_on_operations() -> None:
     dashboard = _dashboard()
 
-    with pytest.raises(DatalensConfigurationError):
+    with pytest.raises(DataLensConfigurationError):
         dashboard.refresh()
-    with pytest.raises(DatalensConfigurationError):
+    with pytest.raises(DataLensConfigurationError):
         dashboard.delete()
 
     bound_without_id = _dashboard(id=None, _operations=_FakeOperations())
-    with pytest.raises(DatalensValidationError):
+    with pytest.raises(DataLensValidationError):
         bound_without_id.refresh()
-    with pytest.raises(DatalensValidationError):
+    with pytest.raises(DataLensValidationError):
         bound_without_id.delete()
 
 

@@ -85,7 +85,7 @@ from datalens_sdk.domain.specs.dashboard import (
     UpdateSelectorOp,
     UpdateTabOp,
 )
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 # -- update RMW engine (epic D3) --------------------------------------------
 #
@@ -110,10 +110,10 @@ _SETTINGS_WIRE_KEYS: dict[str, str] = {
 def _apply_global_params(data: dict[str, object], op: GlobalParamsOp) -> None:
     settings = data.setdefault("settings", {})
     if not isinstance(settings, dict):
-        raise DatalensValidationError("Dashboard data settings is not an object; cannot patch globalParams")
+        raise DataLensValidationError("Dashboard data settings is not an object; cannot patch globalParams")
     params = settings.setdefault("globalParams", {})
     if not isinstance(params, dict):
-        raise DatalensValidationError("Dashboard settings globalParams is not an object; cannot patch it")
+        raise DataLensValidationError("Dashboard settings globalParams is not an object; cannot patch it")
     for key, value in op.changes.items():
         if isinstance(value, _RemoveParam):
             params.pop(key, None)
@@ -125,7 +125,7 @@ def _find_tab(data: dict[str, object], tab_id: str) -> dict[str, object]:
     for tab in _data_tabs(data):
         if tab.get("id") == tab_id:
             return tab
-    raise DatalensValidationError(f"Unknown tab {tab_id!r} while applying an update op")
+    raise DataLensValidationError(f"Unknown tab {tab_id!r} while applying an update op")
 
 
 def _tab_item_lists(tab: dict[str, object]) -> list[list[dict[str, object]]]:
@@ -164,7 +164,7 @@ def _apply_reorder_tabs(data: dict[str, object], op: ReorderTabsOp) -> None:
     assert isinstance(tabs, list)
     position = {tab_id: index for index, tab_id in enumerate(op.order)}
     if any(not isinstance(tab, dict) or tab.get("id") not in position for tab in tabs):
-        raise DatalensValidationError("reorder_tabs order does not match the document tabs")
+        raise DataLensValidationError("reorder_tabs order does not match the document tabs")
     tabs.sort(key=lambda tab: position[cast("str", cast("dict[str, object]", tab)["id"])])
 
 
@@ -173,7 +173,7 @@ def _find_item_occurrences(data: dict[str, object], item_id: str) -> list[dict[s
     item duplicated across tabs, so patches must hit all of them."""
     occurrences = [item for tab in _data_tabs(data) for item in _iter_tab_items(tab) if item.get("id") == item_id]
     if not occurrences:
-        raise DatalensValidationError(f"Unknown item {item_id!r} while applying an update op")
+        raise DataLensValidationError(f"Unknown item {item_id!r} while applying an update op")
     return occurrences
 
 
@@ -193,7 +193,7 @@ def _apply_replace_chart(data: dict[str, object], op: ReplaceChartOp) -> None:
         widget_tabs = _item_widget_tabs(item)
         if op.widget_tab_id is None:
             if len(widget_tabs) != 1:
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"Widget {op.item_id!r} does not have exactly one chart tab; pass widget_tab_id="
                 )
             widget_tabs[0]["chartId"] = op.chart_id
@@ -204,7 +204,7 @@ def _apply_replace_chart(data: dict[str, object], op: ReplaceChartOp) -> None:
                     widget_tab["chartId"] = op.chart_id
                     swapped = True
     if not swapped:
-        raise DatalensValidationError(f"Widget {op.item_id!r} has no chart tab {op.widget_tab_id!r}")
+        raise DataLensValidationError(f"Widget {op.item_id!r} has no chart tab {op.widget_tab_id!r}")
 
 
 def _apply_remove_item(data: dict[str, object], op: RemoveItemOp) -> None:
@@ -263,14 +263,14 @@ def _apply_set_chart_params(data: dict[str, object], op: SetChartParamsOp) -> No
                 if op.merge:
                     params = widget_tab.setdefault("params", {})
                     if not isinstance(params, dict):
-                        raise DatalensValidationError(f"Widget {op.item_id!r} chart tab params is not an object")
+                        raise DataLensValidationError(f"Widget {op.item_id!r} chart tab params is not an object")
                     params.update({key: list(values) for key, values in op.params.items()})
                 else:
                     widget_tab["params"] = {key: list(values) for key, values in op.params.items()}
         elif op.merge:
             defaults = item.setdefault("defaults", {})
             if not isinstance(defaults, dict):
-                raise DatalensValidationError(f"Item {op.item_id!r} defaults is not an object")
+                raise DataLensValidationError(f"Item {op.item_id!r} defaults is not an object")
             defaults.update({key: list(values) for key, values in op.params.items()})
         else:
             item["defaults"] = {key: list(values) for key, values in op.params.items()}
@@ -280,7 +280,7 @@ def _apply_remove_connection(data: dict[str, object], op: RemoveConnectionOp) ->
     tab = _find_tab(data, op.tab_id)
     connections = tab.get("connections")
     if not isinstance(connections, list):
-        raise DatalensValidationError(f"Tab {op.tab_id!r} connections is not a list")
+        raise DataLensValidationError(f"Tab {op.tab_id!r} connections is not a list")
     before = len(connections)
     connections[:] = [
         entry
@@ -288,14 +288,14 @@ def _apply_remove_connection(data: dict[str, object], op: RemoveConnectionOp) ->
         if not (isinstance(entry, dict) and entry.get("from") == op.from_id and entry.get("to") == op.to_id)
     ]
     if len(connections) == before:
-        raise DatalensValidationError(f"Tab {op.tab_id!r} has no connection {op.from_id!r} -> {op.to_id!r}")
+        raise DataLensValidationError(f"Tab {op.tab_id!r} has no connection {op.from_id!r} -> {op.to_id!r}")
 
 
 def _apply_remove_alias(data: dict[str, object], op: RemoveAliasOp) -> None:
     tab = _find_tab(data, op.tab_id)
     aliases = tab.get("aliases")
     if not isinstance(aliases, dict) or not isinstance(aliases.get("default"), list):
-        raise DatalensValidationError(f"Tab {op.tab_id!r} aliases is not in the expected shape")
+        raise DataLensValidationError(f"Tab {op.tab_id!r} aliases is not in the expected shape")
     groups = cast("list[object]", aliases["default"])
     wanted = set(op.fields)
     before = len(groups)
@@ -305,7 +305,7 @@ def _apply_remove_alias(data: dict[str, object], op: RemoveAliasOp) -> None:
         if not (isinstance(group, list) and {entry for entry in group if isinstance(entry, str)} == wanted)
     ]
     if len(groups) == before:
-        raise DatalensValidationError(f"Tab {op.tab_id!r} has no alias {sorted(wanted)!r}")
+        raise DataLensValidationError(f"Tab {op.tab_id!r} has no alias {sorted(wanted)!r}")
 
 
 def _validate_merged_tab(tab: dict[str, object]) -> None:
@@ -329,13 +329,13 @@ def _validate_merged_tab(tab: dict[str, object]) -> None:
         if isinstance(entry, dict) and isinstance(entry.get("i"), str)
     ]
     if len(set(layout_ids)) != len(layout_ids):
-        raise DatalensValidationError(f"Tab {tab_id!r} layout references an item more than once")
+        raise DataLensValidationError(f"Tab {tab_id!r} layout references an item more than once")
     if len(set(item_ids)) != len(item_ids):
-        raise DatalensValidationError(f"Tab {tab_id!r} carries duplicate item ids")
+        raise DataLensValidationError(f"Tab {tab_id!r} carries duplicate item ids")
     if set(item_ids) != set(layout_ids):
         missing = sorted(set(item_ids) - set(layout_ids))
         orphaned = sorted(set(layout_ids) - set(item_ids))
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"Tab {tab_id!r} items and layout must match exactly: "
             f"items without layout {missing!r}, layout without items {orphaned!r}"
         )
@@ -345,7 +345,7 @@ def _apply_add_connection(data: dict[str, object], op: AddConnectionOp) -> None:
     tab = _find_tab(data, op.tab_id)
     connections = tab.get("connections")
     if not isinstance(connections, list):
-        raise DatalensValidationError(f"Tab {op.tab_id!r} connections is not a list")
+        raise DataLensValidationError(f"Tab {op.tab_id!r} connections is not a list")
     edge = {"from": op.from_id, "to": op.to_id, "kind": "ignore"}
     if not any(
         isinstance(entry, dict) and entry.get("from") == op.from_id and entry.get("to") == op.to_id
@@ -358,10 +358,10 @@ def _apply_add_alias(data: dict[str, object], op: AddAliasOp) -> None:
     tab = _find_tab(data, op.tab_id)
     aliases = tab.get("aliases")
     if not isinstance(aliases, dict):
-        raise DatalensValidationError(f"Tab {op.tab_id!r} aliases is not a mapping")
+        raise DataLensValidationError(f"Tab {op.tab_id!r} aliases is not a mapping")
     default = aliases.setdefault("default", [])
     if not isinstance(default, list):
-        raise DatalensValidationError(f"Tab {op.tab_id!r} aliases.default is not a list")
+        raise DataLensValidationError(f"Tab {op.tab_id!r} aliases.default is not a list")
     wanted = set(op.fields)
     if not any(
         isinstance(entry, list) and {value for value in entry if isinstance(value, str)} == wanted for entry in default
@@ -445,9 +445,9 @@ def _existing_all_tabs_layout(data: dict[str, object]) -> list[object]:
 def _apply_add_tab(data: dict[str, object], op: AddTabOp, affected: set[tuple[str, str]]) -> None:
     tabs = data.get("tabs")
     if not isinstance(tabs, list):
-        raise DatalensValidationError("Dashboard data tabs is not a list; cannot append a tab")
+        raise DataLensValidationError("Dashboard data tabs is not a list; cannot append a tab")
     if any(isinstance(tab, dict) and tab.get("id") == op.tab.id for tab in tabs):
-        raise DatalensValidationError(f"Duplicate tab id {op.tab.id!r}")
+        raise DataLensValidationError(f"Duplicate tab id {op.tab.id!r}")
     # resolve the new tab's own at=None items BELOW the allTabs band it inherits,
     # so inherited filters stay on top; shared groups defined here per-target below
     resolved_layout = _resolve_auto_layout(op.tab.layout, _existing_all_tabs_layout(data))
@@ -509,17 +509,17 @@ def _propagate_shared_group(
         targets = list(item.show_on_tabs)
         unknown = sorted(set(targets) - set(known_ids))
         if unknown:
-            raise DatalensValidationError(f"Selector {item.id!r} show_on_tabs references unknown tab ids {unknown!r}")
+            raise DataLensValidationError(f"Selector {item.id!r} show_on_tabs references unknown tab ids {unknown!r}")
     item_wire = _wire_item(staged, item)
     for tab in tabs:
         if tab.get("id") not in targets:
             continue
         global_items = tab.setdefault("globalItems", [])
         if not isinstance(global_items, list):
-            raise DatalensValidationError(f"Tab {tab.get('id')!r} globalItems is not a list")
+            raise DataLensValidationError(f"Tab {tab.get('id')!r} globalItems is not a list")
         layout = tab.get("layout")
         if not isinstance(layout, list):
-            raise DatalensValidationError(f"Tab {tab.get('id')!r} layout is not a list")
+            raise DataLensValidationError(f"Tab {tab.get('id')!r} layout is not a list")
         if source_entry is not None and tab.get("id") == staged.id:
             # the source tab keeps the jointly resolved slot (row-flow intact)
             resolved_entry = source_entry
@@ -548,7 +548,7 @@ def _validate_member_affects_targets(items: Iterable[object], data: dict[str, ob
             if isinstance(member.affects, tuple):
                 unknown = sorted(set(member.affects) - known)
                 if unknown:
-                    raise DatalensValidationError(f"Selector {member.id!r} references unknown tab ids {unknown!r}")
+                    raise DataLensValidationError(f"Selector {member.id!r} references unknown tab ids {unknown!r}")
 
 
 def _apply_add_items(data: dict[str, object], op: AddItemsOp, affected: set[tuple[str, str]]) -> None:
@@ -558,7 +558,7 @@ def _apply_add_items(data: dict[str, object], op: AddItemsOp, affected: set[tupl
     items = tab.get("items")
     layout = tab.get("layout")
     if not isinstance(items, list) or not isinstance(layout, list):
-        raise DatalensValidationError(f"Tab {op.tab_id!r} items/layout are not lists; cannot add items")
+        raise DataLensValidationError(f"Tab {op.tab_id!r} items/layout are not lists; cannot add items")
     _validate_member_affects_targets(op.items, data)
     resolved_layout = _resolve_auto_layout(op.layout, layout)
     staged = TabSpec(id=op.tab_id, title="", items=op.items, layout=resolved_layout)
@@ -589,7 +589,7 @@ def _selector_member_and_source(
         source = item_data.get("source")
         defaults = item.setdefault("defaults", {})
         if not isinstance(source, dict) or not isinstance(defaults, dict):
-            raise DatalensValidationError(f"Control {item.get('id')!r} carries no patchable source")
+            raise DataLensValidationError(f"Control {item.get('id')!r} carries no patchable source")
         # standalone control: the title lives on data
         return item_data, source, defaults
     for member in item_data.get("group") or []:
@@ -597,9 +597,9 @@ def _selector_member_and_source(
             source = member.get("source")
             defaults = member.setdefault("defaults", {})
             if not isinstance(source, dict) or not isinstance(defaults, dict):
-                raise DatalensValidationError(f"Selector {member_id!r} carries no patchable source")
+                raise DataLensValidationError(f"Selector {member_id!r} carries no patchable source")
             return member, source, defaults
-    raise DatalensValidationError(f"Group {item.get('id')!r} has no member {member_id!r}")
+    raise DataLensValidationError(f"Group {item.get('id')!r} has no member {member_id!r}")
 
 
 def _update_selector_default(value: SelectorDefaultValue, source: dict[str, object]) -> SelectorDefaultValue:
@@ -617,7 +617,7 @@ def _update_selector_default(value: SelectorDefaultValue, source: dict[str, obje
 def _selector_defaults_key(source: dict[str, object], op: UpdateSelectorOp) -> str:
     defaults_key = source.get("datasetFieldId") or source.get("fieldName")
     if not isinstance(defaults_key, str) or not defaults_key:
-        raise DatalensValidationError(f"Selector {op.member_id or op.item_id!r} has no defaults key")
+        raise DataLensValidationError(f"Selector {op.member_id or op.item_id!r} has no defaults key")
     return defaults_key
 
 
@@ -679,7 +679,7 @@ def _apply_remove_selector_member(data: dict[str, object], op: RemoveSelectorMem
                 if impact_key in item_data:
                     group[0][impact_key] = item_data.pop(impact_key)
     if not removed:
-        raise DatalensValidationError(f"Group {op.item_id!r} has no member {op.member_id!r}")
+        raise DataLensValidationError(f"Group {op.item_id!r} has no member {op.member_id!r}")
     # cascade: connections referencing the removed member id + alias cleanup,
     # scoped to tabs the removal actually touched (a shared group occurs on
     # several tabs; unrelated tabs stay verbatim)
@@ -708,7 +708,7 @@ def _apply_add_group_selector(data: dict[str, object], op: AddGroupSelectorOp, a
     items = tab.get("items")
     layout = tab.get("layout")
     if not isinstance(items, list) or not isinstance(layout, list):
-        raise DatalensValidationError(f"Tab {op.tab_id!r} items/layout are not lists; cannot assemble a group")
+        raise DataLensValidationError(f"Tab {op.tab_id!r} items/layout are not lists; cannot assemble a group")
     absorbed_members: list[object] = []
     for absorbed_id in op.absorbed_item_ids:
         found: dict[str, object] | None = None
@@ -717,7 +717,7 @@ def _apply_add_group_selector(data: dict[str, object], op: AddGroupSelectorOp, a
                 found = item
                 break
         if found is None:
-            raise DatalensValidationError(f"Unknown item {absorbed_id!r} while assembling a group")
+            raise DataLensValidationError(f"Unknown item {absorbed_id!r} while assembling a group")
         item_data = found.get("data")
         item_data = item_data if isinstance(item_data, dict) else {}
         if found.get("type") == "group_control":
@@ -869,7 +869,7 @@ def _apply_settings_patch(data: dict[str, object], spec: DashboardUpdateSpec) ->
         return
     settings = data.setdefault("settings", {})
     if not isinstance(settings, dict):
-        raise DatalensValidationError("Dashboard data settings is not an object; cannot patch it")
+        raise DataLensValidationError("Dashboard data settings is not an object; cannot patch it")
     for field_name, value in set_values.items():
         wire_key = _SETTINGS_WIRE_KEYS[field_name]
         if field_name in spec.settings_cleared:

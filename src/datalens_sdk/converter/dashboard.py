@@ -43,7 +43,7 @@ from datalens_sdk.domain.specs.dashboard import (
     WidgetItem,
 )
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
-from datalens_sdk.errors import DatalensValidationError, translate_invalid_response_error
+from datalens_sdk.errors import DataLensValidationError, translate_invalid_response_error
 from datalens_sdk.serialization.artifacts import DashboardSnapshotView
 from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object
 
@@ -171,7 +171,7 @@ def _validate_tab_wiring(tab: TabSpec, *, endpoint_ids: set[str]) -> None:
     for edge in tab.connections:
         for label, endpoint in (("from", edge.from_id), ("to", edge.to_id)):
             if endpoint not in endpoint_ids:
-                raise DatalensValidationError(
+                raise DataLensValidationError(
                     f"Tab {tab.id!r} connection {label} endpoint {endpoint!r} is not a selector "
                     "member or widget chart-tab on this tab (a shared selector is only "
                     "connectable on its show_on_tabs target tabs)"
@@ -179,12 +179,12 @@ def _validate_tab_wiring(tab: TabSpec, *, endpoint_ids: set[str]) -> None:
     seen_groups: set[frozenset[str]] = set()
     for group in tab.aliases:
         if len(group) < 2 or len(set(group)) != len(group):
-            raise DatalensValidationError(f"Tab {tab.id!r} alias group must be >=2 unique fields, got {group!r}")
+            raise DataLensValidationError(f"Tab {tab.id!r} alias group must be >=2 unique fields, got {group!r}")
         if not all(isinstance(entry, str) and entry for entry in group):
-            raise DatalensValidationError(f"Tab {tab.id!r} alias fields must be non-empty strings, got {group!r}")
+            raise DataLensValidationError(f"Tab {tab.id!r} alias fields must be non-empty strings, got {group!r}")
         key = frozenset(group)
         if key in seen_groups:
-            raise DatalensValidationError(f"Tab {tab.id!r} carries a duplicate alias group {group!r}")
+            raise DataLensValidationError(f"Tab {tab.id!r} carries a duplicate alias group {group!r}")
         seen_groups.add(key)
 
 
@@ -200,7 +200,7 @@ def _validate_show_on_tabs_targets(spec: DashboardCreateSpec) -> None:
                 if isinstance(value, tuple):
                     unknown = sorted(set(value) - tab_ids)
                     if unknown:
-                        raise DatalensValidationError(f"Selector {owner_id!r} references unknown tab ids {unknown!r}")
+                        raise DataLensValidationError(f"Selector {owner_id!r} references unknown tab ids {unknown!r}")
 
 
 def _wire_tabs_with_shared(spec: DashboardCreateSpec) -> list[dict[str, object]]:
@@ -248,7 +248,7 @@ def _validate_no_overlaps(wire_tabs: list[dict[str, object]]) -> None:
         overlaps = find_overlaps(entries)
         if overlaps:
             first, second = overlaps[0]
-            raise DatalensValidationError(f"Tab {tab.get('id')!r}: items {first!r} and {second!r} overlap")
+            raise DataLensValidationError(f"Tab {tab.get('id')!r}: items {first!r} and {second!r} overlap")
 
 
 def _merged_settings(spec: DashboardCreateSpec) -> dict[str, object]:
@@ -278,24 +278,24 @@ def _validate_unique_ids(spec: DashboardCreateSpec) -> None:
     seen_widget_tabs: set[str] = set()
     for tab in spec.tabs:
         if tab.id in seen_tabs:
-            raise DatalensValidationError(f"Duplicate tab id {tab.id!r}")
+            raise DataLensValidationError(f"Duplicate tab id {tab.id!r}")
         seen_tabs.add(tab.id)
         for item in tab.items:
             item_id = item.id
             if item_id in seen_items:
-                raise DatalensValidationError(f"Duplicate item id {item_id!r}")
+                raise DataLensValidationError(f"Duplicate item id {item_id!r}")
             seen_items.add(item_id)
             if isinstance(item, WidgetItem):
                 for chart_tab in item.tabs:
                     if chart_tab.id in seen_widget_tabs:
-                        raise DatalensValidationError(f"Duplicate widget tab id {chart_tab.id!r}")
+                        raise DataLensValidationError(f"Duplicate widget tab id {chart_tab.id!r}")
                     seen_widget_tabs.add(chart_tab.id)
             if isinstance(item, GroupControlItem):
                 # member ids share the item namespace: they are connection
                 # endpoints and update-addressing targets (epic D4 identity)
                 for member in item.members:
                     if member.id in seen_items:
-                        raise DatalensValidationError(f"Duplicate item id {member.id!r}")
+                        raise DataLensValidationError(f"Duplicate item id {member.id!r}")
                     seen_items.add(member.id)
 
 
@@ -413,7 +413,7 @@ class DashboardConverter:
         """
         generated = _dto_module(dto_module)
         if not rev_id:
-            raise DatalensValidationError("rev_id must be a non-empty string")
+            raise DataLensValidationError("rev_id must be a non-empty string")
         return generated.DashboardUpdateDTO(
             entry_id=dashboard_id,
             data=data,

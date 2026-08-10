@@ -8,7 +8,7 @@ from datalens_sdk import (
     ChainTransformer,
     CodeMapTransformer,
     ConflictError,
-    DatalensAPIError,
+    DataLensAPIError,
     StatusMapTransformer,
 )
 
@@ -25,8 +25,8 @@ class _StatusMappedError(Exception):
         super().__init__(context.message)
 
 
-def _api_error(*, status_code: int = 404, code: str | None = "ERR.NOT_FOUND") -> DatalensAPIError:
-    return DatalensAPIError(
+def _api_error(*, status_code: int = 404, code: str | None = "ERR.NOT_FOUND") -> DataLensAPIError:
+    return DataLensAPIError(
         APIErrorContext(
             status_code=status_code,
             code=code,
@@ -68,7 +68,7 @@ def test_chain_transformer_uses_first_match_and_returns_none_on_miss() -> None:
 
 
 def test_default_transformer_maps_unique_violation_to_conflict_before_status() -> None:
-    error = DatalensAPIError(
+    error = DataLensAPIError(
         APIErrorContext(
             status_code=400,
             code="ERR.US.DB.UNIQUE_VIOLATION",

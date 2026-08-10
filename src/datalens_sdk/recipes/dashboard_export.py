@@ -15,7 +15,7 @@ from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, RelationOptions
 from datalens_sdk.domain.ports import ChartOperations, DatasetOperations, NavigationOperations
-from datalens_sdk.errors import DatalensValidationError, translate_invalid_response_error
+from datalens_sdk.errors import DataLensValidationError, translate_invalid_response_error
 from datalens_sdk.serialization.artifacts import (
     DASHBOARD_FILENAME,
     ArtifactPath,
@@ -95,10 +95,10 @@ class DashboardBundleExporter:
 
     def export(self, dashboard: Dashboard, path: ArtifactPath) -> Path:
         if not dashboard.id:
-            raise DatalensValidationError("Cannot export dashboard dependencies without a dashboard id")
+            raise DataLensValidationError("Cannot export dashboard dependencies without a dashboard id")
         try:
             snapshot = require_complete_dashboard_snapshot(dashboard.response_snapshot)
-        except DatalensValidationError as exc:
+        except DataLensValidationError as exc:
             raise translate_invalid_response_error(operation="getDashboard", reason=str(exc)) from exc
         target = artifact_directory_path(
             path,
@@ -107,7 +107,7 @@ class DashboardBundleExporter:
             resource="Dashboard",
         )
         if os.path.lexists(target):
-            raise DatalensValidationError(f"Artifact path already exists: {target}")
+            raise DataLensValidationError(f"Artifact path already exists: {target}")
 
         chart_refs = self._relations(dashboard.id, scope="widget")
         classified_chart_refs = tuple(
@@ -192,7 +192,7 @@ class DashboardBundleExporter:
             )
         try:
             ChartSnapshotView.from_raw(chart.response_snapshot, expected_category=category)
-        except DatalensValidationError as exc:
+        except DataLensValidationError as exc:
             raise translate_invalid_response_error(operation=operation, reason=str(exc)) from exc
         return chart
 
@@ -205,6 +205,6 @@ class DashboardBundleExporter:
             )
         try:
             require_complete_dataset_snapshot(dataset.response_snapshot)
-        except DatalensValidationError as exc:
+        except DataLensValidationError as exc:
             raise translate_invalid_response_error(operation="getDataset", reason=str(exc)) from exc
         return dataset

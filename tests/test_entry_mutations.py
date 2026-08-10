@@ -338,25 +338,25 @@ def test_move_and_rename_validate_names_and_destination_kinds_before_requests() 
     connection = client.get.connection(by_id="connection-1")
     folder = client.get.folder(by_path="/Source/Folder")
 
-    with pytest.raises(dl.DatalensValidationError, match="Collection move requires location kind 'collection'"):
+    with pytest.raises(dl.DataLensValidationError, match="Collection move requires location kind 'collection'"):
         collection.move(dl.EntryLocation.path("/Destination"))
-    with pytest.raises(dl.DatalensValidationError, match="Workbook move requires location kind 'collection'"):
+    with pytest.raises(dl.DataLensValidationError, match="Workbook move requires location kind 'collection'"):
         workbook.move(dl.EntryLocation.workbook("other-workbook"))
-    with pytest.raises(dl.DatalensValidationError, match="Folder move requires location kind 'path'"):
+    with pytest.raises(dl.DataLensValidationError, match="Folder move requires location kind 'path'"):
         folder.move(dl.EntryLocation.collection("collection-2"))
     with pytest.raises(dl.NotSupportedError, match="destination"):
         folder.move(dl.Folder(id="other", name="Other", key="/Other", installation="enterprise"))
-    with pytest.raises(dl.DatalensValidationError, match="name must not be empty"):
+    with pytest.raises(dl.DataLensValidationError, match="name must not be empty"):
         collection.move(None, name="")
-    with pytest.raises(dl.DatalensValidationError, match="name must not be empty"):
+    with pytest.raises(dl.DataLensValidationError, match="name must not be empty"):
         collection.rename("")
-    with pytest.raises(dl.DatalensValidationError, match="name must not be empty"):
+    with pytest.raises(dl.DataLensValidationError, match="name must not be empty"):
         workbook.rename("")
-    with pytest.raises(dl.DatalensValidationError, match="must not contain"):
+    with pytest.raises(dl.DataLensValidationError, match="must not contain"):
         folder.move(dl.EntryLocation.path("/Destination"), name="nested/name")
-    with pytest.raises(dl.DatalensValidationError, match="must not contain"):
+    with pytest.raises(dl.DataLensValidationError, match="must not contain"):
         folder.rename("nested/name")
-    with pytest.raises(dl.DatalensValidationError, match="must not contain"):
+    with pytest.raises(dl.DataLensValidationError, match="must not contain"):
         connection.rename("nested/name")
 
     assert recorder.bodies("/rpc/moveCollection") == []
@@ -368,72 +368,72 @@ def test_move_and_rename_validate_names_and_destination_kinds_before_requests() 
 
 
 def test_move_and_rename_reject_unbound_objects_and_missing_ids() -> None:
-    with pytest.raises(dl.DatalensConfigurationError, match="not bound"):
+    with pytest.raises(dl.DataLensConfigurationError, match="not bound"):
         dl.Collection(id="collection-1", name="Collection").move(None)
-    with pytest.raises(dl.DatalensConfigurationError, match="not bound"):
+    with pytest.raises(dl.DataLensConfigurationError, match="not bound"):
         dl.Collection(id="collection-1", name="Collection").rename("Renamed")
-    with pytest.raises(dl.DatalensConfigurationError, match="not bound"):
+    with pytest.raises(dl.DataLensConfigurationError, match="not bound"):
         dl.Workbook(id="workbook-1", name="Workbook").rename("Renamed")
-    with pytest.raises(dl.DatalensConfigurationError, match="not bound"):
+    with pytest.raises(dl.DataLensConfigurationError, match="not bound"):
         dl.Folder(id="folder-1", name="Folder", key="/Folder").rename("Renamed")
-    with pytest.raises(dl.DatalensConfigurationError, match="not bound"):
+    with pytest.raises(dl.DataLensConfigurationError, match="not bound"):
         dl.Connection(id="connection-1", type="postgres").rename("Renamed")
 
-    with pytest.raises(dl.DatalensValidationError, match="collection without an id"):
+    with pytest.raises(dl.DataLensValidationError, match="collection without an id"):
         dl.Collection(
             id=None,
             name="Collection",
             _operations=cast(CollectionOperations, object()),
         ).move(None)
-    with pytest.raises(dl.DatalensValidationError, match="collection without an id"):
+    with pytest.raises(dl.DataLensValidationError, match="collection without an id"):
         dl.Collection(
             id=None,
             name="Collection",
             _operations=cast(CollectionOperations, object()),
         ).rename("Renamed")
-    with pytest.raises(dl.DatalensValidationError, match="workbook without an id"):
+    with pytest.raises(dl.DataLensValidationError, match="workbook without an id"):
         dl.Workbook(
             id=None,
             name="Workbook",
             _operations=cast(WorkbookOperations, object()),
         ).move(None)
-    with pytest.raises(dl.DatalensValidationError, match="workbook without an id"):
+    with pytest.raises(dl.DataLensValidationError, match="workbook without an id"):
         dl.Workbook(
             id=None,
             name="Workbook",
             _operations=cast(WorkbookOperations, object()),
         ).rename("Renamed")
-    with pytest.raises(dl.DatalensValidationError, match="folder without an id"):
+    with pytest.raises(dl.DataLensValidationError, match="folder without an id"):
         dl.Folder(
             id=None,
             name="Folder",
             key="/Folder",
             _operations=cast(FolderOperations, object()),
         ).move(dl.EntryLocation.path("/Destination"))
-    with pytest.raises(dl.DatalensValidationError, match="folder without an id"):
+    with pytest.raises(dl.DataLensValidationError, match="folder without an id"):
         dl.Folder(
             id=None,
             name="Folder",
             key="/Folder",
             _operations=cast(FolderOperations, object()),
         ).rename("Renamed")
-    with pytest.raises(dl.DatalensValidationError, match="connection without an id"):
+    with pytest.raises(dl.DataLensValidationError, match="connection without an id"):
         dl.Connection(
             id=None,
             type="postgres",
             _operations=cast(ConnectionOperations, object()),
         ).rename("Renamed")
-    with pytest.raises(dl.DatalensValidationError, match="dataset without an id"):
+    with pytest.raises(dl.DataLensValidationError, match="dataset without an id"):
         dl.Dataset(
             id=None,
             _operations=cast(DatasetOperations, object()),
         ).rename("Renamed")
-    with pytest.raises(dl.DatalensValidationError, match="dashboard without an id"):
+    with pytest.raises(dl.DataLensValidationError, match="dashboard without an id"):
         dl.Dashboard(
             id=None,
             _operations=cast(DashboardOperations, object()),
         ).rename("Renamed")
-    with pytest.raises(dl.DatalensValidationError, match="chart without an id"):
+    with pytest.raises(dl.DataLensValidationError, match="chart without an id"):
         dl.WizardChart(
             id=None,
             _operations=cast(ChartOperations, object()),

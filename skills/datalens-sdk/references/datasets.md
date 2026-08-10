@@ -26,7 +26,7 @@ After the re-`get`:
 
 ```python
 ds.fields  # FieldsProxy — a sequence of DatasetField
-ds.fields.by_name("Sales")  # matches title or name; raises DatalensValidationError
+ds.fields.by_name("Sales")  # matches title or name; raises DataLensValidationError
 #   with "Did you mean ...?" hints on a miss
 ds.fields.by_guid(guid)  # exact guid; raises on a miss
 
@@ -275,4 +275,4 @@ Verify before reporting done (hard rule 4): the returned `ds` reflects the appli
 - [core-concepts.md](core-concepts.md) — namespaces, locations, field-reference rules, retries
 - [connections.md](connections.md) — building the connection and sources a dataset consumes
 - [wizard-charts/_index.md](wizard-charts/_index.md) — putting dataset fields into charts
-- [troubleshooting.md](troubleshooting.md) — any `DatalensAPIError`, before retrying anything
+- [troubleshooting.md](troubleshooting.md) — any `DataLensAPIError`, before retrying anything

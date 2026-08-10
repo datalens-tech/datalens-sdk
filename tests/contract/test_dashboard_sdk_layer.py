@@ -429,7 +429,7 @@ def test_create_dashboard_rejects_collection_location_before_http() -> None:
     recorder = _RecordedTransport({})
     client = _client(recorder)
 
-    with pytest.raises(dl.DatalensValidationError, match="location kind"):
+    with pytest.raises(dl.DataLensValidationError, match="location kind"):
         client.create.dashboard(name="New dash", location=dl.EntryLocation.collection("col-1"))
 
     assert recorder.paths() == []

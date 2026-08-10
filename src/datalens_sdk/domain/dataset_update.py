@@ -37,7 +37,7 @@ from datalens_sdk.domain.dataset_types import (
 from datalens_sdk.domain.fields import DatasetField, FieldLike
 from datalens_sdk.domain.ports import DatasetOperations
 from datalens_sdk.domain.specs.dataset import DatasetUpdateSpec
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.dataset import Dataset, Source
@@ -61,7 +61,7 @@ def _field_title(field: FieldRef) -> str | None:
 def _unique_matched_guid(field: str, candidates: list[DatasetField]) -> str | None:
     matched_guids = {candidate.guid for candidate in candidates}
     if len(matched_guids) > 1:
-        raise DatalensValidationError(f"Field reference {field!r} is ambiguous; pass a DatasetField or field GUID")
+        raise DataLensValidationError(f"Field reference {field!r} is ambiguous; pass a DatasetField or field GUID")
     if not matched_guids:
         return None
     return matched_guids.pop()
@@ -101,7 +101,7 @@ def _field_avatar_id_strict(dataset: Dataset, field: FieldRef) -> str | None:
             matched.append(candidate.avatar_id)
 
     if len(set(matched)) > 1:
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"Field reference {field!r} is ambiguous across multiple avatars; "
             "pass a DatasetField with an explicit avatar_id"
         )
@@ -276,7 +276,7 @@ class DatasetUpdate:
         show_rank_delimiter: bool | None = None,
     ) -> Self:
         if all(v is None for v in (format_, precision, prefix, postfix, unit, show_rank_delimiter)):
-            raise DatalensValidationError("At least one formatting parameter must be provided")
+            raise DataLensValidationError("At least one formatting parameter must be provided")
         number_formatting: dict[str, str | int | bool] = {}
         if format_ is not None:
             number_formatting["format"] = format_
@@ -320,7 +320,7 @@ class DatasetUpdate:
         drop_duplicates: bool = False,
     ) -> Self:
         if not conditions:
-            raise DatalensValidationError("'conditions' must not be empty")
+            raise DataLensValidationError("'conditions' must not be empty")
         left_avatar_id = _field_avatar_id(self._dataset, conditions[0].left)
         right_avatar_id = _field_avatar_id(self._dataset, conditions[0].right)
         self._actions.append(
@@ -466,7 +466,7 @@ class DatasetUpdate:
         for entry in self._dataset.obligatory_filters:
             if str(entry.get("id") or "") == filter_id:
                 return entry
-        raise DatalensValidationError(f"Obligatory filter {filter_id!r} not found in dataset")
+        raise DataLensValidationError(f"Obligatory filter {filter_id!r} not found in dataset")
 
     def update_default_filter(
         self,
@@ -497,7 +497,7 @@ class DatasetUpdate:
         for rel in self._dataset.avatar_relations:
             if str(rel.get("id") or "") == relation_id:
                 return rel
-        raise DatalensValidationError(f"Avatar relation {relation_id!r} not found in dataset")
+        raise DataLensValidationError(f"Avatar relation {relation_id!r} not found in dataset")
 
     def update_relation(
         self,
@@ -635,7 +635,7 @@ class DatasetUpdate:
 
     def execute(self) -> Dataset:
         if self._operations is None:
-            raise DatalensConfigurationError("Object is not bound to client operations. Use a client namespace.")
+            raise DataLensConfigurationError("Object is not bound to client operations. Use a client namespace.")
         if not self._dataset.id:
-            raise DatalensValidationError("Cannot update a dataset without an id")
+            raise DataLensValidationError("Cannot update a dataset without an id")
         return self._operations.update_dataset(self)

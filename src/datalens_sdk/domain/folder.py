@@ -19,7 +19,7 @@ from datalens_sdk.domain.navigation import (
 )
 from datalens_sdk.domain.ports import FolderOperations
 from datalens_sdk.domain.specs.folder import FolderCreateSpec, FolderUpdateSpec
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 _UNBOUND = "Object is not bound to client operations. Use a client namespace."
 
@@ -50,7 +50,7 @@ class FolderCreate:
 
     def build(self) -> Folder:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         return self._operations.create_folder(self)
 
 
@@ -72,35 +72,35 @@ class Folder(EntryLocation):
 
     def _as_entry_location(self) -> EntryLocation:
         if not self.key:
-            raise DatalensValidationError("Cannot use a folder without a key as a destination")
+            raise DataLensValidationError("Cannot use a folder without a key as a destination")
         return EntryLocation.path(self.key)
 
     @property
     def update(self) -> FolderUpdate:
         if not self.id:
-            raise DatalensValidationError("Cannot update a folder without an id")
+            raise DataLensValidationError("Cannot update a folder without an id")
         return FolderUpdate(folder=self, operations=self._operations)
 
     def delete(self) -> None:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot delete a folder without an id")
+            raise DataLensValidationError("Cannot delete a folder without an id")
         self._operations.delete_folder(self.id)
 
     def rename(self, name: str) -> Folder:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot rename a folder without an id")
+            raise DataLensValidationError("Cannot rename a folder without an id")
         validate_entry_name(name=name, location=self)
         return self.update.name(name).execute()
 
     def move(self, location: EntryLocation, *, name: str | None = None) -> Folder:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot move a folder without an id")
+            raise DataLensValidationError("Cannot move a folder without an id")
         resolved_location = resolve_entry_location(
             location=location,
             installation=self.installation,
@@ -122,9 +122,9 @@ class Folder(EntryLocation):
         page_size: int = 100,
     ) -> DirectoryPager[EntrySummary]:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.key:
-            raise DatalensValidationError("Cannot list entries for a folder without a key")
+            raise DataLensValidationError("Cannot list entries for a folder without a key")
         return self._operations.list_folder_entries(
             self.key,
             DirectoryListOptions.create(
@@ -146,20 +146,20 @@ class FolderUpdate:
 
     def name(self, value: str) -> Self:
         if not value:
-            raise DatalensValidationError("name must not be empty")
+            raise DataLensValidationError("name must not be empty")
         self._name = value
         return self
 
     def to_spec(self) -> FolderUpdateSpec:
         if not self._folder.id:
-            raise DatalensValidationError("Cannot update a folder without an id")
+            raise DataLensValidationError("Cannot update a folder without an id")
         if self._name is None:
-            raise DatalensValidationError("Folder update must contain a name change")
+            raise DataLensValidationError("Folder update must contain a name change")
         return FolderUpdateSpec(folder_id=self._folder.id, name=self._name)
 
     def execute(self) -> Folder:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if self._name is None:
-            raise DatalensValidationError("Folder update must contain a name change")
+            raise DataLensValidationError("Folder update must contain a name change")
         return self._operations.update_folder(self)

@@ -8,7 +8,7 @@ from datalens_sdk.domain.collection import Collection
 from datalens_sdk.domain.entry_location import EntryLocation, collection_id_from_location
 from datalens_sdk.domain.ports import CollectionOperations
 from datalens_sdk.domain.specs.collection import CollectionCreateSpec, CollectionUpdateSpec
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 
 class CollectionWriteDTOProtocol(Protocol):
@@ -111,7 +111,7 @@ class CollectionConverter:
         dto_module: CollectionDtoModule | None = None,
     ) -> CollectionWriteDTOProtocol:
         if not collection.id:
-            raise DatalensValidationError("Cannot move a collection without an id")
+            raise DataLensValidationError("Cannot move a collection without an id")
         generated = _dto_module(dto_module)
         return generated.CollectionMoveDTO(
             id=collection.id,

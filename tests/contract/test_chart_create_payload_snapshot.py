@@ -11,7 +11,7 @@ from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.fields import DatasetField
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 _FIXED_DATASET = Dataset(
     id="ds-snap",
@@ -343,7 +343,7 @@ def test_update_publish_without_changes_rejects_loaded_published_revision_with_n
     chart = _chart_for_update()
     chart.raw = {"publishedId": "published", "savedId": "draft", "revId": "published"}
 
-    with pytest.raises(DatalensConfigurationError, match="newer saved draft"):
+    with pytest.raises(DataLensConfigurationError, match="newer saved draft"):
         WizardChartConverter.from_domain_update(chart.update.mode("publish"))
 
 
@@ -382,18 +382,18 @@ def test_update_table_mutations_match_create_validation(method_name: str, kwargs
     chart = _chart_for_update()
     _set_chart_visualization(chart, "flatTable")
 
-    with pytest.raises(DatalensConfigurationError, match=message):
+    with pytest.raises(DataLensConfigurationError, match=message):
         getattr(chart.update, method_name)("g_meas1", **kwargs)
 
 
 def test_update_rejects_non_applicable_data_field_and_placeholder_mutations() -> None:
     chart = _chart_for_update()
     _set_chart_visualization(chart, "scatter")
-    with pytest.raises(DatalensConfigurationError, match="segments"):
+    with pytest.raises(DataLensConfigurationError, match="segments"):
         chart.update.segments(["g_date"])
 
     _set_chart_visualization(chart, "flatTable")
-    with pytest.raises(DatalensConfigurationError, match="shape_by_measure_name"):
+    with pytest.raises(DataLensConfigurationError, match="shape_by_measure_name"):
         chart.update.shape_by_measure_name()
 
 

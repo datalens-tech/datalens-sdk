@@ -10,7 +10,7 @@ from datalens_sdk._runtime.chart_constants import (
 )
 from datalens_sdk._runtime.chart_wire import build_background_settings, build_bars_settings
 from datalens_sdk._wizard_encodings import WizardColorEncoding, WizardShapeEncoding
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.chart_types import (
@@ -42,7 +42,7 @@ class _ChartMutationsMixin:
 
     def _set_palette(self, *, id: PaletteId) -> None:
         if id not in VALID_PALETTES:
-            raise DatalensConfigurationError(f"Unknown palette {id!r}. Valid palettes: {sorted(VALID_PALETTES)}")
+            raise DataLensConfigurationError(f"Unknown palette {id!r}. Valid palettes: {sorted(VALID_PALETTES)}")
         self._colors_palette = id
 
     def _set_color_by_dimension(self, field: FieldLike | str) -> None:
@@ -57,14 +57,14 @@ class _ChartMutationsMixin:
         reversed: bool | None,
     ) -> None:
         if palette is not None and palette not in VALID_GRADIENT_PALETTES:
-            raise DatalensConfigurationError(
+            raise DataLensConfigurationError(
                 f"color_by_measure: palette must be a gradient palette, got {palette!r}. "
                 f"Valid: {sorted(VALID_GRADIENT_PALETTES)}"
             )
         if palette is not None and mode is not None:
             valid_types = gradient_types_for_palette(palette)
             if mode not in valid_types:
-                raise DatalensConfigurationError(
+                raise DataLensConfigurationError(
                     f"color_by_measure: palette {palette!r} does not support mode={mode!r}. "
                     f"Supported: {sorted(valid_types)}"
                 )
@@ -111,14 +111,14 @@ class _ChartMutationsMixin:
         thresholds: tuple[float, ...] | None,
     ) -> dict[str, object]:
         if palette not in VALID_GRADIENT_PALETTES:
-            raise DatalensConfigurationError(
+            raise DataLensConfigurationError(
                 f"column_background: palette must be a gradient palette, got {palette!r}. "
                 f"Valid: {sorted(VALID_GRADIENT_PALETTES)}"
             )
         if thresholds is not None:
             expected = 2 if mode == "2-point" else 3
             if len(thresholds) != expected:
-                raise DatalensConfigurationError(
+                raise DataLensConfigurationError(
                     f"column_background(mode={mode!r}) requires exactly {expected} thresholds, got {len(thresholds)}."
                 )
         return build_background_settings(mode=mode, palette=palette, reversed=reversed, thresholds=thresholds)
@@ -144,18 +144,18 @@ class _ChartMutationsMixin:
     ) -> dict[str, object]:
         if color_type == "gradient":
             if gradient_palette is None:
-                raise DatalensConfigurationError(
+                raise DataLensConfigurationError(
                     "column_bars(color_type='gradient') requires gradient_palette= to be specified."
                 )
             palette_str = str(gradient_palette)
             valid_types = gradient_types_for_palette(palette_str)
             if not valid_types:
-                raise DatalensConfigurationError(
+                raise DataLensConfigurationError(
                     f"column_bars: palette {palette_str!r} is not supported for gradient bars. "
                     "Use a sequential or diverging gradient palette."
                 )
             if gradient_type not in valid_types:
-                raise DatalensConfigurationError(
+                raise DataLensConfigurationError(
                     f"column_bars: palette {palette_str!r} does not support gradient_type={gradient_type!r}. "
                     f"Supported: {sorted(valid_types)}"
                 )
@@ -169,7 +169,7 @@ class _ChartMutationsMixin:
             }
             bad = [k for k, v in _incompatible.items() if v is not None]
             if bad:
-                raise DatalensConfigurationError(
+                raise DataLensConfigurationError(
                     f"column_bars(color_type='one-color') does not accept: {', '.join(bad)}."
                 )
         elif color_type == "two-color":
@@ -181,7 +181,7 @@ class _ChartMutationsMixin:
             }
             bad2 = [k for k, v in _incompatible2.items() if v is not None]
             if bad2:
-                raise DatalensConfigurationError(
+                raise DataLensConfigurationError(
                     f"column_bars(color_type='two-color') does not accept: {', '.join(bad2)}."
                 )
         elif color_type == "gradient":
@@ -196,7 +196,7 @@ class _ChartMutationsMixin:
             }
             bad3 = [k for k, v in _incompatible3.items() if v is not None]
             if bad3:
-                raise DatalensConfigurationError(
+                raise DataLensConfigurationError(
                     f"column_bars(color_type='gradient') does not accept: {', '.join(bad3)}."
                 )
         return build_bars_settings(

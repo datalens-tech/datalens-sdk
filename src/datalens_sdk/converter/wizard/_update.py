@@ -28,7 +28,7 @@ from datalens_sdk.converter.wizard._normalizer import _Normalizer
 from datalens_sdk.converter.wizard._placeholders import _enrich_placeholder, _sync_axis_mode_map
 from datalens_sdk.domain.chart_types import MeasureFormat
 from datalens_sdk.domain.wizard_chart import resolve_field_snapshot
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.wizard_chart import WizardChartUpdate
@@ -73,7 +73,7 @@ def _validate_transition_capacity(*, visualization_id: str, placeholder_id: str,
     placeholder_spec = placeholder_specs.get(placeholder_id) if isinstance(placeholder_specs, dict) else None
     capacity = placeholder_spec.get("capacity") if isinstance(placeholder_spec, dict) else None
     if isinstance(capacity, int) and capacity >= 0 and len(items) > capacity:
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             "change_visualization_to: transition to "
             f"{visualization_id!r} cannot retain {len(items)} fields in placeholder {placeholder_id!r}; "
             f"its capacity is {capacity}."
@@ -86,7 +86,7 @@ def _apply_visualization_transition(data: dict[str, object], update: WizardChart
     if target_visualization_id is None or target_visualization_id == source_visualization_id:
         return
     if source_visualization_id is None:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             "change_visualization_to: active visualization is missing; fetch a chart with data.visualization.id first."
         )
     transition = validate_visualization_transition(
@@ -96,7 +96,7 @@ def _apply_visualization_transition(data: dict[str, object], update: WizardChart
     )
     source_viz = data.get("visualization")
     if not isinstance(source_viz, dict):
-        raise DatalensConfigurationError("change_visualization_to: chart data has no visualization object to migrate.")
+        raise DataLensConfigurationError("change_visualization_to: chart data has no visualization object to migrate.")
     source_placeholders = {
         placeholder_id: placeholder
         for placeholder in _placeholders_list(source_viz)
@@ -107,7 +107,7 @@ def _apply_visualization_transition(data: dict[str, object], update: WizardChart
     target_meta = target_spec.get("viz")
     target_placeholder_specs = target_spec.get("placeholders")
     if not isinstance(target_meta, dict) or not isinstance(target_placeholder_specs, dict):
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             f"change_visualization_to: target visualization {target_visualization_id!r} has no complete specification."
         )
 
@@ -184,7 +184,7 @@ def _apply_placeholder_edits(data: dict[str, object], update: WizardChartUpdate)
         if visualization_id == "combined-chart" and actual_id == "x":
             layers = viz.get("layers")
             if not isinstance(layers, list):
-                raise DatalensConfigurationError("combined-chart x update requires visualization.layers.")
+                raise DataLensConfigurationError("combined-chart x update requires visualization.layers.")
             for layer in layers:
                 if not isinstance(layer, dict):
                     continue
@@ -193,7 +193,7 @@ def _apply_placeholder_edits(data: dict[str, object], update: WizardChartUpdate)
                     None,
                 )
                 if layer_x is None:
-                    raise DatalensConfigurationError("combined-chart layer is missing its x placeholder.")
+                    raise DataLensConfigurationError("combined-chart layer is missing its x placeholder.")
                 layer_x["items"] = copy.deepcopy(normalized)
             continue
         target = existing.get(actual_id)
@@ -214,7 +214,7 @@ def _apply_dataset_replacement(data: dict[str, object], update: WizardChartUpdat
     old_id, new_id = replacement
     dataset_ids = data.get("datasetsIds")
     if not isinstance(dataset_ids, list) or old_id not in dataset_ids:
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"replace_dataset(old={old_id!r}, new={new_id!r}) cannot proceed: the chart datasets are {dataset_ids!r}."
         )
     data["datasetsIds"] = [new_id if item == old_id else item for item in dataset_ids]
@@ -287,7 +287,7 @@ def _apply_ph_settings_edits(data: dict[str, object], update: WizardChartUpdate)
         )
         target = existing.get(actual_id)
         if target is None:
-            raise DatalensConfigurationError(
+            raise DataLensConfigurationError(
                 f"placeholder settings: placeholder {actual_id!r} is declared for active visualization "
                 f"{visualization_id!r} but is absent from the chart payload."
             )
@@ -358,7 +358,7 @@ def _apply_local_field_additions(
     ``.add_local_field(...).add_sort(guid)`` in a single update). Existing
     ``data["updates"]`` entries are preserved via ``setdefault`` (P1-UPDATES);
     guid collisions with existing ``add_field`` operations raise
-    ``DatalensValidationError`` (P1-DROP, no silent drop); the
+    ``DataLensValidationError`` (P1-DROP, no silent drop); the
     ``datasetsPartialFields`` snapshot is merged with the new entries prepended.
     """
     additions = update.local_field_additions
@@ -377,7 +377,7 @@ def _apply_local_field_additions(
     for entry in additions:
         guid = entry.get("guid")
         if guid in existing_add_field_guids:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"add_local_field: a local field with guid {guid!r} already exists in the chart. "
                 "Pass a different guid= or remove the existing field first."
             )
@@ -447,7 +447,7 @@ def _refuse_orphaning_publish(update: WizardChartUpdate) -> None:
     if not isinstance(published_id, str) or not isinstance(saved_id, str) or not isinstance(revision_id, str):
         return
     if saved_id != published_id and revision_id == published_id:
-        raise DatalensConfigurationError(
+        raise DataLensConfigurationError(
             "Cannot publish a loaded published revision while a newer saved draft exists without chart changes. "
             "Load the saved draft first or include changes."
         )
@@ -527,12 +527,12 @@ def _apply_structural_field_mutations(data: dict[str, object], update: WizardCha
             continue
         replacement_guid = staged_replacement.get("guid")
         if not isinstance(replacement_guid, str):
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"change_aggregation staged an invalid replacement guid for field {old_guid!r}."
             )
         replacement = local_fields.get(replacement_guid)
         if replacement is None:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"change_aggregation could not resolve its staged replacement for field {old_guid!r}."
             )
         references.replace_field(old_guid, replacement)

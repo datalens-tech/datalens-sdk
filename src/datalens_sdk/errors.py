@@ -15,23 +15,23 @@ class APIErrorContext:
     attempts: int = 1
 
 
-class DatalensError(Exception):
+class DataLensError(Exception):
     """Base class for SDK exceptions."""
 
 
-class DatalensValidationError(DatalensError, ValueError):
+class DataLensValidationError(DataLensError, ValueError):
     """Client-side validation failed before a request was sent."""
 
 
-class DatalensConfigurationError(DatalensError):
+class DataLensConfigurationError(DataLensError):
     """The client is missing configuration required for an operation."""
 
 
-class NotSupportedError(DatalensError, AttributeError):
+class NotSupportedError(DataLensError, AttributeError):
     """The selected installation does not support the requested SDK surface."""
 
 
-class DatalensAPIError(DatalensError):
+class DataLensAPIError(DataLensError):
     def __init__(self, context: APIErrorContext) -> None:
         self.context = context
         code = f" code={context.code}" if context.code else ""
@@ -45,7 +45,7 @@ class DatalensAPIError(DatalensError):
         )
 
 
-class DatalensTransportError(DatalensError):
+class DataLensTransportError(DataLensError):
     def __init__(self, *, method: str, url: str, attempts: int, reason: str) -> None:
         self.method = method
         self.url = url
@@ -54,43 +54,43 @@ class DatalensTransportError(DatalensError):
         super().__init__(f"DataLens transport error (request={method} {url} attempts={attempts}): {reason}")
 
 
-class BadRequestError(DatalensAPIError):
+class BadRequestError(DataLensAPIError):
     pass
 
 
-class UnauthorizedError(DatalensAPIError):
+class UnauthorizedError(DataLensAPIError):
     pass
 
 
-class ForbiddenError(DatalensAPIError):
+class ForbiddenError(DataLensAPIError):
     pass
 
 
-class NotFoundError(DatalensAPIError):
+class NotFoundError(DataLensAPIError):
     pass
 
 
-class ConflictError(DatalensAPIError):
+class ConflictError(DataLensAPIError):
     pass
 
 
-class LockedError(DatalensAPIError):
+class LockedError(DataLensAPIError):
     pass
 
 
-class RateLimitError(DatalensAPIError):
+class RateLimitError(DataLensAPIError):
     pass
 
 
-class ServerError(DatalensAPIError):
+class ServerError(DataLensAPIError):
     pass
 
 
-class InvalidResponseError(DatalensAPIError):
+class InvalidResponseError(DataLensAPIError):
     pass
 
 
-class DTOValidationError(DatalensAPIError):
+class DTOValidationError(DataLensAPIError):
     pass
 
 

@@ -8,7 +8,7 @@ from datalens_sdk._runtime.wizard_field_references import WizardFieldReferences
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.chart_types import ChartCategory
 from datalens_sdk.domain.fields import DatasetField, FieldLike, FieldRef, FieldsProxy
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 __all__ = ["FieldRef", "WizardChart", "WizardChartUpdate", "resolve_field_snapshot"]
 
@@ -69,7 +69,7 @@ def resolve_field_snapshot(
     if isinstance(ref, Mapping):
         return {key: value for key, value in ref.items() if isinstance(key, str)}
     if not isinstance(ref, str):
-        raise DatalensValidationError(f"Field reference must be a field, mapping or string, got {type(ref).__name__}")
+        raise DataLensValidationError(f"Field reference must be a field, mapping or string, got {type(ref).__name__}")
 
     if ref in local_fields:
         return {key: value for key, value in local_fields[ref].items() if isinstance(key, str)}
@@ -80,7 +80,7 @@ def resolve_field_snapshot(
     name_matches = [field for field in fields if field.title == ref or field.name == ref]
     matching_guids = {field.guid for field in name_matches}
     if len(matching_guids) > 1:
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"Field reference {ref!r} is ambiguous: it matches field guids {sorted(matching_guids)}. "
             "Pass a DatasetField or an exact guid."
         )
@@ -94,7 +94,7 @@ def resolve_field_snapshot(
         # No schema to resolve against — either a create without ``.dataset(...)``, or an
         # update on a chart with no placed fields. ``.dataset(...)`` exists only on the
         # create builder, so advise the DatasetField path that works for both.
-        raise DatalensValidationError(
+        raise DataLensValidationError(
             f"Field reference {ref!r} could not be resolved: no dataset schema is available "
             "(either .dataset(...) was not called on the create builder, or this is an update "
             "on a chart with no placed fields). Fetch the dataset and pass a DatasetField:\n"
@@ -105,12 +105,12 @@ def resolve_field_snapshot(
     if bound_dataset_name:
         # Bound-dataset miss (create path with ``.dataset(...)``): the field is missing
         # from the bound dataset schema.
-        raise DatalensValidationError(f"Field {ref!r} was not found in dataset {bound_dataset_name!r}.{hint}")
+        raise DataLensValidationError(f"Field {ref!r} was not found in dataset {bound_dataset_name!r}.{hint}")
     # Update-path miss: only placed fields are known (the chart was loaded, not created
     # in this session, so no dataset schema is bound to the update). Point the user at
     # the dataset_ids + ``fields.by_name`` pattern so they can place the field.
     known = ", ".join(titles) if titles else "(no placed field titles)"
-    raise DatalensValidationError(
+    raise DataLensValidationError(
         f"Field {ref!r} is not placed in this chart and no dataset schema is bound "
         "(the chart was loaded, not created in this session, so only fields already placed "
         "in the visualization are known). To reference a field that is not yet placed, "
@@ -157,14 +157,14 @@ class WizardChart(Chart):
     @property
     def update(self) -> WizardChartUpdate:
         if not self.id:
-            raise DatalensValidationError("Cannot update a chart without an id")
+            raise DataLensValidationError("Cannot update a chart without an id")
         return WizardChartUpdate(chart=self, operations=self._operations)
 
     def delete(self) -> None:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot delete a chart without an id")
+            raise DataLensValidationError("Cannot delete a chart without an id")
         self._operations.delete_wizard_chart(self.id)
 
 

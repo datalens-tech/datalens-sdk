@@ -14,8 +14,8 @@ from datalens_sdk.domain.navigation import EntryRelation, Page, Pager, RelationO
 from datalens_sdk.domain.ql_chart import QLChart
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.errors import (
-    DatalensConfigurationError,
-    DatalensValidationError,
+    DataLensConfigurationError,
+    DataLensValidationError,
     InvalidResponseError,
     NotSupportedError,
 )
@@ -561,7 +561,7 @@ def test_existing_target_is_rejected_before_relations_and_is_untouched(
         (target / "marker").write_text("foreign", encoding="utf-8")
     dashboard = Dashboard(id="dashboard-1", name="Dash", response_snapshot=_dashboard_snapshot())
 
-    with pytest.raises(DatalensValidationError, match="already exists"):
+    with pytest.raises(DataLensValidationError, match="already exists"):
         exporter.export(dashboard, tmp_path)
 
     assert navigation.calls == []
@@ -583,5 +583,5 @@ def test_unbound_dashboard_allows_single_export_and_rejects_dependency_export(tm
 
     other_parent = tmp_path / "other"
     other_parent.mkdir()
-    with pytest.raises(DatalensConfigurationError):
+    with pytest.raises(DataLensConfigurationError):
         dashboard.to_file(other_parent, with_dependencies=True)

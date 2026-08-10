@@ -19,7 +19,7 @@ from datalens_sdk.domain.specs.dashboard import (
     TitleItem,
     WidgetItem,
 )
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.editor_chart import EditorChart
@@ -141,10 +141,10 @@ def _resolve_chart_id(chart: WizardChart | EditorChart | str) -> tuple[str, str]
     """
     if isinstance(chart, str):
         if not chart:
-            raise DatalensValidationError("chart id must not be an empty string")
+            raise DataLensValidationError("chart id must not be an empty string")
         return chart, ""
     if not chart.id:
-        raise DatalensValidationError("Cannot place a chart without an id on a dashboard")
+        raise DataLensValidationError("Cannot place a chart without an id on a dashboard")
     return chart.id, chart.installation or ""
 
 
@@ -155,4 +155,4 @@ def _normalize_param_values(key: str, value: object) -> tuple[str, ...]:
         values = tuple(value)
         if all(isinstance(entry, str) for entry in values):
             return tuple(values)
-    raise DatalensValidationError(f"param {key!r} must be a string or a sequence of strings, got {value!r}")
+    raise DataLensValidationError(f"param {key!r} must be a string or a sequence of strings, got {value!r}")

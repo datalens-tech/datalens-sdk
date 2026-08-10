@@ -18,7 +18,7 @@ from typing_extensions import Self
 from datalens_sdk.domain.dashboard_layout import DEFAULT_ITEM_SIZES, GRID_COLUMNS, Position
 from datalens_sdk.domain.dashboard_types import PARENT_FIX_GCONT, PARENT_FIX_HEAD, DashboardItemType, PinZone
 from datalens_sdk.domain.specs.dashboard import GroupControlItem
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.dashboard_tab import _PendingItem
@@ -32,7 +32,7 @@ def validated_at(at: Position | tuple[int, int, int, int]) -> tuple[int, int, in
     if isinstance(at, Position):
         return at.as_tuple()
     if isinstance(at, (str, bytes)) or not isinstance(at, Sequence) or len(at) != 4:
-        raise DatalensValidationError(f"at must be a Position or an (x, y, w, h) tuple, got {at!r}")
+        raise DataLensValidationError(f"at must be a Position or an (x, y, w, h) tuple, got {at!r}")
     return Position(*at).as_tuple()
 
 
@@ -46,13 +46,13 @@ def pin_parent(pinned: bool | PinZone) -> str | None:
         return PARENT_FIX_GCONT
     if pinned == "fixed":
         return PARENT_FIX_HEAD
-    raise DatalensValidationError(f'pinned must be "fixed", "collapsible" or a bool, got {pinned!r}')
+    raise DataLensValidationError(f'pinned must be "fixed", "collapsible" or a bool, got {pinned!r}')
 
 
 def _validated_size(size: tuple[int, int]) -> tuple[int, int]:
     """Validate a ``size=(w, h)`` override for an auto-placed item."""
     if isinstance(size, (str, bytes)) or not isinstance(size, Sequence) or len(size) != 2:
-        raise DatalensValidationError(f"size must be a (w, h) pair, got {size!r}")
+        raise DataLensValidationError(f"size must be a (w, h) pair, got {size!r}")
     w, h = size
     Position(0, 0, w, h)  # reuse int/positive/grid-width validation
     return (w, h)
@@ -71,7 +71,7 @@ def resolve_placement(
     the item-type default."""
     if at is not None:
         if size is not None:
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 "size= applies to auto placement (at=None) only; put the size inside at=(x, y, w, h)"
             )
         return validated_at(at)
@@ -97,7 +97,7 @@ def auto_placement(
     """
     group = pin_parent(pinned)
     if item_type not in DEFAULT_ITEM_SIZES:
-        raise DatalensValidationError(f"Unknown item type {item_type!r}; expected one of {sorted(DEFAULT_ITEM_SIZES)}")
+        raise DataLensValidationError(f"Unknown item type {item_type!r}; expected one of {sorted(DEFAULT_ITEM_SIZES)}")
     width, height = _validated_size(size) if size is not None else DEFAULT_ITEM_SIZES[item_type]
     x, y, row_height = cursors.get(group, (0, 0, 0))
     if x + width > GRID_COLUMNS:  # wrap to the next row
@@ -154,7 +154,7 @@ class TabLayoutFlow:
         ``at=None`` item of the pin-group (explicit ``at=`` items are outside
         the flow and skip the gap). No spacer artifact reaches the wire."""
         if isinstance(h, bool) or not isinstance(h, int) or h <= 0:
-            raise DatalensValidationError(f"space h must be a positive int, got {h!r}")
+            raise DataLensValidationError(f"space h must be a positive int, got {h!r}")
         group = pin_parent(pinned)
         _, y, row_height = self._cursors.get(group, (0, 0, 0))
         self._cursors[group] = (0, y + row_height + h, 0)
@@ -213,12 +213,12 @@ def resolve_layout_ref(pending: Sequence[_PendingItem], ref: str) -> int:
         if isinstance(item, GroupControlItem) and any(member.id == ref for member in item.members):
             if len(item.members) == 1:
                 return index
-            raise DatalensValidationError(
+            raise DataLensValidationError(
                 f"apply_layout: {ref!r} is a member of a multi-selector group; "
                 "reposition the group by its item_id instead"
             )
     known = sorted({entry.explicit_id for entry in pending if entry.explicit_id is not None})
-    raise DatalensValidationError(
+    raise DataLensValidationError(
         f"apply_layout: unknown item id {ref!r}; only items created with an explicit item_id= "
         f"can be repositioned. Known ids: {known}"
     )

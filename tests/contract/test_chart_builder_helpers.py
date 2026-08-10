@@ -13,7 +13,7 @@ from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.fields import DatasetField
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DatalensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 _REFERENCE_CHARTS_DIR = Path(__file__).parent / "fixtures" / "reference_charts" / "wizard"
 
@@ -161,7 +161,7 @@ class TestAxisScaleHelper:
         assert settings.get("scaleValue") == ["0", None]
 
     def test_axis_scale_manual_without_bounds_raises_error(self) -> None:
-        with pytest.raises(DatalensConfigurationError, match="requires at least one of min= or max="):
+        with pytest.raises(DataLensConfigurationError, match="requires at least one of min= or max="):
             _factory.line(name="Chart", location=_loc()).axis_scale("y", mode="manual")
 
 
@@ -284,13 +284,13 @@ class TestColumnBackgroundMutatesItem:
     def test_column_background_wrong_threshold_count_raises(self) -> None:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
-        with pytest.raises(DatalensConfigurationError, match="exactly 2 thresholds"):
+        with pytest.raises(DataLensConfigurationError, match="exactly 2 thresholds"):
             builder.column_background("meas", mode="2-point", thresholds=(1.0, 2.0, 3.0))
 
     def test_column_background_invalid_palette_raises(self) -> None:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
-        with pytest.raises(DatalensConfigurationError, match="gradient palette"):
+        with pytest.raises(DataLensConfigurationError, match="gradient palette"):
             builder.column_background("meas", palette="classic20")  # type: ignore[arg-type]
 
     def test_column_background_works_on_pivot(self) -> None:
@@ -452,13 +452,13 @@ class TestColumnBarsHelper:
     def test_column_bars_gradient_wrong_type_raises(self) -> None:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
-        with pytest.raises(DatalensConfigurationError, match="does not support gradient_type"):
+        with pytest.raises(DataLensConfigurationError, match="does not support gradient_type"):
             builder.column_bars("meas", color_type="gradient", gradient_palette="blue", gradient_type="3-point")
 
     def test_column_bars_incompatible_params_raise(self) -> None:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
-        with pytest.raises(DatalensConfigurationError, match="does not accept"):
+        with pytest.raises(DataLensConfigurationError, match="does not accept"):
             builder.column_bars("meas", color_type="one-color", color_positive="#FF0000")
 
     def test_column_bars_one_color_no_color_arg_produces_no_colorSettings(self) -> None:
@@ -509,27 +509,27 @@ class TestSubtotalsHelper:
 class TestMutateItemByGuidErrors:
     def test_column_background_without_columns_raises_configuration_error(self) -> None:
         builder = _factory.flat_table(name="Chart", location=_loc())
-        with pytest.raises(DatalensConfigurationError, match="not found in any placeholder"):
+        with pytest.raises(DataLensConfigurationError, match="not found in any placeholder"):
             builder.column_background("nonexistent")
 
     def test_column_bars_without_columns_raises_configuration_error(self) -> None:
         builder = _factory.flat_table(name="Chart", location=_loc())
-        with pytest.raises(DatalensConfigurationError, match="not found in any placeholder"):
+        with pytest.raises(DataLensConfigurationError, match="not found in any placeholder"):
             builder.column_bars("nonexistent", enabled=True)
 
     def test_subtotals_without_columns_raises_configuration_error(self) -> None:
         builder = _factory.pivot_table(name="Chart", location=_loc())
-        with pytest.raises(DatalensConfigurationError, match="not found in any placeholder"):
+        with pytest.raises(DataLensConfigurationError, match="not found in any placeholder"):
             builder.subtotals("nonexistent", enabled=True)
 
     def test_column_title_without_placed_field_raises_configuration_error(self) -> None:
         builder = _factory.flat_table(name="Chart", location=_loc())
-        with pytest.raises(DatalensConfigurationError, match=r"Call \.columns\(\)/\.measures\(\)/\.rows\(\) before"):
+        with pytest.raises(DataLensConfigurationError, match=r"Call \.columns\(\)/\.measures\(\)/\.rows\(\) before"):
             builder.column_title("nonexistent", title="Revenue")
 
     def test_measure_format_without_placed_field_raises_configuration_error(self) -> None:
         builder = _factory.flat_table(name="Chart", location=_loc()).measure_format("nonexistent", format="number")
-        with pytest.raises(DatalensConfigurationError, match=r"Call \.columns\(\)/\.measures\(\)/\.rows\(\) before"):
+        with pytest.raises(DataLensConfigurationError, match=r"Call \.columns\(\)/\.measures\(\)/\.rows\(\) before"):
             _build(builder)
 
 
@@ -563,7 +563,7 @@ class TestPaletteHelper:
             _factory.column(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"]).color_by_measure("meas")
         )
         builder.palette(id="classic20")
-        with pytest.raises(DatalensConfigurationError, match="requires a DIMENSION"):
+        with pytest.raises(DataLensConfigurationError, match="requires a DIMENSION"):
             _build(builder)
 
     def test_gradient_palette_rejects_dimension_colors(self) -> None:
@@ -572,7 +572,7 @@ class TestPaletteHelper:
             _factory.line(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"]).color_by_dimension("dim")
         )
         builder.palette(id="blue")
-        with pytest.raises(DatalensConfigurationError, match="requires a MEASURE"):
+        with pytest.raises(DataLensConfigurationError, match="requires a MEASURE"):
             _build(builder)
 
     def test_last_color_call_wins_before_palette_validation(self) -> None:
@@ -591,7 +591,7 @@ class TestPaletteHelper:
 
     def test_palette_rejects_missing_colors(self) -> None:
         builder = _factory.line(name="Chart", location=_loc()).palette(id="classic20")
-        with pytest.raises(DatalensConfigurationError, match="requires a field in Color"):
+        with pytest.raises(DataLensConfigurationError, match="requires a field in Color"):
             _build(builder)
 
     def test_update_palette_validates_existing_colors(self) -> None:
@@ -603,7 +603,7 @@ class TestPaletteHelper:
                 "visualization": {"id": "line", "placeholders": []},
             },
         )
-        with pytest.raises(DatalensConfigurationError, match="requires a MEASURE"):
+        with pytest.raises(DataLensConfigurationError, match="requires a MEASURE"):
             WizardChartConverter.from_domain_update(chart.update.palette(id="blue"))
 
     def test_update_gradient_palette_writes_gradient_config_for_measure_colors(self) -> None:
@@ -632,7 +632,7 @@ class TestPaletteHelper:
         assert _items_in_ph(data, "colors")[0]["guid"] == "dim"
 
     def test_unknown_palette_raises_configuration_error(self) -> None:
-        with pytest.raises(DatalensConfigurationError, match="Unknown palette"):
+        with pytest.raises(DataLensConfigurationError, match="Unknown palette"):
             _factory.line(name="Chart", location=_loc()).palette(id=cast(PaletteId, "nonexistent-palette-xyz"))
 
 
@@ -664,7 +664,7 @@ class TestSemanticColorRouting:
             .y(["meas"])
             .color_by_dimension("other_dim")
         )
-        with pytest.raises(DatalensConfigurationError, match=r"placed in the 'dimensions' section"):
+        with pytest.raises(DataLensConfigurationError, match=r"placed in the 'dimensions' section"):
             _build(builder)
 
     def test_color_by_dimension_rejects_measure(self) -> None:
@@ -672,7 +672,7 @@ class TestSemanticColorRouting:
         builder = (
             _factory.column(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"]).color_by_dimension("meas")
         )
-        with pytest.raises(DatalensConfigurationError, match="requires a DIMENSION"):
+        with pytest.raises(DataLensConfigurationError, match="requires a DIMENSION"):
             _build(builder)
 
     def test_treemap_dimension_color_writes_placeholder_and_data(self) -> None:
@@ -756,7 +756,7 @@ class TestColorByMeasureNameHelper:
         builder = (
             _factory.line(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["measure"]).color_by_measure_name()
         )
-        with pytest.raises(DatalensConfigurationError, match=r"requires at least two measures"):
+        with pytest.raises(DataLensConfigurationError, match=r"requires at least two measures"):
             _build(builder)
 
     def test_color_by_measure_name_collects_line_y_and_y2(self) -> None:
@@ -801,7 +801,7 @@ class TestColorByMeasureNameHelper:
             .y(["measure_1", "measure_2"])
             .color_by_measure_name(colors_map={"measure_1": "red"})
         )
-        with pytest.raises(DatalensConfigurationError, match="colors must be #RRGGBB"):
+        with pytest.raises(DataLensConfigurationError, match="colors must be #RRGGBB"):
             _build(builder)
 
 
@@ -1002,7 +1002,7 @@ class TestIndicatorHelpers:
         assert extra.get("indicatorTitleMode") == "manual"
 
     def test_font_color_invalid_hex_raises_error(self) -> None:
-        with pytest.raises(DatalensConfigurationError, match="hex string like #RRGGBB"):
+        with pytest.raises(DataLensConfigurationError, match="hex string like #RRGGBB"):
             _factory.indicator(name="Chart", location=_loc()).font_color(color="red")
 
     def test_measure_title_mode_by_field(self) -> None:
@@ -1193,7 +1193,7 @@ class TestShapeByDimensionHelper:
         builder = (
             _factory.line(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["measure"]).shape_by_measure_name()
         )
-        with pytest.raises(DatalensConfigurationError, match="requires at least two measures"):
+        with pytest.raises(DataLensConfigurationError, match="requires at least two measures"):
             _build(builder)
 
     def test_shape_by_measure_name_collects_line_y_and_y2(self) -> None:
@@ -1221,7 +1221,7 @@ class TestShapeByDimensionHelper:
             .y(["measure_1", "measure_2"])
             .shape_by_measure_name(shapes_map={"measure_3": "Dash"})
         )
-        with pytest.raises(DatalensConfigurationError, match="not placed as a measure"):
+        with pytest.raises(DataLensConfigurationError, match="not placed as a measure"):
             _build(builder)
 
     def test_shape_by_dimension_rejects_measure(self) -> None:
@@ -1233,7 +1233,7 @@ class TestShapeByDimensionHelper:
             .y(["measure"])
             .shape_by_dimension("measure")
         )
-        with pytest.raises(DatalensConfigurationError, match="requires a DIMENSION"):
+        with pytest.raises(DataLensConfigurationError, match="requires a DIMENSION"):
             _build(builder)
 
 
@@ -1255,7 +1255,7 @@ class TestUpdateVizApplicabilityGuard:
 
     def test_totals_on_line_chart_raises_configuration_error(self) -> None:
         chart = self._wizard_chart("line")
-        with pytest.raises(DatalensConfigurationError, match=r"totals.*line"):
+        with pytest.raises(DataLensConfigurationError, match=r"totals.*line"):
             chart.update.totals(enabled=True)
 
     def test_totals_on_flat_table_does_not_raise(self) -> None:
@@ -1265,7 +1265,7 @@ class TestUpdateVizApplicabilityGuard:
 
     def test_nulls_mode_on_pie_raises_configuration_error(self) -> None:
         chart = self._wizard_chart("pie")
-        with pytest.raises(DatalensConfigurationError, match=r"nulls_mode.*pie"):
+        with pytest.raises(DataLensConfigurationError, match=r"nulls_mode.*pie"):
             chart.update.nulls_mode("x", mode="ignore")
 
     def test_axis_visibility_on_line_chart_does_not_raise(self) -> None:
@@ -1326,7 +1326,7 @@ class TestColorByMeasureHelper:
     def test_color_by_measure_invalid_palette_raises(self) -> None:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
-        with pytest.raises(DatalensConfigurationError, match="gradient palette"):
+        with pytest.raises(DataLensConfigurationError, match="gradient palette"):
             builder.color_by_measure("meas", palette="classic20")  # type: ignore[arg-type]
 
     @pytest.mark.parametrize(
@@ -1344,7 +1344,7 @@ class TestColorByMeasureHelper:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
 
-        with pytest.raises(DatalensConfigurationError, match=r"does not support mode"):
+        with pytest.raises(DataLensConfigurationError, match=r"does not support mode"):
             builder.color_by_measure("meas", mode=mode, palette=palette)
 
     @pytest.mark.parametrize(
@@ -1364,7 +1364,7 @@ class TestColorByMeasureHelper:
             data={"visualization": {"id": "flatTable", "placeholders": []}},
         )
 
-        with pytest.raises(DatalensConfigurationError, match=r"does not support mode"):
+        with pytest.raises(DataLensConfigurationError, match=r"does not support mode"):
             chart.update.color_by_measure("meas", mode=mode, palette=palette)
 
     def test_color_by_measure_writes_measure_to_colors_list(self) -> None:
@@ -1383,7 +1383,7 @@ class TestColorByMeasureHelper:
             .columns(["dim", "meas"])
             .color_by_measure("dim")
         )
-        with pytest.raises(DatalensConfigurationError, match="requires a MEASURE"):
+        with pytest.raises(DataLensConfigurationError, match="requires a MEASURE"):
             _build(builder)
 
 
@@ -1580,13 +1580,13 @@ class TestSemanticEncodingUpdates:
     def test_treemap_membership_is_validated_on_update(self) -> None:
         ds = _dataset("dim", "meas", "other_dim")
         original = _build(_factory.treemap(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"]))
-        with pytest.raises(DatalensConfigurationError, match=r"placed in the 'dimensions' section"):
+        with pytest.raises(DataLensConfigurationError, match=r"placed in the 'dimensions' section"):
             self._update_data(self._chart(original).update.color_by_dimension(ds.fields.by_name("field_other_dim")))
 
     def test_metric_rejects_color_encoding_on_update(self) -> None:
         ds = _dataset("dim", "meas")
         original = _build(_factory.indicator(name="Chart", location=_loc()).dataset(ds).y(["meas"]))
-        with pytest.raises(DatalensConfigurationError, match=r"color_by_measure.*not applicable.*metric"):
+        with pytest.raises(DataLensConfigurationError, match=r"color_by_measure.*not applicable.*metric"):
             self._chart(original).update.color_by_measure(ds.fields.by_name("field_meas"))
 
 

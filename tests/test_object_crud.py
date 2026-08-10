@@ -286,9 +286,9 @@ def test_domain_objects_are_typed_entry_destinations_for_existing_create_apis() 
     assert connection_body["workbook_id"] == "workbook-1"
     assert connection_body["type"] == "postgres"
 
-    with pytest.raises(dl.DatalensValidationError, match="name must not be empty"):
+    with pytest.raises(dl.DataLensValidationError, match="name must not be empty"):
         client.create.dataset(name="", location=workbook)
-    with pytest.raises(dl.DatalensValidationError, match="must not contain"):
+    with pytest.raises(dl.DataLensValidationError, match="must not contain"):
         client.create.dataset(name="nested/DS", location=dl.EntryLocation.path("/Users/me"))
     with pytest.raises(dl.NotSupportedError, match="destination"):
         client.create.dataset(
@@ -332,11 +332,11 @@ def test_destination_kind_validation_uses_one_entry_location_type() -> None:
         transport=httpx.MockTransport(lambda request: httpx.Response(200, json={})),
     )
 
-    with pytest.raises(dl.DatalensValidationError, match="Folder creation requires location kind 'path'"):
+    with pytest.raises(dl.DataLensValidationError, match="Folder creation requires location kind 'path'"):
         client.create.folder(name="Folder", location=dl.EntryLocation.workbook("workbook-1"))
-    with pytest.raises(dl.DatalensValidationError, match="Collection creation requires location kind 'collection'"):
+    with pytest.raises(dl.DataLensValidationError, match="Collection creation requires location kind 'collection'"):
         client.create.collection(name="Child", parent=dl.EntryLocation.path("/Users/me"))
-    with pytest.raises(dl.DatalensValidationError, match="Workbook creation requires location kind 'collection'"):
+    with pytest.raises(dl.DataLensValidationError, match="Workbook creation requires location kind 'collection'"):
         client.create.workbook(name="Workbook", collection=dl.EntryLocation.workbook("workbook-1"))
 
 

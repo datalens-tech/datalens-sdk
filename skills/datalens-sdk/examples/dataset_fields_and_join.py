@@ -31,7 +31,7 @@ import os
 import sys
 
 from datalens_sdk import (
-    DatalensAPIError,
+    DataLensAPIError,
     DataLensClientEnterprise,
     DataLensClientYC,
     EntryLocation,
@@ -132,7 +132,7 @@ def main() -> None:
             print(f"Dataset id: {dataset.id}")
             print(f"Relations: {len(dataset.relations)}")
             print(f"Calculation guid: {calc.guid}")
-    except DatalensAPIError as e:
+    except DataLensAPIError as e:
         # Hard rule 9: the request id is what DataLens support needs.
         print(
             f"DataLens API error {e.context.status_code} {e.context.code}: "

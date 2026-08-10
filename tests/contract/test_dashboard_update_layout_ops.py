@@ -11,7 +11,7 @@ from datalens_sdk.converter.dashboard_apply import _apply_update
 from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.dashboard_layout import Position
 from datalens_sdk.domain.specs.dashboard import ApplyLayoutOp
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 
 def _text_item(item_id: str) -> dict[str, object]:
@@ -104,31 +104,31 @@ def test_move_item_delta() -> None:
 
 def test_move_item_mixed_axis_rejected() -> None:
     dash = _one_item(_text_item("a"), _lay("a", 0, 0, 12, 4))
-    with pytest.raises(DatalensValidationError, match="not both"):
+    with pytest.raises(DataLensValidationError, match="not both"):
         dash.update.move_item("a", x=1, dx=1)
 
 
 def test_move_item_zero_delta_rejected() -> None:
     dash = _one_item(_text_item("a"), _lay("a", 0, 0, 12, 4))
-    with pytest.raises(DatalensValidationError, match="dx=0 is a no-op"):
+    with pytest.raises(DataLensValidationError, match="dx=0 is a no-op"):
         dash.update.move_item("a", dx=0)
 
 
 def test_move_item_no_args_rejected() -> None:
     dash = _one_item(_text_item("a"), _lay("a", 0, 0, 12, 4))
-    with pytest.raises(DatalensValidationError, match="needs at least one"):
+    with pytest.raises(DataLensValidationError, match="needs at least one"):
         dash.update.move_item("a")
 
 
 def test_move_item_bool_rejected() -> None:
     dash = _one_item(_text_item("a"), _lay("a", 0, 0, 12, 4))
-    with pytest.raises(DatalensValidationError, match="x must be an int"):
+    with pytest.raises(DataLensValidationError, match="x must be an int"):
         dash.update.move_item("a", x=True)
 
 
 def test_move_item_overflow_rejected() -> None:
     dash = _one_item(_text_item("a"), _lay("a", 0, 0, 12, 4))
-    with pytest.raises(DatalensValidationError, match="exceed the 36-column grid"):
+    with pytest.raises(DataLensValidationError, match="exceed the 36-column grid"):
         _apply_update(dash.update.move_item("a", x=30).to_spec())
 
 
@@ -145,7 +145,7 @@ def test_resize_item_absolute_and_delta() -> None:
 
 def test_resize_item_overflow_rejected() -> None:
     dash = _one_item(_text_item("a"), _lay("a", 30, 0, 4, 4))
-    with pytest.raises(DatalensValidationError, match="exceed the 36-column grid"):
+    with pytest.raises(DataLensValidationError, match="exceed the 36-column grid"):
         _apply_update(dash.update.resize_item("a", w=12).to_spec())
 
 
@@ -196,7 +196,7 @@ def test_move_creating_a_new_overlap_still_fails() -> None:
     dash = _dashboard(
         [_tab("t1", items=[_text_item("a"), _text_item("b")], layout=[_lay("a", 0, 0, 12, 6), _lay("b", 12, 0, 12, 6)])]
     )
-    with pytest.raises(DatalensValidationError, match="overlap"):
+    with pytest.raises(DataLensValidationError, match="overlap"):
         _apply_update(dash.update.move_item("a", x=12).to_spec())
 
 
@@ -215,7 +215,7 @@ def test_unpin_item_without_layout_entry_fails_loud() -> None:
     # fail-semantics parity with pin/move/resize: an item present in items but
     # missing its layout entry (defective raw) must not unpin silently
     dash = _dashboard([_tab("t1", items=[_text_item("a")], layout=[])])
-    with pytest.raises(DatalensValidationError, match="unpin_item: no layout entry"):
+    with pytest.raises(DataLensValidationError, match="unpin_item: no layout entry"):
         _apply_update(dash.update.unpin_item("a").to_spec())
 
 
@@ -224,7 +224,7 @@ def test_apply_layout_op_checks_bounds_at_apply_time() -> None:
     # the applier itself must reject out-of-grid geometry like move/resize do
     dash = _one_item(_text_item("a"), _lay("a", 0, 0, 12, 4))
     spec = replace(dash.update.to_spec(), ops=(ApplyLayoutOp(tab_id=None, positions=(("a", 30, 0, 12, 4),)),))
-    with pytest.raises(DatalensValidationError, match="exceed the 36-column grid"):
+    with pytest.raises(DataLensValidationError, match="exceed the 36-column grid"):
         _apply_update(spec)
 
 
@@ -243,7 +243,7 @@ def test_swap_identical_geometry_is_noop_and_skips_overlap_gate() -> None:
 
 def test_swap_same_item_rejected() -> None:
     dash = _one_item(_text_item("a"), _lay("a", 0, 0, 12, 4))
-    with pytest.raises(DatalensValidationError, match="two different items"):
+    with pytest.raises(DataLensValidationError, match="two different items"):
         dash.update.swap_items("a", "a")
 
 
@@ -266,7 +266,7 @@ def test_swap_shared_ambiguous_needs_tab() -> None:
         ]
     )
     # "a" and "s" appear together on both tabs -> ambiguous without tab=
-    with pytest.raises(DatalensValidationError, match="pass tab= to disambiguate"):
+    with pytest.raises(DataLensValidationError, match="pass tab= to disambiguate"):
         _apply_update(dash.update.swap_items("a", "s").to_spec())
     applied = _apply_update(dash.update.swap_items("a", "s", tab="t1").to_spec())
     assert _layout_map(applied, 0)["a"] == (0, 6, 8, 2, None)
@@ -288,13 +288,13 @@ def test_shift_below_moves_only_at_or_after_threshold() -> None:
 
 def test_shift_below_negative_result_rejected() -> None:
     dash = _one_item(_text_item("a"), _lay("a", 0, 5, 12, 4))
-    with pytest.raises(DatalensValidationError, match="above the grid"):
+    with pytest.raises(DataLensValidationError, match="above the grid"):
         _apply_update(dash.update.shift_below(y_threshold=0, dy=-10).to_spec())
 
 
 def test_shift_below_zero_dy_rejected() -> None:
     dash = _one_item(_text_item("a"), _lay("a", 0, 0, 12, 4))
-    with pytest.raises(DatalensValidationError, match="dy must be a non-zero int"):
+    with pytest.raises(DataLensValidationError, match="dy must be a non-zero int"):
         dash.update.shift_below(y_threshold=0, dy=0)
 
 
@@ -319,7 +319,7 @@ def test_unpin_is_idempotent_when_not_pinned() -> None:
 
 def test_pin_selector_is_rejected_pending_d5_6() -> None:
     dash = _one_item(_group_control("grp", ["m"]), _lay("grp", 0, 0, 8, 2))
-    with pytest.raises(DatalensValidationError, match="deferred to D5"):
+    with pytest.raises(DataLensValidationError, match="deferred to D5"):
         dash.update.pin_item("grp")
 
 
@@ -342,7 +342,7 @@ def test_apply_layout_foreign_tab_id_fails_loud_at_call_time() -> None:
             _tab("t2", items=[_text_item("b")], layout=[_lay("b", 0, 0, 12, 4)]),
         ]
     )
-    with pytest.raises(DatalensValidationError, match="not on tab"):
+    with pytest.raises(DataLensValidationError, match="not on tab"):
         dash.update.apply_layout({"a": (0, 8, 12, 4)}, tab="t2")
 
 
@@ -366,7 +366,7 @@ def test_move_creating_overlap_is_rejected() -> None:
     dash = _dashboard(
         [_tab("t1", items=[_text_item("a"), _text_item("b")], layout=[_lay("a", 0, 0, 12, 4), _lay("b", 0, 10, 12, 4)])]
     )
-    with pytest.raises(DatalensValidationError, match="items 'a' and 'b' overlap"):
+    with pytest.raises(DataLensValidationError, match="items 'a' and 'b' overlap"):
         _apply_update(dash.update.move_item("b", y=0).to_spec())
 
 
@@ -431,7 +431,7 @@ def test_layout_op_fails_loud_when_an_occurrence_lacks_layout(apply: object) -> 
     # the "all occurrences" contract: mutating only the tab that HAS a layout
     # entry would silently desync the identical-id replicas — fail instead
     dash = _shared_on_two_tabs_missing_layout_on_second()
-    with pytest.raises(DatalensValidationError, match="occurs on tab 't2' but has 0 layout entries"):
+    with pytest.raises(DataLensValidationError, match="occurs on tab 't2' but has 0 layout entries"):
         _apply_update(apply(dash.update).to_spec())  # type: ignore[operator]
 
 

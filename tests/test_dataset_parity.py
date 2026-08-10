@@ -11,7 +11,7 @@ from datalens_sdk import JoinCondition
 from datalens_sdk.converter.dataset import DatasetConverter
 from datalens_sdk.domain.dataset import Dataset, Source, SourcesProxy
 from datalens_sdk.domain.dataset_update import DatasetUpdate
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 _RLS2_FIELD = "rls2"
 
@@ -644,7 +644,7 @@ def test_delete_default_filter_buffers_correct_action() -> None:
 def test_update_default_filter_raises_on_unknown_id() -> None:
     ds = _dataset_for_update()
     upd = DatasetUpdate(dataset=ds)
-    with pytest.raises(DatalensValidationError, match="not found"):
+    with pytest.raises(DataLensValidationError, match="not found"):
         upd.update_default_filter(filter_id="bad", operator="GT", values=["0"])
 
 
@@ -676,7 +676,7 @@ def test_delete_relation_buffers_correct_action() -> None:
 def test_update_relation_raises_on_unknown_id() -> None:
     ds = _dataset_for_update()
     upd = DatasetUpdate(dataset=ds)
-    with pytest.raises(DatalensValidationError, match="not found"):
+    with pytest.raises(DataLensValidationError, match="not found"):
         upd.update_relation(relation_id="bad", type="left")
 
 
@@ -710,7 +710,7 @@ def test_update_relation_raises_on_ambiguous_field_ref() -> None:
         raw=ds_dict.raw,
     )
     upd = DatasetUpdate(dataset=ds_with_ambiguous)
-    with pytest.raises(DatalensValidationError, match="ambiguous"):
+    with pytest.raises(DataLensValidationError, match="ambiguous"):
         upd.update_relation(
             relation_id="rel-1", conditions=[JoinCondition(left="order_date", right="order_date", operator="eq")]
         )

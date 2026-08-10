@@ -176,7 +176,7 @@ wb = wb.move(target_collection, name="Q3 archived")  # move + rename in one call
 fld = fld.move(EntryLocation.path("Users/me/archive"))  # keep the name
 ```
 
-Every `move()` returns the updated object — rebind the variable, and verify via `parent_id` / `collection_id` / `key`. Wrong destination kind (e.g. a workbook passed to `Folder.move`) raises `DatalensValidationError`; a destination from another installation raises `NotSupportedError`. To "move" an entry between workbooks or folders, use the export/clone workflow in [serialization.md](serialization.md) instead — and remember the copy gets a new id.
+Every `move()` returns the updated object — rebind the variable, and verify via `parent_id` / `collection_id` / `key`. Wrong destination kind (e.g. a workbook passed to `Folder.move`) raises `DataLensValidationError`; a destination from another installation raises `NotSupportedError`. To "move" an entry between workbooks or folders, use the export/clone workflow in [serialization.md](serialization.md) instead — and remember the copy gets a new id.
 
 For a path-located create or move, `name` must not contain `/` — the directory goes in the location, the leaf name in `name=`.
 

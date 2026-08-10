@@ -6,7 +6,7 @@ import pytest
 
 from datalens_sdk import DashboardCreate, DashboardTab, EntryLocation, Layout, Position
 from datalens_sdk.domain.specs.dashboard import GroupControlItem, LayoutItemSpec
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 
 def _laid_out(tab: DashboardTab) -> dict[str, tuple[int, int, int, int, str | None]]:
@@ -165,7 +165,7 @@ def test_layout_stack() -> None:
     ],
 )
 def test_layout_rejects_bad_input(call: object) -> None:
-    with pytest.raises(DatalensValidationError):
+    with pytest.raises(DataLensValidationError):
         call()  # type: ignore[operator]
 
 
@@ -196,7 +196,7 @@ def test_apply_layout_empty_is_noop() -> None:
 
 def test_apply_layout_unknown_id_fails_loud() -> None:
     tab = DashboardTab("T").add_text("a", item_id="a", at=(0, 0, 12, 4))
-    with pytest.raises(DatalensValidationError, match="unknown item id 'ghost'"):
+    with pytest.raises(DataLensValidationError, match="unknown item id 'ghost'"):
         tab.apply_layout({"ghost": Position(0, 0, 12, 4)})
 
 
@@ -214,7 +214,7 @@ def test_apply_layout_rejects_member_of_multi_selector_group() -> None:
         .add_selector(item_id="m2", param_name="p2", element="input", group="g")
         .add_group_selector(group="g", item_id="grp", at=(0, 0, 36, 2))
     )
-    with pytest.raises(DatalensValidationError, match="member of a multi-selector group"):
+    with pytest.raises(DataLensValidationError, match="member of a multi-selector group"):
         tab.apply_layout({"m1": Position(0, 5, 12, 2)})
 
 
@@ -249,7 +249,7 @@ def test_next_auto_position_is_a_pure_read() -> None:
 def test_next_auto_position_honors_size_and_rejects_unknown_type() -> None:
     tab = DashboardTab("T").add_chart("ch-a", title="A", item_id="a")
     assert tab.next_auto_position("widget", size=(30, 4)) == Position(0, 12, 30, 4)  # 12+30>36 wraps
-    with pytest.raises(DatalensValidationError, match="Unknown item type"):
+    with pytest.raises(DataLensValidationError, match="Unknown item type"):
         tab.next_auto_position("banner")  # type: ignore[arg-type]
 
 
@@ -279,21 +279,21 @@ def test_size_flows_and_moves_the_cursor() -> None:
 
 
 def test_size_with_explicit_at_is_rejected() -> None:
-    with pytest.raises(DatalensValidationError, match="size= applies to auto placement"):
+    with pytest.raises(DataLensValidationError, match="size= applies to auto placement"):
         DashboardTab("T").add_text("x", at=(0, 0, 12, 6), size=(12, 6))
 
 
 def test_size_validation_fails_loud() -> None:
-    with pytest.raises(DatalensValidationError, match="size must be a"):
+    with pytest.raises(DataLensValidationError, match="size must be a"):
         DashboardTab("T").add_text("x", size=(12, 6, 1))  # type: ignore[arg-type]
-    with pytest.raises(DatalensValidationError, match="w and h must be > 0"):
+    with pytest.raises(DataLensValidationError, match="w and h must be > 0"):
         DashboardTab("T").add_text("x", size=(12, 0))
-    with pytest.raises(DatalensValidationError, match="must be <= 36"):
+    with pytest.raises(DataLensValidationError, match="must be <= 36"):
         DashboardTab("T").add_text("x", size=(40, 6))
 
 
 def test_size_on_grouped_selector_member_is_rejected() -> None:
-    with pytest.raises(DatalensValidationError, match="belong to add_group_selector"):
+    with pytest.raises(DataLensValidationError, match="belong to add_group_selector"):
         DashboardTab("T").add_selector(param_name="p", element="input", group="g", size=(6, 2))
 
 
@@ -327,7 +327,7 @@ def test_space_leaves_a_vertical_gap_without_wire_artifacts() -> None:
 
 
 def test_space_validates_h_and_flows_per_pin_group() -> None:
-    with pytest.raises(DatalensValidationError, match="space h must be a positive int"):
+    with pytest.raises(DataLensValidationError, match="space h must be a positive int"):
         DashboardTab("T").space(0)
     tab = DashboardTab("T").add_text("p", item_id="p", pinned=True).space(2, pinned=True)
     tab.add_text("q", item_id="q", pinned=True)
@@ -364,5 +364,5 @@ def test_pinned_zones_fixed_and_collapsible() -> None:
     assert laid["g"] == (12, 0, 12, 6, "__fixGCont")  # same zone flows together
     assert laid["b"] == (0, 0, 12, 6, None)  # zones and default flow are independent
     assert tab.content_bottom(pinned="fixed") == 2
-    with pytest.raises(DatalensValidationError, match='pinned must be "fixed", "collapsible" or a bool'):
+    with pytest.raises(DataLensValidationError, match='pinned must be "fixed", "collapsible" or a bool'):
         DashboardTab("T").add_text("x", pinned="header")  # type: ignore[arg-type]

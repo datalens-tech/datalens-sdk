@@ -15,7 +15,7 @@ from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.specs.editor_chart import EditorChartCreateSpec
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -246,7 +246,7 @@ def test_editor_chart_update_invalid_mode_raises() -> None:
     ops = cast(ChartOperations, _FakeOps())
     chart = EditorChart(id="e1", wire_type="advanced-chart_node", _operations=ops)
     update = chart.update
-    with pytest.raises(DatalensValidationError, match="mode must be"):
+    with pytest.raises(DataLensValidationError, match="mode must be"):
         update.mode("invalid_mode")  # type: ignore[arg-type]
 
 
@@ -473,7 +473,7 @@ def test_editor_chart_update_raises_on_409() -> None:
     )
     client = dl.DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
     chart = client.get.editor_chart(by_id="e1")
-    with pytest.raises(dl.DatalensAPIError):
+    with pytest.raises(dl.DataLensAPIError):
         chart.update.sources("new").execute()
     update_requests = [r for r in recorder.requests if r.url.path == "/rpc/updateEditorChart"]
     assert len(update_requests) == 1

@@ -7,7 +7,7 @@ from datalens_sdk.domain.entry_location import EntryLocation, resolve_entry_loca
 from datalens_sdk.domain.ports import DashboardOperations
 from datalens_sdk.domain.raw_resource import _validate_target_installation
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.artifacts import DashboardSnapshotView
 from datalens_sdk.serialization.json_types import JsonValue
 
@@ -41,7 +41,7 @@ class RawDashboardCreate:
 
     def build(self) -> Dashboard:
         if self._operations is None:
-            raise DatalensConfigurationError("Object is not bound to client operations. Use a client namespace.")
+            raise DataLensConfigurationError("Object is not bound to client operations. Use a client namespace.")
         return self._operations.create_dashboard_from_raw(self._spec)
 
 
@@ -60,7 +60,7 @@ class RawDashboardReplace:
             client_installation=installation,
         )
         if not target.id:
-            raise DatalensValidationError("Cannot replace a dashboard without an id")
+            raise DataLensValidationError("Cannot replace a dashboard without an id")
         self._spec = RawReplaceSpec(
             response_snapshot=DashboardSnapshotView.capture(response_snapshot),
             target_id=target.id,
@@ -76,7 +76,7 @@ class RawDashboardReplace:
         lock_token: str | None = None,
     ) -> Dashboard:
         if self._operations is None:
-            raise DatalensConfigurationError("Object is not bound to client operations. Use a client namespace.")
+            raise DataLensConfigurationError("Object is not bound to client operations. Use a client namespace.")
         return self._operations.replace_dashboard_from_raw(
             self._spec,
             publish=publish,

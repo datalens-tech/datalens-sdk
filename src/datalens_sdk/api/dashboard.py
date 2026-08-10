@@ -16,7 +16,7 @@ from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
 from datalens_sdk.domain.ports import DashboardOperations, NavigationOperations
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
 from datalens_sdk.errors import (
-    DatalensValidationError,
+    DataLensValidationError,
     translate_dto_validation_error,
 )
 from datalens_sdk.http import DEFAULT_RETRY_POLICY, TRANSIENT_RETRY_POLICY, HTTPClientProtocol, RetryPolicy
@@ -179,7 +179,7 @@ class DashboardService(DashboardOperations):
         lock_token: str | None = None,
     ) -> Dashboard:
         if not dashboard.id:
-            raise DatalensValidationError("Cannot publish a dashboard without an id")
+            raise DataLensValidationError("Cannot publish a dashboard without an id")
         raw_meta = dashboard.raw.get("meta")
         raw_annotation = dashboard.raw.get("annotation")
         try:

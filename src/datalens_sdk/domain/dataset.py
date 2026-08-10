@@ -43,7 +43,7 @@ from datalens_sdk.domain.fields import DatasetField, FieldLike, FieldsProxy
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import DatasetOperations
 from datalens_sdk.domain.specs.dataset import DatasetCreateSpec
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError, NotSupportedError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError, NotSupportedError
 from datalens_sdk.serialization.artifacts import ArtifactPath, write_dataset_artifact
 from datalens_sdk.serialization.json_types import JsonValue
 
@@ -135,7 +135,7 @@ class SourceBuilder:
                 f"Dataset source {source_type!r} requires {expected_connection_type!r}, got {self._connection.type!r}"
             )
         if not self._connection.id:
-            raise DatalensValidationError("Dataset source requires a connection with an id")
+            raise DataLensValidationError("Dataset source requires a connection with an id")
         return Source(
             id=str(uuid4()),
             source_type=source_type,
@@ -153,7 +153,7 @@ class SourceCreate:
 
     def build(self, *, strict: bool = False) -> Source:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         schema, valid = self._operations.validate_source(self._source, strict=strict)
         return Source(
             id=self._source.id,
@@ -220,7 +220,7 @@ class DatasetCreate:
         drop_duplicates: bool = False,
     ) -> DatasetCreate:
         if not conditions:
-            raise DatalensValidationError("'conditions' must not be empty")
+            raise DataLensValidationError("'conditions' must not be empty")
         self._relations.append(
             {
                 "type": type,
@@ -417,7 +417,7 @@ class DatasetCreate:
 
     def build(self) -> Dataset:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         return self._operations.create_dataset(self)
 
 
@@ -492,7 +492,7 @@ class Dataset:
     @property
     def update(self) -> DatasetUpdate:
         if not self.id:
-            raise DatalensValidationError("Cannot update a dataset without an id")
+            raise DataLensValidationError("Cannot update a dataset without an id")
         return DatasetUpdate(dataset=self, operations=self._operations)
 
     def to_file(self, path: ArtifactPath) -> Path:
@@ -505,16 +505,16 @@ class Dataset:
 
     def delete(self) -> None:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot delete a dataset without an id")
+            raise DataLensValidationError("Cannot delete a dataset without an id")
         self._operations.delete_dataset(self.id)
 
     def rename(self, name: str) -> Dataset:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot rename a dataset without an id")
+            raise DataLensValidationError("Cannot rename a dataset without an id")
         validate_entry_name(name=name, location=self.location)
         return self._operations.rename_dataset(self, name)
 
@@ -527,9 +527,9 @@ class Dataset:
         scope: EntryScope | None = None,
     ) -> Pager[EntryRelation]:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot get relations for a dataset without an id")
+            raise DataLensValidationError("Cannot get relations for a dataset without an id")
         return self._operations.get_entry_relations(
             self.id,
             RelationOptions(

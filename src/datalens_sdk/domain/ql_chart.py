@@ -12,7 +12,7 @@ from datalens_sdk.domain.chart_types import ChartCategory, QLCast, QLParamType
 from datalens_sdk.domain.entry_types import EntryUpdateMode
 from datalens_sdk.domain.fields import FieldsProxy
 from datalens_sdk.domain.ports import ChartOperations
-from datalens_sdk.errors import DatalensConfigurationError, DatalensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.connection import Connection
@@ -32,7 +32,7 @@ class QLColumn:
 
     def __post_init__(self) -> None:
         if self.cast not in _QL_CAST_VALUES:
-            raise DatalensValidationError(f"QLColumn cast must be one of {sorted(_QL_CAST_VALUES)}, got {self.cast!r}")
+            raise DataLensValidationError(f"QLColumn cast must be one of {sorted(_QL_CAST_VALUES)}, got {self.cast!r}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,9 +51,9 @@ class QLParam:
 
     def __post_init__(self) -> None:
         if self.type not in _QL_PARAM_TYPES:
-            raise DatalensValidationError(f"QLParam type must be one of {sorted(_QL_PARAM_TYPES)}, got {self.type!r}")
+            raise DataLensValidationError(f"QLParam type must be one of {sorted(_QL_PARAM_TYPES)}, got {self.type!r}")
         if self.type == "date-interval" and not isinstance(self.default_value, Mapping):
-            raise DatalensValidationError("QLParam(type='date-interval') requires default_value to be a Mapping")
+            raise DataLensValidationError("QLParam(type='date-interval') requires default_value to be a Mapping")
 
     @classmethod
     def number(cls, name: str, *, default: str) -> Self:
@@ -158,7 +158,7 @@ class QLChartUpdate:
 
     def mode(self, value: EntryUpdateMode) -> Self:
         if value not in get_args(EntryUpdateMode):
-            raise DatalensValidationError(f"mode must be one of {get_args(EntryUpdateMode)}, got {value!r}")
+            raise DataLensValidationError(f"mode must be one of {get_args(EntryUpdateMode)}, got {value!r}")
         self._mode = value
         return self
 
@@ -169,7 +169,7 @@ class QLChartUpdate:
 
     def connection(self, connection: Connection) -> Self:
         if not connection.id:
-            raise DatalensValidationError("QL chart connection requires a Connection with an id")
+            raise DataLensValidationError("QL chart connection requires a Connection with an id")
         self._connection_obj = connection
         return self
 
@@ -185,17 +185,17 @@ class QLChartUpdate:
     def _active_viz_spec(self) -> tuple[str, Mapping[str, object]]:
         viz_id = self._chart.visualization_id
         if viz_id is None:
-            raise DatalensConfigurationError("QL chart has no active visualization")
+            raise DataLensConfigurationError("QL chart has no active visualization")
         spec = get_ql_viz_spec(viz_id)
         if not spec:
-            raise DatalensConfigurationError(f"Unsupported active QL visualization {viz_id!r}")
+            raise DataLensConfigurationError(f"Unsupported active QL visualization {viz_id!r}")
         return viz_id, spec
 
     def _resolve_placeholder_id(self, placeholder_id: str) -> str:
         viz_id, spec = self._active_viz_spec()
         spec_placeholders = spec.get("placeholders")
         if not isinstance(spec_placeholders, Sequence):
-            raise DatalensConfigurationError(f"QL visualization {viz_id!r} has no supported placeholders")
+            raise DataLensConfigurationError(f"QL visualization {viz_id!r} has no supported placeholders")
 
         canonical_id: str | None = None
         allowed: list[str] = []
@@ -209,7 +209,7 @@ class QLChartUpdate:
             if value == placeholder_id or value.replace("-", "_") == placeholder_id:
                 canonical_id = value
         if canonical_id is None:
-            raise DatalensConfigurationError(
+            raise DataLensConfigurationError(
                 f"Placeholder {placeholder_id!r} is not applicable to QL visualization {viz_id!r}. "
                 f"Allowed placeholders: {allowed}"
             )
@@ -226,7 +226,7 @@ class QLChartUpdate:
             else set()
         )
         if canonical_id not in active_ids:
-            raise DatalensConfigurationError(
+            raise DataLensConfigurationError(
                 f"Active QL visualization {viz_id!r} does not contain placeholder {canonical_id!r}"
             )
         return canonical_id
@@ -252,7 +252,7 @@ class QLChartUpdate:
             "shapes": "allowShapes",
         }.get(section)
         if capability is not None and (not isinstance(viz, Mapping) or viz.get(capability) is not True):
-            raise DatalensConfigurationError(f"Decoration {section!r} is not applicable to QL visualization {viz_id!r}")
+            raise DataLensConfigurationError(f"Decoration {section!r} is not applicable to QL visualization {viz_id!r}")
         self._data_section_edits[section] = self._columns(columns)
         return self
 
@@ -304,7 +304,7 @@ class QLChartUpdate:
 
     def execute(self) -> QLChart:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         return self._operations.update_ql_chart(self)
 
 
@@ -364,12 +364,12 @@ class QLChart(Chart):
     @property
     def update(self) -> QLChartUpdate:
         if not self.id:
-            raise DatalensValidationError("Cannot update a QL chart without an id")
+            raise DataLensValidationError("Cannot update a QL chart without an id")
         return QLChartUpdate(chart=self, operations=self._operations)
 
     def delete(self) -> None:
         if self._operations is None:
-            raise DatalensConfigurationError(_UNBOUND)
+            raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
-            raise DatalensValidationError("Cannot delete a QL chart without an id")
+            raise DataLensValidationError("Cannot delete a QL chart without an id")
         self._operations.delete_ql_chart(self.id)

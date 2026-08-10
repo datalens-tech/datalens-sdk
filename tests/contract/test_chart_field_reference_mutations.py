@@ -8,7 +8,7 @@ import pytest
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.fields import DatasetField
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 Carrier = Literal["placeholder", "filter", "sort", "color", "label", "segment", "shape", "tooltip"]
 Operation = Literal["replace", "delete", "aggregation", "dataset"]
@@ -315,14 +315,14 @@ def test_wizard_chart_fields_rejects_conflicting_snapshots_for_one_guid() -> Non
     data = _data_for_carrier("placeholder")
     data["colors"] = [_field(title="Conflicting title")]
 
-    with pytest.raises(DatalensValidationError, match="conflicting snapshots"):
+    with pytest.raises(DataLensValidationError, match="conflicting snapshots"):
         list(_chart(data).fields)
 
 
 def test_replace_field_rejects_unknown_string_replacement() -> None:
     chart = _chart(_data_for_carrier("placeholder"))
 
-    with pytest.raises(DatalensValidationError, match="not placed"):
+    with pytest.raises(DataLensValidationError, match="not placed"):
         _payload(chart.update.replace_field(_OLD_GUID, "unknown-guid"))
 
 
@@ -334,18 +334,18 @@ def test_replace_field_rejects_ambiguous_string_replacement() -> None:
     ]
     chart = _chart(data)
 
-    with pytest.raises(DatalensValidationError, match="ambiguous"):
+    with pytest.raises(DataLensValidationError, match="ambiguous"):
         _payload(chart.update.replace_field(_OLD_GUID, "Duplicate"))
 
 
 def test_structural_mutations_reject_unknown_targets_instead_of_becoming_noops() -> None:
     chart = _chart(_data_for_carrier("placeholder"))
 
-    with pytest.raises(DatalensValidationError, match="not referenced"):
+    with pytest.raises(DataLensValidationError, match="not referenced"):
         _payload(chart.update.replace_field("unknown-guid", _replacement_field()))
-    with pytest.raises(DatalensValidationError, match="not referenced"):
+    with pytest.raises(DataLensValidationError, match="not referenced"):
         _payload(chart.update.delete_field("unknown-guid"))
-    with pytest.raises(DatalensValidationError, match="chart datasets"):
+    with pytest.raises(DataLensValidationError, match="chart datasets"):
         _payload(chart.update.replace_dataset(old="unknown-dataset", new=_NEW_DATASET))
 
 
@@ -380,7 +380,7 @@ def test_structural_mutations_reject_staged_edits_that_restore_old_guid(
         apply_structural_mutation()
         apply_edit()
 
-    with pytest.raises(DatalensValidationError, match=r"left stale guid 'old-guid'"):
+    with pytest.raises(DataLensValidationError, match=r"left stale guid 'old-guid'"):
         _payload(update)
 
 

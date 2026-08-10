@@ -15,7 +15,7 @@ from datalens_sdk.domain.dashboard_types import validate_optional_text
 from datalens_sdk.domain.editor_chart import EditorChart
 from datalens_sdk.domain.specs.dashboard import WidgetTabSpec
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DatalensValidationError
+from datalens_sdk.errors import DataLensValidationError
 
 DashboardChartParams = Mapping[str, "str | Sequence[str]"]
 
@@ -65,7 +65,7 @@ def _normalize_params(params: DashboardChartParams | None) -> Mapping[str, tuple
             if all(isinstance(entry, str) for entry in values):
                 normalized[key] = values
                 continue
-        raise DatalensValidationError(f"Chart param {key!r} must be a string or a sequence of strings, got {value!r}")
+        raise DataLensValidationError(f"Chart param {key!r} must be a string or a sequence of strings, got {value!r}")
     return MappingProxyType(normalized)
 
 
@@ -81,15 +81,15 @@ def _resolve_chart_ref(
     """
     if isinstance(chart, str):
         if not chart:
-            raise DatalensValidationError("chart id must not be an empty string")
+            raise DataLensValidationError("chart id must not be an empty string")
         if not title:
-            raise DatalensValidationError("title is required when the chart is passed as an id string")
+            raise DataLensValidationError("title is required when the chart is passed as an id string")
         return chart, title, ""
     if not chart.id:
-        raise DatalensValidationError("Cannot place a chart without an id on a dashboard")
+        raise DataLensValidationError("Cannot place a chart without an id on a dashboard")
     resolved_title = title if title is not None else chart.name
     if not resolved_title:
-        raise DatalensValidationError(f"Chart {chart.id!r} has no name; pass an explicit title=")
+        raise DataLensValidationError(f"Chart {chart.id!r} has no name; pass an explicit title=")
     return chart.id, resolved_title, chart.installation or ""
 
 
