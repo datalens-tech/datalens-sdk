@@ -159,8 +159,6 @@ do not import or remap dependencies.
 
 ## Development
 
-Always use the canonical `DataLens` capitalization—with a capital `L`—in prose, code identifiers, and schema names.
-
 The project uses [Nox](https://nox.thea.codes/) for every development check:
 
 ```bash
