@@ -19,7 +19,7 @@ from datalens_sdk.runtime import (
     _TableWizardChartCreate,
 )
 from datalens_sdk.domain.entry_location import EntryLocation
-from datalens_sdk.domain.chart_types import CombinedLayerType, DiscretePaletteId, FilterOperation, FunnelShape, GeoLayerType, GradientPaletteId, MapType, MeasureFormat, PaletteId, ShapeStyle
+from datalens_sdk.domain.chart_types import CombinedLayerType, DiscretePaletteId, FilterOperation, FunnelShape, GeoLayerFilter, GeoLayerType, GradientPaletteId, MapType, MeasureFormat, PaletteId, ShapeStyle
 from datalens_sdk.domain.fields import DatasetField, FieldLike
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.ports import ChartOperations
@@ -917,8 +917,8 @@ class GeolayerWizardChartCreate(_GeolayerWizardChartCreate):
     def add_dataset(self, dataset: Dataset) -> Self:
         return self._geo_add_dataset(dataset)
 
-    def add_layer(self, layer_type: GeoLayerType, *, geopoint: FieldLike | str | None = None, polygon: FieldLike | str | None = None, polyline: FieldLike | str | None = None, size: FieldLike | str | None = None, color: FieldLike | str | None = None, tooltips: Sequence[FieldLike | str] = (), labels: Sequence[FieldLike | str] = (), alpha: int = 80, name: str | None = None, dataset: Dataset | None = None) -> Self:
-        return self._geo_add_layer(layer_type, geopoint=geopoint, polygon=polygon, polyline=polyline, size=size, color=color, tooltips=tooltips, labels=labels, alpha=alpha, name=name, dataset=dataset)
+    def add_layer(self, layer_type: GeoLayerType, *, geopoint: FieldLike | str | None = None, polygon: FieldLike | str | None = None, polyline: FieldLike | str | None = None, grouping: FieldLike | str | None = None, size: FieldLike | str | None = None, color: FieldLike | str | None = None, color_mode: Literal['2-point', '3-point'] | None = None, color_palette: GradientPaletteId | None = None, color_reversed: bool | None = None, filters: Sequence[GeoLayerFilter] = (), tooltips: Sequence[FieldLike | str] = (), labels: Sequence[FieldLike | str] = (), sort_by: FieldLike | str | None = None, sort_direction: Literal['asc', 'desc'] = 'asc', alpha: int = 80, name: str | None = None, dataset: Dataset | None = None) -> Self:
+        return self._geo_add_layer(layer_type, geopoint=geopoint, polygon=polygon, polyline=polyline, grouping=grouping, size=size, color=color, color_mode=color_mode, color_palette=color_palette, color_reversed=color_reversed, filters=filters, tooltips=tooltips, labels=labels, sort_by=sort_by, sort_direction=sort_direction, alpha=alpha, name=name, dataset=dataset)
 
     def map_type(self, *, mode: MapType) -> Self:
         return self._map_type(mode=mode)
@@ -929,8 +929,17 @@ class GeolayerWizardChartCreate(_GeolayerWizardChartCreate):
     def add_aggregated_measure(self, field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str | None = None, guid: str | None = None) -> Self:
         return self._add_aggregated_measure(field, aggregation=aggregation, name=name, guid=guid)
 
+    def add_date_filter(self, field: FieldLike | str, *, start: str, end: str, inclusive_end: bool = True) -> Self:
+        return self._add_date_filter(field, start=start, end=end, inclusive_end=inclusive_end)
+
+    def add_filter(self, field: FieldLike | str, *, operation: FilterOperation, values: Sequence[str] = ()) -> Self:
+        return self._add_filter(field, operation=operation, values=values)
+
     def add_local_field(self, *, title: str, formula: str, guid: str | None = None, cast: str = 'float', measure: bool = False, aggregation: str | None = None, formatting: MeasureFormat | None = None) -> Self:
         return self._add_local_field(title=title, formula=formula, guid=guid, cast=cast, measure=measure, aggregation=aggregation, formatting=formatting)
+
+    def add_relative_date_filter(self, field: FieldLike | str, *, start_offset: str, end_offset: str) -> Self:
+        return self._add_relative_date_filter(field, start_offset=start_offset, end_offset=end_offset)
 
     def chart_title(self, *, text: str = '', mode: Literal['show', 'hide'] = 'show') -> Self:
         return self._chart_title(text=text, mode=mode)

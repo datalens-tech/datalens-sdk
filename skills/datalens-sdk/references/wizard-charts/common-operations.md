@@ -242,7 +242,7 @@ do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 | `.size(fields: Sequence[FieldRef])` | C/U | Scatter size; capacity is chart-specific. |
 | `.add_layer(layer_type: CombinedLayerType, *, y=None, y2=None, name=None)` | C | Combined only; require at least one of `y`/`y2`. |
 | `.add_dataset(dataset: Dataset)` | C | Geolayer only; register an additional layer dataset. |
-| `.add_layer(layer_type: GeoLayerType, *, geopoint=None, polygon=None, polyline=None, size=None, color=None, tooltips=(), labels=(), alpha=80, name=None, dataset=None)` | C | Geolayer only; see constraints below. |
+| `.add_layer(layer_type: GeoLayerType, *, ...)` | C | Geolayer only; see the [full signature and layer capabilities](chart-geolayer.md#fluent-operations). |
 
 ### Fields, Filters, Sorting, and Metadata
 
@@ -309,7 +309,7 @@ non-negative palette-index string such as `"2"` for each override value.
 | Mode | Palettes |
 |---|---|
 | `"2-point"` | `"blue"`, `"orange-yellow"`, `"yellow"` |
-| `"3-point"` | `"pink-gray-green"`, `"red-orange-green"` |
+| `"3-point"` | `"orange-gray-blue"`, `"pink-gray-green"`, `"red-orange-green"` |
 
 ### Table Operations
 
@@ -360,15 +360,15 @@ review the result before publishing.
 - `MeasureFormat.format`: `"number"`, `"percent"`, `"currency"`.
 - `MeasureFormat.unit`: `"auto"`, `"k"`, `"m"`, `"bln"`.
 - `CombinedLayerType`: `"column"`, `"line"`, `"area"`.
-- `GeoLayerType`: `"geopoint"`, `"geopolygon"`, `"heatmap"`, `"polyline"`.
+- `GeoLayerType`: `"geopoint"`, `"geopoint-with-cluster"`, `"geopolygon"`, `"heatmap"`, `"polyline"`.
 - `ShapeStyle`: `"Solid"`, `"Dash"`, `"Dot"`, `"ShortDash"`, `"ShortDot"`,
   `"ShortDashDot"`, `"ShortDashDotDot"`, `"LongDash"`, `"DashDot"`,
   `"LongDashDot"`, `"LongDashDotDot"`.
 - Discrete palettes: `"datalens-classic-20"`, `"classic20"`,
   `"datalens-neo-20"`, `"defaultScheme"`, `"neutral20"`, `"taxi-paired"`,
   `"taxi-pastel"`, `"taxi9"`, `"yandex-cloud"`.
-- Gradient palettes: `"blue"`, `"orange-yellow"`, `"pink-gray-green"`,
-  `"red-orange-green"`, `"yellow"`.
+- Gradient palettes: `"blue"`, `"orange-gray-blue"`, `"orange-yellow"`,
+  `"pink-gray-green"`, `"red-orange-green"`, `"yellow"`.
 
 ### Validation Rules
 
@@ -386,7 +386,8 @@ review the result before publishing.
   requires the same field in its `dimensions` section.
 - `color_by_measure` requires a mode-compatible gradient palette: sequential
   `blue`, `orange-yellow`, and `yellow` support only `"2-point"`; diverging
-  `pink-gray-green` and `red-orange-green` support only `"3-point"`.
+  `orange-gray-blue`, `pink-gray-green`, and `red-orange-green` support only
+  `"3-point"`.
 - `color_by_measure_name` and `shape_by_measure_name` require at least two
   measures across the chart's supported measure placeholders. Override-map
   keys must resolve to measures already placed there.
@@ -400,22 +401,18 @@ review the result before publishing.
   exactly three for `"3-point"` when thresholds are supplied.
 - `column_bars(color_type="gradient")` requires `gradient_palette`.
   Sequential palettes (`blue`, `orange-yellow`, `yellow`) support only
-  `"2-point"`; diverging palettes (`pink-gray-green`, `red-orange-green`)
-  support only `"3-point"`.
+  `"2-point"`; diverging palettes (`orange-gray-blue`, `pink-gray-green`,
+  `red-orange-green`) support only `"3-point"`.
 - `column_bars` color arguments are mutually exclusive by `color_type`:
   use `color`/`palette`/`color_index` for `"one-color"`;
   `color_positive`/`color_negative` and their indexes for `"two-color"`;
   `gradient_palette` for `"gradient"`.
 - Table item mutations must target a field already placed in a placeholder.
 - Combined `.add_layer()` requires at least one of `y` or `y2`.
-- Geolayer `.add_layer()` requires `geopoint` for `"geopoint"`/`"heatmap"`,
-  `polygon` for `"geopolygon"`, and `polyline` for `"polyline"`. Passing
-  `dataset=` also registers that dataset.
+- For geolayer field types, layer capabilities, filter scopes, gradients,
+  polyline ordering, and lifecycle constraints, use the
+  [canonical geolayer contract](chart-geolayer.md).
 - `font_color` accepts a full six-digit hex color such as `#0FA08D`.
-
-Geolayer topology and map settings are create-only. Re-fetch the created chart
-before relying on persisted optional decorations. The SDK can inspect saved
-metadata but cannot render the map to verify its visual result.
 
 ## Minimal Examples
 

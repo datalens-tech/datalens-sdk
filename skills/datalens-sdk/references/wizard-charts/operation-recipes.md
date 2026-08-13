@@ -389,13 +389,17 @@ chart = (
 ```
 
 Geolayer datasets, layers, map type, and map center are also create-only. Layer
-geometry arguments depend on the layer type.
+geometry arguments and supported decorations depend on the layer type. Use
+`GeoLayerFilter` when a condition must affect one layer instead of the whole
+chart.
 
 ```python
 point = dataset.fields.by_name("Coordinates")
 polygon = dataset.fields.by_name("Boundary")
 route = dataset.fields.by_name("Route")
 weight = dataset.fields.by_name("Revenue")
+category = dataset.fields.by_name("Category")
+point_number = dataset.fields.by_name("Point Number")
 
 chart = (
     client.create.wizard_chart.geolayer(
@@ -403,10 +407,40 @@ chart = (
         location=dl.EntryLocation.path("/Charts"),
     )
     .dataset(dataset)
-    .add_layer("geopoint", geopoint=point, size=weight)
-    .add_layer("heatmap", geopoint=point, color=weight)
+    .add_layer(
+        "geopoint",
+        geopoint=point,
+        size=weight,
+        color=weight,
+        color_mode="3-point",
+        color_palette="orange-gray-blue",
+        color_reversed=False,
+        filters=[
+            dl.GeoLayerFilter(
+                field=category,
+                operation="IN",
+                values=["Priority"],
+            ),
+        ],
+        tooltips=[category, weight],
+        labels=[category],
+    )
+    .add_layer("geopoint-with-cluster", geopoint=point, size=weight)
+    .add_layer(
+        "heatmap",
+        geopoint=point,
+        color=weight,
+        color_mode="2-point",
+        color_palette="orange-yellow",
+    )
     .add_layer("geopolygon", polygon=polygon, color=weight)
-    .add_layer("polyline", polyline=route, color=weight)
+    .add_layer(
+        "polyline",
+        polyline=route,
+        grouping=category,
+        color=weight,
+        sort_by=point_number,
+    )
     .map_type(mode="light")
     .map_center(lat=55.75, lon=37.62, zoom=8)
     .build()

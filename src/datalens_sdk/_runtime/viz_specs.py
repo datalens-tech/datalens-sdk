@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 import re
 from typing import TYPE_CHECKING, Literal, TypedDict, cast
 
@@ -1000,8 +1001,8 @@ VIZ_SPECS: dict[str, dict[str, object]] = {
             "id": "geolayer",
             "type": "geo",
             "name": "label_visualization-geolayer",
-            "iconProps": {"id": "visGeolayer", "width": "24"},
-            "allowFilters": False,
+            "iconProps": {"id": "visGeolayers", "width": "24"},
+            "allowFilters": True,
             "allowSort": False,
             "allowLayerFilters": False,
             "hidden": False,
@@ -1129,6 +1130,16 @@ _GEO_COMMON_PLACEHOLDERS_EMPTY: dict[str, object] = {
     "tooltips": [],
 }
 
+_GEO_POLYLINE_COMMON_PLACEHOLDERS_EMPTY: dict[str, object] = {
+    "colors": [],
+    "colorsConfig": {},
+    "filters": [],
+    "geopointsConfig": {},
+    "labels": [],
+    "sort": [],
+    "tooltips": [],
+}
+
 
 def _geo_placeholder(
     pid: str,
@@ -1137,13 +1148,14 @@ def _geo_placeholder(
     capacity: int | None = None,
     required: bool = False,
     settings: dict[str, object] | None = None,
+    allowed_final_types: bool = False,
 ) -> dict[str, object]:
     """Placeholder for a geo layer (geopoint/geopolygon/polyline/size/measures/grouping).
 
     capacity=None means unlimited (DataLens accepts it without the field).
     """
     ph: dict[str, object] = {
-        "allowedDataTypes": {},
+        "allowedFinalTypes" if allowed_final_types else "allowedDataTypes": {},
         "allowedTypes": {},
         "iconProps": {},
         "id": pid,
@@ -1160,6 +1172,7 @@ def _geo_placeholder(
 
 _GEO_LAYER_VIZ_SPECS: dict[str, dict[str, object]] = {
     "geopoint": {
+        "placeholder_inputs": {"geopoint": "geopoint", "size": "size"},
         "viz": {
             "id": "geopoint",
             "type": "geo",
@@ -1171,6 +1184,38 @@ _GEO_LAYER_VIZ_SPECS: dict[str, dict[str, object]] = {
             "allowLayerFilters": True,
             "allowTooltips": True,
             "availableLabelModes": ["absolute"],
+            "hidden": True,
+        },
+        "common_placeholders": dict(_GEO_COMMON_PLACEHOLDERS_EMPTY),
+        "placeholders": {
+            "geopoint": _geo_placeholder(
+                "geopoint",
+                "geopoint",
+                "section_geopoint",
+                required=True,
+            ),
+            "size": _geo_placeholder(
+                "size",
+                "measures",
+                "section_points_size",
+                capacity=1,
+            ),
+        },
+    },
+    "geopoint-with-cluster": {
+        "placeholder_inputs": {"geopoint": "geopoint", "size": "size"},
+        "viz": {
+            "id": "geopoint-with-cluster",
+            "type": "geo",
+            "name": "label_visualization-geopoint-with-cluster",
+            "iconProps": {"id": "visGeopoint", "width": "24"},
+            "allowColors": True,
+            "allowFilters": True,
+            "allowLabels": True,
+            "allowLayerFilters": True,
+            "allowTooltips": True,
+            "availableLabelModes": ["absolute"],
+            "hidden": True,
         },
         "common_placeholders": dict(_GEO_COMMON_PLACEHOLDERS_EMPTY),
         "placeholders": {
@@ -1189,6 +1234,7 @@ _GEO_LAYER_VIZ_SPECS: dict[str, dict[str, object]] = {
         },
     },
     "heatmap": {
+        "placeholder_inputs": {"heatmap": "geopoint"},
         "viz": {
             "id": "heatmap",
             "type": "geo",
@@ -1201,8 +1247,8 @@ _GEO_LAYER_VIZ_SPECS: dict[str, dict[str, object]] = {
         },
         "common_placeholders": dict(_GEO_COMMON_PLACEHOLDERS_EMPTY),
         "placeholders": {
-            "geopoint": _geo_placeholder(
-                "geopoint",
+            "heatmap": _geo_placeholder(
+                "heatmap",
                 "geopoint",
                 "section_geopoint",
                 required=True,
@@ -1210,6 +1256,7 @@ _GEO_LAYER_VIZ_SPECS: dict[str, dict[str, object]] = {
         },
     },
     "geopolygon": {
+        "placeholder_inputs": {"geopolygon": "polygon"},
         "viz": {
             "id": "geopolygon",
             "type": "geo",
@@ -1219,6 +1266,7 @@ _GEO_LAYER_VIZ_SPECS: dict[str, dict[str, object]] = {
             "allowFilters": True,
             "allowLayerFilters": True,
             "allowTooltips": True,
+            "hidden": True,
         },
         "common_placeholders": dict(_GEO_COMMON_PLACEHOLDERS_EMPTY),
         "placeholders": {
@@ -1231,6 +1279,11 @@ _GEO_LAYER_VIZ_SPECS: dict[str, dict[str, object]] = {
         },
     },
     "polyline": {
+        "placeholder_inputs": {
+            "polyline": "polyline",
+            "measures": "measures",
+            "grouping": "grouping",
+        },
         "viz": {
             "id": "polyline",
             "type": "geo",
@@ -1243,8 +1296,9 @@ _GEO_LAYER_VIZ_SPECS: dict[str, dict[str, object]] = {
             "allowSort": True,
             "allowTooltips": False,
             "availableLabelModes": ["absolute"],
+            "hidden": True,
         },
-        "common_placeholders": dict(_GEO_COMMON_PLACEHOLDERS_EMPTY),
+        "common_placeholders": dict(_GEO_POLYLINE_COMMON_PLACEHOLDERS_EMPTY),
         "placeholders": {
             "polyline": _geo_placeholder(
                 "polyline",
@@ -1253,10 +1307,23 @@ _GEO_LAYER_VIZ_SPECS: dict[str, dict[str, object]] = {
                 required=True,
                 settings={"polylinePoints": "off"},
             ),
-            "measures": _geo_placeholder("measures", "measures", "section_measures"),
+            "measures": _geo_placeholder(
+                "measures",
+                "measures",
+                "section_measures",
+                allowed_final_types=True,
+            ),
             "grouping": _geo_placeholder("grouping", "grouping", "section_grouping"),
         },
     },
+}
+
+_GEO_LAYER_INPUT_FLAGS = {
+    "color": "allowColors",
+    "filters": "allowLayerFilters",
+    "labels": "allowLabels",
+    "sort_by": "allowSort",
+    "tooltips": "allowTooltips",
 }
 
 
@@ -1357,6 +1424,16 @@ def get_geo_layer_spec(layer_type: str) -> dict[str, object]:
     or empty dict if layer_type is unknown.
     """
     return _GEO_LAYER_VIZ_SPECS.get(layer_type, {})
+
+
+def geo_layer_supports_input(layer_spec: Mapping[str, object], input_name: str) -> bool:
+    """Return whether a geo-layer spec accepts a public field input."""
+    placeholder_inputs = layer_spec.get("placeholder_inputs")
+    if isinstance(placeholder_inputs, Mapping) and input_name in placeholder_inputs.values():
+        return True
+    capability = _GEO_LAYER_INPUT_FLAGS.get(input_name)
+    layer_viz = layer_spec.get("viz")
+    return capability is not None and isinstance(layer_viz, Mapping) and layer_viz.get(capability) is True
 
 
 def requires_x_measure_autofix(visualization_id: str) -> bool:

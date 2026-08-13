@@ -259,15 +259,23 @@ def _build_sort_item(
     *,
     direction: str,
     dataset_id: str | None,
+    preserve_field_snapshot: bool = False,
 ) -> dict[str, object]:
-    sort_item: dict[str, object] = {"guid": item.get("guid", "")}
+    """Build one of two backend sort contracts.
+
+    Regular Wizard charts reject a full field snapshot on create and may
+    silently ignore it on update. Geo polyline ordering has the inverse
+    contract: its renderer needs the full snapshot to build ordered paths.
+    """
+    sort_item: dict[str, object] = dict(item) if preserve_field_snapshot else {"guid": item.get("guid", "")}
     resolved_dataset = dataset_id or item.get("datasetId")
     if resolved_dataset:
         sort_item["datasetId"] = resolved_dataset
-    sort_item["data_type"] = item.get("data_type", "")
-    sort_item["title"] = item.get("title", "")
-    sort_item["source"] = item.get("source", "")
-    sort_item["type"] = item.get("type", "")
+    if not preserve_field_snapshot:
+        sort_item["data_type"] = item.get("data_type", "")
+        sort_item["title"] = item.get("title", "")
+        sort_item["source"] = item.get("source", "")
+        sort_item["type"] = item.get("type", "")
     sort_item["direction"] = direction.upper()
     return sort_item
 

@@ -26,7 +26,12 @@ from datalens_sdk.converter.wizard._decorations import (
     _inject_dataset_parameters_to_updates,
     _merge_local_fields_into_snapshot,
 )
-from datalens_sdk.converter.wizard._layers import _hierarchies_map, _local_fields_map
+from datalens_sdk.converter.wizard._layers import (
+    _finalize_geolayer_selected_layer_fields,
+    _hierarchies_map,
+    _local_fields_map,
+    _sync_geolayer_selected_layer_fields,
+)
 from datalens_sdk.converter.wizard._normalizer import _dataset_of, _Normalizer
 from datalens_sdk.converter.wizard._placeholders import (
     _build_visualization,
@@ -60,6 +65,8 @@ def _assemble_wizard_data(spec: WizardChartCreateSpec) -> dict[str, object]:
         data["updates"] = updates
 
     data["visualization"] = _build_visualization(spec, spec_key, normalizer)
+    if spec_key == "geolayer":
+        _sync_geolayer_selected_layer_fields(data)
 
     sort_input = spec.sort
     sort_direction_items = spec.sort_direction_items
@@ -113,6 +120,8 @@ def _assemble_wizard_data(spec: WizardChartCreateSpec) -> dict[str, object]:
         data["geopointsConfig"] = cfg
 
     merged = merge_chart_defaults(data)
+    if spec_key == "geolayer":
+        _finalize_geolayer_selected_layer_fields(merged)
 
     datasets = [dataset] if dataset is not None else []
     for geo_dataset in spec.geo_datasets:

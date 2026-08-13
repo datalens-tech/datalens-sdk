@@ -30,7 +30,7 @@ authoritative for the configured client.
 | scatter, bubble chart, correlation | [chart-scatter.md](chart-scatter.md) | `scatter` |
 | treemap, share-of-total tiles | [chart-treemap.md](chart-treemap.md) | `treemap` |
 | funnel, conversion steps | [chart-funnel.md](chart-funnel.md) | `funnel` |
-| map: points, polygons, routes, geo density | [chart-geolayer.md](chart-geolayer.md) | `geolayer` |
+| map: points, clusters, polygons, routes, geo density | [chart-geolayer.md](chart-geolayer.md) | `geolayer` |
 
 Naming traps:
 
@@ -70,15 +70,15 @@ Every cell describes only the installed package's typed public API.
 | `measures()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | U | — | U | — | — | U | U | U | — | U |
 | `points()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — |
 | `size()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — |
-| `add_layer()` | `combined_chart`: `layer_type: CombinedLayerType, *, y: Field \| None = None, y2: Field \| None = None, name: str \| None = None`<br>`geolayer`: `layer_type: GeoLayerType, *, geopoint: Field \| None = None, polygon: Field \| None = None, polyline: Field \| None = None, size: Field \| None = None, color: Field \| None = None, tooltips: Sequence[Field] = (), labels: Sequence[Field] = (), alpha: int = 80, name: str \| None = None, dataset: Dataset \| None = None` | — | — | — | — | — | — | C | — | — | — | C | — | — | — | — | — | — |
+| `add_layer()` | `combined_chart`: `layer_type: CombinedLayerType, *, y: Field \| None = None, y2: Field \| None = None, name: str \| None = None`<br>`geolayer`: `layer_type: GeoLayerType, *, ...` — [full signature and layer capabilities](chart-geolayer.md#fluent-operations) | — | — | — | — | — | — | C | — | — | — | C | — | — | — | — | — | — |
 | `map_type()` | `*, mode: MapType` | — | — | — | — | — | — | — | — | — | — | C | — | — | — | — | — | — |
 | `map_center()` | `*, lat: float, lon: float, zoom: int \| None = None` | — | — | — | — | — | — | — | — | — | — | C | — | — | — | — | — | — |
 | `add_aggregated_measure()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str \| None = None, guid: str \| None = None` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `add_local_field()` | `*, title: str, formula: str, guid: str \| None = None, cast: str = 'float', measure: bool = False, aggregation: str \| None = None, formatting: MeasureFormat \| None = None` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `add_hierarchy()` | `title: str, fields: Sequence[Field], *, guid: str \| None = None` | CU | CU | CU | CU | CU | CU | — | — | CU | — | — | CU | — | — | CU | CU | — |
-| `add_filter()` | `field: Field, *, operation: FilterOperation, values: Sequence[str] = ()` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | CU | CU | CU |
-| `add_date_filter()` | `field: Field, *, start: str, end: str, inclusive_end: bool = True` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | CU | CU | CU |
-| `add_relative_date_filter()` | `field: Field, *, start_offset: str, end_offset: str` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | CU | CU | CU |
+| `add_filter()` | `field: Field, *, operation: FilterOperation, values: Sequence[str] = ()` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
+| `add_date_filter()` | `field: Field, *, start: str, end: str, inclusive_end: bool = True` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
+| `add_relative_date_filter()` | `field: Field, *, start_offset: str, end_offset: str` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `add_sort()` | `field: Field, *, direction: Literal['asc', 'desc'] = 'asc'` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | — | CU | CU | CU | — |
 | `sort()` | `fields: Sequence[Field]` | C | C | C | C | C | C | C | C | C | C | — | C | — | C | C | C | — |
 | `chart_title()` | `*, text: str = '', mode: Literal['show', 'hide'] = 'show'` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |

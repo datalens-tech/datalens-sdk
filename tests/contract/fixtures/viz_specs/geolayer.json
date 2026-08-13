@@ -35,7 +35,7 @@
           {
             "allowedTypes": {},
             "allowedDataTypes": {},
-            "id": "geopoint",
+            "id": "heatmap",
             "type": "geopoint",
             "title": "section_geopoint",
             "icon": {

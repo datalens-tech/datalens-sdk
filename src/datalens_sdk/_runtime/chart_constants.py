@@ -29,6 +29,7 @@ VALID_DISCRETE_PALETTES: frozenset[str] = frozenset(
 VALID_GRADIENT_PALETTES: frozenset[str] = frozenset(
     {
         "blue",
+        "orange-gray-blue",
         "orange-yellow",
         "pink-gray-green",
         "red-orange-green",
@@ -48,6 +49,7 @@ SEQUENTIAL_GRADIENT_PALETTES: frozenset[str] = frozenset(
 
 DIVERGING_GRADIENT_PALETTES: frozenset[str] = frozenset(
     {
+        "orange-gray-blue",
         "pink-gray-green",
         "red-orange-green",
     }
@@ -80,7 +82,7 @@ INDICATOR_FONT_SIZE_UI_TO_PAYLOAD: dict[str, str] = {"xs": "s", "s": "m", "m": "
 
 
 def gradient_types_for_palette(palette: str) -> frozenset[str]:
-    """Return the gradient types a palette renders correctly in for column_bars.
+    """Return the Wizard gradient types a palette renders correctly in.
 
     Sequential single-hue palettes render only as "2-point" and diverging
     palettes only as "3-point". A palette outside either group returns an

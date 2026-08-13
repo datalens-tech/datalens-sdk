@@ -1,0 +1,162 @@
+{
+  "layers": {
+    "geopoint": {
+      "viz": {
+        "allowColors": true,
+        "allowFilters": true,
+        "allowLabels": true,
+        "allowLayerFilters": true,
+        "allowTooltips": true,
+        "availableLabelModes": [
+          "absolute"
+        ],
+        "hidden": true,
+        "iconProps": {
+          "id": "visGeopoint",
+          "width": "24"
+        },
+        "id": "geopoint",
+        "name": "label_visualization-geopoint",
+        "type": "geo"
+      },
+      "placeholders": {
+        "geopoint": {
+          "input": "geopoint",
+          "required": true,
+          "title": "section_geopoint",
+          "type": "geopoint"
+        },
+        "size": {
+          "capacity": 1,
+          "input": "size",
+          "title": "section_points_size",
+          "type": "measures"
+        }
+      }
+    },
+    "geopoint-with-cluster": {
+      "viz": {
+        "allowColors": true,
+        "allowFilters": true,
+        "allowLabels": true,
+        "allowLayerFilters": true,
+        "allowTooltips": true,
+        "availableLabelModes": [
+          "absolute"
+        ],
+        "hidden": true,
+        "iconProps": {
+          "id": "visGeopoint",
+          "width": "24"
+        },
+        "id": "geopoint-with-cluster",
+        "name": "label_visualization-geopoint-with-cluster",
+        "type": "geo"
+      },
+      "placeholders": {
+        "geopoint": {
+          "input": "geopoint",
+          "required": true,
+          "title": "section_geopoint",
+          "type": "geopoint"
+        },
+        "size": {
+          "capacity": 1,
+          "input": "size",
+          "title": "section_points_size",
+          "type": "measures"
+        }
+      }
+    },
+    "geopolygon": {
+      "viz": {
+        "allowColors": true,
+        "allowFilters": true,
+        "allowLayerFilters": true,
+        "allowTooltips": true,
+        "hidden": true,
+        "iconProps": {
+          "id": "visGeopolygon",
+          "width": "24"
+        },
+        "id": "geopolygon",
+        "name": "label_visualization-geopolygon",
+        "type": "geo"
+      },
+      "placeholders": {
+        "geopolygon": {
+          "input": "polygon",
+          "required": true,
+          "title": "section_geopolygon",
+          "type": "geopolygon"
+        }
+      }
+    },
+    "heatmap": {
+      "viz": {
+        "allowColors": true,
+        "allowFilters": true,
+        "allowLayerFilters": true,
+        "hidden": true,
+        "iconProps": {
+          "id": "visHeatmap",
+          "width": "24"
+        },
+        "id": "heatmap",
+        "name": "label_visualization-heatmap",
+        "type": "geo"
+      },
+      "placeholders": {
+        "heatmap": {
+          "input": "geopoint",
+          "required": true,
+          "title": "section_geopoint",
+          "type": "geopoint"
+        }
+      }
+    },
+    "polyline": {
+      "viz": {
+        "allowColors": true,
+        "allowFilters": true,
+        "allowLabels": false,
+        "allowLayerFilters": true,
+        "allowSort": true,
+        "allowTooltips": false,
+        "availableLabelModes": [
+          "absolute"
+        ],
+        "hidden": true,
+        "iconProps": {
+          "id": "visPolyline",
+          "width": "24"
+        },
+        "id": "polyline",
+        "name": "label_visualization-polyline",
+        "type": "geo"
+      },
+      "placeholders": {
+        "grouping": {
+          "input": "grouping",
+          "title": "section_grouping",
+          "type": "grouping"
+        },
+        "measures": {
+          "allowedFinalTypes": {},
+          "input": "measures",
+          "title": "section_measures",
+          "type": "measures"
+        },
+        "polyline": {
+          "input": "polyline",
+          "required": true,
+          "settings": {
+            "polylinePoints": "off"
+          },
+          "title": "section_polyline",
+          "type": "polyline"
+        }
+      }
+    }
+  }
+}
