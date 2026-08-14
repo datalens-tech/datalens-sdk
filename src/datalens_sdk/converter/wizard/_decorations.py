@@ -23,6 +23,24 @@ def _visualization_items(visualization: dict[str, object]) -> list[dict[str, obj
     return items
 
 
+def _layer_common_items(visualization: dict[str, object]) -> list[dict[str, object]]:
+    items: list[dict[str, object]] = []
+    layers = visualization.get("layers")
+    if not isinstance(layers, list):
+        return items
+    for layer in layers:
+        if not isinstance(layer, dict):
+            continue
+        common = layer.get("commonPlaceholders")
+        if not isinstance(common, dict):
+            continue
+        for field_name in ("colors", "labels", "tooltips"):
+            value = common.get(field_name)
+            if isinstance(value, list):
+                items.extend(item for item in value if isinstance(item, dict))
+    return items
+
+
 def _apply_data_fields(
     data: dict[str, object],
     data_fields: dict[str, list[FieldRef]],
@@ -109,7 +127,7 @@ def _apply_measure_formats(
     viz = data.get("visualization")
     if not isinstance(viz, dict):
         return
-    all_items = _visualization_items(viz)
+    all_items = [*_visualization_items(viz), *_layer_common_items(viz)]
 
     for ref, fmt in pending_measure_formats:
         wire_fmt = _measure_format_to_wire(fmt)
@@ -259,15 +277,23 @@ def _build_sort_item(
     *,
     direction: str,
     dataset_id: str | None,
+    preserve_field_snapshot: bool = False,
 ) -> dict[str, object]:
-    sort_item: dict[str, object] = {"guid": item.get("guid", "")}
+    """Build one of two backend sort contracts.
+
+    Regular Wizard charts reject a full field snapshot on create and may
+    silently ignore it on update. Geo polyline ordering has the inverse
+    contract: its renderer needs the full snapshot to build ordered paths.
+    """
+    sort_item: dict[str, object] = dict(item) if preserve_field_snapshot else {"guid": item.get("guid", "")}
     resolved_dataset = dataset_id or item.get("datasetId")
     if resolved_dataset:
         sort_item["datasetId"] = resolved_dataset
-    sort_item["data_type"] = item.get("data_type", "")
-    sort_item["title"] = item.get("title", "")
-    sort_item["source"] = item.get("source", "")
-    sort_item["type"] = item.get("type", "")
+    if not preserve_field_snapshot:
+        sort_item["data_type"] = item.get("data_type", "")
+        sort_item["title"] = item.get("title", "")
+        sort_item["source"] = item.get("source", "")
+        sort_item["type"] = item.get("type", "")
     sort_item["direction"] = direction.upper()
     return sort_item
 

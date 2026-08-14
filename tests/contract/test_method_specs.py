@@ -235,10 +235,10 @@ def test_add_sort_excluded_from_no_sort_viz() -> None:
     assert "add_sort" not in method_specs_for_viz("treemap")
 
 
-def test_add_filter_excluded_from_geolayer() -> None:
-    assert "add_filter" not in method_specs_for_viz("geolayer")
-    assert "add_date_filter" not in method_specs_for_viz("geolayer")
-    assert "add_relative_date_filter" not in method_specs_for_viz("geolayer")
+def test_add_filter_included_for_geolayer() -> None:
+    assert "add_filter" in method_specs_for_viz("geolayer")
+    assert "add_date_filter" in method_specs_for_viz("geolayer")
+    assert "add_relative_date_filter" in method_specs_for_viz("geolayer")
 
 
 def test_add_filter_included_for_combined() -> None:

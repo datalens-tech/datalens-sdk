@@ -6,11 +6,16 @@ import uuid
 
 from typing_extensions import Self
 
-from datalens_sdk._runtime.chart_constants import INDICATOR_FONT_SIZE_UI_TO_PAYLOAD
+from datalens_sdk._runtime.chart_constants import INDICATOR_FONT_SIZE_UI_TO_PAYLOAD, gradient_types_for_palette
 from datalens_sdk._runtime.chart_mutations import _ChartMutationsMixin
 from datalens_sdk._runtime.chart_wire import build_date_interval, build_relative_date_interval
 from datalens_sdk._runtime.validators import HEX_COLOR_RE
-from datalens_sdk._runtime.viz_specs import build_ql_item, get_ql_viz_spec
+from datalens_sdk._runtime.viz_specs import (
+    build_ql_item,
+    geo_layer_supports_input,
+    get_geo_layer_spec,
+    get_ql_viz_spec,
+)
 from datalens_sdk.domain.entry_location import EntryLocation, resolve_entry_location, validate_entry_name
 from datalens_sdk.domain.fields import DatasetField
 from datalens_sdk.domain.ports import ChartOperations
@@ -26,6 +31,7 @@ if TYPE_CHECKING:
         DiscretePaletteId,
         FilterOperation,
         FunnelShape,
+        GeoLayerFilter,
         GeoLayerType,
         GradientPaletteId,
         MapType,
@@ -703,27 +709,74 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
         geopoint: FieldLike | str | None = None,
         polygon: FieldLike | str | None = None,
         polyline: FieldLike | str | None = None,
+        grouping: FieldLike | str | None = None,
         size: FieldLike | str | None = None,
         color: FieldLike | str | None = None,
+        color_mode: Literal["2-point", "3-point"] | None = None,
+        color_palette: GradientPaletteId | None = None,
+        color_reversed: bool | None = None,
+        filters: Sequence[GeoLayerFilter] = (),
         tooltips: Sequence[FieldLike | str] = (),
         labels: Sequence[FieldLike | str] = (),
+        sort_by: FieldLike | str | None = None,
+        sort_direction: Literal["asc", "desc"] = "asc",
         alpha: int = 80,
         name: str | None = None,
         dataset: Dataset | None = None,
     ) -> Self:
-        if layer_type not in ("geopoint", "geopolygon", "heatmap", "polyline"):
+        layer_spec = get_geo_layer_spec(layer_type)
+        if not layer_spec:
             raise DataLensConfigurationError(f"Unsupported geo layer type: {layer_type!r}.")
-        required_field = {
-            "geopoint": geopoint,
-            "heatmap": geopoint,
-            "geopolygon": polygon,
-            "polyline": polyline,
-        }[layer_type]
-        if required_field is None:
-            parameter = (
-                "polygon" if layer_type == "geopolygon" else "polyline" if layer_type == "polyline" else "geopoint"
+        placeholder_inputs = layer_spec.get("placeholder_inputs")
+        if not isinstance(placeholder_inputs, Mapping):
+            raise DataLensConfigurationError(f"Geo layer type {layer_type!r} has no placeholder input contract.")
+        required_placeholders = [
+            placeholder_id
+            for placeholder_id, placeholder in cast(Mapping[str, object], layer_spec.get("placeholders", {})).items()
+            if isinstance(placeholder, Mapping) and placeholder.get("required") is True
+        ]
+        if len(required_placeholders) != 1:
+            raise DataLensConfigurationError(
+                f"Geo layer type {layer_type!r} must declare exactly one required geometry placeholder."
             )
-            raise DataLensConfigurationError(f"add_layer({layer_type!r}) requires {parameter}=.")
+        geometry_argument = placeholder_inputs.get(required_placeholders[0])
+        field_values = {"geopoint": geopoint, "polygon": polygon, "polyline": polyline}
+        if not isinstance(geometry_argument, str) or geometry_argument not in field_values:
+            raise DataLensConfigurationError(f"Geo layer type {layer_type!r} has an invalid geometry input contract.")
+        required_field = field_values[geometry_argument]
+        if required_field is None:
+            raise DataLensConfigurationError(f"add_layer({layer_type!r}) requires {geometry_argument}=.")
+        field_inputs = {
+            **field_values,
+            "grouping": grouping,
+            "size": size,
+            "color": color,
+            "sort_by": sort_by,
+        }
+        sequence_inputs = {"filters": filters, "tooltips": tooltips, "labels": labels}
+        for input_name, value in field_inputs.items():
+            if value is not None and not geo_layer_supports_input(layer_spec, input_name):
+                raise DataLensConfigurationError(f"Geo layer type {layer_type!r} does not support {input_name}=.")
+        for input_name, sequence_value in sequence_inputs.items():
+            if sequence_value and not geo_layer_supports_input(layer_spec, input_name):
+                raise DataLensConfigurationError(f"Geo layer type {layer_type!r} does not support {input_name}=.")
+        if sort_direction != "asc" and sort_by is None:
+            if not geo_layer_supports_input(layer_spec, "sort_by"):
+                raise DataLensConfigurationError(f"Geo layer type {layer_type!r} does not support sort_direction=.")
+            raise DataLensConfigurationError("Geo layer sort_direction= requires sort_by=.")
+        if color is None and any(value is not None for value in (color_mode, color_palette, color_reversed)):
+            raise DataLensConfigurationError("Geo layer color settings require color=.")
+        if color_mode is not None and color_mode not in {"2-point", "3-point"}:
+            raise DataLensConfigurationError(f"Unsupported geo layer color_mode: {color_mode!r}.")
+        if color_palette is not None:
+            valid_modes = gradient_types_for_palette(color_palette)
+            if not valid_modes:
+                raise DataLensConfigurationError(f"Unsupported geo layer color_palette: {color_palette!r}.")
+            if color_mode is not None and color_mode not in valid_modes:
+                raise DataLensConfigurationError(
+                    f"Geo layer palette {color_palette!r} does not support color_mode={color_mode!r}. "
+                    f"Supported: {sorted(valid_modes)}"
+                )
         if dataset is not None:
             self._geo_add_dataset(dataset)
         self._geo_layers.append(
@@ -732,10 +785,17 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
                 "geopoint": geopoint,
                 "polygon": polygon,
                 "polyline": polyline,
+                "grouping": grouping,
                 "size": size,
                 "color": color,
+                "color_mode": color_mode,
+                "color_palette": color_palette,
+                "color_reversed": color_reversed,
+                "filters": list(filters),
                 "tooltips": list(tooltips),
                 "labels": list(labels),
+                "sort_by": sort_by,
+                "sort_direction": sort_direction,
                 "alpha": alpha,
                 "name": name,
                 "dataset": dataset,

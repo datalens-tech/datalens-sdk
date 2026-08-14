@@ -30,6 +30,8 @@ def _load_fixture(viz_id: str) -> dict[str, Any]:
 
 _IGNORED_VIZ_KEYS_AT_TOP: set[str] = {"placeholders", "layers", "selectedLayerId", "icon"}
 
+_LIVE_CONFIRMED_GEO_LAYER_TYPES = frozenset({"geopoint", "geopoint-with-cluster", "geopolygon", "heatmap", "polyline"})
+
 
 @pytest.mark.parametrize("viz_id", sorted(VIZ_SPECS.keys()))
 def test_viz_top_level_keys_match_golden(viz_id: str) -> None:
@@ -136,3 +138,19 @@ def test_geo_layer_viz_keys_match_golden(layer_type: str) -> None:
     spec_keys = set(spec_layer_viz.keys())
     missing = golden_keys - spec_keys
     assert not missing, f"Geo-layer-spec '{layer_type}' missing keys: {sorted(missing)}"
+
+
+@pytest.mark.parametrize("layer_type", sorted(_LIVE_CONFIRMED_GEO_LAYER_TYPES))
+def test_geo_layer_spec_matches_confirmed_live_contract(layer_type: str) -> None:
+    contract = _load_fixture("geolayer-live-contract")["layers"][layer_type]
+    spec = get_geo_layer_spec(layer_type)
+
+    assert spec["viz"] == contract["viz"]
+    placeholders = cast(dict[str, dict[str, object]], spec["placeholders"])
+    inputs = cast(dict[str, str], spec["placeholder_inputs"])
+    assert set(placeholders) == set(contract["placeholders"])
+    for placeholder_id, expected in contract["placeholders"].items():
+        expected = dict(expected)
+        assert inputs[placeholder_id] == expected.pop("input")
+        for key, value in expected.items():
+            assert placeholders[placeholder_id][key] == value

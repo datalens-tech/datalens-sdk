@@ -5,9 +5,12 @@ import copy
 from typing import cast
 import uuid
 
-from datalens_sdk._runtime.viz_specs import get_geo_layer_spec, get_layer_spec, get_viz_spec
+from datalens_sdk._runtime.chart_constants import gradient_types_for_palette
+from datalens_sdk._runtime.viz_specs import geo_layer_supports_input, get_geo_layer_spec, get_layer_spec, get_viz_spec
 from datalens_sdk.converter.wizard._common import FieldRef
+from datalens_sdk.converter.wizard._decorations import _build_sort_item
 from datalens_sdk.converter.wizard._normalizer import _Normalizer
+from datalens_sdk.domain.chart_types import GeoLayerFilter
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.specs.wizard_chart import WizardChartCreateSpec
 from datalens_sdk.errors import DataLensConfigurationError
@@ -166,21 +169,104 @@ def _build_geolayer_visualization(
         common_source = layer_spec.get("common_placeholders")
         common = copy.deepcopy(dict(common_source)) if isinstance(common_source, Mapping) else {}
         color = layer_input.get("color")
-        if color is not None:
-            common["colors"] = normalizer.normalize([cast(FieldRef, color)])
+        normalized_color: list[dict[str, object]] = []
+        if color is not None and geo_layer_supports_input(layer_spec, "color"):
+            normalized_color = normalizer.normalize([cast(FieldRef, color)])
+            common["colors"] = normalized_color
+        color_mode = layer_input.get("color_mode")
+        color_palette = layer_input.get("color_palette")
+        color_reversed = layer_input.get("color_reversed")
+        if geo_layer_supports_input(layer_spec, "color") and any(
+            value is not None for value in (color_mode, color_palette, color_reversed)
+        ):
+            color_item = normalized_color[0] if normalized_color else None
+            actual_type = color_item.get("type") if color_item is not None else None
+            if actual_type != "MEASURE":
+                raise DataLensConfigurationError(
+                    f"Geo layer gradient color requires a MEASURE field; got {actual_type or 'UNKNOWN'}."
+                )
+            gradient_mode = color_mode if isinstance(color_mode, str) else None
+            colors_config = {
+                "polygonBorders": "show",
+                "reversed": color_reversed if isinstance(color_reversed, bool) else False,
+                "thresholdsMode": "auto",
+            }
+            if layer_type != "polyline":
+                colors_config["colorMode"] = "gradient"
+            if isinstance(color_palette, str):
+                colors_config["gradientPalette"] = color_palette
+                if gradient_mode is None:
+                    gradient_types = gradient_types_for_palette(color_palette)
+                    gradient_mode = (
+                        "2-point" if "2-point" in gradient_types else "3-point" if "3-point" in gradient_types else None
+                    )
+            if gradient_mode is not None:
+                colors_config["gradientMode"] = gradient_mode
+            common["colorsConfig"] = colors_config
+        layer_filters = layer_input.get("filters")
+        if geo_layer_supports_input(layer_spec, "filters") and isinstance(layer_filters, list) and layer_filters:
+            normalized_filters: list[dict[str, object]] = []
+            for layer_filter in layer_filters:
+                if not isinstance(layer_filter, GeoLayerFilter):
+                    raise DataLensConfigurationError("Geo layer filters must be GeoLayerFilter values.")
+                normalized = normalizer.normalize([layer_filter.field])
+                if not normalized:
+                    raise DataLensConfigurationError(
+                        f"Could not resolve geo layer filter field {layer_filter.field!r}."
+                    )
+                filter_field = dict(normalized[0])
+                filter_field["filter"] = {
+                    "operation": {"code": layer_filter.operation},
+                    "value": list(layer_filter.values),
+                }
+                normalized_filters.append(filter_field)
+            common["filters"] = normalized_filters
         tooltips = layer_input.get("tooltips")
-        if isinstance(tooltips, list) and tooltips:
+        if geo_layer_supports_input(layer_spec, "tooltips") and isinstance(tooltips, list) and tooltips:
             common["tooltips"] = normalizer.normalize(cast(list[FieldRef], tooltips))
         labels = layer_input.get("labels")
-        if isinstance(labels, list) and labels:
-            common["labels"] = normalizer.normalize(cast(list[FieldRef], labels))
+        if geo_layer_supports_input(layer_spec, "labels") and isinstance(labels, list) and labels:
+            normalized_labels = normalizer.normalize(cast(list[FieldRef], labels))
+            available_label_modes = layer.get("availableLabelModes")
+            if available_label_modes == ["absolute"]:
+                for label in normalized_labels:
+                    label["mode"] = "absolute"
+            common["labels"] = normalized_labels
+        sort_by = layer_input.get("sort_by")
+        if sort_by is not None and geo_layer_supports_input(layer_spec, "sort_by"):
+            normalized_sort = normalizer.normalize([cast(FieldRef, sort_by)])
+            if not normalized_sort:
+                raise DataLensConfigurationError(f"Could not resolve geo layer sort field {sort_by!r}.")
+            sort_direction = layer_input.get("sort_direction", "asc")
+            if sort_direction not in {"asc", "desc"}:
+                raise DataLensConfigurationError(f"Unsupported geo layer sort direction: {sort_direction!r}.")
+            dataset_id = (
+                layer_dataset.id
+                if isinstance(layer_dataset, Dataset)
+                else spec.dataset.id
+                if spec.dataset is not None
+                else None
+            )
+            common["sort"] = [
+                _build_sort_item(
+                    normalized_sort[0],
+                    direction=sort_direction,
+                    dataset_id=dataset_id,
+                    preserve_field_snapshot=True,
+                )
+            ]
         layer["commonPlaceholders"] = common
         layer_placeholders = cast(dict[str, object], layer_spec.get("placeholders", {}))
+        placeholder_inputs = cast(dict[str, object], layer_spec.get("placeholder_inputs", {}))
         placeholders: list[dict[str, object]] = []
         for placeholder_id, placeholder_spec in layer_placeholders.items():
             placeholder = copy.deepcopy(cast(dict[str, object], placeholder_spec))
             placeholder["id"] = placeholder_id
-            source_key = "polygon" if placeholder_id == "geopolygon" else placeholder_id
+            source_key = placeholder_inputs.get(placeholder_id, placeholder_id)
+            if not isinstance(source_key, str):
+                raise DataLensConfigurationError(
+                    f"Geo layer placeholder {placeholder_id!r} has an invalid input mapping: {source_key!r}."
+                )
             value = layer_input.get(source_key)
             placeholder["items"] = normalizer.normalize([cast(FieldRef, value)]) if value is not None else []
             placeholders.append(placeholder)
@@ -192,3 +278,89 @@ def _build_geolayer_visualization(
         layer_settings = cast(dict[str, object], layers[-1]["layerSettings"])
         viz["selectedLayerId"] = layer_settings["id"]
     return viz
+
+
+def _sync_geolayer_selected_layer_fields(data: dict[str, object]) -> None:
+    """Mirror the selected layer's field sections into the live top-level shape.
+
+    Layer-local filters intentionally stay in ``commonPlaceholders.filters``;
+    ``data.filters`` is the independent chart-level filter scope.
+    """
+    visualization = data.get("visualization")
+    if not isinstance(visualization, Mapping):
+        return
+    layers = visualization.get("layers")
+    selected_layer_id = visualization.get("selectedLayerId")
+    if not isinstance(layers, list) or not isinstance(selected_layer_id, str):
+        return
+    selected_layer: Mapping[str, object] | None = None
+    for layer in layers:
+        if not isinstance(layer, Mapping):
+            continue
+        settings = layer.get("layerSettings")
+        if isinstance(settings, Mapping) and settings.get("id") == selected_layer_id:
+            selected_layer = layer
+            break
+    if selected_layer is None:
+        return
+    common = selected_layer.get("commonPlaceholders")
+    if not isinstance(common, Mapping):
+        return
+    for key, value in common.items():
+        if key != "filters":
+            data[key] = copy.deepcopy(value)
+
+
+def _apply_geolayer_selected_layer_field(
+    data: dict[str, object],
+    field_name: str,
+    items: list[dict[str, object]],
+) -> None:
+    """Apply one generic field decorator to the selected geo layer."""
+    visualization = data.get("visualization")
+    if not isinstance(visualization, Mapping):
+        return
+    layers = visualization.get("layers")
+    selected_layer_id = visualization.get("selectedLayerId")
+    if not isinstance(layers, list) or not isinstance(selected_layer_id, str):
+        raise DataLensConfigurationError(f"Geolayer {field_name} requires at least one layer.")
+    for layer in layers:
+        if not isinstance(layer, dict):
+            continue
+        settings = layer.get("layerSettings")
+        if not isinstance(settings, Mapping) or settings.get("id") != selected_layer_id:
+            continue
+        layer_type = layer.get("id")
+        layer_spec = get_geo_layer_spec(layer_type) if isinstance(layer_type, str) else {}
+        if not geo_layer_supports_input(layer_spec, field_name):
+            raise DataLensConfigurationError(f"Geo layer type {layer_type!r} does not support {field_name}().")
+        normalized_items = copy.deepcopy(items)
+        if field_name == "labels" and layer.get("availableLabelModes") == ["absolute"]:
+            for item in normalized_items:
+                item["mode"] = "absolute"
+        common = layer.get("commonPlaceholders")
+        if not isinstance(common, dict):
+            common = {}
+            layer["commonPlaceholders"] = common
+        common[field_name] = normalized_items
+        return
+    raise DataLensConfigurationError("Could not resolve the selected geo layer.")
+
+
+def _finalize_geolayer_selected_layer_fields(data: dict[str, object]) -> None:
+    """Remove defaults that the selected live geo-layer contract does not support."""
+    visualization = data.get("visualization")
+    if not isinstance(visualization, Mapping):
+        return
+    layers = visualization.get("layers")
+    selected_layer_id = visualization.get("selectedLayerId")
+    if not isinstance(layers, list) or not isinstance(selected_layer_id, str):
+        return
+    for layer in layers:
+        if not isinstance(layer, Mapping):
+            continue
+        settings = layer.get("layerSettings")
+        if isinstance(settings, Mapping) and settings.get("id") == selected_layer_id:
+            if layer.get("id") == "polyline":
+                data.pop("segments", None)
+            return

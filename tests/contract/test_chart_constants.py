@@ -37,6 +37,7 @@ def test_gradient_types_for_sequential_palette() -> None:
 
 def test_gradient_types_for_diverging_palette() -> None:
     assert gradient_types_for_palette("pink-gray-green") == frozenset({"3-point"})
+    assert gradient_types_for_palette("orange-gray-blue") == frozenset({"3-point"})
 
 
 def test_gradient_types_for_unknown_palette_is_empty() -> None:

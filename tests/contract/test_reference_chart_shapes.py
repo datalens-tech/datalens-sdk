@@ -319,6 +319,7 @@ def _assert_geo_heatmap(reference: dict[str, Any]) -> None:
     )
     layer = data["visualization"]["layers"][0]
     assert layer["id"] == "heatmap"
+    assert [placeholder["id"] for placeholder in layer["placeholders"]] == ["heatmap"]
     assert set(layer["commonPlaceholders"]) == set(common)
     assert data["visualization"]["selectedLayerId"] == layer["layerSettings"]["id"]
 

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Literal, TypeAlias
 
 from typing_extensions import TypedDict
+
+from datalens_sdk.domain.fields import FieldLike
 
 __all__ = [
     "ChartCategory",
@@ -10,6 +14,7 @@ __all__ = [
     "DiscretePaletteId",
     "FilterOperation",
     "FunnelShape",
+    "GeoLayerFilter",
     "GeoLayerType",
     "GradientPaletteId",
     "MapType",
@@ -35,6 +40,19 @@ FilterOperation: TypeAlias = Literal[
     "CONTAINS",
 ]
 
+
+@dataclass(frozen=True, slots=True)
+class GeoLayerFilter:
+    """A filter evaluated only within one geolayer visualization layer."""
+
+    field: FieldLike | str
+    operation: FilterOperation
+    values: Sequence[str] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "values", tuple(self.values))
+
+
 FunnelShape: TypeAlias = Literal["auto", "rectangle", "trapezoid"]
 
 DiscretePaletteId: TypeAlias = Literal[
@@ -51,6 +69,7 @@ DiscretePaletteId: TypeAlias = Literal[
 
 GradientPaletteId: TypeAlias = Literal[
     "blue",
+    "orange-gray-blue",
     "orange-yellow",
     "pink-gray-green",
     "red-orange-green",
@@ -77,7 +96,13 @@ MapType: TypeAlias = Literal["light", "dark", "satellite"]
 
 CombinedLayerType: TypeAlias = Literal["column", "line", "area"]
 
-GeoLayerType: TypeAlias = Literal["geopoint", "geopolygon", "heatmap", "polyline"]
+GeoLayerType: TypeAlias = Literal[
+    "geopoint",
+    "geopoint-with-cluster",
+    "geopolygon",
+    "heatmap",
+    "polyline",
+]
 
 ChartCategory: TypeAlias = Literal["wizard", "editor", "ql"]
 

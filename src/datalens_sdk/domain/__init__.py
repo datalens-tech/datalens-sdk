@@ -1,5 +1,5 @@
 from datalens_sdk.domain.chart import Chart
-from datalens_sdk.domain.chart_types import QLCast, QLParamType
+from datalens_sdk.domain.chart_types import GeoLayerFilter, QLCast, QLParamType
 from datalens_sdk.domain.collection import Collection, CollectionCreate, CollectionUpdate
 from datalens_sdk.domain.connection import Connection, ConnectionUpdate
 from datalens_sdk.domain.dashboard import (
@@ -164,6 +164,7 @@ __all__ = [
     "Folder",
     "FolderCreate",
     "FolderUpdate",
+    "GeoLayerFilter",
     "JoinCondition",
     "JoinOperator",
     "JoinType",
