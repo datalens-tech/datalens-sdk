@@ -16,9 +16,9 @@ Skill hard rules demonstrated:
 Required environment variables:
   DATALENS_INSTALLATION   'yc' or 'enterprise'
   DATALENS_BASE_URL       enterprise only: API endpoint
-  DATALENS_API_TOKEN      enterprise, optional: OAuth token (read by OAuthAuthProvider)
-  DATALENS_YC_ORG_ID      yc, optional: org id for static IAM auth
-  DATALENS_YC_IAM_TOKEN   yc, optional: IAM token for static auth (else the yc CLI is used)
+  DATALENS_OAUTH_TOKEN    enterprise, optional: OAuth token (read by OAuthAuthProvider)
+  DATALENS_ORG_ID         yc, optional: org id for static IAM auth
+  DATALENS_IAM_TOKEN      yc, optional: IAM token for static auth (else the yc CLI is used)
 """
 
 from __future__ import annotations
@@ -42,14 +42,14 @@ def make_client():
     """Build a DataLens client from the skill's env-var contract."""
     installation = os.environ.get("DATALENS_INSTALLATION", "").strip().lower()
     if installation == "yc":
-        org_id = os.environ.get("DATALENS_YC_ORG_ID")
-        token = os.environ.get("DATALENS_YC_IAM_TOKEN")
+        org_id = os.environ.get("DATALENS_ORG_ID")
+        token = os.environ.get("DATALENS_IAM_TOKEN")
         if org_id and token:
             return DataLensClientYC(auth=StaticYCIAMAuthProvider(org_id=org_id, token=token))
         return DataLensClientYC()  # default auth: the `yc` CLI
     if installation == "enterprise":
         base_url = os.environ["DATALENS_BASE_URL"]
-        if os.environ.get("DATALENS_API_TOKEN"):
+        if os.environ.get("DATALENS_OAUTH_TOKEN"):
             return DataLensClientEnterprise(base_url=base_url, auth=OAuthAuthProvider())
         return DataLensClientEnterprise(base_url=base_url)  # default: no auth headers
     raise SystemExit("Set DATALENS_INSTALLATION to 'yc' or 'enterprise'")

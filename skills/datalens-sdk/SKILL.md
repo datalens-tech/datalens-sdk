@@ -77,14 +77,14 @@ The only code this file shows — everything else lives in references.
 # Yandex Cloud: IAM auth via the `yc` CLI (default) or static credentials
 from datalens_sdk import DataLensClientYC, StaticYCIAMAuthProvider
 
-client = DataLensClientYC()  # uses YCIAMAuthProvider -> `yc` CLI
+client = DataLensClientYC()  # YCIAMAuthProvider; configurable via environment
 # or, with static credentials from env:
 import os
 
 client = DataLensClientYC(
     auth=StaticYCIAMAuthProvider(
-        org_id=os.environ["DATALENS_YC_ORG_ID"],
-        token=os.environ["DATALENS_YC_IAM_TOKEN"],
+        org_id=os.environ["DATALENS_ORG_ID"],
+        token=os.environ["DATALENS_IAM_TOKEN"],
     )
 )
 
@@ -146,7 +146,7 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 3. **Tokens are opaque.** Never print, log, echo, hash, or measure a token;
    never ask the user to paste one into chat. Secrets live in `.env`, which
    the user edits themselves. The only permitted checks are existence
-   checks (`[ -n "$DATALENS_API_TOKEN" ]`, quiet grep for the key name).
+   checks (`[ -n "$DATALENS_OAUTH_TOKEN" ]`, quiet grep for the key name).
 4. **Validate, don't just create.** "It built without an error" is not
    done. Re-fetch the entity and check the parts that matter for the task
    before telling the user it works. If the write succeeded but a later local
@@ -302,13 +302,19 @@ Decision trees per error: [references/troubleshooting.md](references/troubleshoo
 
 ## Environment variables
 
-| Variable                | Installation | Meaning                                                            |
-|-------------------------|--------------|--------------------------------------------------------------------|
-| `DATALENS_API_TOKEN`    | enterprise   | OAuth token for deployments that use OAuth auth (secret; read by `OAuthAuthProvider`) |
-| `DATALENS_BASE_URL`     | enterprise   | API endpoint, passed as `base_url=`                                |
-| `DATALENS_INSTALLATION` | all          | explicit installation choice: `yc` / `enterprise`                  |
-| `DATALENS_YC_ORG_ID`    | yc           | organization id for static IAM auth                                |
-| `DATALENS_YC_IAM_TOKEN` | yc           | IAM token for static auth (secret; otherwise the `yc` CLI is used) |
+| Variable                  | Installation | Meaning                                                            |
+|---------------------------|--------------|--------------------------------------------------------------------|
+| `DATALENS_OAUTH_TOKEN`    | enterprise   | OAuth token for deployments that use OAuth auth (secret; read by `OAuthAuthProvider`) |
+| `DATALENS_BASE_URL`       | enterprise   | API endpoint, passed as `base_url=`                                |
+| `DATALENS_INSTALLATION`   | all          | explicit installation choice: `yc` / `enterprise`                  |
+| `DATALENS_ORG_ID`         | yc           | organization id for static IAM auth and fallback for `YCIAMAuthProvider` |
+| `DATALENS_IAM_TOKEN`      | yc           | IAM token for static auth (secret; otherwise the `yc` CLI is used) |
+| `DATALENS_YC_BIN`         | yc           | `yc` executable name or path used by `YCIAMAuthProvider` and preflight |
+| `DATALENS_YC_PROFILE`     | yc           | `yc` profile used by `YCIAMAuthProvider`                           |
+
+Explicit `OAuthAuthProvider(token=...)` and `YCIAMAuthProvider(org_id=...,
+profile=...)` arguments take precedence over environment values. Empty
+environment values are treated as unset.
 
 `.env` rules: one `.env` in the user's working directory; the **user**
 writes secret values into it (the agent never writes or echoes secrets;

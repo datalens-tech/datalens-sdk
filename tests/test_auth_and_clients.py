@@ -25,6 +25,19 @@ from datalens_sdk import (
 )
 from datalens_sdk.auth import _IAMToken
 
+AUTH_ENV_NAMES = (
+    "DATALENS_OAUTH_TOKEN",
+    "DATALENS_ORG_ID",
+    "DATALENS_YC_BIN",
+    "DATALENS_YC_PROFILE",
+)
+
+
+@pytest.fixture(autouse=True)
+def clear_auth_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in AUTH_ENV_NAMES:
+        monkeypatch.delenv(name, raising=False)
+
 
 def _read_attr(obj: object, name: str) -> object:
     return getattr(obj, name)
@@ -37,16 +50,16 @@ def test_oauth_provider_builds_authorization_header() -> None:
 
 
 def test_oauth_provider_reads_default_token_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DATALENS_API_TOKEN", "token-from-env")
+    monkeypatch.setenv("DATALENS_OAUTH_TOKEN", "token-from-env")
 
     assert OAuthAuthProvider().get_headers() == {"Authorization": "OAuth token-from-env"}
     assert OAuthAuthProvider(token="explicit").get_headers() == {"Authorization": "OAuth explicit"}
 
 
 def test_oauth_provider_requires_explicit_or_environment_token(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("DATALENS_API_TOKEN", raising=False)
+    monkeypatch.delenv("DATALENS_OAUTH_TOKEN", raising=False)
 
-    with pytest.raises(DataLensConfigurationError, match="DATALENS_API_TOKEN"):
+    with pytest.raises(DataLensConfigurationError, match="DATALENS_OAUTH_TOKEN"):
         OAuthAuthProvider()
 
 
@@ -184,6 +197,110 @@ def test_yc_iam_provider_fetches_with_profile_and_caches_token(monkeypatch: pyte
     assert calls == [
         (["yc", "config", "get", "organization-id", "--profile", "sdk"], 30.0),
         (["yc", "iam", "create-token", "--format", "json", "--profile", "sdk"], 30.0),
+    ]
+
+
+def test_yc_iam_provider_reads_cli_settings_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        if command[1:4] == ["config", "get", "organization-id"]:
+            return subprocess.CompletedProcess(command, 0, stdout="org-from-profile\n", stderr="")
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=json.dumps({"iam_token": "iam-1", "expires_at": _expiry(time.time() + 3600)}),
+            stderr="",
+        )
+
+    monkeypatch.setenv("DATALENS_YC_BIN", "custom-yc")
+    monkeypatch.setenv("DATALENS_YC_PROFILE", "environment-profile")
+    monkeypatch.setattr("datalens_sdk.auth.subprocess.run", fake_run)
+
+    headers = YCIAMAuthProvider().get_headers()
+
+    assert headers["x-dl-org-id"] == "org-from-profile"
+    assert calls == [
+        ["custom-yc", "config", "get", "organization-id", "--profile", "environment-profile"],
+        ["custom-yc", "iam", "create-token", "--format", "json", "--profile", "environment-profile"],
+    ]
+
+
+def test_yc_iam_provider_reads_org_id_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=json.dumps({"iam_token": "iam-1", "expires_at": _expiry(time.time() + 3600)}),
+            stderr="",
+        )
+
+    monkeypatch.setenv("DATALENS_ORG_ID", "environment-org")
+    monkeypatch.setenv("DATALENS_YC_PROFILE", "environment-profile")
+    monkeypatch.setattr("datalens_sdk.auth.subprocess.run", fake_run)
+
+    headers = YCIAMAuthProvider().get_headers()
+
+    assert headers["x-dl-org-id"] == "environment-org"
+    assert calls == [
+        ["yc", "iam", "create-token", "--format", "json", "--profile", "environment-profile"],
+    ]
+
+
+def test_yc_iam_provider_explicit_values_override_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=json.dumps({"iam_token": "iam-1", "expires_at": _expiry(time.time() + 3600)}),
+            stderr="",
+        )
+
+    monkeypatch.setenv("DATALENS_ORG_ID", "environment-org")
+    monkeypatch.setenv("DATALENS_YC_BIN", "custom-yc")
+    monkeypatch.setenv("DATALENS_YC_PROFILE", "environment-profile")
+    monkeypatch.setattr("datalens_sdk.auth.subprocess.run", fake_run)
+
+    headers = YCIAMAuthProvider(org_id="explicit-org", profile="explicit-profile").get_headers()
+
+    assert headers["x-dl-org-id"] == "explicit-org"
+    assert calls == [
+        ["custom-yc", "iam", "create-token", "--format", "json", "--profile", "explicit-profile"],
+    ]
+
+
+def test_yc_iam_provider_treats_empty_environment_values_as_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        if command[1:4] == ["config", "get", "organization-id"]:
+            return subprocess.CompletedProcess(command, 0, stdout="org-from-profile\n", stderr="")
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=json.dumps({"iam_token": "iam-1", "expires_at": _expiry(time.time() + 3600)}),
+            stderr="",
+        )
+
+    for name in ("DATALENS_ORG_ID", "DATALENS_YC_BIN", "DATALENS_YC_PROFILE"):
+        monkeypatch.setenv(name, "")
+    monkeypatch.setattr("datalens_sdk.auth.subprocess.run", fake_run)
+
+    YCIAMAuthProvider().get_headers()
+
+    assert calls == [
+        ["yc", "config", "get", "organization-id"],
+        ["yc", "iam", "create-token", "--format", "json"],
     ]
 
 

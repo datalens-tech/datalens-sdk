@@ -47,7 +47,7 @@ exception, classify that exception below.
 
 - A client that requires `base_url=` was created without one — set
   `DATALENS_BASE_URL` and pass `base_url=`.
-- `OAuth token is required: pass token= or set DATALENS_API_TOKEN.` — the configured auth expects an OAuth token and none is set in the environment or `.env`.
+- `OAuth token is required: pass token= or set DATALENS_OAUTH_TOKEN.` — the configured auth expects an OAuth token and none is set in the environment or `.env`.
 - `yc CLI was not found. Install it from https://yandex.cloud/docs/cli/quickstart.` — the default YC auth shells out to `yc`; the CLI is absent.
 - `YC organization ID is not configured...` / `yc iam create-token ... failed` — the `yc` profile is incomplete.
 - `Object is not bound to client operations. Use a client namespace.` — you constructed a domain object by hand instead of getting it through `client.get.*`/`client.create.*`.

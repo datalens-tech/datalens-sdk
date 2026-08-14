@@ -38,13 +38,13 @@ malformed output.
 
 | Key | Values / meaning |
 |---|---|
-| `INSTALLATION` | `yc` / `enterprise` / `ambiguous` / `unknown` — resolved via arg → `DATALENS_INSTALLATION` → detection (base URL set → enterprise; `yc` on PATH → yc) |
+| `INSTALLATION` | `yc` / `enterprise` / `ambiguous` / `unknown` — resolved via arg → `DATALENS_INSTALLATION` → detection (base URL set → enterprise; `DATALENS_YC_BIN` from the process environment or `yc` available → yc) |
 | `INSTALLATION_HINTS` | csv of detection signals, only with `INSTALLATION=ambiguous` |
 | `ARG_INVALID` | the positional arg was not `yc`/`enterprise`; resolution fell through to env/detection |
-| `YC_CLI` | yc: `found` / `missing` — PATH lookup only |
-| `YC_STATIC` | yc: `ok` when both `DATALENS_YC_ORG_ID` and `DATALENS_YC_IAM_TOKEN` are present, else `absent` |
+| `YC_CLI` | yc: `found` / `missing` — lookup of `DATALENS_YC_BIN` from the process environment (or `yc` by default), without running it |
+| `YC_STATIC` | yc: `ok` when both `DATALENS_ORG_ID` and `DATALENS_IAM_TOKEN` are present, else `absent` |
 | `BASE_URL` | enterprise: `set` / `missing` for `DATALENS_BASE_URL` |
-| `TOKEN` | enterprise: `env` / `dotenv` / `absent` for `DATALENS_API_TOKEN` — informational only, never a blocker (many enterprise deployments run without auth) |
+| `TOKEN` | enterprise: `env` / `dotenv` / `absent` for `DATALENS_OAUTH_TOKEN` — informational only, never a blocker (many enterprise deployments run without auth) |
 | `ENV_FILE` | enterprise, when `BASE_URL=missing` or `TOKEN=absent`: absolute path to the `.env` the user can edit |
 | `STATUS` | `ready` / `needs_input` / `blocked` |
 
@@ -55,9 +55,9 @@ malformed output.
 | Installation resolved and credentials present | `ready` | Proceed to the task with the exact `PYTHON` supplied by the calling bootstrap. |
 | `INSTALLATION=ambiguous` (see `INSTALLATION_HINTS`) | `needs_input` | Ask the user which installation to target, offering the hints; rerun `preflight.sh <choice>`. |
 | `INSTALLATION=unknown` | `needs_input` | Ask the user: yc or enterprise; rerun with the answer. |
-| yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Relay one line: install the `yc` CLI (https://yandex.cloud/docs/cli/quickstart) or provide `DATALENS_YC_ORG_ID` + `DATALENS_YC_IAM_TOKEN`. Do not work around it. |
+| yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Relay one line: install the `yc` CLI (https://yandex.cloud/docs/cli/quickstart), point `DATALENS_YC_BIN` at it, or provide `DATALENS_ORG_ID` + `DATALENS_IAM_TOKEN`. Do not work around it. |
 | enterprise, `BASE_URL=missing` | `blocked` | Ask the user for the API endpoint; they set `DATALENS_BASE_URL` (non-secret — with their consent you may write it to the file at `ENV_FILE`). |
-| enterprise, `TOKEN=absent` | (unchanged) | Informational, not a blocker. Proceed without auth; if the deployment then rejects calls with 401, ask the user to add `DATALENS_API_TOKEN=<their token>` to the file at `ENV_FILE` **themselves** and construct the client with `OAuthAuthProvider()`. |
+| enterprise, `TOKEN=absent` | (unchanged) | Informational, not a blocker. Proceed without auth; if the deployment then rejects calls with 401, ask the user to add `DATALENS_OAUTH_TOKEN=<their token>` to the file at `ENV_FILE` **themselves** and construct the client with `OAuthAuthProvider()`. |
 
 Two rules apply: never run `yc iam create-token` during diagnostics (the SDK
 mints IAM tokens lazily at request time), and never perform package management
@@ -78,7 +78,11 @@ All constructor arguments are keyword-only. Clients are synchronous, work as con
 
 ### Yandex Cloud
 
-Default base URL is `https://api.datalens.tech`; default auth is `YCIAMAuthProvider`, which shells out to the `yc` CLI.
+Default base URL is `https://api.datalens.tech`; default auth is
+`YCIAMAuthProvider`, which shells out to the `yc` CLI. It reads the optional
+`DATALENS_YC_BIN`, `DATALENS_YC_PROFILE`, and `DATALENS_ORG_ID` environment
+variables. Explicit constructor arguments take precedence over environment
+values; empty environment values are treated as unset.
 
 ```python
 from datalens_sdk import DataLensClientYC
@@ -96,8 +100,8 @@ from datalens_sdk import DataLensClientYC, StaticYCIAMAuthProvider
 # (plain IAM tokens expire, typically within 12 hours).
 client = DataLensClientYC(
     auth=StaticYCIAMAuthProvider(
-        org_id=os.environ["DATALENS_YC_ORG_ID"],
-        token=os.environ["DATALENS_YC_IAM_TOKEN"],
+        org_id=os.environ["DATALENS_ORG_ID"],
+        token=os.environ["DATALENS_IAM_TOKEN"],
     )
 )
 ```
@@ -152,7 +156,7 @@ from datalens_sdk import DataLensClientEnterprise, OAuthAuthProvider
 client = DataLensClientEnterprise(base_url=os.environ["DATALENS_BASE_URL"])
 
 # OAuth-authenticated deployment: with token=None the provider reads
-# DATALENS_API_TOKEN from the environment itself — never pass the value
+# DATALENS_OAUTH_TOKEN from the environment itself — never pass the value
 # through your own code (it also accepts an explicit token=).
 client = DataLensClientEnterprise(
     base_url=os.environ["DATALENS_BASE_URL"],
@@ -175,29 +179,32 @@ All providers are keyword-only and expose `get_headers()`; pass an instance as `
 |---|---|---|---|
 | `NoAuthProvider` | — | nothing | also selected by `auth=None` |
 | `AuthorizationTokenAuthProvider` | `token=`, `token_type=` | `Authorization: <type> <token>` | generic scheme |
-| `OAuthAuthProvider` | `token=None` | `Authorization: OAuth ...` | falls back to `DATALENS_API_TOKEN`; raises `DataLensConfigurationError` if neither |
+| `OAuthAuthProvider` | `token=None` | `Authorization: OAuth ...` | falls back to `DATALENS_OAUTH_TOKEN`; raises `DataLensConfigurationError` if neither |
 | `StaticYCIAMAuthProvider` | `org_id=`, `token=` | `Authorization: Bearer ...` + `x-dl-org-id` | no refresh |
-| `YCIAMAuthProvider` | `org_id=None`, `profile=None`, `command_timeout_seconds=30.0` | Bearer + org id | uses the `yc` CLI; caches and auto-refreshes with a 60 s expiry margin |
+| `YCIAMAuthProvider` | `org_id=None`, `profile=None`, `command_timeout_seconds=30.0` | Bearer + org id | reads `DATALENS_ORG_ID`, `DATALENS_YC_PROFILE`, and `DATALENS_YC_BIN` as fallbacks; caches and auto-refreshes with a 60 s expiry margin |
 | `YCServiceAccountCredentialsAuthProvider` | `org_id=`, `key_id=`, `service_account_id=`, `private_key=` | Bearer + org id | JWT → IAM exchange, auto-refreshes |
 
 ## Environment variables
 
 | Variable | Installation | Meaning |
 |---|---|---|
-| `DATALENS_API_TOKEN` | enterprise | OAuth token for deployments that use OAuth auth (secret; read by `OAuthAuthProvider`) |
+| `DATALENS_OAUTH_TOKEN` | enterprise | OAuth token for deployments that use OAuth auth (secret; read by `OAuthAuthProvider`) |
 | `DATALENS_BASE_URL` | enterprise | API endpoint, passed as `base_url=` |
 | `DATALENS_INSTALLATION` | all | explicit installation choice: `yc` / `enterprise` |
-| `DATALENS_YC_ORG_ID` | yc | organization id for static IAM auth |
-| `DATALENS_YC_IAM_TOKEN` | yc | IAM token for static auth (secret; otherwise the `yc` CLI is used) |
+| `DATALENS_ORG_ID` | yc | organization id for static IAM auth and fallback for `YCIAMAuthProvider` |
+| `DATALENS_IAM_TOKEN` | yc | IAM token for static auth (secret; otherwise the `yc` CLI is used) |
+| `DATALENS_YC_BIN` | yc | `yc` executable name or path used by `YCIAMAuthProvider` and preflight |
+| `DATALENS_YC_PROFILE` | yc | `yc` profile used by `YCIAMAuthProvider` |
 
-Only `DATALENS_API_TOKEN` is read directly from the environment by an SDK auth
-provider. Preflight consumes the other variables, and examples pass them
-explicitly to client or builder constructors.
+`OAuthAuthProvider` reads `DATALENS_OAUTH_TOKEN`. `YCIAMAuthProvider` reads
+`DATALENS_ORG_ID`, `DATALENS_YC_BIN`, and `DATALENS_YC_PROFILE`; explicit
+constructor arguments have higher priority. Preflight also consumes the
+static-credential variables, and examples pass those explicitly.
 
 ## `.env` rules
 
 - One `.env` in the user's working directory — preflight reports its path as `ENV_FILE` when enterprise configuration is incomplete (and creates the empty file so the user appends to a ready file).
-- The **user** writes secret values into it. The agent never writes or echoes secrets; non-secret variables (`DATALENS_BASE_URL`, `DATALENS_INSTALLATION`, `DATALENS_YC_ORG_ID`) may be added by the agent with the user's consent.
+- The **user** writes secret values into it. The agent never writes or echoes secrets; non-secret variables (`DATALENS_BASE_URL`, `DATALENS_INSTALLATION`, `DATALENS_ORG_ID`, `DATALENS_YC_BIN`, `DATALENS_YC_PROFILE`) may be added by the agent with the user's consent.
 - Both `KEY=value` and `export KEY=value` line styles are accepted by preflight.
 - **Never execute `.env`** (no `source`, no `.` — a crafted value would run as shell code). Load it in bash wrappers with this non-executing, allowlisted reader:
 
@@ -208,17 +215,17 @@ if [ -f ./.env ]; then
     # matching preflight precedence (TOKEN=env over TOKEN=dotenv).
     [ -n "${!key:-}" ] || export "$key=$value"
   done < <(sed -E 's/^[[:space:]]*export[[:space:]]+//' ./.env |
-    grep -E '^DATALENS_(API_TOKEN|BASE_URL|INSTALLATION|YC_ORG_ID|YC_IAM_TOKEN)=')
+    grep -E '^DATALENS_(OAUTH_TOKEN|BASE_URL|INSTALLATION|ORG_ID|IAM_TOKEN|YC_BIN|YC_PROFILE)=')
 fi
 ```
 
-  Values are taken literally: quotes are not stripped and `$var`, `$(...)`, and backticks are never expanded — keep `.env` values unquoted plain strings. Only the five `DATALENS_*` variables above are exported, and a variable already set in the environment is never overwritten by `.env`.
+  Values are taken literally: quotes are not stripped and `$var`, `$(...)`, and backticks are never expanded — keep `.env` values unquoted plain strings. Only the allowlisted `DATALENS_*` variables above are exported, and a variable already set in the environment is never overwritten by `.env`.
 
 ## Tokens are opaque
 
-Applies to `DATALENS_API_TOKEN`, `DATALENS_YC_IAM_TOKEN`, and any IAM token the `yc` CLI mints. Check **only existence and load status**, never content:
+Applies to `DATALENS_OAUTH_TOKEN`, `DATALENS_IAM_TOKEN`, and any IAM token the `yc` CLI mints. Check **only existence and load status**, never content:
 
-- Allowed: `[ -n "$DATALENS_API_TOKEN" ]` after loading `.env`; a quiet grep for the key name (`grep -qE '^[[:space:]]*(export[[:space:]]+)?DATALENS_API_TOKEN=.+' .env` — no value output); a successful API call made by the SDK.
+- Allowed: `[ -n "$DATALENS_OAUTH_TOKEN" ]` after loading `.env`; a quiet grep for the key name (`grep -qE '^[[:space:]]*(export[[:space:]]+)?DATALENS_OAUTH_TOKEN=.+' .env` — no value output); a successful API call made by the SDK.
 - Forbidden: printing the token in whole or in part (prefix, suffix, mask), reporting its length or a hash of it, logging it, or judging "validity" by appearance ("looks like a placeholder", "too short"). Token formats are not stabilized — any such check is useless and leaks into the transcript.
 - Never ask the user to paste a token into chat. Token acquisition and writing to `.env` happen on the user's side; you only point at `ENV_FILE`.
 - The only valid signal that a token is real is a successful DataLens API response on the first call.

@@ -50,12 +50,35 @@ def test_yc_static_credentials_do_not_require_cli(tmp_path: Path) -> None:
     fields = run_preflight(
         tmp_path,
         "yc",
-        env={"DATALENS_YC_ORG_ID": "org", "DATALENS_YC_IAM_TOKEN": "opaque"},
+        env={"DATALENS_ORG_ID": "org", "DATALENS_IAM_TOKEN": "opaque"},
     )
 
     assert fields["YC_CLI"] == "missing"
     assert fields["YC_STATIC"] == "ok"
     assert fields["STATUS"] == "ready"
+
+
+def test_yc_preflight_uses_custom_binary_from_environment(tmp_path: Path) -> None:
+    custom_yc = tmp_path / "custom-yc"
+    custom_yc.write_text("#!/bin/sh\nexit 99\n")
+    custom_yc.chmod(0o755)
+
+    fields = run_preflight(tmp_path, "yc", env={"DATALENS_YC_BIN": str(custom_yc)})
+
+    assert fields["YC_CLI"] == "found"
+    assert fields["STATUS"] == "ready"
+
+
+def test_yc_preflight_does_not_load_custom_binary_from_dotenv(tmp_path: Path) -> None:
+    custom_yc = tmp_path / "custom-yc"
+    custom_yc.write_text("#!/bin/sh\nexit 99\n")
+    custom_yc.chmod(0o755)
+    (tmp_path / ".env").write_text(f"DATALENS_YC_BIN={custom_yc}\n")
+
+    fields = run_preflight(tmp_path, "yc")
+
+    assert fields["YC_CLI"] == "missing"
+    assert fields["STATUS"] == "blocked"
 
 
 def test_detection_reports_ambiguous_signals(tmp_path: Path) -> None:
@@ -80,7 +103,7 @@ def test_detection_reports_ambiguous_signals(tmp_path: Path) -> None:
 
 def test_dotenv_is_read_without_execution(tmp_path: Path) -> None:
     sentinel = tmp_path / "executed"
-    (tmp_path / ".env").write_text(f"DATALENS_BASE_URL=$(touch {sentinel})\nDATALENS_API_TOKEN=opaque\n")
+    (tmp_path / ".env").write_text(f"DATALENS_BASE_URL=$(touch {sentinel})\nDATALENS_OAUTH_TOKEN=opaque\n")
 
     fields = run_preflight(tmp_path, "enterprise")
 
