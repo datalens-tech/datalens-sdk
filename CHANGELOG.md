@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.7.1 - 2026-08-14
+
+- Publish the 0.7 release with a PyPI action compatible with Core Metadata 2.5.
+
 ## 0.7.0 - 2026-08-14
 
 - Add complete Wizard geolayer support for point, clustered point, heatmap,
