@@ -20,7 +20,10 @@ import jwt
 
 from datalens_sdk.errors import DataLensConfigurationError
 
-_DATALENS_API_TOKEN_ENV = "DATALENS_API_TOKEN"
+_DATALENS_OAUTH_TOKEN_ENV = "DATALENS_OAUTH_TOKEN"
+_DATALENS_ORG_ID_ENV = "DATALENS_ORG_ID"
+_DATALENS_YC_BIN_ENV = "DATALENS_YC_BIN"
+_DATALENS_YC_PROFILE_ENV = "DATALENS_YC_PROFILE"
 _IAM_TOKEN_ENDPOINT = "https://iam.api.cloud.yandex.net/iam/v1/tokens"
 _IAM_TOKEN_EXPIRY_MARGIN_SECONDS = 60
 _JWT_LIFETIME_SECONDS = 3600
@@ -59,9 +62,11 @@ class AuthorizationTokenAuthProvider(BaseAuthProvider):
 
 class OAuthAuthProvider(AuthorizationTokenAuthProvider):
     def __init__(self, *, token: str | None = None) -> None:
-        resolved_token = token if token is not None else os.getenv(_DATALENS_API_TOKEN_ENV)
+        resolved_token = token if token is not None else os.getenv(_DATALENS_OAUTH_TOKEN_ENV)
         if not resolved_token:
-            raise DataLensConfigurationError(f"OAuth token is required: pass token= or set {_DATALENS_API_TOKEN_ENV}.")
+            raise DataLensConfigurationError(
+                f"OAuth token is required: pass token= or set {_DATALENS_OAUTH_TOKEN_ENV}."
+            )
         super().__init__(token=resolved_token, token_type="OAuth")
 
 
@@ -214,8 +219,8 @@ def _run_yc_command(
         raise DataLensConfigurationError(f"{action} failed: {detail}") from exc
 
 
-def _get_yc_org_id(*, profile: str | None, command_timeout_seconds: float) -> str:
-    command = ["yc", "config", "get", "organization-id"]
+def _get_yc_org_id(*, yc_bin: str, profile: str | None, command_timeout_seconds: float) -> str:
+    command = [yc_bin, "config", "get", "organization-id"]
     if profile is not None:
         command.extend(["--profile", profile])
     org_id = _run_yc_command(
@@ -225,7 +230,7 @@ def _get_yc_org_id(*, profile: str | None, command_timeout_seconds: float) -> st
     ).stdout.strip()
     if not org_id:
         raise DataLensConfigurationError(
-            "YC organization ID is required: pass org_id= or run "
+            f"YC organization ID is required: pass org_id=, set {_DATALENS_ORG_ID_ENV}, or run "
             "`yc config set organization-id <org-id>` for the selected yc profile."
         )
     return org_id
@@ -242,20 +247,26 @@ class YCIAMAuthProvider(_RefreshingIAMAuthProvider):
     ) -> None:
         if not math.isfinite(command_timeout_seconds) or command_timeout_seconds <= 0:
             raise DataLensConfigurationError("command_timeout_seconds must be a finite positive number.")
+        resolved_yc_bin = os.getenv(_DATALENS_YC_BIN_ENV) or "yc"
+        resolved_profile = profile if profile is not None else os.getenv(_DATALENS_YC_PROFILE_ENV) or None
+        environment_org_id = os.getenv(_DATALENS_ORG_ID_ENV) or None
         resolved_org_id = (
             org_id
             if org_id is not None
-            else _get_yc_org_id(
-                profile=profile,
+            else environment_org_id
+            or _get_yc_org_id(
+                yc_bin=resolved_yc_bin,
+                profile=resolved_profile,
                 command_timeout_seconds=command_timeout_seconds,
             )
         )
         super().__init__(org_id=resolved_org_id, token_expiry_margin_seconds=token_expiry_margin_seconds)
-        self._profile = profile
+        self._yc_bin = resolved_yc_bin
+        self._profile = resolved_profile
         self._command_timeout_seconds = command_timeout_seconds
 
     def _fetch_token(self) -> _IAMToken:
-        command = ["yc", "iam", "create-token", "--format", "json"]
+        command = [self._yc_bin, "iam", "create-token", "--format", "json"]
         if self._profile is not None:
             command.extend(["--profile", self._profile])
         result = _run_yc_command(

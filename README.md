@@ -65,7 +65,7 @@ with DataLensClientEnterprise(base_url="https://datalens.example.com") as client
 
 Yandex Cloud users can choose among the following providers:
 
-- `YCIAMAuthProvider` uses a `yc` CLI profile and refreshes IAM tokens automatically. This is the default for `DataLensClientYC`; its `yc` CLI invocations share one configurable timeout value, which defaults to 30 seconds.
+- `YCIAMAuthProvider` uses a `yc` CLI profile and refreshes IAM tokens automatically. This is the default for `DataLensClientYC`; `DATALENS_YC_BIN`, `DATALENS_YC_PROFILE`, and `DATALENS_ORG_ID` configure its defaults, while explicit constructor arguments take precedence. Its CLI invocations share one configurable timeout value, which defaults to 30 seconds.
 - `YCServiceAccountCredentialsAuthProvider` exchanges service-account credentials for refreshable IAM tokens.
 - `StaticYCIAMAuthProvider` accepts an existing IAM token and organization ID.
 
@@ -75,8 +75,8 @@ import os
 from datalens_sdk import StaticYCIAMAuthProvider, DataLensClientYC
 
 auth = StaticYCIAMAuthProvider(
-    org_id="<organization-id>",
-    token=os.getenv("_MY_IAM_TOKEN"),
+    org_id=os.environ["DATALENS_ORG_ID"],
+    token=os.environ["DATALENS_IAM_TOKEN"],
 )
 
 with DataLensClientYC(auth=auth) as client:
@@ -84,6 +84,8 @@ with DataLensClientYC(auth=auth) as client:
 ```
 
 Pass `auth=None` explicitly for access without authentication.
+For Enterprise installations that use OAuth, `OAuthAuthProvider()` reads
+`DATALENS_OAUTH_TOKEN` unless an explicit `token=` is supplied.
 
 ## Core concepts
 

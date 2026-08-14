@@ -14,17 +14,18 @@
 #   1. positional argument;
 #   2. DATALENS_INSTALLATION env var;
 #   3. detection: DATALENS_BASE_URL set (env or .env) -> enterprise;
-#      `yc` on PATH -> yc. Both signals -> ambiguous; none -> unknown.
+#      configured yc binary available -> yc. Both signals -> ambiguous;
+#      none -> unknown.
 #
 # Machine output after the ---PREFLIGHT--- marker, KEY=VALUE per line:
 #   INSTALLATION=yc|enterprise|ambiguous|unknown
 #   INSTALLATION_HINTS=<csv>     (only for INSTALLATION=ambiguous)
 #   ARG_INVALID=<arg>            (positional arg was not yc|enterprise)
-#   YC_CLI=found|missing         (yc; PATH lookup only, never runs `yc`)
-#   YC_STATIC=ok|absent          (yc; both DATALENS_YC_ORG_ID and
-#                                 DATALENS_YC_IAM_TOKEN present)
+#   YC_CLI=found|missing         (yc; lookup only, never runs the binary)
+#   YC_STATIC=ok|absent          (yc; both DATALENS_ORG_ID and
+#                                 DATALENS_IAM_TOKEN present)
 #   BASE_URL=set|missing         (enterprise)
-#   TOKEN=env|dotenv|absent      (enterprise; DATALENS_API_TOKEN presence.
+#   TOKEN=env|dotenv|absent      (enterprise; DATALENS_OAUTH_TOKEN presence.
 #                                 Informational only — many enterprise
 #                                 deployments run without auth)
 #   ENV_FILE=<abs path>          (enterprise, when BASE_URL or TOKEN is not
@@ -46,6 +47,33 @@ ENV_FILE_PATH="${CWD}/.env"
 dotenv_has() {
     [ -f "$ENV_FILE_PATH" ] && grep -qE "^[[:space:]]*(export[[:space:]]+)?${1}=.+" "$ENV_FILE_PATH"
 }
+
+# Print the first non-empty .env value for $1 without sourcing or evaluating
+# the file. Used only for the non-secret DATALENS_YC_BIN setting.
+dotenv_get() {
+    [ -f "$ENV_FILE_PATH" ] || return 1
+    awk -v key="$1" '
+        {
+            line = $0
+            sub(/^[[:space:]]*/, "", line)
+            sub(/^export[[:space:]]+/, "", line)
+            prefix = key "="
+            if (index(line, prefix) == 1) {
+                value = substr(line, length(prefix) + 1)
+                if (length(value) > 0) {
+                    print value
+                    exit
+                }
+            }
+        }
+    ' "$ENV_FILE_PATH"
+}
+
+YC_BIN="${DATALENS_YC_BIN:-}"
+if [ -z "$YC_BIN" ]; then
+    YC_BIN="$(dotenv_get DATALENS_YC_BIN)"
+fi
+[ -n "$YC_BIN" ] || YC_BIN="yc"
 
 # --- installation resolution: arg -> env -> detection ------------------------
 
@@ -70,7 +98,7 @@ if [ -z "$INSTALLATION" ]; then
     if [ -n "${DATALENS_BASE_URL:-}" ] || dotenv_has DATALENS_BASE_URL; then
         HINTS="enterprise"
     fi
-    if command -v yc >/dev/null 2>&1; then
+    if command -v "$YC_BIN" >/dev/null 2>&1; then
         HINTS="${HINTS:+${HINTS},}yc"
     fi
     case "$HINTS" in
@@ -88,17 +116,17 @@ BASE_URL=""
 TOKEN=""
 case "$INSTALLATION" in
     yc)
-        # PATH lookup only. NEVER run `yc iam create-token` here — that is a
-        # network call and may prompt; the SDK does it lazily at request time.
-        if command -v yc >/dev/null 2>&1; then
+        # Lookup only. NEVER run `yc iam create-token` here — that is a network
+        # call and may prompt; the SDK does it lazily at request time.
+        if command -v "$YC_BIN" >/dev/null 2>&1; then
             YC_CLI="found"
         else
             YC_CLI="missing"
         fi
         YC_ORG_OK=0
-        { [ -n "${DATALENS_YC_ORG_ID:-}" ] || dotenv_has DATALENS_YC_ORG_ID; } && YC_ORG_OK=1
+        { [ -n "${DATALENS_ORG_ID:-}" ] || dotenv_has DATALENS_ORG_ID; } && YC_ORG_OK=1
         YC_IAM_OK=0
-        { [ -n "${DATALENS_YC_IAM_TOKEN:-}" ] || dotenv_has DATALENS_YC_IAM_TOKEN; } && YC_IAM_OK=1
+        { [ -n "${DATALENS_IAM_TOKEN:-}" ] || dotenv_has DATALENS_IAM_TOKEN; } && YC_IAM_OK=1
         if [ "$YC_ORG_OK" = "1" ] && [ "$YC_IAM_OK" = "1" ]; then
             YC_STATIC="ok"
         else
@@ -113,9 +141,9 @@ case "$INSTALLATION" in
         fi
         # Informational only: many enterprise deployments run without auth,
         # so TOKEN=absent is a note for the agent, never a blocker.
-        if [ -n "${DATALENS_API_TOKEN:-}" ]; then
+        if [ -n "${DATALENS_OAUTH_TOKEN:-}" ]; then
             TOKEN="env"
-        elif dotenv_has DATALENS_API_TOKEN; then
+        elif dotenv_has DATALENS_OAUTH_TOKEN; then
             TOKEN="dotenv"
         else
             TOKEN="absent"

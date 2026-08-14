@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Standardize authentication environment variables: OAuth now uses
+  `DATALENS_OAUTH_TOKEN`, while YC CLI auth accepts `DATALENS_YC_BIN`,
+  `DATALENS_YC_PROFILE`, and `DATALENS_ORG_ID` with explicit arguments taking
+  precedence. Static IAM examples use `DATALENS_IAM_TOKEN` and
+  `DATALENS_ORG_ID`.
+
 ## 0.7.1 - 2026-08-14
 
 - Publish the 0.7 release with a PyPI action compatible with Core Metadata 2.5.
