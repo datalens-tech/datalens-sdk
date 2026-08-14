@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.7.0 - 2026-08-14
+
 - Add complete Wizard geolayer support for point, clustered point, heatmap,
   polygon, and polyline layers, including chart- and layer-level filters,
   gradient colors, labels, tooltips, size, route grouping, and point sorting.
