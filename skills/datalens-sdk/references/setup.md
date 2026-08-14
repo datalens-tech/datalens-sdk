@@ -38,10 +38,10 @@ malformed output.
 
 | Key | Values / meaning |
 |---|---|
-| `INSTALLATION` | `yc` / `enterprise` / `ambiguous` / `unknown` — resolved via arg → `DATALENS_INSTALLATION` → detection (base URL set → enterprise; configured `DATALENS_YC_BIN` or `yc` available → yc) |
+| `INSTALLATION` | `yc` / `enterprise` / `ambiguous` / `unknown` — resolved via arg → `DATALENS_INSTALLATION` → detection (base URL set → enterprise; `DATALENS_YC_BIN` from the process environment or `yc` available → yc) |
 | `INSTALLATION_HINTS` | csv of detection signals, only with `INSTALLATION=ambiguous` |
 | `ARG_INVALID` | the positional arg was not `yc`/`enterprise`; resolution fell through to env/detection |
-| `YC_CLI` | yc: `found` / `missing` — lookup of `DATALENS_YC_BIN` (or `yc` by default), without running it |
+| `YC_CLI` | yc: `found` / `missing` — lookup of `DATALENS_YC_BIN` from the process environment (or `yc` by default), without running it |
 | `YC_STATIC` | yc: `ok` when both `DATALENS_ORG_ID` and `DATALENS_IAM_TOKEN` are present, else `absent` |
 | `BASE_URL` | enterprise: `set` / `missing` for `DATALENS_BASE_URL` |
 | `TOKEN` | enterprise: `env` / `dotenv` / `absent` for `DATALENS_OAUTH_TOKEN` — informational only, never a blocker (many enterprise deployments run without auth) |

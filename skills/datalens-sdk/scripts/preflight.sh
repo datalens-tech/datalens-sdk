@@ -48,32 +48,7 @@ dotenv_has() {
     [ -f "$ENV_FILE_PATH" ] && grep -qE "^[[:space:]]*(export[[:space:]]+)?${1}=.+" "$ENV_FILE_PATH"
 }
 
-# Print the first non-empty .env value for $1 without sourcing or evaluating
-# the file. Used only for the non-secret DATALENS_YC_BIN setting.
-dotenv_get() {
-    [ -f "$ENV_FILE_PATH" ] || return 1
-    awk -v key="$1" '
-        {
-            line = $0
-            sub(/^[[:space:]]*/, "", line)
-            sub(/^export[[:space:]]+/, "", line)
-            prefix = key "="
-            if (index(line, prefix) == 1) {
-                value = substr(line, length(prefix) + 1)
-                if (length(value) > 0) {
-                    print value
-                    exit
-                }
-            }
-        }
-    ' "$ENV_FILE_PATH"
-}
-
-YC_BIN="${DATALENS_YC_BIN:-}"
-if [ -z "$YC_BIN" ]; then
-    YC_BIN="$(dotenv_get DATALENS_YC_BIN)"
-fi
-[ -n "$YC_BIN" ] || YC_BIN="yc"
+YC_BIN="${DATALENS_YC_BIN:-yc}"
 
 # --- installation resolution: arg -> env -> detection ------------------------
 
