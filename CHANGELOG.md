@@ -6,9 +6,10 @@
   polygon, and polyline layers, including chart- and layer-level filters,
   gradient colors, labels, tooltips, size, route grouping, and point sorting.
 - Match the live geolayer wire contract for heatmap geometry, selected-layer
-  field mirroring, and full polyline sort field snapshots.
-- Reject field inputs and gradient settings unsupported by the selected
-  geolayer instead of silently dropping or serializing them.
+  field mirroring after decorations, and full polyline sort field snapshots.
+- Reject field inputs, non-measure gradient colors, and gradient settings
+  unsupported by the selected geolayer instead of silently dropping or
+  serializing them.
 
 ## 0.6.0 - 2026-08-10
 

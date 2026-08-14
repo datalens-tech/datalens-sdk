@@ -27,6 +27,7 @@ from datalens_sdk.converter.wizard._decorations import (
     _merge_local_fields_into_snapshot,
 )
 from datalens_sdk.converter.wizard._layers import (
+    _apply_geolayer_selected_layer_field,
     _finalize_geolayer_selected_layer_fields,
     _hierarchies_map,
     _local_fields_map,
@@ -65,8 +66,6 @@ def _assemble_wizard_data(spec: WizardChartCreateSpec) -> dict[str, object]:
         data["updates"] = updates
 
     data["visualization"] = _build_visualization(spec, spec_key, normalizer)
-    if spec_key == "geolayer":
-        _sync_geolayer_selected_layer_fields(data)
 
     sort_input = spec.sort
     sort_direction_items = spec.sort_direction_items
@@ -77,9 +76,18 @@ def _assemble_wizard_data(spec: WizardChartCreateSpec) -> dict[str, object]:
 
     labels_input = spec.labels
     if labels_input:
-        data["labels"] = normalizer.normalize(list(labels_input))
+        normalized_labels = normalizer.normalize(list(labels_input))
+        if spec_key == "geolayer":
+            _apply_geolayer_selected_layer_field(data, "labels", normalized_labels)
+        else:
+            data["labels"] = normalized_labels
 
-    _apply_data_fields(data, {key: list(value) for key, value in spec.data_fields.items()}, normalizer)
+    data_fields = {key: list(value) for key, value in spec.data_fields.items()}
+    if spec_key == "geolayer":
+        tooltips_input = data_fields.pop("tooltips", None)
+        if tooltips_input:
+            _apply_geolayer_selected_layer_field(data, "tooltips", normalizer.normalize(tooltips_input))
+    _apply_data_fields(data, data_fields, normalizer)
     _apply_extra_settings(data, dict(spec.extra_settings))
 
     explicit_colors = spec.explicit_colors
@@ -119,6 +127,8 @@ def _assemble_wizard_data(spec: WizardChartCreateSpec) -> dict[str, object]:
         cfg.update(spec.geopoints_config)
         data["geopointsConfig"] = cfg
 
+    if spec_key == "geolayer":
+        _sync_geolayer_selected_layer_fields(data)
     merged = merge_chart_defaults(data)
     if spec_key == "geolayer":
         _finalize_geolayer_selected_layer_fields(merged)

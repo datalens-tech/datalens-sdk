@@ -19,7 +19,8 @@ Geolayers have no chart-level `x`/`y` fields. Geometry and decoration fields bel
 The method has one shared signature for all layer types. Use only the optional
 field inputs supported by the selected layer type. `color_mode`,
 `color_palette`, and `color_reversed` configure a gradient for a supplied
-`color` field. `sort_direction` controls `sort_by` and defaults to ascending.
+`MEASURE` `color` field. Omit all three for categorical `DIMENSION` color.
+`sort_direction` controls `sort_by` and defaults to ascending.
 `alpha`, `name`, and `dataset` apply to every layer type.
 Non-empty field inputs outside the selected layer's row are rejected.
 
@@ -220,11 +221,13 @@ chart = chart.update.chart_title(text="Revenue and density by location").mode("p
   `.add_filter()`, `.add_date_filter()`, and `.add_relative_date_filter()`
   populate a separate chart filter list; do not substitute one scope for the
   other.
-- Layer gradient settings require `color=`. Sequential palettes `blue`,
-  `orange-yellow`, and `yellow` use `color_mode="2-point"`; diverging palettes
-  `orange-gray-blue`, `pink-gray-green`, and `red-orange-green` use
-  `color_mode="3-point"`. When `color_palette` is supplied without
-  `color_mode`, the SDK infers the compatible mode.
+- Layer gradient settings require `color=` resolving to a `MEASURE`.
+  Sequential palettes `blue`, `orange-yellow`, and `yellow` use
+  `color_mode="2-point"`; diverging palettes `orange-gray-blue`,
+  `pink-gray-green`, and `red-orange-green` use `color_mode="3-point"`.
+  When `color_palette` is supplied without `color_mode`, the SDK infers the
+  compatible mode. A `DIMENSION` color is categorical and accepts none of the
+  gradient settings.
 - Labels are supported only on point and cluster layers. Their only supported
   label mode is `absolute`, which the create builder emits automatically.
 - `add_dataset()`, `add_layer()`, `map_type()`, and `map_center()` are create-only; layer topology and map settings have no update fluent API.

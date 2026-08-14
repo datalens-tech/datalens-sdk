@@ -226,6 +226,60 @@ def test_geolayer_builds_layers_with_layer_local_fields() -> None:
     assert data["filters"] == []
 
 
+def test_geolayer_generic_labels_and_tooltips_update_selected_layer() -> None:
+    factory = WizardChartCreateFactory(cast(Any, None))
+    builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
+    builder.add_layer(
+        "geopoint",
+        geopoint="Point",
+        labels=["Region"],
+        tooltips=["Order Date"],
+    ).labels(["Amount"]).tooltips(["Currency"])
+
+    data = _payload_data(builder)
+    common = data["visualization"]["layers"][0]["commonPlaceholders"]
+    assert [(item["guid"], item["mode"]) for item in common["labels"]] == [("g_amt", "absolute")]
+    assert [item["guid"] for item in common["tooltips"]] == ["g_currency"]
+    assert data["labels"] == common["labels"]
+    assert data["tooltips"] == common["tooltips"]
+
+
+def test_geolayer_measure_format_updates_layer_and_root_labels() -> None:
+    factory = WizardChartCreateFactory(cast(Any, None))
+    builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
+    builder.add_layer("geopoint", geopoint="Point", labels=["Amount"]).measure_format(
+        "Amount",
+        format="currency",
+        prefix="$",
+    )
+
+    data = _payload_data(builder)
+    common = data["visualization"]["layers"][0]["commonPlaceholders"]
+    assert common["labels"][0]["formatting"] == {"format": "currency", "prefix": "$"}
+    assert data["labels"] == common["labels"]
+
+
+@pytest.mark.parametrize(
+    ("layer_type", "geometry", "method_name"),
+    [
+        ("geopolygon", {"polygon": "Region"}, "labels"),
+        ("heatmap", {"geopoint": "Point"}, "tooltips"),
+    ],
+)
+def test_geolayer_generic_fields_reject_unsupported_selected_layer(
+    layer_type: str,
+    geometry: dict[str, str],
+    method_name: str,
+) -> None:
+    factory = WizardChartCreateFactory(cast(Any, None))
+    builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
+    cast(Any, builder).add_layer(layer_type, **geometry)
+    getattr(cast(Any, builder), method_name)(["Amount"])
+
+    with pytest.raises(DataLensConfigurationError, match=rf"does not support {method_name}"):
+        _payload_data(builder)
+
+
 @pytest.mark.parametrize(
     ("layer_type", "field_argument", "field_name", "placeholder_id"),
     [
@@ -529,6 +583,40 @@ def test_geolayer_infers_gradient_mode_from_palette(
     common = data["visualization"]["layers"][0]["commonPlaceholders"]
     assert common["colorsConfig"]["gradientMode"] == expected_mode
     assert data["colorsConfig"] == common["colorsConfig"]
+
+
+@pytest.mark.parametrize(
+    "gradient_settings",
+    [
+        {"color_mode": "2-point"},
+        {"color_palette": "orange-yellow"},
+        {"color_reversed": False},
+    ],
+)
+def test_geolayer_rejects_gradient_settings_for_dimension_color(
+    gradient_settings: dict[str, object],
+) -> None:
+    factory = WizardChartCreateFactory(cast(Any, None))
+    builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
+    cast(Any, builder).add_layer(
+        "geopoint",
+        geopoint="Point",
+        color="Region",
+        **gradient_settings,
+    )
+
+    with pytest.raises(DataLensConfigurationError, match="requires a MEASURE"):
+        _payload_data(builder)
+
+
+def test_geolayer_accepts_dimension_color_without_gradient_settings() -> None:
+    factory = WizardChartCreateFactory(cast(Any, None))
+    builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
+    builder.add_layer("geopoint", geopoint="Point", color="Region")
+
+    common = _payload_data(builder)["visualization"]["layers"][0]["commonPlaceholders"]
+    assert [(item["guid"], item["type"]) for item in common["colors"]] == [("g_reg", "DIMENSION")]
+    assert common["colorsConfig"] == {}
 
 
 def test_geopoint_builds_all_live_reference_field_sections() -> None:
