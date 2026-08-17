@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping
+import hashlib
 import json
 import keyword
 from pathlib import Path
 import re
 from typing import TypedDict
 
+from typing_extensions import NotRequired
+
 from datalens_sdk._runtime.method_specs import method_specs_for_viz
 from datalens_sdk._runtime.viz_specs import QL_VIZ_SPECS, VIZ_SPECS, factory_method_name, to_snake
+from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC_DIR = ROOT / "spec"
@@ -46,6 +51,16 @@ _VIZ_CATEGORY_BASE_CREATE: dict[str, str] = {
     "pivotTable": "_PivotWizardChartCreate",
     "scatter": "_ScatterWizardChartCreate",
 }
+_WIZARD_ROUTES = (
+    "/rpc/createWizardChart",
+    "/rpc/deleteWizardChart",
+    "/rpc/getWizardChart",
+    "/rpc/updateWizardChart",
+)
+_SCHEMA_REF_PREFIX = "#/components/schemas/"
+_SCHEMA_IGNORED_KEYS = frozenset({"default", "deprecated", "description", "example", "examples", "title"})
+_SCHEMA_NAMED_MAP_KEYS = frozenset({"$defs", "dependentSchemas", "patternProperties", "properties"})
+_SCHEMA_SET_LIKE_KEYS = frozenset({"allOf", "anyOf", "enum", "oneOf", "required", "type"})
 
 
 class FieldMeta(TypedDict):
@@ -93,6 +108,39 @@ class ChartFactoryMeta(TypedDict):
     editor: list[str]
 
 
+class WizardRouteMeta(TypedDict):
+    method: str
+    request_schema: str
+    result_schema: str | None
+    request_body_required: bool
+
+
+class WizardInventory(TypedDict):
+    routes: int
+    roots: int
+    schemas: int
+    visualizations: int
+    geo_layers: int
+    combined_layers: int
+
+
+class WizardSchemaMeta(TypedDict):
+    api_version: str
+    wizard_version: int
+    routes: dict[str, WizardRouteMeta]
+    roots: list[str]
+    schemas: dict[str, JsonValue]
+    visualizations: list[str]
+    geo_layers: list[str]
+    combined_layers: list[str]
+    inventory: WizardInventory
+
+
+class WizardContractMeta(TypedDict):
+    fingerprint: str
+    manifest: WizardSchemaMeta
+
+
 class InstallationMetadata(TypedDict):
     name: str
     namespaces: list[str]
@@ -100,6 +148,7 @@ class InstallationMetadata(TypedDict):
     dataset_sources: dict[str, SourceMeta]
     charts: ChartMeta
     chart_factories: ChartFactoryMeta
+    wizard: NotRequired[WizardContractMeta]
 
 
 class Metadata(TypedDict):
@@ -150,13 +199,273 @@ def _load_json(path: Path) -> dict[str, object]:
     return _string_object_dict(data, context=str(path))
 
 
-def _schemas(spec: dict[str, object]) -> dict[str, dict[str, object]]:
+def _schemas(spec: Mapping[str, object]) -> dict[str, dict[str, object]]:
     components = _string_object_dict(spec.get("components"), context="components")
     return _schema_dict(components.get("schemas"), context="components.schemas")
 
 
 def _ref_name(ref: str) -> str:
     return ref.removeprefix("#/components/schemas/")
+
+
+def _schema_ref_name(value: object, *, context: str) -> str:
+    schema = _string_object_dict(value, context=context)
+    ref = schema.get("$ref")
+    if not isinstance(ref, str) or not ref.startswith(_SCHEMA_REF_PREFIX):
+        raise ValueError(f"{context} must contain a local schema $ref")
+    name = ref.removeprefix(_SCHEMA_REF_PREFIX)
+    if not name or "/" in name:
+        raise ValueError(f"{context} contains unsupported schema $ref {ref!r}")
+    return name
+
+
+def _schema_refs(value: object) -> set[str]:
+    if isinstance(value, list):
+        return set().union(*(_schema_refs(item) for item in value)) if value else set()
+    if not isinstance(value, dict):
+        return set()
+
+    refs: set[str] = set()
+    ref = value.get("$ref")
+    if isinstance(ref, str) and ref.startswith(_SCHEMA_REF_PREFIX):
+        refs.add(_schema_ref_name(value, context="schema node"))
+    for child in value.values():
+        refs.update(_schema_refs(child))
+    return refs
+
+
+def _canonical_json(value: JsonValue) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+
+
+def _deduplicate_sorted_json(values: list[JsonValue]) -> list[JsonValue]:
+    by_json = {_canonical_json(value): value for value in values}
+    return [by_json[key] for key in sorted(by_json)]
+
+
+def _normalize_wizard_schema(value: object, *, parent_key: str | None = None) -> JsonValue:
+    if value is None or isinstance(value, (str, bool, int, float)):
+        return value
+    if isinstance(value, list):
+        normalized = [_normalize_wizard_schema(item) for item in value]
+        return _deduplicate_sorted_json(normalized) if parent_key in _SCHEMA_SET_LIKE_KEYS else normalized
+    if not isinstance(value, Mapping):
+        raise TypeError(f"Wizard schema contains unsupported value {type(value).__name__}")
+
+    normalized_object: dict[str, JsonValue] = {}
+    for key, child in sorted(value.items()):
+        if not isinstance(key, str):
+            raise TypeError("Wizard schema contains a non-string object key")
+        if parent_key not in _SCHEMA_NAMED_MAP_KEYS and (key in _SCHEMA_IGNORED_KEYS or key.startswith("x-")):
+            continue
+        normalized_object[key] = _normalize_wizard_schema(child, parent_key=key)
+    return normalized_object
+
+
+def _route_schema(
+    operation: dict[str, object],
+    *,
+    route: str,
+    request: bool,
+) -> tuple[str | None, bool]:
+    if request:
+        body = _string_object_dict(operation.get("requestBody"), context=f"{route}.post.requestBody")
+        content = _string_object_dict(body.get("content"), context=f"{route}.post.requestBody.content")
+        media = _string_object_dict(
+            content.get("application/json"),
+            context=f"{route}.post.requestBody.content.application/json",
+        )
+        schema = _string_object_dict(
+            media.get("schema"),
+            context=f"{route}.post.requestBody.content.application/json.schema",
+        )
+        return _schema_ref_name(schema, context=f"{route} request schema"), body.get("required") is True
+
+    responses = _string_object_dict(operation.get("responses"), context=f"{route}.post.responses")
+    response = _string_object_dict(responses.get("200"), context=f"{route}.post.responses.200")
+    content = _string_object_dict(response.get("content"), context=f"{route}.post.responses.200.content")
+    media = _string_object_dict(
+        content.get("application/json"),
+        context=f"{route}.post.responses.200.content.application/json",
+    )
+    schema = _string_object_dict(
+        media.get("schema"),
+        context=f"{route}.post.responses.200.content.application/json.schema",
+    )
+    ref = schema.get("$ref")
+    if ref is None:
+        return None, False
+    return _schema_ref_name(schema, context=f"{route} result schema"), False
+
+
+def _singleton_union_tags(schema: object, *, context: str) -> list[str]:
+    schema_object = _string_object_dict(schema, context=context)
+    branches = schema_object.get("oneOf")
+    if not isinstance(branches, list):
+        raise ValueError(f"{context}.oneOf must be a list")
+
+    tags: list[str] = []
+    for index, branch in enumerate(branches):
+        branch_object = _string_object_dict(branch, context=f"{context}.oneOf[{index}]")
+        properties = _string_object_dict(
+            branch_object.get("properties"),
+            context=f"{context}.oneOf[{index}].properties",
+        )
+        type_schema = _string_object_dict(
+            properties.get("type"),
+            context=f"{context}.oneOf[{index}].properties.type",
+        )
+        enum = type_schema.get("enum")
+        if not isinstance(enum, list) or len(enum) != 1 or not isinstance(enum[0], str):
+            raise ValueError(f"{context}.oneOf[{index}].properties.type.enum must contain one string")
+        tags.append(enum[0])
+    if len(tags) != len(set(tags)):
+        raise ValueError(f"{context} contains duplicate type tags")
+    return sorted(tags)
+
+
+def build_wizard_schema_meta(spec: Mapping[str, object]) -> WizardSchemaMeta:
+    """Extract the focused, canonical Wizard v3 contract from one OpenAPI document."""
+
+    paths = _string_object_dict(spec.get("paths"), context="paths")
+    discovered_routes = {path for path in paths if "WizardChart" in path}
+    if discovered_routes != set(_WIZARD_ROUTES):
+        raise ValueError(
+            f"Wizard routes differ from the expected contract: "
+            f"expected {sorted(_WIZARD_ROUTES)}, got {sorted(discovered_routes)}"
+        )
+    route_meta: dict[str, WizardRouteMeta] = {}
+    roots: set[str] = set()
+    for route in _WIZARD_ROUTES:
+        path_item = _string_object_dict(paths.get(route), context=route)
+        operation = _string_object_dict(path_item.get("post"), context=f"{route}.post")
+        request_schema, request_body_required = _route_schema(operation, route=route, request=True)
+        assert request_schema is not None
+        result_schema, _ = _route_schema(operation, route=route, request=False)
+        roots.add(request_schema)
+        if result_schema is not None:
+            roots.add(result_schema)
+        route_meta[route] = {
+            "method": "post",
+            "request_schema": request_schema,
+            "result_schema": result_schema,
+            "request_body_required": request_body_required,
+        }
+
+    schemas = _schemas(spec)
+    reached: set[str] = set()
+    queue = sorted(roots)
+    normalized_schemas: dict[str, JsonValue] = {}
+    while queue:
+        name = queue.pop(0)
+        if name in reached:
+            continue
+        schema = schemas.get(name)
+        if schema is None:
+            raise ValueError(f"Wizard schema graph references missing component {name!r}")
+        reached.add(name)
+        normalized_schemas[name] = _normalize_wizard_schema(schema)
+        queue.extend(sorted(_schema_refs(schema) - reached - set(queue)))
+
+    config = schemas.get("WizardV1ConfigSchema")
+    if config is None:
+        raise ValueError("Wizard schema graph does not contain WizardV1ConfigSchema")
+    config_properties = _string_object_dict(
+        config.get("properties"),
+        context="WizardV1ConfigSchema.properties",
+    )
+    visualizations = _singleton_union_tags(
+        config_properties.get("visualization"),
+        context="WizardV1ConfigSchema.properties.visualization",
+    )
+    geo_layers = _singleton_union_tags(
+        schemas.get("WizardV1GeolayerLayerSchema"),
+        context="WizardV1GeolayerLayerSchema",
+    )
+    combined_layers = _singleton_union_tags(
+        schemas.get("WizardV1CombinedChartLayerSchema"),
+        context="WizardV1CombinedChartLayerSchema",
+    )
+
+    wizard = schemas.get("WizardV1")
+    if wizard is None:
+        raise ValueError("Wizard schema graph does not contain WizardV1")
+    wizard_properties = _string_object_dict(wizard.get("properties"), context="WizardV1.properties")
+    version_schema = _string_object_dict(wizard_properties.get("version"), context="WizardV1.properties.version")
+    version_enum = version_schema.get("enum")
+    if (
+        not isinstance(version_enum, list)
+        or len(version_enum) != 1
+        or not isinstance(version_enum[0], int)
+        or isinstance(version_enum[0], bool)
+    ):
+        raise ValueError("WizardV1.properties.version.enum must contain one integer")
+
+    info = _string_object_dict(spec.get("info"), context="info")
+    api_version = info.get("version")
+    if not isinstance(api_version, str):
+        raise ValueError("info.version must be a string")
+
+    inventory: WizardInventory = {
+        "routes": len(route_meta),
+        "roots": len(roots),
+        "schemas": len(reached),
+        "visualizations": len(visualizations),
+        "geo_layers": len(geo_layers),
+        "combined_layers": len(combined_layers),
+    }
+    return {
+        "api_version": api_version,
+        "wizard_version": version_enum[0],
+        "routes": route_meta,
+        "roots": sorted(roots),
+        "schemas": dict(sorted(normalized_schemas.items())),
+        "visualizations": visualizations,
+        "geo_layers": geo_layers,
+        "combined_layers": combined_layers,
+        "inventory": inventory,
+    }
+
+
+def wizard_schema_fingerprint(meta: WizardSchemaMeta) -> str:
+    canonical = normalize_json_object(meta, context="Wizard schema metadata")
+    return hashlib.sha256(_canonical_json(canonical).encode("utf-8")).hexdigest()
+
+
+def _json_pointer_token(value: str) -> str:
+    return value.replace("~", "~0").replace("/", "~1")
+
+
+def _display_json(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _diff_json(before: object, after: object, *, pointer: str, lines: list[str]) -> None:
+    if isinstance(before, dict) and isinstance(after, dict):
+        before_keys = {key for key in before if isinstance(key, str)}
+        after_keys = {key for key in after if isinstance(key, str)}
+        if len(before_keys) != len(before) or len(after_keys) != len(after):
+            raise TypeError("Wizard manifest diff requires string object keys")
+        for key in sorted(before_keys | after_keys):
+            child_pointer = f"{pointer}/{_json_pointer_token(key)}"
+            if key not in before:
+                lines.append(f"+ {child_pointer}: {_display_json(after[key])}")
+            elif key not in after:
+                lines.append(f"- {child_pointer}: {_display_json(before[key])}")
+            else:
+                _diff_json(before[key], after[key], pointer=child_pointer, lines=lines)
+        return
+    if type(before) is type(after) and before == after:
+        return
+    lines.append(f"~ {pointer or '/'}: {_display_json(before)} -> {_display_json(after)}")
+
+
+def diff_wizard_schema_meta(before: WizardSchemaMeta, after: WizardSchemaMeta) -> str:
+    """Render a stable JSON-pointer diff for two normalized Wizard manifests."""
+
+    lines: list[str] = []
+    _diff_json(before, after, pointer="", lines=lines)
+    return "\n".join(lines) if lines else "No structural changes."
 
 
 def _safe_name(name: str) -> str:
@@ -474,7 +783,17 @@ def _chart_meta(schemas: dict[str, dict[str, object]]) -> ChartMeta:
     return {"editor_nodes": editor_nodes, "editor_update_nodes": update_editor_nodes}
 
 
-def build_metadata(installations: dict[str, Path]) -> Metadata:
+def build_metadata(
+    installations: dict[str, Path],
+    *,
+    wizard_specs: Mapping[str, Path] | None = None,
+) -> Metadata:
+    wizard_specs = wizard_specs or {}
+    unknown_wizard_installations = set(wizard_specs) - set(installations)
+    if unknown_wizard_installations:
+        joined = ", ".join(sorted(unknown_wizard_installations))
+        raise ValueError(f"Wizard specs reference unknown installations: {joined}")
+
     out: Metadata = {"installations": {}}
     wizard_factory_methods = sorted(_visualization_factory_methods(sorted(VIZ_SPECS), family="Wizard").values())
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
@@ -498,7 +817,7 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
             context="DataSourceStrict.discriminator.mapping",
         )
         chart_meta = _chart_meta(schemas)
-        out["installations"][installation] = {
+        installation_metadata: InstallationMetadata = {
             "name": installation,
             "namespaces": NAMESPACES[installation],
             "connectors": {
@@ -516,6 +835,14 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
                 "editor": sorted(node["factory_method"] for node in chart_meta["editor_nodes"].values()),
             },
         }
+        wizard_spec_path = wizard_specs.get(installation)
+        if wizard_spec_path is not None:
+            wizard_manifest = build_wizard_schema_meta(_load_json(wizard_spec_path))
+            installation_metadata["wizard"] = {
+                "fingerprint": wizard_schema_fingerprint(wizard_manifest),
+                "manifest": wizard_manifest,
+            }
+        out["installations"][installation] = installation_metadata
     editor_methods_by_wire_type: dict[str, tuple[str, str]] = {}
     for installation, info in sorted(out["installations"].items()):
         for wire_type, node_meta in sorted(info["charts"]["editor_nodes"].items()):
