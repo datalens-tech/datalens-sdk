@@ -11,8 +11,7 @@ from datalens_sdk._runtime.chart_mutations import _ChartMutationsMixin
 from datalens_sdk._runtime.chart_wire import build_date_interval, build_relative_date_interval
 from datalens_sdk._runtime.method_specs import validate_method_applicability
 from datalens_sdk._runtime.validators import HEX_COLOR_RE
-from datalens_sdk._runtime.viz_specs import validate_placeholder_id
-from datalens_sdk._runtime.wizard_visualization_transitions import validate_visualization_transition
+from datalens_sdk._runtime.wizard_semantics import validate_slot_name, validate_visualization_transition
 from datalens_sdk._wizard_encodings import WizardColorEncoding, WizardShapeEncoding
 from datalens_sdk.domain.chart_types import (
     DiscretePaletteId,
@@ -46,9 +45,8 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self._field_replacements: dict[str, FieldRef] = {}
         self._deleted_field_guids: set[str] = set()
         self._deleted_filter_guids: set[str] = set()
-        self._new_viz_id: str | None = None
+        self._target_visualization_type: str | None = None
         self._dataset_replacement: tuple[str, str] | None = None
-        self._placeholder_edits: dict[str, list[FieldRef]] = {}
         self._replace_formulas: dict[str, str] = {}
         self._new_hierarchies: list[dict[str, object]] = []
         self._local_field_additions: list[dict[str, object]] = []
@@ -58,14 +56,14 @@ class WizardChartUpdate(_ChartMutationsMixin):
     def _check_viz_applicability(self, method_name: str) -> None:
         validate_method_applicability(method_name, self.visualization_id or "")
 
-    def _check_placeholder_applicability(self, *, method_name: str, placeholder_id: str) -> str:
+    def _check_slot_applicability(self, *, method_name: str, slot_name: str) -> str:
         visualization_id = self.visualization_id or ""
-        if visualization_id == "combined-chart" and placeholder_id == "x":
-            return placeholder_id
-        return validate_placeholder_id(
+        if visualization_id == "combined-chart" and slot_name == "x":
+            return slot_name
+        return validate_slot_name(
             method=method_name,
-            visualization_id=visualization_id,
-            placeholder_id=placeholder_id,
+            visualization_type=visualization_id,
+            slot_name=slot_name,
         )
 
     @property
@@ -74,7 +72,11 @@ class WizardChartUpdate(_ChartMutationsMixin):
 
     @property
     def visualization_id(self) -> str | None:
-        return self._new_viz_id or self._chart.visualization_id
+        return self._target_visualization_type or self._chart.visualization_id
+
+    @property
+    def target_visualization_type(self) -> str | None:
+        return self._target_visualization_type
 
     @property
     def mode_value(self) -> EntryUpdateMode:
@@ -97,20 +99,16 @@ class WizardChartUpdate(_ChartMutationsMixin):
         return self._dataset_replacement
 
     @property
-    def placeholder_edits(self) -> Mapping[str, list[FieldRef]]:
-        return self._placeholder_edits
+    def slot_edits(self) -> Mapping[str, list[FieldRef]]:
+        return self._slot_fields
 
     @property
-    def extra_settings_edits(self) -> Mapping[str, object]:
-        return self._extra_settings
+    def chart_settings_edits(self) -> Mapping[str, object]:
+        return self._chart_settings
 
     @property
-    def ph_settings_edits(self) -> Mapping[str, Mapping[str, object]]:
-        return self._ph_settings
-
-    @property
-    def data_fields_edits(self) -> Mapping[str, list[FieldRef]]:
-        return self._data_fields
+    def slot_settings_edits(self) -> Mapping[str, Mapping[str, object]]:
+        return self._slot_settings
 
     @property
     def item_mutations(self) -> Sequence[tuple[FieldRef, str, object]]:
@@ -168,70 +166,66 @@ class WizardChartUpdate(_ChartMutationsMixin):
     def explicit_colors(self) -> bool:
         return self._color_encoding is not None
 
-    def _set_extra(self, setting_key: str, value: object) -> Self:
-        self._extra_settings[setting_key] = value
+    def _set_chart_setting(self, setting_key: str, value: object) -> Self:
+        self._chart_settings[setting_key] = value
         return self
 
-    def _set_ph_setting(self, method_name: str, placeholder_id: str, setting_key: str, value: object) -> Self:
-        self._check_placeholder_applicability(method_name=method_name, placeholder_id=placeholder_id)
-        self._ph_settings.setdefault(placeholder_id, {})[setting_key] = value
-        return self
-
-    def _set_data_field(self, wire_key: str, fields: Sequence[FieldRef]) -> Self:
-        self._data_fields[wire_key] = list(fields)
+    def _set_slot_setting(self, method_name: str, slot_name: str, setting_key: str, value: object) -> Self:
+        canonical_name = self._check_slot_applicability(method_name=method_name, slot_name=slot_name)
+        self._slot_settings.setdefault(canonical_name, {})[setting_key] = value
         return self
 
     def legend(self, *, mode: Literal["show", "hide"]) -> Self:
         self._check_viz_applicability("legend")
-        return self._set_extra("legendMode", mode)
+        return self._set_chart_setting("legendMode", mode)
 
     def tooltip_sum(self, *, enabled: bool) -> Self:
         self._check_viz_applicability("tooltip_sum")
-        return self._set_extra("tooltipSum", "on" if enabled else "off")
+        return self._set_chart_setting("tooltipSum", "on" if enabled else "off")
 
     def totals(self, *, enabled: bool) -> Self:
         self._check_viz_applicability("totals")
-        return self._set_extra("totals", "on" if enabled else "off")
+        return self._set_chart_setting("totals", "on" if enabled else "off")
 
     def label_mode(self, *, mode: Literal["absolute", "percent"]) -> Self:
         self._check_viz_applicability("label_mode")
-        return self._set_extra("labelMode", mode)
+        return self._set_chart_setting("labelMode", mode)
 
     def labels_position(self, *, mode: Literal["inside", "outside", "auto"]) -> Self:
         self._check_viz_applicability("labels_position")
-        return self._set_extra("labelsPosition", mode)
+        return self._set_chart_setting("labelsPosition", mode)
 
     def tooltip_percentage_base(self, *, mode: Literal["auto", "first", "previous"]) -> Self:
         self._check_viz_applicability("tooltip_percentage_base")
-        return self._set_extra("tooltipPercentageBase", mode)
+        return self._set_chart_setting("tooltipPercentageBase", mode)
 
     def shape(self, *, value: FunnelShape) -> Self:
         self._check_viz_applicability("shape")
-        return self._set_extra("shape", value)
+        return self._set_chart_setting("shape", value)
 
-    def axis_visibility(self, ph_id: str, *, mode: Literal["show", "hide"]) -> Self:
+    def axis_visibility(self, slot_name: str, *, mode: Literal["show", "hide"]) -> Self:
         self._check_viz_applicability("axis_visibility")
-        return self._set_ph_setting("axis_visibility", ph_id, "axisVisibility", mode)
+        return self._set_slot_setting("axis_visibility", slot_name, "axisVisibility", mode)
 
-    def hide_labels(self, ph_id: str, *, enabled: bool) -> Self:
+    def hide_labels(self, slot_name: str, *, enabled: bool) -> Self:
         self._check_viz_applicability("hide_labels")
-        return self._set_ph_setting("hide_labels", ph_id, "hideLabels", "yes" if enabled else "no")
+        return self._set_slot_setting("hide_labels", slot_name, "hideLabels", "yes" if enabled else "no")
 
-    def nulls_mode(self, ph_id: str, *, mode: Literal["ignore", "connect", "as-0"]) -> Self:
+    def nulls_mode(self, slot_name: str, *, mode: Literal["ignore", "connect", "as-0"]) -> Self:
         self._check_viz_applicability("nulls_mode")
-        return self._set_ph_setting("nulls_mode", ph_id, "nulls", mode)
+        return self._set_slot_setting("nulls_mode", slot_name, "nulls", mode)
 
     def segments(self, fields: Sequence[FieldRef]) -> Self:
         self._check_viz_applicability("segments")
-        return self._set_data_field("segments", fields)
+        return self._set_slot("segments", fields)
 
     def labels(self, fields: Sequence[FieldRef]) -> Self:
         self._check_viz_applicability("labels")
-        return self._set_data_field("labels", fields)
+        return self._set_slot("labels", fields)
 
     def tooltips(self, fields: Sequence[FieldRef]) -> Self:
         self._check_viz_applicability("tooltips")
-        return self._set_data_field("tooltips", fields)
+        return self._set_slot("tooltips", fields)
 
     def _mutate_item_by_guid(self, field: FieldRef, setting_key: str, value: object) -> Self:
         self._item_mutations.append((field, setting_key, value))
@@ -243,26 +237,26 @@ class WizardChartUpdate(_ChartMutationsMixin):
 
     def chart_title(self, *, text: str = "", mode: Literal["show", "hide"] = "show") -> Self:
         self._check_viz_applicability("chart_title")
-        self._set_extra("title", text)
-        return self._set_extra("titleMode", mode)
+        self._set_chart_setting("title", text)
+        return self._set_chart_setting("titleMode", mode)
 
     def navigator(self, *, mode: Literal["show", "hide"]) -> Self:
         self._check_viz_applicability("navigator")
-        current = self._extra_settings.get("navigatorSettings")
+        current = self._chart_settings.get("navigatorSettings")
         settings = dict(current) if isinstance(current, Mapping) else {}
         settings["navigatorMode"] = mode
-        return self._set_extra("navigatorSettings", settings)
+        return self._set_chart_setting("navigatorSettings", settings)
 
-    def axis_title(self, ph_id: str, *, mode: Literal["off", "manual", "auto"], text: str = "") -> Self:
+    def axis_title(self, slot_name: str, *, mode: Literal["off", "manual", "auto"], text: str = "") -> Self:
         self._check_viz_applicability("axis_title")
-        self._set_ph_setting("axis_title", ph_id, "title", mode)
+        self._set_slot_setting("axis_title", slot_name, "title", mode)
         if mode == "manual" and text:
-            self._set_ph_setting("axis_title", ph_id, "titleValue", text)
+            self._set_slot_setting("axis_title", slot_name, "titleValue", text)
         return self
 
     def axis_scale(
         self,
-        ph_id: str,
+        slot_name: str,
         *,
         scale: Literal["linear", "logarithmic"] = "linear",
         mode: Literal["auto", "manual"] = "auto",
@@ -274,34 +268,34 @@ class WizardChartUpdate(_ChartMutationsMixin):
             raise DataLensConfigurationError(
                 "axis_scale(mode='manual') requires at least one of min= or max= to be specified."
             )
-        self._set_ph_setting("axis_scale", ph_id, "type", scale)
-        self._set_ph_setting("axis_scale", ph_id, "scale", mode)
+        self._set_slot_setting("axis_scale", slot_name, "type", scale)
+        self._set_slot_setting("axis_scale", slot_name, "scale", mode)
         if mode == "manual":
-            self._set_ph_setting("axis_scale", ph_id, "scaleValue", [min, max])
+            self._set_slot_setting("axis_scale", slot_name, "scaleValue", [min, max])
         return self
 
-    def grid(self, ph_id: str, *, enabled: bool, step: int | None = None) -> Self:
+    def grid(self, slot_name: str, *, enabled: bool, step: int | None = None) -> Self:
         self._check_viz_applicability("grid")
-        self._set_ph_setting("grid", ph_id, "grid", "on" if enabled else "off")
+        self._set_slot_setting("grid", slot_name, "grid", "on" if enabled else "off")
         if step is not None:
-            self._set_ph_setting("grid", ph_id, "gridStep", "manual")
-            self._set_ph_setting("grid", ph_id, "gridStepValue", step)
+            self._set_slot_setting("grid", slot_name, "gridStep", "manual")
+            self._set_slot_setting("grid", slot_name, "gridStepValue", step)
         return self
 
     def pagination(self, *, enabled: bool, limit: int = 100) -> Self:
         self._check_viz_applicability("pagination")
-        self._set_extra("pagination", "on" if enabled else "off")
+        self._set_chart_setting("pagination", "on" if enabled else "off")
         if enabled:
-            self._set_extra("limit", limit)
+            self._set_chart_setting("limit", limit)
         return self
 
     def table_size(self, *, size: Literal["s", "m", "l"]) -> Self:
         self._check_viz_applicability("table_size")
-        return self._set_extra("size", size)
+        return self._set_chart_setting("size", size)
 
     def freeze_columns(self, *, count: int = 1) -> Self:
         self._check_viz_applicability("freeze_columns")
-        return self._set_extra("pinnedColumns", count)
+        return self._set_chart_setting("pinnedColumns", count)
 
     def description(self, text: str) -> Self:
         self._description = text
@@ -540,17 +534,17 @@ class WizardChartUpdate(_ChartMutationsMixin):
 
     def font_size(self, *, size: Literal["xs", "s", "m", "l"]) -> Self:
         self._check_viz_applicability("font_size")
-        return self._set_extra("metricFontSize", INDICATOR_FONT_SIZE_UI_TO_PAYLOAD[size])
+        return self._set_chart_setting("metricFontSize", INDICATOR_FONT_SIZE_UI_TO_PAYLOAD[size])
 
     def font_color(self, *, color: str) -> Self:
         self._check_viz_applicability("font_color")
         if not HEX_COLOR_RE.fullmatch(color):
             raise DataLensConfigurationError(f"font_color: color must be a hex string like #RRGGBB, got {color!r}")
-        return self._set_extra("metricFontColor", color)
+        return self._set_chart_setting("metricFontColor", color)
 
     def measure_title_mode(self, *, mode: Literal["by-field", "manual", "hide"]) -> Self:
         self._check_viz_applicability("measure_title_mode")
-        return self._set_extra("indicatorTitleMode", mode)
+        return self._set_chart_setting("indicatorTitleMode", mode)
 
     def mode(self, value: EntryUpdateMode) -> Self:
         if value not in get_args(EntryUpdateMode):
@@ -559,13 +553,12 @@ class WizardChartUpdate(_ChartMutationsMixin):
         return self
 
     def change_visualization_to(self, *, visualization_id: str) -> Self:
-        source_visualization_id = self.visualization_id or ""
         validate_visualization_transition(
             method="change_visualization_to",
-            source_visualization_id=source_visualization_id,
-            target_visualization_id=visualization_id,
+            source_visualization_type=self.visualization_id or "",
+            target_visualization_type=visualization_id,
         )
-        self._new_viz_id = visualization_id
+        self._target_visualization_type = visualization_id
         return self
 
     def replace_field(self, old: FieldRef, new: FieldRef) -> Self:
@@ -584,34 +577,34 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self._deleted_filter_guids.add(_field_guid(field))
         return self
 
-    def _set_placeholder(self, placeholder_id: str, fields: Sequence[FieldRef]) -> Self:
-        self._check_placeholder_applicability(method_name=placeholder_id, placeholder_id=placeholder_id)
-        self._placeholder_edits[placeholder_id] = list(fields)
+    def _set_slot(self, slot_name: str, fields: Sequence[FieldRef]) -> Self:
+        canonical_name = self._check_slot_applicability(method_name=slot_name, slot_name=slot_name)
+        self._slot_fields[canonical_name] = list(fields)
         return self
 
     def x(self, fields: Sequence[FieldRef]) -> Self:
-        return self._set_placeholder("x", fields)
+        return self._set_slot("x", fields)
 
     def y(self, fields: Sequence[FieldRef]) -> Self:
-        return self._set_placeholder("y", fields)
+        return self._set_slot("y", fields)
 
     def y2(self, fields: Sequence[FieldRef]) -> Self:
-        return self._set_placeholder("y2", fields)
+        return self._set_slot("y2", fields)
 
     def columns(self, fields: Sequence[FieldRef]) -> Self:
-        return self._set_placeholder("columns", fields)
+        return self._set_slot("columns", fields)
 
     def rows(self, fields: Sequence[FieldRef]) -> Self:
-        return self._set_placeholder("rows", fields)
+        return self._set_slot("rows", fields)
 
     def measures(self, fields: Sequence[FieldRef]) -> Self:
-        return self._set_placeholder("measures", fields)
+        return self._set_slot("measures", fields)
 
     def points(self, fields: Sequence[FieldRef]) -> Self:
-        return self._set_placeholder("points", fields)
+        return self._set_slot("points", fields)
 
     def size(self, fields: Sequence[FieldRef]) -> Self:
-        return self._set_placeholder("size", fields)
+        return self._set_slot("size", fields)
 
     def execute(self) -> WizardChart:
         if self._operations is None:

@@ -154,6 +154,20 @@ def _check_entry_mutation_return_types(
     )
 
 
+def _wizard_raw_snapshot() -> dict[str, JsonValue]:
+    return {
+        "entry": {
+            "version": 1,
+            "entryId": "source",
+            "type": "d3_wizard_node",
+            "data": {
+                "sources": {"datasetsIds": []},
+                "visualization": {"type": "line", "x": {"items": []}},
+            },
+        }
+    }
+
+
 def _check_raw_chart_return_types(
     *,
     client: DataLensClientYC,
@@ -162,7 +176,7 @@ def _check_raw_chart_return_types(
     ql: QLChart,
 ) -> None:
     wizard_create = client.raw.create.wizard_chart(
-        response_snapshot={"entryId": "source", "type": "d3_wizard_node", "data": {}},
+        response_snapshot=_wizard_raw_snapshot(),
         name="Wizard",
         location=EntryLocation.path("/raw"),
     )
@@ -185,7 +199,7 @@ def _check_raw_chart_return_types(
 
     wizard_replace = client.raw.replace.wizard_chart(
         target=wizard,
-        response_snapshot={"entryId": "source", "type": "d3_wizard_node", "data": {}},
+        response_snapshot=_wizard_raw_snapshot(),
     )
     editor_replace = client.raw.replace.editor_chart(
         target=editor,
@@ -222,7 +236,7 @@ def _check_raw_namespace_return_types(
     connection_snapshot: dict[str, JsonValue] = {"id": "source", "type": "postgres", "name": "Source"}
     dataset_snapshot: dict[str, JsonValue] = {"id": "source", "dataset": {}}
     dashboard_snapshot: dict[str, JsonValue] = {"entry": {"entryId": "source", "data": {}}}
-    wizard_snapshot: dict[str, JsonValue] = {"entryId": "source", "type": "d3_wizard_node", "data": {}}
+    wizard_snapshot = _wizard_raw_snapshot()
     editor_snapshot: dict[str, JsonValue] = {"entry": {"entryId": "source", "type": "advanced-chart_node", "data": {}}}
     ql_snapshot: dict[str, JsonValue] = {"entryId": "source", "type": "d3_ql_node", "data": {}}
     artifact = Path("/raw/artifact")

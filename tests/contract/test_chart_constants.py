@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 
 from datalens_sdk._runtime.chart_constants import (
-    COLORS_IN_PLACEHOLDER_VIZ,
     DEFAULT_CATEGORICAL_PALETTE,
     DIVERGING_GRADIENT_PALETTES,
     INDICATOR_FONT_SIZE_UI_TO_PAYLOAD,
@@ -14,16 +13,11 @@ from datalens_sdk._runtime.chart_constants import (
     gradient_types_for_palette,
     is_wizard_wire_type,
 )
-from datalens_sdk._runtime.viz_specs import VIZ_SPECS
 from datalens_sdk.errors import NotSupportedError
 
 
 def test_default_categorical_palette_is_a_public_discrete_palette() -> None:
     assert DEFAULT_CATEGORICAL_PALETTE in VALID_DISCRETE_PALETTES
-
-
-def test_colors_in_placeholder_viz_reference_existing_viz() -> None:
-    assert set(VIZ_SPECS) >= COLORS_IN_PLACEHOLDER_VIZ
 
 
 def test_gradient_subsets_are_within_valid_gradient() -> None:

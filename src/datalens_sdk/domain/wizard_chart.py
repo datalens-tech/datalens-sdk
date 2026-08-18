@@ -130,11 +130,11 @@ class WizardChart(Chart):
 
     @property
     def visualization_id(self) -> str | None:
-        """The chart's visualization id (``data.visualization.id``)."""
+        """The Wizard V1 visualization discriminator (``data.visualization.type``)."""
         visualization = self.data.get("visualization")
         if not isinstance(visualization, Mapping):
             return None
-        value = visualization.get("id")
+        value = visualization.get("type")
         return value if isinstance(value, str) else None
 
     @property
@@ -143,13 +143,16 @@ class WizardChart(Chart):
 
     @property
     def dataset_ids(self) -> tuple[str, ...]:
-        """The dataset ids backing this chart (``data.datasetsIds``), non-strings filtered.
+        """The dataset ids backing this chart (``data.sources.datasetsIds``).
 
         Empty tuple when the key is absent or holds no string ids. Used by the
         update path to point users at the right dataset when a field reference
         cannot be resolved against placed fields alone.
         """
-        value = self.data.get("datasetsIds")
+        sources = self.data.get("sources")
+        if not isinstance(sources, Mapping):
+            return ()
+        value = sources.get("datasetsIds")
         if not isinstance(value, list):
             return ()
         return tuple(item for item in value if isinstance(item, str))

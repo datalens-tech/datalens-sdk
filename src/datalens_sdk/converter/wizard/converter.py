@@ -12,7 +12,7 @@ from datalens_sdk.converter.raw.chart import (
     RawWizardChartReplaceEnvelope,
 )
 from datalens_sdk.converter.wizard._assemble import _assemble_wizard_data
-from datalens_sdk.converter.wizard._common import _dict_with_string_keys
+from datalens_sdk.converter.wizard._types import WizardConfigV1, WizardJsonObject
 from datalens_sdk.converter.wizard._update import _apply_update_operations, _refuse_orphaning_publish
 from datalens_sdk.domain.entry_location import (
     EntryLocation,
@@ -44,8 +44,7 @@ class WizardChartCreateDTOClass(Protocol):
     def __call__(
         self,
         *,
-        template: str,
-        data: Mapping[str, object],
+        data: WizardConfigV1,
         key: str | None = None,
         name: str | None = None,
         workbook_id: str | None = None,
@@ -57,18 +56,23 @@ class WizardChartUpdateDTOClass(Protocol):
     def __call__(
         self,
         *,
-        entry_id: str,
-        template: str,
+        chart_id: str,
         mode: str,
-        data: Mapping[str, object],
+        data: Mapping[str, JsonValue],
         annotation: Mapping[str, object] | None = None,
+        rev_id: str | None = None,
     ) -> WizardChartUpdateDTOProtocol: ...
 
 
+class WizardChartEntryReadDTOProtocol(Protocol):
+    entry_id: str
+    type: str | None
+    data: dict[str, JsonValue]
+
+
 class WizardChartReadDTOProtocol(Protocol):
-    entry_id: str | None
-    data: dict[str, object] | None
-    raw: dict[str, object]
+    entry: WizardChartEntryReadDTOProtocol
+    raw: dict[str, JsonValue]
 
 
 class WizardChartReadDTOClass(Protocol):
@@ -99,10 +103,9 @@ class WizardChartConverter:
         if spec.description:
             annotation = {"description": spec.description}
         return generated.WizardChartCreateDTO(
-            template="datalens",
             data=data,
             key=key,
-            name=None if key else spec.name,
+            name=spec.name,
             workbook_id=workbook_id_from_location(spec.location),
             annotation=annotation,
         )
@@ -115,16 +118,16 @@ class WizardChartConverter:
     ) -> WizardChartUpdateDTOProtocol:
         generated = _dto_module(dto_module)
         chart = update.chart
-        data = copy.deepcopy(dict(chart.data))
+        data: WizardJsonObject = copy.deepcopy(normalize_json_object(chart.data, context="Wizard V1 update snapshot"))
         _refuse_orphaning_publish(update)
         _apply_update_operations(data, update)
-        annotation = {"description": update.description_value} if update.description_value else None
+        annotation = {"description": update.description_value} if update.description_value is not None else None
         return generated.WizardChartUpdateDTO(
-            entry_id=cast(str, chart.id),
-            template="datalens",
+            chart_id=cast(str, chart.id),
             mode=update.mode_value,
             data=data,
             annotation=annotation,
+            rev_id=_optional_str(chart.raw.get("revId")),
         )
 
     @staticmethod
@@ -155,10 +158,11 @@ class WizardChartConverter:
                 f"Wizard chart wire type mismatch: source is {source.wire_type!r}, target is {target_wire_type!r}"
             )
         return RawWizardChartReplaceEnvelope(
-            entry_id=spec.target_id,
+            chart_id=spec.target_id,
             mode=mode,
             data=source.data,
             annotation=source.optional_object("annotation"),
+            rev_id=spec.target_revision_id,
         )
 
     @staticmethod
@@ -179,12 +183,7 @@ class WizardChartConverter:
         response: Mapping[str, object]
         if isinstance(raw, Mapping):
             response_snapshot = normalize_json_object(raw, context="Wizard chart API response")
-            dto_validation_input = dict(response_snapshot)
-            dto_validation_input["raw"] = normalize_json_object(
-                response_snapshot,
-                context="Wizard chart typed response state",
-            )
-            read_dto = generated.WizardChartReadDTO.model_validate(dto_validation_input)
+            read_dto = generated.WizardChartReadDTO.model_validate(response_snapshot)
             response = normalize_json_object(
                 response_snapshot,
                 context="Wizard chart typed response state",
@@ -192,32 +191,37 @@ class WizardChartConverter:
         else:
             read_dto = raw
             response = read_dto.raw or {}
-        data = read_dto.data if read_dto.data is not None else _dict_with_string_keys(response.get("data"))
-        data = _dict_with_string_keys(data)
-        visualization = _dict_with_string_keys(data.get("visualization"))
-        existing_viz_id = _optional_str(visualization.get("id"))
+            response_snapshot = normalize_json_object(response, context="Wizard chart API response")
+        entry_value = response.get("entry")
+        if not isinstance(entry_value, Mapping):
+            raise DataLensValidationError("Wizard API v3 response requires an entry object")
+        entry = normalize_json_object(entry_value, context="Wizard chart entry")
+        data = normalize_json_object(read_dto.entry.data, context="Wizard V1 config")
+        visualization_value = data.get("visualization")
+        visualization = visualization_value if isinstance(visualization_value, dict) else {}
+        existing_viz_id = _optional_str(visualization.get("type"))
         if visualization_id_fallback and not existing_viz_id:
             enriched_visualization = dict(visualization)
-            enriched_visualization["id"] = visualization_id_fallback
+            enriched_visualization["type"] = visualization_id_fallback
             data = dict(data)
             data["visualization"] = enriched_visualization
-        wire_type = _optional_str(response.get("type")) or wire_type_fallback
-        key = _optional_str(response.get("key"))
+        wire_type = _optional_str(entry.get("type")) or read_dto.entry.type or wire_type_fallback
+        key = _optional_str(entry.get("key"))
         domain_location = resolve_entry_location_from_api_fields(
-            dir_path=_optional_str(response.get("dir_path")),
+            dir_path=_optional_str(entry.get("dir_path")),
             key=key,
-            collection_id=_optional_str(response.get("collection_id")) or _optional_str(response.get("collectionId")),
-            workbook_id=_optional_str(response.get("workbook_id")) or _optional_str(response.get("workbookId")),
+            collection_id=_optional_str(entry.get("collection_id")) or _optional_str(entry.get("collectionId")),
+            workbook_id=_optional_str(entry.get("workbook_id")) or _optional_str(entry.get("workbookId")),
             fallback=location,
         )
         return WizardChart(
-            id=read_dto.entry_id or _read_response_id(response, keys=_WIZARD_ID_KEYS) or id_fallback,
+            id=read_dto.entry.entry_id or _read_response_id(entry, keys=_WIZARD_ID_KEYS) or id_fallback,
             installation=installation,
-            name=_optional_str(response.get("name")) or name_from_key(key) or name,
+            name=_optional_str(entry.get("name")) or name_from_key(key) or name,
             location=domain_location,
             wire_type=wire_type,
             data=data,
-            raw=response,
+            raw=entry,
             response_snapshot=response_snapshot,
             _operations=operations,
         )

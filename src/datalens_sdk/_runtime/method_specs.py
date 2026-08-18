@@ -1,23 +1,25 @@
 from __future__ import annotations
 
-from typing import Literal, TypedDict, cast
+from typing import Literal, TypedDict
 
-from datalens_sdk._runtime.viz_specs import (
-    VIZ_SPECS,
-    viz_ids_for_wizard_encoding,
-    viz_ids_with_color_encoding,
+from datalens_sdk._runtime.wizard_semantics import (
+    visualization_types_for_wizard_encoding,
+    visualization_types_where,
+    visualization_types_with_color_encoding,
+    visualization_types_with_label_mode,
+    visualization_types_with_slot,
 )
 from datalens_sdk.errors import DataLensConfigurationError
 
-MethodKind = Literal["placeholder", "data_field", "extra_setting", "ph_setting", "helper"]
+MethodKind = Literal["slot", "chart_setting", "slot_setting", "helper"]
 
 MethodValueType = Literal["str", "bool", "literal", "fields"]
 
 
 class MethodSpec(TypedDict, total=False):
     kind: MethodKind
-    viz_ids: frozenset[str]
-    wire_key: str
+    visualization_types: frozenset[str]
+    slot_name: str
     setting_key: str
     value_type: MethodValueType
     literal_values: tuple[str, ...]
@@ -25,21 +27,11 @@ class MethodSpec(TypedDict, total=False):
     helper: str
 
 
-def _viz_ids_where(flag: str, *, default: bool) -> frozenset[str]:
-    """Compute frozenset of viz_ids where a viz-level flag is True."""
-    result: set[str] = set()
-    for viz_id, spec in VIZ_SPECS.items():
-        viz = cast(dict[str, object], spec.get("viz", {}))
-        if bool(viz.get(flag, default)):
-            result.add(viz_id)
-    return frozenset(result)
+_ALLOW_SORT = visualization_types_where("allows_sort")
 
+_ALLOW_LABELS = visualization_types_where("allows_labels")
 
-_ALLOW_SORT: frozenset[str] = _viz_ids_where("allowSort", default=True)
-
-_ALLOW_LABELS: frozenset[str] = _viz_ids_where("allowLabels", default=True)
-
-_ALLOW_FILTERS: frozenset[str] = _viz_ids_where("allowFilters", default=True)
+_ALLOW_FILTERS = visualization_types_where("allows_filters")
 
 _CARTESIAN: frozenset[str] = frozenset(
     {
@@ -68,26 +60,9 @@ _CARTESIAN_LINEAR: frozenset[str] = frozenset(
 
 _TABLE: frozenset[str] = frozenset({"flatTable", "pivotTable"})
 
-_SEGMENT_VIZ: frozenset[str] = frozenset(
-    {
-        "line",
-        "column",
-        "area",
-        "area100p",
-        "column100p",
-    }
-)
+_SEGMENT_VISUALIZATIONS = visualization_types_with_slot("segments")
 
-_LABEL_MODE_VIZ: frozenset[str] = frozenset(
-    {
-        "funnel",
-        "pie",
-        "donut",
-        "area100p",
-        "column100p",
-        "bar100p",
-    }
-)
+_LABEL_MODE_VISUALIZATIONS = visualization_types_with_label_mode("percent")
 
 _TABLE_AND_CARTESIAN: frozenset[str] = _TABLE | _CARTESIAN
 
@@ -98,87 +73,83 @@ _BOOL_YES_NO: dict[str, str] = {"true": "yes", "false": "no"}
 
 METHOD_SPECS: dict[str, MethodSpec] = {
     "legend": {
-        "kind": "extra_setting",
-        "wire_key": "legendMode",
+        "kind": "chart_setting",
+        "setting_key": "legendMode",
         "value_type": "literal",
         "literal_values": ("show", "hide"),
     },
     "tooltip_sum": {
-        "kind": "extra_setting",
-        "wire_key": "tooltipSum",
+        "kind": "chart_setting",
+        "setting_key": "tooltipSum",
         "value_type": "bool",
         "value_map": _BOOL_ON_OFF,
     },
     "totals": {
-        "kind": "extra_setting",
-        "wire_key": "totals",
+        "kind": "chart_setting",
+        "setting_key": "totals",
         "value_type": "bool",
         "value_map": _BOOL_ON_OFF,
-        "viz_ids": frozenset({"flatTable"}),
+        "visualization_types": frozenset({"flatTable"}),
     },
     "label_mode": {
-        "kind": "extra_setting",
-        "wire_key": "labelMode",
+        "kind": "chart_setting",
+        "setting_key": "labelMode",
         "value_type": "literal",
         "literal_values": ("absolute", "percent"),
-        "viz_ids": _LABEL_MODE_VIZ,
+        "visualization_types": _LABEL_MODE_VISUALIZATIONS,
     },
     "labels_position": {
-        "kind": "extra_setting",
-        "wire_key": "labelsPosition",
+        "kind": "chart_setting",
+        "setting_key": "labelsPosition",
         "value_type": "literal",
         "literal_values": ("inside", "outside", "auto"),
+        "visualization_types": _ALLOW_LABELS,
     },
     "tooltip_percentage_base": {
-        "kind": "extra_setting",
-        "wire_key": "tooltipPercentageBase",
+        "kind": "chart_setting",
+        "setting_key": "tooltipPercentageBase",
         "value_type": "literal",
         "literal_values": ("auto", "first", "previous"),
-        "viz_ids": frozenset({"funnel"}),
+        "visualization_types": frozenset({"funnel"}),
     },
     "axis_visibility": {
-        "kind": "ph_setting",
+        "kind": "slot_setting",
         "setting_key": "axisVisibility",
         "value_type": "literal",
         "literal_values": ("show", "hide"),
-        "viz_ids": _CARTESIAN,
+        "visualization_types": _CARTESIAN,
     },
     "hide_labels": {
-        "kind": "ph_setting",
+        "kind": "slot_setting",
         "setting_key": "hideLabels",
         "value_type": "bool",
         "value_map": _BOOL_YES_NO,
-        "viz_ids": _CARTESIAN,
+        "visualization_types": _CARTESIAN,
     },
     "nulls_mode": {
-        "kind": "ph_setting",
+        "kind": "slot_setting",
         "setting_key": "nulls",
         "value_type": "literal",
         "literal_values": ("ignore", "connect", "as-0"),
-        "viz_ids": _CARTESIAN,
+        "visualization_types": _CARTESIAN,
     },
     "segments": {
-        "kind": "data_field",
-        "wire_key": "segments",
+        "kind": "slot",
+        "slot_name": "segments",
         "value_type": "fields",
-        "viz_ids": _SEGMENT_VIZ,
+        "visualization_types": _SEGMENT_VISUALIZATIONS,
     },
     "sort": {
-        "kind": "data_field",
-        "wire_key": "sort",
+        "kind": "slot",
+        "slot_name": "sort",
         "value_type": "fields",
-        "viz_ids": _ALLOW_SORT,
+        "visualization_types": _ALLOW_SORT,
     },
     "labels": {
-        "kind": "data_field",
-        "wire_key": "labels",
+        "kind": "slot",
+        "slot_name": "labels",
         "value_type": "fields",
-        "viz_ids": _ALLOW_LABELS,
-    },
-    "tooltips": {
-        "kind": "data_field",
-        "wire_key": "tooltips",
-        "value_type": "fields",
+        "visualization_types": _ALLOW_LABELS,
     },
     # Group B — helper methods (richer logic in category base classes;
     # these declarations drive codegen applicability and update-guard only).
@@ -201,77 +172,77 @@ METHOD_SPECS: dict[str, MethodSpec] = {
     "add_filter": {
         "kind": "helper",
         "helper": "add_filter",
-        "viz_ids": _ALLOW_FILTERS,
+        "visualization_types": _ALLOW_FILTERS,
     },
     "add_date_filter": {
         "kind": "helper",
         "helper": "add_date_filter",
-        "viz_ids": _ALLOW_FILTERS,
+        "visualization_types": _ALLOW_FILTERS,
     },
     "add_relative_date_filter": {
         "kind": "helper",
         "helper": "add_relative_date_filter",
-        "viz_ids": _ALLOW_FILTERS,
+        "visualization_types": _ALLOW_FILTERS,
     },
     "add_sort": {
         "kind": "helper",
         "helper": "add_sort",
-        "viz_ids": _ALLOW_SORT,
+        "visualization_types": _ALLOW_SORT,
     },
     "navigator": {
         "kind": "helper",
         "helper": "navigator",
-        "viz_ids": _CARTESIAN_LINEAR,
+        "visualization_types": _CARTESIAN_LINEAR,
     },
     "axis_title": {
         "kind": "helper",
         "helper": "axis_title",
-        "viz_ids": _CARTESIAN,
+        "visualization_types": _CARTESIAN,
     },
     "axis_scale": {
         "kind": "helper",
         "helper": "axis_scale",
-        "viz_ids": _CARTESIAN,
+        "visualization_types": _CARTESIAN,
     },
     "grid": {
         "kind": "helper",
         "helper": "grid",
-        "viz_ids": _CARTESIAN,
+        "visualization_types": _CARTESIAN,
     },
     "pagination": {
         "kind": "helper",
         "helper": "pagination",
-        "viz_ids": _TABLE,
+        "visualization_types": _TABLE,
     },
     "table_size": {
         "kind": "helper",
         "helper": "table_size",
-        "viz_ids": _TABLE,
+        "visualization_types": _TABLE,
     },
     "freeze_columns": {
         "kind": "helper",
         "helper": "freeze_columns",
-        "viz_ids": _TABLE,
+        "visualization_types": _TABLE,
     },
     "column_background": {
         "kind": "helper",
         "helper": "column_background",
-        "viz_ids": _TABLE,
+        "visualization_types": _TABLE,
     },
     "column_bars": {
         "kind": "helper",
         "helper": "column_bars",
-        "viz_ids": _TABLE,
+        "visualization_types": _TABLE,
     },
     "column_title": {
         "kind": "helper",
         "helper": "column_title",
-        "viz_ids": _TABLE,
+        "visualization_types": _TABLE,
     },
     "subtotals": {
         "kind": "helper",
         "helper": "subtotals",
-        "viz_ids": frozenset({"pivotTable"}),
+        "visualization_types": frozenset({"pivotTable"}),
     },
     "measure_format": {
         "kind": "helper",
@@ -280,85 +251,86 @@ METHOD_SPECS: dict[str, MethodSpec] = {
     "shape": {
         "kind": "helper",
         "helper": "shape",
-        "viz_ids": frozenset({"funnel"}),
+        "visualization_types": frozenset({"funnel"}),
     },
     "palette": {
         "kind": "helper",
         "helper": "palette",
-        "viz_ids": viz_ids_with_color_encoding(),
+        "visualization_types": visualization_types_with_color_encoding(),
     },
     "color_by_dimension": {
         "kind": "helper",
         "helper": "color_by_dimension",
-        "viz_ids": viz_ids_for_wizard_encoding("color", "dimension"),
+        "visualization_types": visualization_types_for_wizard_encoding("color", "dimension"),
     },
     "color_by_measure": {
         "kind": "helper",
         "helper": "color_by_measure",
-        "viz_ids": viz_ids_for_wizard_encoding("color", "measure"),
+        "visualization_types": visualization_types_for_wizard_encoding("color", "measure"),
     },
     "color_by_measure_name": {
         "kind": "helper",
         "helper": "color_by_measure_name",
-        "viz_ids": viz_ids_for_wizard_encoding("color", "measure_name"),
+        "visualization_types": visualization_types_for_wizard_encoding("color", "measure_name"),
     },
     "shape_by_dimension": {
         "kind": "helper",
         "helper": "shape_by_dimension",
-        "viz_ids": viz_ids_for_wizard_encoding("shape", "dimension"),
+        "visualization_types": visualization_types_for_wizard_encoding("shape", "dimension"),
     },
     "shape_by_measure_name": {
         "kind": "helper",
         "helper": "shape_by_measure_name",
-        "viz_ids": viz_ids_for_wizard_encoding("shape", "measure_name"),
+        "visualization_types": visualization_types_for_wizard_encoding("shape", "measure_name"),
     },
     "point_size_range": {
         "kind": "helper",
         "helper": "point_size_range",
-        "viz_ids": frozenset({"scatter"}),
+        "visualization_types": frozenset({"scatter"}),
     },
     "font_size": {
         "kind": "helper",
         "helper": "font_size",
-        "viz_ids": frozenset({"metric"}),
+        "visualization_types": frozenset({"metric"}),
     },
     "font_color": {
         "kind": "helper",
         "helper": "font_color",
-        "viz_ids": frozenset({"metric"}),
+        "visualization_types": frozenset({"metric"}),
     },
     "measure_title_mode": {
         "kind": "helper",
         "helper": "measure_title_mode",
-        "viz_ids": frozenset({"metric"}),
+        "visualization_types": frozenset({"metric"}),
     },
     "add_hierarchy": {
         "kind": "helper",
         "helper": "add_hierarchy",
-        "viz_ids": _TABLE_AND_CARTESIAN,
+        "visualization_types": _TABLE_AND_CARTESIAN,
     },
 }
 
 
-def validate_method_applicability(method_name: str, visualization_id: str) -> None:
+def validate_method_applicability(method_name: str, visualization_type: str) -> None:
     spec = METHOD_SPECS.get(method_name)
-    viz_ids = spec.get("viz_ids") if spec is not None else None
-    if visualization_id and viz_ids and visualization_id not in viz_ids:
+    visualization_types = spec.get("visualization_types") if spec is not None else None
+    if visualization_type and visualization_types and visualization_type not in visualization_types:
         raise DataLensConfigurationError(
-            f"Method {method_name!r} is not applicable to viz {visualization_id!r}. Applicable vizs: {sorted(viz_ids)}"
+            f"Method {method_name!r} is not applicable to visualization {visualization_type!r}. "
+            f"Applicable visualizations: {sorted(visualization_types)}"
         )
 
 
-def method_specs_for_viz(viz_id: str) -> dict[str, MethodSpec]:
-    """Return the group-A and helper methods applicable to the given viz.
+def method_specs_for_visualization(visualization_type: str) -> dict[str, MethodSpec]:
+    """Return the generated methods applicable to the visualization type.
 
-    A method with no ``viz_ids`` (or an empty one) is universal and applies to
-    every viz. Otherwise the method applies only when ``viz_id`` is a member of
-    its ``viz_ids`` set.
+    A method with no ``visualization_types`` (or an empty one) is universal and applies to
+    every visualization. Otherwise the method applies only when ``visualization_type`` is a member of
+    its ``visualization_types`` set.
     """
     out: dict[str, MethodSpec] = {}
     for name, spec in METHOD_SPECS.items():
-        viz_ids = spec.get("viz_ids")
-        if not viz_ids or viz_id in viz_ids:
+        visualization_types = spec.get("visualization_types")
+        if not visualization_types or visualization_type in visualization_types:
             out[name] = spec
     return out

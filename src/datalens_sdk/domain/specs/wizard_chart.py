@@ -26,20 +26,16 @@ class WizardChartCreateSpec:
     reaching into builder ``_protected`` attributes.
     """
 
-    viz_id: str
+    visualization_type: str
     name: str
     location: EntryLocation
     description: str | None
     dataset: Dataset | None
     dataset_ids: tuple[str, ...]
-    placeholders: Mapping[str, tuple[FieldRef, ...]]
-    explicit_colors: bool
+    slots: Mapping[str, tuple[FieldRef, ...]]
     local_fields: tuple[Mapping[str, object], ...]
-    sort: tuple[FieldRef, ...] | None
-    labels: tuple[FieldRef, ...] | None
-    data_fields: Mapping[str, tuple[FieldRef, ...]]
-    extra_settings: Mapping[str, object]
-    ph_settings: Mapping[str, Mapping[str, object]]
+    chart_settings: Mapping[str, object]
+    slot_settings: Mapping[str, Mapping[str, object]]
     item_mutations: tuple[tuple[FieldRef, str, object], ...]
     pending_filters: tuple[tuple[FieldRef, str, list[str]], ...]
     sort_direction_items: tuple[tuple[FieldRef, str], ...]

@@ -82,7 +82,7 @@ def field_from_mapping(value: Mapping[str, object], *, dataset_id: str | None = 
     # accessible via ``DatasetField.raw['default_value']``.
     coerced_default = _coerce_to_hashable(default_value) if default_value is not None else None
     raw_name = _str_value(value.get("name"))
-    title = _str_value(value.get("title"))
+    title = _str_value(value.get("title")) or _str_value(value.get("fakeTitle"))
     return DatasetField(
         guid=_str_value(value.get("guid")),
         title=title,

@@ -1,53 +1,7 @@
 from __future__ import annotations
 
-import copy
 import re
 import uuid
-
-MINIMAL_WIZARD_DATA_DEFAULTS: dict[str, object] = {
-    "type": "datalens",
-    "version": "15",
-    "colors": [],
-    "colorsConfig": {},
-    "filters": [],
-    "geopointsConfig": {},
-    "hierarchies": [],
-    "labels": [],
-    "links": [],
-    "segments": [],
-    "shapes": [],
-    "shapesConfig": {},
-    "sort": [],
-    "tooltips": [],
-    "updates": [],
-}
-
-
-def merge_chart_defaults(data: dict[str, object] | None) -> dict[str, object]:
-    result: dict[str, object] = dict(data) if data else {}
-    for key, default in MINIMAL_WIZARD_DATA_DEFAULTS.items():
-        result.setdefault(key, copy.deepcopy(default))
-    return result
-
-
-def build_pseudo_measure_names_for_placeholder() -> dict[str, object]:
-    return {
-        "id": None,
-        "guid": None,
-        "title": "Measure Names",
-        "type": "PSEUDO",
-        "data_type": "string",
-    }
-
-
-def build_pseudo_measure_names_for_data_colors() -> dict[str, object]:
-    return {
-        "title": "Measure Names",
-        "type": "PSEUDO",
-        "className": "item pseudo-item dimension-item",
-        "data_type": "string",
-    }
-
 
 _ISO_DATE_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}"

@@ -10,11 +10,10 @@ from datalens_sdk._runtime.chart_constants import INDICATOR_FONT_SIZE_UI_TO_PAYL
 from datalens_sdk._runtime.chart_mutations import _ChartMutationsMixin
 from datalens_sdk._runtime.chart_wire import build_date_interval, build_relative_date_interval
 from datalens_sdk._runtime.validators import HEX_COLOR_RE
-from datalens_sdk._runtime.viz_specs import (
-    build_ql_item,
+from datalens_sdk._runtime.viz_specs import build_ql_item, get_ql_viz_spec
+from datalens_sdk._runtime.wizard_semantics import (
     geo_layer_supports_input,
-    get_geo_layer_spec,
-    get_ql_viz_spec,
+    get_geo_layer_semantics,
 )
 from datalens_sdk.domain.entry_location import EntryLocation, resolve_entry_location, validate_entry_name
 from datalens_sdk.domain.fields import DatasetField
@@ -204,15 +203,13 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
     def __init__(
         self,
         *,
-        viz_id: str,
-        wire_type: str,
+        visualization_type: str,
         name: str,
         location: EntryLocation,
         operations: ChartOperations | None = None,
     ) -> None:
         installation = operations.installation if operations is not None else ""
-        self._viz_id = viz_id
-        self._wire_type = wire_type
+        self._visualization_type = visualization_type
         self._location = resolve_entry_location(
             location=location,
             installation=installation,
@@ -222,37 +219,22 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
         validate_entry_name(name=name, location=self._location)
         self._name = name
         self._operations = operations
-        self._placeholders: dict[str, list[FieldLike | str]] = {}
         self._dataset: Dataset | None = None
         self._dataset_ids: list[str] = []
         self._local_fields: list[dict[str, object]] = []
-        self._sort: list[FieldLike | str] | None = None
-        self._labels: list[FieldLike | str] | None = None
         self._init_chart_mutations()
         self._combined_layers: list[dict[str, object]] = []
         self._geo_layers: list[dict[str, object]] = []
         self._geo_datasets: list[Dataset] = []
 
     @property
-    def viz_id(self) -> str:
-        return self._viz_id
-
-    @property
-    def wire_type(self) -> str:
-        return self._wire_type
+    def visualization_type(self) -> str:
+        return self._visualization_type
 
     def dataset(self, dataset: Dataset) -> Self:
         self._dataset = dataset
         if dataset.id and dataset.id not in self._dataset_ids:
             self._dataset_ids.append(dataset.id)
-        return self
-
-    def _sort_fields(self, fields: Sequence[FieldLike | str]) -> Self:
-        self._sort = list(fields)
-        return self
-
-    def _labels_fields(self, fields: Sequence[FieldLike | str]) -> Self:
-        self._labels = list(fields)
         return self
 
     def _add_local_field(
@@ -339,54 +321,48 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
         self._pending_measure_formats.append((field, fmt))
         return self
 
-    def _set_placeholder(self, placeholder_id: str, fields: Sequence[FieldLike | str]) -> Self:
-        self._placeholders[placeholder_id] = list(fields)
+    def _set_slot(self, slot_name: str, fields: Sequence[FieldLike | str]) -> Self:
+        self._slot_fields[slot_name] = list(fields)
         return self
 
-    def _set_data_field(self, wire_key: str, fields: Sequence[FieldLike | str]) -> Self:
-        self._data_fields[wire_key] = list(fields)
+    def _set_chart_setting(self, setting_key: str, value: object) -> Self:
+        self._chart_settings[setting_key] = value
         return self
 
-    def _set_extra(self, setting_key: str, value: object) -> Self:
-        self._extra_settings[setting_key] = value
-        return self
-
-    def _set_ph_setting(self, placeholder_id: str, setting_key: str, value: object) -> Self:
-        if placeholder_id not in self._ph_settings:
-            self._ph_settings[placeholder_id] = {}
-        self._ph_settings[placeholder_id][setting_key] = value
+    def _set_slot_setting(self, slot_name: str, setting_key: str, value: object) -> Self:
+        self._slot_settings.setdefault(slot_name, {})[setting_key] = value
         return self
 
     def _funnel_shape(self, *, value: FunnelShape) -> Self:
-        return self._set_extra("shape", value)
+        return self._set_chart_setting("shape", value)
 
     def _chart_title(self, *, text: str = "", mode: Literal["show", "hide"] = "show") -> Self:
-        self._extra_settings["title"] = text
-        self._extra_settings["titleMode"] = mode
+        self._chart_settings["title"] = text
+        self._chart_settings["titleMode"] = mode
         return self
 
     def _navigator(self, *, mode: Literal["show", "hide"]) -> Self:
-        existing = self._extra_settings.get("navigatorSettings", {})
+        existing = self._chart_settings.get("navigatorSettings", {})
         settings = dict(existing) if isinstance(existing, dict) else {}
         settings["navigatorMode"] = mode
-        self._extra_settings["navigatorSettings"] = settings
+        self._chart_settings["navigatorSettings"] = settings
         return self
 
     def _axis_title(
         self,
-        ph_id: str,
+        slot_name: str,
         *,
         mode: Literal["off", "manual", "auto"],
         text: str = "",
     ) -> Self:
-        self._set_ph_setting(ph_id, "title", mode)
+        self._set_slot_setting(slot_name, "title", mode)
         if mode == "manual" and text:
-            self._set_ph_setting(ph_id, "titleValue", text)
+            self._set_slot_setting(slot_name, "titleValue", text)
         return self
 
     def _axis_scale(
         self,
-        ph_id: str,
+        slot_name: str,
         *,
         scale: Literal["linear", "logarithmic"] = "linear",
         mode: Literal["auto", "manual"] = "auto",
@@ -397,17 +373,17 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
             raise DataLensConfigurationError(
                 "axis_scale(mode='manual') requires at least one of min= or max= to be specified."
             )
-        self._set_ph_setting(ph_id, "type", scale)
-        self._set_ph_setting(ph_id, "scale", mode)
+        self._set_slot_setting(slot_name, "type", scale)
+        self._set_slot_setting(slot_name, "scale", mode)
         if mode == "manual":
-            self._set_ph_setting(ph_id, "scaleValue", [min, max])
+            self._set_slot_setting(slot_name, "scaleValue", [min, max])
         return self
 
-    def _grid(self, ph_id: str, *, enabled: bool, step: int | None = None) -> Self:
-        self._set_ph_setting(ph_id, "grid", "on" if enabled else "off")
+    def _grid(self, slot_name: str, *, enabled: bool, step: int | None = None) -> Self:
+        self._set_slot_setting(slot_name, "grid", "on" if enabled else "off")
         if step is not None:
-            self._set_ph_setting(ph_id, "gridStep", "manual")
-            self._set_ph_setting(ph_id, "gridStepValue", step)
+            self._set_slot_setting(slot_name, "gridStep", "manual")
+            self._set_slot_setting(slot_name, "gridStepValue", step)
         return self
 
     def _palette(self, *, id: PaletteId) -> Self:
@@ -514,31 +490,29 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
         value: object,
     ) -> Self:
         found = any(
-            self._field_ref_matches(placed, field) for ph_fields in self._placeholders.values() for placed in ph_fields
+            self._field_ref_matches(placed, field)
+            for slot_fields in self._slot_fields.values()
+            for placed in slot_fields
         )
         if not found:
             raise DataLensConfigurationError(
-                f"Field {field!r} not found in any placeholder. Call .columns()/.measures()/.rows() before this method."
+                f"Field {field!r} not found in any slot. Call .columns()/.measures()/.rows() before this method."
             )
         self._item_mutations.append((field, setting_key, value))
         return self
 
     def to_spec(self) -> WizardChartCreateSpec:
         return WizardChartCreateSpec(
-            viz_id=self._viz_id,
+            visualization_type=self._visualization_type,
             name=self._name,
             location=self._location,
             description=self._description,
             dataset=self._dataset,
             dataset_ids=tuple(self._dataset_ids),
-            placeholders={key: tuple(value) for key, value in self._placeholders.items()},
-            explicit_colors=self._color_encoding is not None,
+            slots={key: tuple(value) for key, value in self._slot_fields.items()},
             local_fields=tuple(dict(lf) for lf in self._local_fields),
-            sort=tuple(self._sort) if self._sort is not None else None,
-            labels=tuple(self._labels) if self._labels is not None else None,
-            data_fields={key: tuple(value) for key, value in self._data_fields.items()},
-            extra_settings=dict(self._extra_settings),
-            ph_settings={key: dict(value) for key, value in self._ph_settings.items()},
+            chart_settings=dict(self._chart_settings),
+            slot_settings={key: dict(value) for key, value in self._slot_settings.items()},
             item_mutations=tuple(self._item_mutations),
             pending_filters=tuple(self._pending_filters),
             sort_direction_items=tuple(self._sort_direction_items),
@@ -620,17 +594,18 @@ class _TableWizardChartCreate(_BaseWizardChartCreate):
         return self._mutate_item_by_guid(field, "_title_override", title)
 
     def _pagination(self, *, enabled: bool, limit: int = 100) -> Self:
-        self._set_extra("pagination", "on" if enabled else "off")
+        self._set_chart_setting("pagination", "on" if enabled else "off")
         if enabled:
-            self._set_extra("limit", limit)
+            self._set_chart_setting("limit", limit)
         return self
 
     def _table_size(self, *, size: Literal["s", "m", "l"]) -> Self:
-        self._set_extra("size", size)
+        self._set_chart_setting("size", size)
         return self
 
     def _freeze_columns(self, *, count: int = 1) -> Self:
-        return self._set_extra("pinnedColumns", count)
+        self._set_chart_setting("pinnedColumns", count)
+        return self
 
 
 class _ScatterWizardChartCreate(_BaseWizardChartCreate):
@@ -652,15 +627,18 @@ class _ScatterWizardChartCreate(_BaseWizardChartCreate):
 class _MetricWizardChartCreate(_BaseWizardChartCreate):
     def _font_size(self, *, size: Literal["xs", "s", "m", "l"]) -> Self:
         payload_size = INDICATOR_FONT_SIZE_UI_TO_PAYLOAD.get(size, size)
-        return self._set_extra("metricFontSize", payload_size)
+        self._set_chart_setting("metricFontSize", payload_size)
+        return self
 
     def _font_color(self, *, color: str) -> Self:
         if not HEX_COLOR_RE.match(color):
             raise DataLensConfigurationError(f"font_color: color must be a hex string like #RRGGBB, got {color!r}")
-        return self._set_extra("metricFontColor", color)
+        self._set_chart_setting("metricFontColor", color)
+        return self
 
     def _measure_title_mode(self, *, mode: Literal["by-field", "manual", "hide"]) -> Self:
-        return self._set_extra("indicatorTitleMode", mode)
+        self._set_chart_setting("indicatorTitleMode", mode)
+        return self
 
 
 class _PivotWizardChartCreate(_TableWizardChartCreate):
@@ -670,8 +648,7 @@ class _PivotWizardChartCreate(_TableWizardChartCreate):
 
 class _CombinedWizardChartCreate(_BaseWizardChartCreate):
     def _combined_x(self, fields: Sequence[FieldLike | str]) -> Self:
-        self._placeholders["x"] = list(fields)
-        return self
+        return self._set_slot("x", fields)
 
     def _combined_add_layer(
         self,
@@ -724,25 +701,11 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
         name: str | None = None,
         dataset: Dataset | None = None,
     ) -> Self:
-        layer_spec = get_geo_layer_spec(layer_type)
-        if not layer_spec:
+        layer_semantics = get_geo_layer_semantics(layer_type)
+        if layer_semantics is None:
             raise DataLensConfigurationError(f"Unsupported geo layer type: {layer_type!r}.")
-        placeholder_inputs = layer_spec.get("placeholder_inputs")
-        if not isinstance(placeholder_inputs, Mapping):
-            raise DataLensConfigurationError(f"Geo layer type {layer_type!r} has no placeholder input contract.")
-        required_placeholders = [
-            placeholder_id
-            for placeholder_id, placeholder in cast(Mapping[str, object], layer_spec.get("placeholders", {})).items()
-            if isinstance(placeholder, Mapping) and placeholder.get("required") is True
-        ]
-        if len(required_placeholders) != 1:
-            raise DataLensConfigurationError(
-                f"Geo layer type {layer_type!r} must declare exactly one required geometry placeholder."
-            )
-        geometry_argument = placeholder_inputs.get(required_placeholders[0])
+        geometry_argument = layer_semantics["required_geometry"]
         field_values = {"geopoint": geopoint, "polygon": polygon, "polyline": polyline}
-        if not isinstance(geometry_argument, str) or geometry_argument not in field_values:
-            raise DataLensConfigurationError(f"Geo layer type {layer_type!r} has an invalid geometry input contract.")
         required_field = field_values[geometry_argument]
         if required_field is None:
             raise DataLensConfigurationError(f"add_layer({layer_type!r}) requires {geometry_argument}=.")
@@ -755,13 +718,13 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
         }
         sequence_inputs = {"filters": filters, "tooltips": tooltips, "labels": labels}
         for input_name, value in field_inputs.items():
-            if value is not None and not geo_layer_supports_input(layer_spec, input_name):
+            if value is not None and not geo_layer_supports_input(layer_semantics, input_name):
                 raise DataLensConfigurationError(f"Geo layer type {layer_type!r} does not support {input_name}=.")
         for input_name, sequence_value in sequence_inputs.items():
-            if sequence_value and not geo_layer_supports_input(layer_spec, input_name):
+            if sequence_value and not geo_layer_supports_input(layer_semantics, input_name):
                 raise DataLensConfigurationError(f"Geo layer type {layer_type!r} does not support {input_name}=.")
         if sort_direction != "asc" and sort_by is None:
-            if not geo_layer_supports_input(layer_spec, "sort_by"):
+            if not geo_layer_supports_input(layer_semantics, "sort_by"):
                 raise DataLensConfigurationError(f"Geo layer type {layer_type!r} does not support sort_direction=.")
             raise DataLensConfigurationError("Geo layer sort_direction= requires sort_by=.")
         if color is None and any(value is not None for value in (color_mode, color_palette, color_reversed)):
@@ -804,14 +767,14 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
         return self
 
     def _map_type(self, *, mode: MapType) -> Self:
-        self._set_extra("mapType", mode)
+        self._set_chart_setting("mapType", mode)
         return self
 
     def _map_center(self, *, lat: float, lon: float, zoom: int | None = None) -> Self:
-        self._set_extra("mapCenterMode", "manual")
-        self._set_extra("mapCenter", {"lat": lat, "lon": lon})
+        self._set_chart_setting("mapCenterMode", "manual")
+        self._set_chart_setting("mapCenter", {"lat": lat, "lon": lon})
         if zoom is not None:
-            self._set_extra("mapZoom", zoom)
+            self._set_chart_setting("mapZoom", zoom)
         return self
 
 

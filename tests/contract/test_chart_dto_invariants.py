@@ -50,34 +50,51 @@ def test_yacloud_editor_node_types_match_discriminator() -> None:
 
 def test_wizard_chart_read_dto_captures_raw() -> None:
     raw_data = {
-        "entryId": "abc123",
-        "template": "datalens",
-        "data": {"key": "value"},
+        "entry": {
+            "version": 1,
+            "entryId": "abc123",
+            "data": {
+                "sources": {"datasetsIds": ["dataset-1"]},
+                "visualization": {"type": "line", "x": {"items": []}},
+            },
+            "extra_entry_field": "should_be_ignored",
+        },
         "extra_future_field": "should_be_ignored",
     }
     dto = WizardChartReadDTO.model_validate(raw_data)
-    assert dto.entry_id == "abc123"
-    assert dto.template == "datalens"
+    assert dto.entry.entry_id == "abc123"
     assert dto.raw == raw_data
     assert "extra_future_field" in dto.raw
 
 
 def test_wizard_chart_read_dto_extra_ignore() -> None:
-    dto = WizardChartReadDTO.model_validate({"unknown_field": "x", "entryId": "id1"})
-    assert dto.entry_id == "id1"
+    dto = WizardChartReadDTO.model_validate(
+        {
+            "entry": {
+                "version": 1,
+                "entryId": "id1",
+                "data": {
+                    "sources": {"datasetsIds": []},
+                    "visualization": {"type": "future-visualization"},
+                },
+            },
+            "unknown_field": "x",
+        }
+    )
+    assert dto.entry.entry_id == "id1"
     assert "unknown_field" in dto.raw
 
 
-def test_wizard_chart_create_dto_requires_template_and_data() -> None:
+def test_wizard_chart_create_dto_requires_wizard_v1_line_data() -> None:
     with pytest.raises(ValidationError):
         WizardChartCreateDTO.model_validate({"data": {}})
 
-    with pytest.raises(ValidationError):
-        WizardChartCreateDTO.model_validate({"template": "datalens"})
-
-    dto = WizardChartCreateDTO.model_validate({"template": "datalens", "data": {"viz": "line"}})
-    assert dto.template == "datalens"
-    assert dto.data == {"viz": "line"}
+    data = {
+        "sources": {"datasetsIds": ["dataset-1"]},
+        "visualization": {"type": "line", "x": {"items": []}},
+    }
+    dto = WizardChartCreateDTO.model_validate({"data": data})
+    assert dto.to_payload() == {"data": data}
 
 
 def test_enterprise_editor_node_types_match_discriminator() -> None:

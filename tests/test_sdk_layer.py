@@ -1052,21 +1052,29 @@ def test_http_errors_and_invalid_responses_are_typed() -> None:
 
 
 def test_chart_create_get_delete_flow_uses_wizard_rpc() -> None:
-    # create-response deliberately omits data.visualization.id, so the returned chart's
-    # visualization_id can only come from the create-spec fallback
-    # (api/chart.py: visualization_id_fallback=spec.viz_id). The assertion below then
-    # protects that fallback end-to-end through builder.build() -> service -> converter.
     created_response = {
-        "entryId": "chart-1",
-        "key": "/Users/me/Sales",
-        "type": "d3_wizard_node",
-        "data": {"visualization": {"placeholders": []}},
+        "entry": {
+            "version": 1,
+            "entryId": "chart-1",
+            "key": "/Users/me/Sales",
+            "type": "d3_wizard_node",
+            "data": {
+                "sources": {"datasetsIds": ["ds-1"]},
+                "visualization": {"type": "line", "x": {"items": []}},
+            },
+        }
     }
     get_response = {
-        "entryId": "chart-1",
-        "key": "/Users/me/Sales",
-        "type": "d3_wizard_node",
-        "data": {"visualization": {"id": "line", "placeholders": []}},
+        "entry": {
+            "version": 1,
+            "entryId": "chart-1",
+            "key": "/Users/me/Sales",
+            "type": "d3_wizard_node",
+            "data": {
+                "sources": {"datasetsIds": ["ds-1"]},
+                "visualization": {"type": "line", "x": {"items": []}},
+            },
+        }
     }
     recorder = RecordedTransport(
         {
@@ -1099,7 +1107,6 @@ def test_chart_create_get_delete_flow_uses_wizard_rpc() -> None:
 
     assert isinstance(chart, dl.Chart)
     assert chart.id == "chart-1"
-    # Sourced from the create-spec fallback (created_response has no visualization.id).
     assert chart.visualization_id == "line"
     assert chart.wire_type == "d3_wizard_node"
 
@@ -1109,17 +1116,15 @@ def test_chart_create_get_delete_flow_uses_wizard_rpc() -> None:
         "/rpc/deleteWizardChart",
     ]
     create_payload = recorder.request_json(0)
-    assert create_payload["template"] == "datalens"
     assert create_payload["key"] == "/Users/me/Sales"
-    # API requires either 'key' (folder entry) OR 'workbookId'+'name' (workbook entry) — not both.
-    # When key is set, name must not be sent to avoid VALIDATION_ERROR.
-    assert "name" not in create_payload
+    assert create_payload["name"] == "Sales"
     create_data = cast(dict[str, object], create_payload["data"])
     viz = cast(dict[str, object], create_data["visualization"])
-    assert viz["id"] == "line"
-    placeholder_ids = [cast(dict[str, object], p)["id"] for p in cast(list[object], viz["placeholders"])]
-    assert placeholder_ids == ["x", "y", "y2", "shapes"]
-    assert create_data["datasetsIds"] == ["ds-1"]
+    assert viz["type"] == "line"
+    assert cast(dict[str, object], viz["x"])["items"]
+    assert cast(dict[str, object], viz["y"])["items"]
+    sources = cast(dict[str, object], create_data["sources"])
+    assert sources["datasetsIds"] == ["ds-1"]
     assert recorder.request_json(2) == {"chartId": "chart-1"}
 
 
@@ -1138,7 +1143,7 @@ def test_chart_converter_is_dto_boundary() -> None:
         ),
     )
     builder = (
-        client.create.wizard_chart.indicator(name="I", location=dl.EntryLocation.path("/sdk"))
+        client.create.wizard_chart.line(name="Line", location=dl.EntryLocation.path("/sdk"))
         .dataset(dataset)
         .y(["Amount"])
     )
@@ -1146,8 +1151,7 @@ def test_chart_converter_is_dto_boundary() -> None:
 
     assert isinstance(chart_dto, dto.WizardChartCreateDTO)
     payload = chart_dto.to_payload()
-    assert payload["template"] == "datalens"
-    assert "data" in payload
+    assert set(payload) == {"data", "key", "name"}
 
 
 def test_public_exports_cover_user_visible_errors() -> None:

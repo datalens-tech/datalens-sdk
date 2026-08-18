@@ -65,7 +65,14 @@ def _dataset(dataset_id: str, *, fields: tuple[tuple[str, str], ...] = (), param
 
 
 def _wizard_chart(chart_id: str, *, dataset_ids: tuple[str, ...] = ()) -> WizardChart:
-    return WizardChart(id=chart_id, installation="yacloud", data={"datasetsIds": list(dataset_ids)})
+    return WizardChart(
+        id=chart_id,
+        installation="yacloud",
+        data={
+            "sources": {"datasetsIds": list(dataset_ids)},
+            "visualization": {"type": "line", "x": {"items": []}},
+        },
+    )
 
 
 def _dashboard(tabs: list[dict[str, object]]) -> Dashboard:

@@ -82,10 +82,16 @@ def _dashboard_response(*, key: str) -> dict[str, object]:
 
 def _wizard_response(*, key: str) -> dict[str, object]:
     return {
-        "entryId": "wizard-1",
-        "key": key,
-        "type": "d3_wizard_node",
-        "data": {"visualization": {"id": "line", "placeholders": []}},
+        "entry": {
+            "version": 1,
+            "entryId": "wizard-1",
+            "key": key,
+            "type": "d3_wizard_node",
+            "data": {
+                "sources": {"datasetsIds": []},
+                "visualization": {"type": "line", "x": {"items": []}},
+            },
+        }
     }
 
 

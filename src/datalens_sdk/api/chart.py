@@ -162,7 +162,7 @@ class ChartService(ChartOperations):
             operations=self,
             location=spec.location,
             name=spec.name,
-            visualization_id_fallback=spec.viz_id,
+            visualization_id_fallback=spec.visualization_type,
             dto_module=self._dto_module,
         )
 

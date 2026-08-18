@@ -8,6 +8,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
 from datalens_sdk.errors import NotSupportedError
+from datalens_sdk.serialization.json_types import JsonValue
 
 INSTALLATION_CONNECTORS: dict[str, frozenset[str]] = {
     'enterprise': frozenset(['appmetrica_api', 'chyt', 'clickhouse', 'greenplum', 'json_api', 'metrika_api', 'mssql', 'mysql', 'oracle', 'postgres', 'promql', 'trino', 'ydb']),
@@ -839,21 +840,40 @@ INSTALLATION_EDITOR_NODE_TYPES: dict[str, frozenset[str]] = {
 }
 
 
+WIZARD_SCHEMA_FINGERPRINT: str | None = None
+WIZARD_DTO_BINDINGS: dict[str, dict[str, str | None]] = {}
+
+
+
+
+def _validate_wizard_v1_line_config(data: Mapping[str, JsonValue]) -> None:
+    sources = data.get("sources")
+    visualization = data.get("visualization")
+    if not isinstance(sources, Mapping) or not isinstance(sources.get("datasetsIds"), list):
+        raise ValueError("Wizard V1 config sources.datasetsIds must be an array")
+    if not isinstance(visualization, Mapping) or visualization.get("type") != "line":
+        raise ValueError("Wizard V1 config visualization.type must be 'line'")
+    x_slot = visualization.get("x")
+    if not isinstance(x_slot, Mapping) or not isinstance(x_slot.get("items"), list):
+        raise ValueError("Wizard V1 line visualization.x.items must be an array")
+
+
 class WizardChartCreateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    template: Literal["datalens"]
-    data: Mapping[str, object]
+    data: dict[str, JsonValue]
     key: str | None = None
     name: str | None = None
     workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
-    annotation: Mapping[str, object] | None = None
+    annotation: dict[str, JsonValue] | None = None
+
+    @model_validator(mode="after")
+    def _validate_data(self) -> WizardChartCreateDTO:
+        _validate_wizard_v1_line_config(self.data)
+        return self
 
     def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {
-            "template": self.template,
-            "data": dict(self.data),
-        }
+        payload: dict[str, object] = {"data": dict(self.data)}
         if self.key is not None:
             payload["key"] = self.key
         if self.name is not None:
@@ -868,31 +888,44 @@ class WizardChartCreateDTO(BaseModel):
 class WizardChartUpdateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    entry_id: str = Field(serialization_alias="entryId")
-    template: Literal["datalens"]
+    chart_id: str = Field(serialization_alias="chartId")
     mode: Literal["save", "publish"]
-    data: Mapping[str, object]
-    annotation: Mapping[str, object] | None = None
+    data: dict[str, JsonValue]
+    annotation: dict[str, JsonValue] | None = None
+    rev_id: str | None = Field(default=None, serialization_alias="revId")
+
+    @model_validator(mode="after")
+    def _validate_data(self) -> WizardChartUpdateDTO:
+        _validate_wizard_v1_line_config(self.data)
+        return self
 
     def to_payload(self) -> dict[str, object]:
         payload: dict[str, object] = {
-            "entryId": self.entry_id,
-            "template": self.template,
+            "chartId": self.chart_id,
             "mode": self.mode,
             "data": dict(self.data),
         }
         if self.annotation is not None:
             payload["annotation"] = dict(self.annotation)
+        if self.rev_id is not None:
+            payload["revId"] = self.rev_id
         return payload
+
+
+class WizardChartEntryReadDTO(BaseModel):
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    version: Literal[1]
+    entry_id: str = Field(alias="entryId")
+    type: str | None = None
+    data: dict[str, JsonValue]
 
 
 class WizardChartReadDTO(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
-    entry_id: str | None = Field(default=None, alias="entryId")
-    template: str | None = None
-    data: dict[str, object] | None = None
-    raw: dict[str, object] = Field(default_factory=dict)
+    entry: WizardChartEntryReadDTO
+    raw: dict[str, JsonValue] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod

@@ -267,6 +267,7 @@ class _RawChartReplace:
         target_id: str,
         target_name: str | None,
         target_location: EntryLocation | None,
+        target_revision_id: str | None,
         target_category: ChartCategory,
         target_wire_type: str,
         operations: ChartOperations | None,
@@ -280,6 +281,7 @@ class _RawChartReplace:
             target_id=target_id,
             target_name=target_name,
             target_location=target_location,
+            target_revision_id=target_revision_id,
         )
         self._target_wire_type = target_wire_type
         self._mode: EntryUpdateMode = "save"
@@ -392,12 +394,14 @@ def _init_raw_chart_replace(
             f"{category.capitalize()} chart wire type mismatch: "
             f"source is {source.wire_type!r}, target is {target.wire_type!r}"
         )
+    target_revision_id = target.raw.get("revId")
     _RawChartReplace.__init__(
         builder,
         source=source,
         target_id=target.id or "",
         target_name=target.name,
         target_location=target.location,
+        target_revision_id=target_revision_id if isinstance(target_revision_id, str) else None,
         target_category=target.category,
         target_wire_type=target.wire_type or "",
         operations=operations,

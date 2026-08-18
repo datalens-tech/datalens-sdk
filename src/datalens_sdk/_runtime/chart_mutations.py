@@ -25,9 +25,9 @@ if TYPE_CHECKING:
 
 class _ChartMutationsMixin:
     def _init_chart_mutations(self) -> None:
-        self._extra_settings: dict[str, object] = {}
-        self._ph_settings: dict[str, dict[str, object]] = {}
-        self._data_fields: dict[str, list[FieldLike | str]] = {}
+        self._chart_settings: dict[str, object] = {}
+        self._slot_settings: dict[str, dict[str, object]] = {}
+        self._slot_fields: dict[str, list[FieldLike | str]] = {}
         self._item_mutations: list[tuple[FieldLike | str, str, object]] = []
         self._pending_filters: list[tuple[FieldLike | str, str, list[str]]] = []
         self._sort_direction_items: list[tuple[FieldLike | str, str]] = []

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 import hashlib
 import json
 import keyword
@@ -11,8 +11,12 @@ from typing import TypedDict
 
 from typing_extensions import NotRequired
 
-from datalens_sdk._runtime.method_specs import method_specs_for_viz
-from datalens_sdk._runtime.viz_specs import QL_VIZ_SPECS, VIZ_SPECS, factory_method_name, to_snake
+from datalens_sdk._runtime.method_specs import method_specs_for_visualization
+from datalens_sdk._runtime.viz_specs import QL_VIZ_SPECS, factory_method_name, to_snake
+from datalens_sdk._runtime.wizard_semantics import (
+    WIZARD_VISUALIZATION_SEMANTICS,
+    deferred_fluent_methods_for_visualization,
+)
 from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -43,7 +47,7 @@ RESERVED_METHODS = {
     "installation",
     "connector",
 }
-_VIZ_CATEGORY_BASE_CREATE: dict[str, str] = {
+_WIZARD_VISUALIZATION_BASE_CREATE: dict[str, str] = {
     "combined-chart": "_CombinedWizardChartCreate",
     "geolayer": "_GeolayerWizardChartCreate",
     "metric": "_MetricWizardChartCreate",
@@ -113,6 +117,8 @@ class WizardRouteMeta(TypedDict):
     request_schema: str
     result_schema: str | None
     request_body_required: bool
+    request_dto: str
+    result_dto: str | None
 
 
 class WizardInventory(TypedDict):
@@ -133,6 +139,9 @@ class WizardSchemaMeta(TypedDict):
     visualizations: list[str]
     geo_layers: list[str]
     combined_layers: list[str]
+    visualization_variants: dict[str, str]
+    geo_layer_variants: dict[str, str]
+    combined_layer_variants: dict[str, str]
     inventory: WizardInventory
 
 
@@ -298,13 +307,23 @@ def _route_schema(
     return _schema_ref_name(schema, context=f"{route} result schema"), False
 
 
-def _singleton_union_tags(schema: object, *, context: str) -> list[str]:
-    schema_object = _string_object_dict(schema, context=context)
+def _wizard_schema_dto_name(schema_name: str, *, read: bool = False) -> str:
+    suffix = "ReadDTO" if read else "DTO"
+    return f"{schema_name}{suffix}"
+
+
+def _singleton_union_variant_paths(
+    schema: object,
+    *,
+    context: str,
+    pointer: str,
+) -> dict[str, str]:
+    schema_object = _string_object_dict(_normalize_wizard_schema(schema), context=context)
     branches = schema_object.get("oneOf")
     if not isinstance(branches, list):
         raise ValueError(f"{context}.oneOf must be a list")
 
-    tags: list[str] = []
+    variants: dict[str, str] = {}
     for index, branch in enumerate(branches):
         branch_object = _string_object_dict(branch, context=f"{context}.oneOf[{index}]")
         properties = _string_object_dict(
@@ -318,14 +337,15 @@ def _singleton_union_tags(schema: object, *, context: str) -> list[str]:
         enum = type_schema.get("enum")
         if not isinstance(enum, list) or len(enum) != 1 or not isinstance(enum[0], str):
             raise ValueError(f"{context}.oneOf[{index}].properties.type.enum must contain one string")
-        tags.append(enum[0])
-    if len(tags) != len(set(tags)):
-        raise ValueError(f"{context} contains duplicate type tags")
-    return sorted(tags)
+        tag = enum[0]
+        if tag in variants:
+            raise ValueError(f"{context} contains duplicate type tag {tag!r}")
+        variants[tag] = f"{pointer}/oneOf/{index}"
+    return dict(sorted(variants.items()))
 
 
 def build_wizard_schema_meta(spec: Mapping[str, object]) -> WizardSchemaMeta:
-    """Extract the focused, canonical Wizard v3 contract from one OpenAPI document."""
+    """Extract the API-v3 envelope and embedded Wizard V1 contract from OpenAPI."""
 
     paths = _string_object_dict(spec.get("paths"), context="paths")
     discovered_routes = {path for path in paths if "WizardChart" in path}
@@ -350,6 +370,8 @@ def build_wizard_schema_meta(spec: Mapping[str, object]) -> WizardSchemaMeta:
             "request_schema": request_schema,
             "result_schema": result_schema,
             "request_body_required": request_body_required,
+            "request_dto": _wizard_schema_dto_name(request_schema),
+            "result_dto": _wizard_schema_dto_name(result_schema, read=True) if result_schema is not None else None,
         }
 
     schemas = _schemas(spec)
@@ -374,17 +396,20 @@ def build_wizard_schema_meta(spec: Mapping[str, object]) -> WizardSchemaMeta:
         config.get("properties"),
         context="WizardV1ConfigSchema.properties",
     )
-    visualizations = _singleton_union_tags(
+    visualization_variants = _singleton_union_variant_paths(
         config_properties.get("visualization"),
         context="WizardV1ConfigSchema.properties.visualization",
+        pointer="/schemas/WizardV1ConfigSchema/properties/visualization",
     )
-    geo_layers = _singleton_union_tags(
+    geo_layer_variants = _singleton_union_variant_paths(
         schemas.get("WizardV1GeolayerLayerSchema"),
         context="WizardV1GeolayerLayerSchema",
+        pointer="/schemas/WizardV1GeolayerLayerSchema",
     )
-    combined_layers = _singleton_union_tags(
+    combined_layer_variants = _singleton_union_variant_paths(
         schemas.get("WizardV1CombinedChartLayerSchema"),
         context="WizardV1CombinedChartLayerSchema",
+        pointer="/schemas/WizardV1CombinedChartLayerSchema",
     )
 
     wizard = schemas.get("WizardV1")
@@ -410,9 +435,9 @@ def build_wizard_schema_meta(spec: Mapping[str, object]) -> WizardSchemaMeta:
         "routes": len(route_meta),
         "roots": len(roots),
         "schemas": len(reached),
-        "visualizations": len(visualizations),
-        "geo_layers": len(geo_layers),
-        "combined_layers": len(combined_layers),
+        "visualizations": len(visualization_variants),
+        "geo_layers": len(geo_layer_variants),
+        "combined_layers": len(combined_layer_variants),
     }
     return {
         "api_version": api_version,
@@ -420,9 +445,12 @@ def build_wizard_schema_meta(spec: Mapping[str, object]) -> WizardSchemaMeta:
         "routes": route_meta,
         "roots": sorted(roots),
         "schemas": dict(sorted(normalized_schemas.items())),
-        "visualizations": visualizations,
-        "geo_layers": geo_layers,
-        "combined_layers": combined_layers,
+        "visualizations": sorted(visualization_variants),
+        "geo_layers": sorted(geo_layer_variants),
+        "combined_layers": sorted(combined_layer_variants),
+        "visualization_variants": visualization_variants,
+        "geo_layer_variants": geo_layer_variants,
+        "combined_layer_variants": combined_layer_variants,
         "inventory": inventory,
     }
 
@@ -507,22 +535,24 @@ def _editor_factory_method_name(wire_type: str, schema_name: str) -> str:
     return method
 
 
-def _visualization_factory_methods(viz_ids: list[str], *, family: str) -> dict[str, str]:
+def _visualization_factory_methods(visualization_types: list[str], *, family: str) -> dict[str, str]:
     methods: dict[str, str] = {}
     owners: dict[str, str] = {}
-    for viz_id in viz_ids:
-        method = factory_method_name(viz_id)
+    for visualization_type in visualization_types:
+        method = factory_method_name(visualization_type)
         if not method.isidentifier() or keyword.iskeyword(method) or method in RESERVED_METHODS:
             raise ValueError(
-                f"{family} factory method {method!r} derived from viz id {viz_id!r} is not a safe public method name"
+                f"{family} factory method {method!r} derived from visualization type "
+                f"{visualization_type!r} is not a safe public method name"
             )
-        previous_viz_id = owners.get(method)
-        if previous_viz_id is not None:
+        previous_visualization_type = owners.get(method)
+        if previous_visualization_type is not None:
             raise ValueError(
-                f"{family} factory method collision: viz ids {previous_viz_id!r} and {viz_id!r} both map to {method!r}"
+                f"{family} factory method collision: visualization types {previous_visualization_type!r} "
+                f"and {visualization_type!r} both map to {method!r}"
             )
-        owners[method] = viz_id
-        methods[viz_id] = method
+        owners[method] = visualization_type
+        methods[visualization_type] = method
     return methods
 
 
@@ -795,7 +825,9 @@ def build_metadata(
         raise ValueError(f"Wizard specs reference unknown installations: {joined}")
 
     out: Metadata = {"installations": {}}
-    wizard_factory_methods = sorted(_visualization_factory_methods(sorted(VIZ_SPECS), family="Wizard").values())
+    wizard_factory_methods = sorted(
+        _visualization_factory_methods(sorted(WIZARD_VISUALIZATION_SEMANTICS), family="Wizard").values()
+    )
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
@@ -861,6 +893,479 @@ def _emit_literal(value: object) -> str:
     return repr(value)
 
 
+def _wizard_python_field_name(wire_name: str) -> str:
+    value = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", wire_name).replace("-", "_").lower()
+    if not value.isidentifier():
+        value = re.sub(r"\W", "_", value)
+    if value[:1].isdigit():
+        value = f"field_{value}"
+    return f"{value}_" if keyword.iskeyword(value) else value
+
+
+def _wizard_inline_model_name(path: tuple[str, ...], *, read: bool) -> str:
+    stem = "".join(part[:1].upper() + part[1:] for value in path for part in _CAMEL_SPLIT_RE.split(value) if part)
+    return f"{stem}{'ReadDTO' if read else 'DTO'}"
+
+
+def _wizard_contract(metadata: Metadata) -> WizardContractMeta | None:
+    contracts = [
+        (installation, info["wizard"])
+        for installation, info in sorted(metadata["installations"].items())
+        if "wizard" in info
+    ]
+    if not contracts:
+        return None
+    canonical_installation, canonical = contracts[0]
+    for installation, candidate in contracts[1:]:
+        if candidate["fingerprint"] != canonical["fingerprint"]:
+            diff = diff_wizard_schema_meta(canonical["manifest"], candidate["manifest"])
+            raise ValueError(
+                f"Wizard schema fingerprint differs between {canonical_installation!r} and {installation!r}:\n{diff}"
+            )
+    return canonical
+
+
+class _WizardPydanticEmitter:
+    """Emit the Pydantic subset needed by Wizard document schemas."""
+
+    def __init__(
+        self,
+        schemas: Mapping[str, JsonValue],
+        *,
+        read: bool,
+        open_schema_refs: frozenset[str] = frozenset(),
+    ) -> None:
+        self._schemas = schemas
+        self._read = read
+        self._open_schema_refs = open_schema_refs
+        self._lines: list[str] = []
+        self._emitted: set[str] = set()
+        self._emitting: set[str] = set()
+        self._definitions: dict[str, str] = {}
+
+    def emit(self, schema_names: Iterable[str]) -> str:
+        for schema_name in sorted(schema_names):
+            self._emit_named(schema_name)
+        return "\n".join(self._lines)
+
+    def _model_name(self, path: tuple[str, ...]) -> str:
+        return _wizard_inline_model_name(path, read=self._read)
+
+    def _schema_object(self, value: JsonValue, *, context: str) -> dict[str, JsonValue]:
+        if not isinstance(value, dict):
+            raise TypeError(f"{context} must be an object")
+        return value
+
+    def _emit_named(self, schema_name: str) -> str:
+        name = _wizard_schema_dto_name(schema_name, read=self._read)
+        if name in self._emitted:
+            return name
+        if name in self._emitting:
+            raise ValueError(f"Recursive Wizard schema {schema_name!r} is not supported")
+        raw = self._schemas.get(schema_name)
+        if raw is None:
+            raise ValueError(f"Wizard manifest references missing schema {schema_name!r}")
+        schema = self._schema_object(raw, context=f"Wizard schema {schema_name}")
+        self._emitting.add(name)
+        annotation = self._annotation(schema, path=(schema_name,), preferred_name=name)
+        if annotation != name:
+            self._lines.append(f"{name} = {annotation}")
+            self._lines.append("")
+            self._emitted.add(name)
+        self._emitting.remove(name)
+        return name
+
+    def _annotation(
+        self,
+        schema: dict[str, JsonValue],
+        *,
+        path: tuple[str, ...],
+        preferred_name: str | None = None,
+    ) -> str:
+        ref = schema.get("$ref")
+        if isinstance(ref, str):
+            schema_name = _ref_name(ref)
+            if schema_name in self._open_schema_refs:
+                return "dict[str, JsonValue]"
+            return self._emit_named(schema_name)
+
+        enum = schema.get("enum")
+        if isinstance(enum, list) and enum:
+            return f"Literal[{', '.join(_emit_literal(value) for value in enum)}]"
+
+        for union_key in ("oneOf", "anyOf"):
+            branches = schema.get(union_key)
+            if isinstance(branches, list):
+                annotations = [
+                    self._annotation(
+                        self._schema_object(branch, context=f"{'.'.join(path)}.{union_key}[{index}]"),
+                        path=(*path, f"{union_key}{index}"),
+                    )
+                    for index, branch in enumerate(branches)
+                ]
+                return " | ".join(dict.fromkeys(annotations))
+
+        if isinstance(schema.get("allOf"), list):
+            variants = self._all_of_variants(schema, context=".".join(path), seen=frozenset())
+            annotations = [
+                self._emit_object(
+                    variant,
+                    path=(*path, f"allOf{index}") if len(variants) > 1 else path,
+                    preferred_name=preferred_name if len(variants) == 1 else None,
+                )
+                for index, variant in enumerate(variants)
+            ]
+            return " | ".join(dict.fromkeys(annotations))
+
+        raw_type = schema.get("type")
+        if isinstance(raw_type, list):
+            annotations = [
+                self._annotation(
+                    {**schema, "type": item},
+                    path=(*path, str(item)),
+                    preferred_name=preferred_name,
+                )
+                for item in raw_type
+                if isinstance(item, str)
+            ]
+            return " | ".join(dict.fromkeys(annotations)) or "JsonValue"
+
+        if raw_type == "string":
+            return "str"
+        if raw_type == "integer":
+            return "int"
+        if raw_type == "number":
+            return "float"
+        if raw_type == "boolean":
+            return "bool"
+        if raw_type == "null":
+            return "None"
+        if raw_type == "array" or "items" in schema or "prefixItems" in schema:
+            prefix_items = schema.get("prefixItems")
+            if isinstance(prefix_items, list) and prefix_items:
+                annotations = [
+                    self._annotation(
+                        self._schema_object(item, context=f"{'.'.join(path)}.prefixItems[{index}]"),
+                        path=(*path, f"item{index}"),
+                    )
+                    for index, item in enumerate(prefix_items)
+                ]
+                return f"tuple[{', '.join(annotations)}]"
+            items = schema.get("items")
+            item_annotation = self._annotation(items, path=(*path, "item")) if isinstance(items, dict) else "JsonValue"
+            return f"list[{item_annotation}]"
+
+        properties = schema.get("properties")
+        if raw_type == "object" or isinstance(properties, dict):
+            if isinstance(properties, dict) and properties:
+                return self._emit_object(schema, path=path, preferred_name=preferred_name)
+            additional = schema.get("additionalProperties")
+            if isinstance(additional, dict) and additional:
+                value_annotation = self._annotation(additional, path=(*path, "value"))
+            else:
+                value_annotation = "JsonValue"
+            return f"dict[str, {value_annotation}]"
+
+        return "JsonValue"
+
+    def _emit_object(
+        self,
+        schema: dict[str, JsonValue],
+        *,
+        path: tuple[str, ...],
+        preferred_name: str | None,
+    ) -> str:
+        name = preferred_name or self._model_name(path)
+        canonical = _canonical_json(schema)
+        previous = self._definitions.get(name)
+        if previous is not None:
+            if previous != canonical:
+                raise ValueError(f"Wizard inline model name collision for {name}")
+            return name
+        self._definitions[name] = canonical
+
+        properties_value = schema.get("properties")
+        properties = properties_value if isinstance(properties_value, dict) else {}
+        required_value = schema.get("required")
+        required = (
+            {value for value in required_value if isinstance(value, str)} if isinstance(required_value, list) else set()
+        )
+
+        fields: list[tuple[str, str, str, bool]] = []
+        for wire_name, raw_field_schema in sorted(properties.items()):
+            if not isinstance(raw_field_schema, dict):
+                raise TypeError(f"Wizard schema {'.'.join(path)}.{wire_name} must be an object")
+            python_name = _wizard_python_field_name(wire_name)
+            annotation = self._annotation(raw_field_schema, path=(*path, wire_name))
+            fields.append((python_name, wire_name, annotation, wire_name in required))
+
+        extra = "ignore" if self._read else "forbid"
+        self._lines.append(f"class {name}(BaseModel):")
+        self._lines.append(f"    model_config = ConfigDict(extra={extra!r}, populate_by_name=True)")
+        self._lines.append("")
+        if not fields:
+            self._lines.append("    pass")
+        for python_name, wire_name, annotation, is_required in fields:
+            alias = f" = Field(alias={wire_name!r})" if python_name != wire_name and is_required else ""
+            if is_required:
+                self._lines.append(f"    {python_name}: {annotation}{alias}")
+                continue
+            optional_annotation = annotation if "None" in annotation.split(" | ") else f"{annotation} | None"
+            if python_name != wire_name:
+                self._lines.append(
+                    f"    {python_name}: {optional_annotation} = Field(default=None, alias={wire_name!r})"
+                )
+            else:
+                self._lines.append(f"    {python_name}: {optional_annotation} = None")
+        self._lines.append("")
+        self._emitted.add(name)
+        return name
+
+    def _object_variants(
+        self,
+        schema: dict[str, JsonValue],
+        *,
+        context: str,
+        seen: frozenset[str],
+    ) -> list[dict[str, JsonValue]]:
+        ref = schema.get("$ref")
+        if isinstance(ref, str):
+            schema_name = _ref_name(ref)
+            if schema_name in seen:
+                raise ValueError(f"Recursive Wizard allOf schema {schema_name!r} is not supported")
+            raw = self._schemas.get(schema_name)
+            if raw is None:
+                raise ValueError(f"Wizard manifest references missing schema {schema_name!r}")
+            return self._object_variants(
+                self._schema_object(raw, context=f"Wizard schema {schema_name}"),
+                context=schema_name,
+                seen=seen | {schema_name},
+            )
+        for union_key in ("oneOf", "anyOf"):
+            branches = schema.get(union_key)
+            if isinstance(branches, list):
+                variants: list[dict[str, JsonValue]] = []
+                for index, branch in enumerate(branches):
+                    variants.extend(
+                        self._object_variants(
+                            self._schema_object(branch, context=f"{context}.{union_key}[{index}]"),
+                            context=f"{context}.{union_key}[{index}]",
+                            seen=seen,
+                        )
+                    )
+                return variants
+        if isinstance(schema.get("allOf"), list):
+            return self._all_of_variants(schema, context=context, seen=seen)
+        if schema.get("type") == "object" or isinstance(schema.get("properties"), dict):
+            return [schema]
+        raise ValueError(f"Wizard allOf member {context} is not an object schema")
+
+    def _all_of_variants(
+        self,
+        schema: dict[str, JsonValue],
+        *,
+        context: str,
+        seen: frozenset[str],
+    ) -> list[dict[str, JsonValue]]:
+        all_of = schema.get("allOf")
+        if not isinstance(all_of, list):
+            return [schema]
+        own = {key: value for key, value in schema.items() if key != "allOf"}
+        combinations: list[dict[str, JsonValue]] = [own]
+        for index, member in enumerate(all_of):
+            member_object = self._schema_object(member, context=f"{context}.allOf[{index}]")
+            variants = self._object_variants(
+                member_object,
+                context=f"{context}.allOf[{index}]",
+                seen=seen,
+            )
+            combinations = [self._merge_object_schemas(base, variant) for base in combinations for variant in variants]
+        return combinations
+
+    @staticmethod
+    def _merge_object_schemas(
+        left: dict[str, JsonValue],
+        right: dict[str, JsonValue],
+    ) -> dict[str, JsonValue]:
+        merged: dict[str, JsonValue] = {"type": "object"}
+        properties: dict[str, JsonValue] = {}
+        required: set[str] = set()
+        for source in (left, right):
+            source_properties = source.get("properties")
+            if isinstance(source_properties, dict):
+                properties.update(source_properties)
+            source_required = source.get("required")
+            if isinstance(source_required, list):
+                required.update(value for value in source_required if isinstance(value, str))
+        if properties:
+            merged["properties"] = dict(sorted(properties.items()))
+        if required:
+            required_values: list[JsonValue] = []
+            for value in sorted(required):
+                required_values.append(value)
+            merged["required"] = required_values
+        return merged
+
+
+def _emit_wizard_dto(metadata: Metadata) -> str:
+    contract = _wizard_contract(metadata)
+    fingerprint = contract["fingerprint"] if contract is not None else None
+    bindings: dict[str, dict[str, str | None]] = {}
+    strict_models = ""
+    read_models = ""
+    create_validation = "_validate_wizard_v1_line_config(self.data)"
+    update_validation = "_validate_wizard_v1_line_config(self.data)"
+    entry_model = """class WizardChartEntryReadDTO(BaseModel):
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    version: Literal[1]
+    entry_id: str = Field(alias="entryId")
+    type: str | None = None
+    data: dict[str, JsonValue]
+"""
+    if contract is not None:
+        manifest = contract["manifest"]
+        request_schemas = {route_meta["request_schema"] for route_meta in manifest["routes"].values()}
+        result_schemas: set[str] = set()
+        for route_meta in manifest["routes"].values():
+            result_schema = route_meta["result_schema"]
+            if result_schema is not None:
+                result_schemas.add(result_schema)
+        update_request_schema = manifest["routes"]["/rpc/updateWizardChart"]["request_schema"]
+        strict_models = _WizardPydanticEmitter(manifest["schemas"], read=False).emit(request_schemas)
+        read_models = _WizardPydanticEmitter(
+            manifest["schemas"],
+            read=True,
+            open_schema_refs=frozenset({"WizardV1ConfigSchema"}),
+        ).emit((*result_schemas, update_request_schema))
+        create_request_dto = manifest["routes"]["/rpc/createWizardChart"]["request_dto"]
+        update_request_read_dto = _wizard_schema_dto_name(update_request_schema, read=True)
+        create_validation = (
+            f"{create_request_dto}.model_validate(self.to_payload())\n"
+            "        _validate_wizard_v1_line_config(self.data)"
+        )
+        update_validation = (
+            f"{update_request_read_dto}.model_validate(self.to_payload())\n"
+            "        _validate_wizard_v1_line_config(self.data)"
+        )
+        entry_model = f"WizardChartEntryReadDTO = {_wizard_schema_dto_name('WizardV1', read=True)}"
+        bindings = {
+            route: {"request": route_meta["request_dto"], "result": route_meta["result_dto"]}
+            for route, route_meta in sorted(manifest["routes"].items())
+        }
+
+    return f"""
+WIZARD_SCHEMA_FINGERPRINT: str | None = {fingerprint!r}
+WIZARD_DTO_BINDINGS: dict[str, dict[str, str | None]] = {bindings!r}
+
+{strict_models}
+{read_models}
+
+def _validate_wizard_v1_line_config(data: Mapping[str, JsonValue]) -> None:
+    sources = data.get("sources")
+    visualization = data.get("visualization")
+    if not isinstance(sources, Mapping) or not isinstance(sources.get("datasetsIds"), list):
+        raise ValueError("Wizard V1 config sources.datasetsIds must be an array")
+    if not isinstance(visualization, Mapping) or visualization.get("type") != "line":
+        raise ValueError("Wizard V1 config visualization.type must be 'line'")
+    x_slot = visualization.get("x")
+    if not isinstance(x_slot, Mapping) or not isinstance(x_slot.get("items"), list):
+        raise ValueError("Wizard V1 line visualization.x.items must be an array")
+
+
+class WizardChartCreateDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    data: dict[str, JsonValue]
+    key: str | None = None
+    name: str | None = None
+    workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
+    annotation: dict[str, JsonValue] | None = None
+
+    @model_validator(mode="after")
+    def _validate_data(self) -> WizardChartCreateDTO:
+        {create_validation}
+        return self
+
+    def to_payload(self) -> dict[str, object]:
+        payload: dict[str, object] = {{"data": dict(self.data)}}
+        if self.key is not None:
+            payload["key"] = self.key
+        if self.name is not None:
+            payload["name"] = self.name
+        if self.workbook_id is not None:
+            payload["workbookId"] = self.workbook_id
+        if self.annotation is not None:
+            payload["annotation"] = dict(self.annotation)
+        return payload
+
+
+class WizardChartUpdateDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    chart_id: str = Field(serialization_alias="chartId")
+    mode: Literal["save", "publish"]
+    data: dict[str, JsonValue]
+    annotation: dict[str, JsonValue] | None = None
+    rev_id: str | None = Field(default=None, serialization_alias="revId")
+
+    @model_validator(mode="after")
+    def _validate_data(self) -> WizardChartUpdateDTO:
+        {update_validation}
+        return self
+
+    def to_payload(self) -> dict[str, object]:
+        payload: dict[str, object] = {{
+            "chartId": self.chart_id,
+            "mode": self.mode,
+            "data": dict(self.data),
+        }}
+        if self.annotation is not None:
+            payload["annotation"] = dict(self.annotation)
+        if self.rev_id is not None:
+            payload["revId"] = self.rev_id
+        return payload
+
+
+{entry_model}
+
+class WizardChartReadDTO(BaseModel):
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    entry: WizardChartEntryReadDTO
+    raw: dict[str, JsonValue] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _capture_raw(cls, value: object) -> object:
+        if isinstance(value, dict) and "raw" not in value:
+            return {{**value, "raw": value}}
+        return value
+
+
+class WizardChartGetArgsDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    chart_id: str = Field(serialization_alias="chartId")
+    workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
+
+    def to_payload(self) -> dict[str, object]:
+        payload: dict[str, object] = {{"chartId": self.chart_id}}
+        if self.workbook_id is not None:
+            payload["workbookId"] = self.workbook_id
+        return payload
+
+
+class WizardChartDeleteArgsDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    chart_id: str = Field(serialization_alias="chartId")
+
+    def to_payload(self) -> dict[str, object]:
+        return {{"chartId": self.chart_id}}
+"""
+
+
 def _emit_chart_dto(metadata: Metadata) -> str:
     all_editor_nodes: dict[str, EditorCreateNodeMeta] = {}
     installation_editor_types: dict[str, list[str]] = {}
@@ -880,92 +1385,9 @@ def _emit_chart_dto(metadata: Metadata) -> str:
     lines.append("}")
     lines.append("")
 
+    lines.append(_emit_wizard_dto(metadata))
+
     lines.append("""
-class WizardChartCreateDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
-
-    template: Literal["datalens"]
-    data: Mapping[str, object]
-    key: str | None = None
-    name: str | None = None
-    workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
-    annotation: Mapping[str, object] | None = None
-
-    def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {
-            "template": self.template,
-            "data": dict(self.data),
-        }
-        if self.key is not None:
-            payload["key"] = self.key
-        if self.name is not None:
-            payload["name"] = self.name
-        if self.workbook_id is not None:
-            payload["workbookId"] = self.workbook_id
-        if self.annotation is not None:
-            payload["annotation"] = dict(self.annotation)
-        return payload
-
-
-class WizardChartUpdateDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
-
-    entry_id: str = Field(serialization_alias="entryId")
-    template: Literal["datalens"]
-    mode: Literal["save", "publish"]
-    data: Mapping[str, object]
-    annotation: Mapping[str, object] | None = None
-
-    def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {
-            "entryId": self.entry_id,
-            "template": self.template,
-            "mode": self.mode,
-            "data": dict(self.data),
-        }
-        if self.annotation is not None:
-            payload["annotation"] = dict(self.annotation)
-        return payload
-
-
-class WizardChartReadDTO(BaseModel):
-    model_config = ConfigDict(extra="ignore", populate_by_name=True)
-
-    entry_id: str | None = Field(default=None, alias="entryId")
-    template: str | None = None
-    data: dict[str, object] | None = None
-    raw: dict[str, object] = Field(default_factory=dict)
-
-    @model_validator(mode="before")
-    @classmethod
-    def _capture_raw(cls, value: object) -> object:
-        if isinstance(value, dict) and "raw" not in value:
-            return {**value, "raw": value}
-        return value
-
-
-class WizardChartGetArgsDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
-
-    chart_id: str = Field(serialization_alias="chartId")
-    workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
-
-    def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {"chartId": self.chart_id}
-        if self.workbook_id is not None:
-            payload["workbookId"] = self.workbook_id
-        return payload
-
-
-class WizardChartDeleteArgsDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
-
-    chart_id: str = Field(serialization_alias="chartId")
-
-    def to_payload(self) -> dict[str, object]:
-        return {"chartId": self.chart_id}
-
-
 class QLChartCreateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -1619,6 +2041,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
 from datalens_sdk.errors import NotSupportedError
+from datalens_sdk.serialization.json_types import JsonValue
 
 INSTALLATION_CONNECTORS: dict[str, frozenset[str]] = {{
 {chr(10).join(f"    {name!r}: frozenset({items!r})," for name, items in connectors.items())}
@@ -2255,19 +2678,14 @@ def emit_dataset_sources(metadata: Metadata) -> str:
     return "\n".join(lines)
 
 
-_PH_ID_HELPERS: frozenset[str] = frozenset({"axis_title", "axis_scale", "grid"})
+_SLOT_NAME_HELPERS: frozenset[str] = frozenset({"axis_title", "axis_scale", "grid"})
 
 
-def _axis_placeholder_ids(viz_id: str) -> list[str]:
-    spec = VIZ_SPECS.get(viz_id, {})
-    placeholders = spec.get("placeholders", {})
-    if not isinstance(placeholders, dict):
+def _axis_slot_names(visualization_type: str) -> list[str]:
+    semantics = WIZARD_VISUALIZATION_SEMANTICS.get(visualization_type)
+    if semantics is None:
         return []
-    return sorted(
-        placeholder_id.replace("-", "_")
-        for placeholder_id, placeholder in placeholders.items()
-        if isinstance(placeholder, dict) and placeholder.get("type") in {"x", "y", "y2"}
-    )
+    return sorted(slot_name for slot_name in semantics["slots"] if slot_name in {"x", "y", "y2"})
 
 
 _HELPER_WRAPPERS: dict[str, tuple[str, str]] = {
@@ -2354,26 +2772,26 @@ _HELPER_WRAPPERS: dict[str, tuple[str, str]] = {
 }
 
 
-def _emit_group_a_methods(viz_id: str) -> list[str]:
-    specs = method_specs_for_viz(viz_id)
-    ph_ids = _axis_placeholder_ids(viz_id)
-    ph_literal = ", ".join(repr(p) for p in ph_ids) if ph_ids else ""
+def _emit_wizard_methods(visualization_type: str) -> list[str]:
+    specs = method_specs_for_visualization(visualization_type)
+    axis_slot_names = _axis_slot_names(visualization_type)
+    axis_slot_literal = ", ".join(repr(slot_name) for slot_name in axis_slot_names)
     lines: list[str] = []
     for method_name, spec in sorted(specs.items()):
         kind = spec.get("kind", "")
         value_type = spec.get("value_type", "str")
         literal_values = spec.get("literal_values", ())
         value_map = spec.get("value_map", {})
-        wire_key = spec.get("wire_key", "")
+        slot_name = spec.get("slot_name", "")
         setting_key = spec.get("setting_key", "")
 
-        if kind == "extra_setting":
+        if kind == "chart_setting":
             if value_type == "literal":
                 lit = ", ".join(repr(v) for v in literal_values)
                 lines.extend(
                     [
                         f"    def {method_name}(self, *, mode: Literal[{lit}]) -> Self:",
-                        f"        return self._set_extra({wire_key!r}, mode)",
+                        f"        return self._set_chart_setting({setting_key!r}, mode)",
                         "",
                     ]
                 )
@@ -2383,7 +2801,7 @@ def _emit_group_a_methods(viz_id: str) -> list[str]:
                 lines.extend(
                     [
                         f"    def {method_name}(self, *, enabled: bool) -> Self:",
-                        f"        return self._set_extra({wire_key!r}, {true_val!r} if enabled else {false_val!r})",
+                        f"        return self._set_chart_setting({setting_key!r}, {true_val!r} if enabled else {false_val!r})",
                         "",
                     ]
                 )
@@ -2391,20 +2809,20 @@ def _emit_group_a_methods(viz_id: str) -> list[str]:
                 lines.extend(
                     [
                         f"    def {method_name}(self, *, value: str) -> Self:",
-                        f"        return self._set_extra({wire_key!r}, value)",
+                        f"        return self._set_chart_setting({setting_key!r}, value)",
                         "",
                     ]
                 )
 
-        elif kind == "ph_setting":
-            if not ph_literal:
+        elif kind == "slot_setting":
+            if not axis_slot_literal:
                 continue
             if value_type == "literal":
                 lit = ", ".join(repr(v) for v in literal_values)
                 lines.extend(
                     [
-                        f"    def {method_name}(self, ph_id: Literal[{ph_literal}], *, mode: Literal[{lit}]) -> Self:",
-                        f"        return self._set_ph_setting(ph_id, {setting_key!r}, mode)",
+                        f"    def {method_name}(self, slot_name: Literal[{axis_slot_literal}], *, mode: Literal[{lit}]) -> Self:",
+                        f"        return self._set_slot_setting(slot_name, {setting_key!r}, mode)",
                         "",
                     ]
                 )
@@ -2413,53 +2831,45 @@ def _emit_group_a_methods(viz_id: str) -> list[str]:
                 false_val = value_map.get("false", "no")
                 lines.extend(
                     [
-                        f"    def {method_name}(self, ph_id: Literal[{ph_literal}], *, enabled: bool) -> Self:",
-                        f"        return self._set_ph_setting(ph_id, {setting_key!r}, {true_val!r} if enabled else {false_val!r})",
+                        f"    def {method_name}(self, slot_name: Literal[{axis_slot_literal}], *, enabled: bool) -> Self:",
+                        f"        return self._set_slot_setting(slot_name, {setting_key!r}, {true_val!r} if enabled else {false_val!r})",
                         "",
                     ]
                 )
 
-        elif kind == "data_field":
-            target = (
-                "_sort_fields"
-                if method_name == "sort"
-                else "_labels_fields"
-                if method_name == "labels"
-                else "_set_data_field"
-            )
-            args = "fields" if method_name in {"sort", "labels"} else f"{wire_key!r}, fields"
+        elif kind == "slot":
             lines.extend(
                 [
                     f"    def {method_name}(self, fields: Sequence[FieldLike | str]) -> Self:",
-                    f"        return self.{target}({args})",
+                    f"        return self._set_slot({slot_name!r}, fields)",
                     "",
                 ]
             )
 
-        elif kind == "helper" and method_name in _PH_ID_HELPERS and ph_literal:
+        elif kind == "helper" and method_name in _SLOT_NAME_HELPERS and axis_slot_literal:
             if method_name == "axis_title":
                 lines.extend(
                     [
-                        f"    def axis_title(self, ph_id: Literal[{ph_literal}], *, mode: Literal['off', 'manual', 'auto'], text: str = '') -> Self:",
-                        "        return self._axis_title(ph_id, mode=mode, text=text)",
+                        f"    def axis_title(self, slot_name: Literal[{axis_slot_literal}], *, mode: Literal['off', 'manual', 'auto'], text: str = '') -> Self:",
+                        "        return self._axis_title(slot_name, mode=mode, text=text)",
                         "",
                     ]
                 )
             elif method_name == "axis_scale":
                 lines.extend(
                     [
-                        f"    def axis_scale(self, ph_id: Literal[{ph_literal}], *, scale: Literal['linear', 'logarithmic'] = 'linear', mode: Literal['auto', 'manual'] = 'auto', min: str | None = None, max: str | None = None) -> Self:",
-                        "        return self._axis_scale(ph_id, scale=scale, mode=mode, min=min, max=max)",
+                        f"    def axis_scale(self, slot_name: Literal[{axis_slot_literal}], *, scale: Literal['linear', 'logarithmic'] = 'linear', mode: Literal['auto', 'manual'] = 'auto', min: str | None = None, max: str | None = None) -> Self:",
+                        "        return self._axis_scale(slot_name, scale=scale, mode=mode, min=min, max=max)",
                         "",
                     ]
                 )
             elif method_name == "grid":
                 lines.extend(
                     [
-                        "    def grid(self, ph_id: Literal["
-                        + ph_literal
+                        "    def grid(self, slot_name: Literal["
+                        + axis_slot_literal
                         + "], *, enabled: bool, step: int | None = None) -> Self:",
-                        "        return self._grid(ph_id, enabled=enabled, step=step)",
+                        "        return self._grid(slot_name, enabled=enabled, step=step)",
                         "",
                     ]
                 )
@@ -2476,29 +2886,58 @@ def _emit_group_a_methods(viz_id: str) -> list[str]:
     return lines
 
 
-def _viz_methods(viz_id: str) -> list[str]:
-    spec = VIZ_SPECS.get(viz_id, {})
-    placeholders = spec.get("placeholders", {})
-    aliases = spec.get("placeholder_aliases", {})
-    if not isinstance(placeholders, dict):
-        return []
-    if not isinstance(aliases, dict):
-        aliases = {}
+def _emit_deferred_wizard_methods(visualization_type: str) -> list[str]:
+    lines: list[str] = []
+    for method_name in sorted(deferred_fluent_methods_for_visualization(visualization_type)):
+        if method_name in {"labels", "sort", "tooltips"}:
+            lines.extend(
+                [
+                    f"    def {method_name}(self, fields: Sequence[FieldLike | str]) -> Self:",
+                    f"        return self._set_slot({method_name!r}, fields)",
+                    "",
+                ]
+            )
+        elif method_name == "labels_position":
+            lines.extend(
+                [
+                    "    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:",
+                    "        return self._set_chart_setting('labelsPosition', mode)",
+                    "",
+                ]
+            )
+        elif method_name == "add_sort":
+            lines.extend(
+                [
+                    "    def add_sort(self, field: FieldLike | str, *, direction: Literal['asc', 'desc'] = 'asc') -> Self:",
+                    "        return self._add_sort(field, direction=direction)",
+                    "",
+                ]
+            )
+        else:
+            raise ValueError(f"Unsupported deferred Wizard method {method_name!r}")
+    return lines
 
+
+def _wizard_slot_methods(visualization_type: str) -> dict[str, str]:
+    semantics = WIZARD_VISUALIZATION_SEMANTICS.get(visualization_type)
+    if semantics is None:
+        return {}
+    slots = semantics["slots"]
+    aliases = semantics["slot_aliases"]
+    method_slots = {
+        spec["slot_name"]
+        for spec in method_specs_for_visualization(visualization_type).values()
+        if spec.get("kind") == "slot" and "slot_name" in spec
+    }
+    hidden_slots = {"colors", "shapes"} | method_slots
     alias_targets = set(aliases.values())
-    exposed: list[str] = []
-    for alias_name in sorted(aliases):
-        if aliases[alias_name] in {"colors", "shapes"}:
-            continue
-        sanitized = alias_name.replace("-", "_")
-        exposed.append(sanitized)
-    for ph_id in sorted(placeholders):
-        if ph_id in {"colors", "shapes"}:
-            continue
-        if ph_id not in alias_targets:
-            sanitized = ph_id.replace("-", "_")
-            if sanitized not in exposed:
-                exposed.append(sanitized)
+    exposed: dict[str, str] = {}
+    for alias_name, target_slot in sorted(aliases.items()):
+        if target_slot not in hidden_slots:
+            exposed[alias_name.replace("-", "_")] = target_slot
+    for slot_name in sorted(slots):
+        if slot_name not in hidden_slots and slot_name not in alias_targets:
+            exposed[slot_name.replace("-", "_")] = slot_name
     return exposed
 
 
@@ -2539,7 +2978,10 @@ def _ql_data_section_methods(viz_id: str) -> list[str]:
 
 
 def emit_chart_builders(metadata: Metadata) -> str:
-    wizard_factory_methods = _visualization_factory_methods(sorted(VIZ_SPECS), family="Wizard")
+    wizard_factory_methods = _visualization_factory_methods(
+        sorted(WIZARD_VISUALIZATION_SEMANTICS),
+        family="Wizard",
+    )
     ql_factory_methods = _visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL")
     all_editor_nodes: dict[str, EditorCreateNodeMeta] = {}
     installation_editor_types: dict[str, list[str]] = {}
@@ -2586,18 +3028,16 @@ def emit_chart_builders(metadata: Metadata) -> str:
     lines.append("}")
     lines.append("")
 
-    for viz_id, spec in sorted(VIZ_SPECS.items()):
-        wire_type = str(spec.get("wire_type", ""))
-        base_create = _VIZ_CATEGORY_BASE_CREATE.get(viz_id, "_BaseWizardChartCreate")
-        create_cls = _class_name(viz_id, "WizardChartCreate")
+    for visualization_type in sorted(WIZARD_VISUALIZATION_SEMANTICS):
+        base_create = _WIZARD_VISUALIZATION_BASE_CREATE.get(visualization_type, "_BaseWizardChartCreate")
+        create_cls = _class_name(visualization_type, "WizardChartCreate")
 
         lines.extend(
             [
                 f"class {create_cls}({base_create}):",
                 "    def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:",
                 "        super().__init__(",
-                f"            viz_id={viz_id!r},",
-                f"            wire_type={wire_type!r},",
+                f"            visualization_type={visualization_type!r},",
                 "            name=name,",
                 "            location=location,",
                 "            operations=operations,",
@@ -2606,17 +3046,17 @@ def emit_chart_builders(metadata: Metadata) -> str:
             ]
         )
 
-        if viz_id not in {"combined-chart", "geolayer"}:
-            methods = _viz_methods(viz_id)
-            for method in methods:
+        if visualization_type not in {"combined-chart", "geolayer"}:
+            methods = _wizard_slot_methods(visualization_type)
+            for method_name, slot_name in methods.items():
                 lines.extend(
                     [
-                        f"    def {method}(self, fields: Sequence[FieldLike | str]) -> Self:",
-                        f"        return self._set_placeholder({method!r}, fields)",
+                        f"    def {method_name}(self, fields: Sequence[FieldLike | str]) -> Self:",
+                        f"        return self._set_slot({slot_name!r}, fields)",
                         "",
                     ]
                 )
-        if viz_id == "combined-chart":
+        if visualization_type == "combined-chart":
             lines.extend(
                 [
                     "    def x(self, fields: Sequence[FieldLike | str]) -> Self:",
@@ -2627,7 +3067,7 @@ def emit_chart_builders(metadata: Metadata) -> str:
                     "",
                 ]
             )
-        if viz_id == "geolayer":
+        if visualization_type == "geolayer":
             lines.extend(
                 [
                     "    def add_dataset(self, dataset: Dataset) -> Self:",
@@ -2644,7 +3084,8 @@ def emit_chart_builders(metadata: Metadata) -> str:
                     "",
                 ]
             )
-        lines.extend(_emit_group_a_methods(viz_id))
+        lines.extend(_emit_wizard_methods(visualization_type))
+        lines.extend(_emit_deferred_wizard_methods(visualization_type))
 
     lines.extend(
         [
@@ -2654,9 +3095,9 @@ def emit_chart_builders(metadata: Metadata) -> str:
             "",
         ]
     )
-    for viz_id in sorted(VIZ_SPECS):
-        create_cls = _class_name(viz_id, "WizardChartCreate")
-        method_name = wizard_factory_methods[viz_id]
+    for visualization_type in sorted(WIZARD_VISUALIZATION_SEMANTICS):
+        create_cls = _class_name(visualization_type, "WizardChartCreate")
+        method_name = wizard_factory_methods[visualization_type]
         lines.extend(
             [
                 f"    def {method_name}(self, *, name: str, location: EntryLocation) -> {create_cls}:",

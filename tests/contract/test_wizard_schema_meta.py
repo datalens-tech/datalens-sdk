@@ -162,24 +162,32 @@ def test_wizard_schema_meta_extracts_routes_and_structural_inventory() -> None:
             "request_schema": "CreateWizardChartV1Args",
             "result_schema": "CreateWizardChartV1Result",
             "request_body_required": False,
+            "request_dto": "CreateWizardChartV1ArgsDTO",
+            "result_dto": "CreateWizardChartV1ResultReadDTO",
         },
         "/rpc/deleteWizardChart": {
             "method": "post",
             "request_schema": "DeleteWizardChartArgs",
             "result_schema": None,
             "request_body_required": False,
+            "request_dto": "DeleteWizardChartArgsDTO",
+            "result_dto": None,
         },
         "/rpc/getWizardChart": {
             "method": "post",
             "request_schema": "GetWizardChartV1Args",
             "result_schema": "GetWizardChartV1Result",
             "request_body_required": False,
+            "request_dto": "GetWizardChartV1ArgsDTO",
+            "result_dto": "GetWizardChartV1ResultReadDTO",
         },
         "/rpc/updateWizardChart": {
             "method": "post",
             "request_schema": "UpdateWizardV1Args",
             "result_schema": "UpdateWizardV1Result",
             "request_body_required": False,
+            "request_dto": "UpdateWizardV1ArgsDTO",
+            "result_dto": "UpdateWizardV1ResultReadDTO",
         },
     }
     assert manifest["api_version"] == "3"
@@ -189,6 +197,19 @@ def test_wizard_schema_meta_extracts_routes_and_structural_inventory() -> None:
     assert manifest["visualizations"] == ["combined-chart", "geolayer", "line"]
     assert manifest["geo_layers"] == ["geopoint", "heatmap"]
     assert manifest["combined_layers"] == ["column", "line"]
+    assert manifest["visualization_variants"] == {
+        "combined-chart": "/schemas/WizardV1ConfigSchema/properties/visualization/oneOf/0",
+        "geolayer": "/schemas/WizardV1ConfigSchema/properties/visualization/oneOf/1",
+        "line": "/schemas/WizardV1ConfigSchema/properties/visualization/oneOf/2",
+    }
+    assert manifest["geo_layer_variants"] == {
+        "geopoint": "/schemas/WizardV1GeolayerLayerSchema/oneOf/0",
+        "heatmap": "/schemas/WizardV1GeolayerLayerSchema/oneOf/1",
+    }
+    assert manifest["combined_layer_variants"] == {
+        "column": "/schemas/WizardV1CombinedChartLayerSchema/oneOf/0",
+        "line": "/schemas/WizardV1CombinedChartLayerSchema/oneOf/1",
+    }
 
 
 def test_manifest_normalizes_non_structural_noise() -> None:
