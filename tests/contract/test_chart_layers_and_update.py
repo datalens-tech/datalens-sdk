@@ -23,10 +23,6 @@ from datalens_sdk.errors import DataLensAPIError, DataLensConfigurationError
 from datalens_sdk.http import DataLensHTTPClient
 
 _REFERENCE_CHARTS_DIR = Path(__file__).parent / "fixtures" / "reference_charts" / "wizard"
-_PHASE_3B_PENDING = pytest.mark.xfail(
-    strict=True,
-    reason="Phase 3B: target combined/geolayer serialization is pending",
-)
 
 
 def _reference_chart(chart_id: str) -> dict[str, Any]:
@@ -65,7 +61,6 @@ def test_combined_live_fixture_has_complete_per_layer_colors_config() -> None:
     assert all(set(layer["commonPlaceholders"]["colorsConfig"]) == expected_keys for layer in layers)
 
 
-@_PHASE_3B_PENDING
 def test_combined_builds_layers_with_shared_x_and_measure_colors() -> None:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
@@ -73,30 +68,24 @@ def test_combined_builds_layers_with_shared_x_and_measure_colors() -> None:
     builder.x(["Order Date"]).add_layer("column", y="Amount").add_layer("line", y2="Amount", name="Trend")
     data = _payload_data(builder)
     viz = data["visualization"]
-    assert viz["id"] == "combined-chart"
-    assert viz["placeholders"] == []
+    assert viz["type"] == "combined-chart"
     layers = viz["layers"]
-    assert [layer["id"] for layer in layers] == ["column", "line"]
+    assert [layer["type"] for layer in layers] == ["column", "line"]
     assert layers[1]["layerSettings"]["name"] == "Trend"
     assert viz["selectedLayerId"] == layers[-1]["layerSettings"]["id"]
     for layer in layers:
-        x_ph = next(p for p in layer["placeholders"] if p["id"] == "x")
-        assert x_ph["items"][0]["guid"] == "g_date"
-    column_y = next(p for p in layers[0]["placeholders"] if p["id"] == "y")
-    line_y2 = next(p for p in layers[1]["placeholders"] if p["id"] == "y2")
-    assert column_y["items"][0]["guid"] == "g_amt"
-    assert line_y2["items"][0]["guid"] == "g_amt"
-    assert layers[0]["commonPlaceholders"]["colorsConfig"] == {
+        assert layer["x"]["items"][0]["guid"] == "g_date"
+    assert layers[0]["y"]["items"][0]["guid"] == "g_amt"
+    assert layers[1]["y2"]["items"][0]["guid"] == "g_amt"
+    assert layers[0]["colors"]["settings"] == {
         "colorMode": "palette",
         "coloredByMeasure": True,
-        "fieldGuid": "g_amt",
-        "mountedColors": {"Amount": "0"},
-        "palette": "",
+        "mountedColors": {"g_amt": "0"},
+        "palette": "datalens-classic-20",
         "polygonBorders": "show",
     }
 
 
-@_PHASE_3B_PENDING
 def test_combined_layers_get_distinct_palette_indices() -> None:
     """Distinct measures across layers map to distinct palette indices.
 
@@ -118,11 +107,10 @@ def test_combined_layers_get_distinct_palette_indices() -> None:
     builder.x(["Order Date"]).add_layer("column", y="Amount").add_layer("line", y2="Quantity", name="Trend")
     data = _payload_data(builder)
     layers = data["visualization"]["layers"]
-    assert layers[0]["commonPlaceholders"]["colorsConfig"]["mountedColors"] == {"Amount": "0"}
-    assert layers[1]["commonPlaceholders"]["colorsConfig"]["mountedColors"] == {"Quantity": "1"}
+    assert layers[0]["colors"]["settings"]["mountedColors"] == {"g_amt": "0"}
+    assert layers[1]["colors"]["settings"]["mountedColors"] == {"g_qty": "1"}
 
 
-@_PHASE_3B_PENDING
 def test_combined_measure_format_reaches_layer_placeholders() -> None:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
@@ -137,16 +125,10 @@ def test_combined_measure_format_reaches_layer_placeholders() -> None:
     builder.measure_format(amount, precision=2, unit="k")
 
     layer = _payload_data(builder)["visualization"]["layers"][0]
-    amount_item = next(
-        item
-        for placeholder in layer["placeholders"]
-        for item in placeholder["items"]
-        if item.get("guid") == amount.guid
-    )
+    amount_item = layer["y"]["items"][0]
     assert amount_item["formatting"] == {"precision": 2, "unit": "k"}
 
 
-@_PHASE_3B_PENDING
 def test_combined_update_x_reaches_every_layer() -> None:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
@@ -157,18 +139,44 @@ def test_combined_update_x_reaches_every_layer() -> None:
         .add_layer("column", y="Amount")
         .add_layer("line", y2="Amount")
     )
-    chart = WizardChartConverter.to_domain(
-        {"entryId": "chart-1", "data": _payload_data(builder)},
-        installation="yacloud",
-    )
+    chart = WizardChart(id="chart-1", installation="yacloud", data=_payload_data(builder))
 
     payload = WizardChartConverter.from_domain_update(chart.update.x([dataset.fields.by_name("Region")])).to_payload()
     layers = cast(dict[str, Any], payload["data"])["visualization"]["layers"]
-    assert all(
-        next(placeholder for placeholder in layer["placeholders"] if placeholder["id"] == "x")["items"][0]["guid"]
-        == "g_reg"
-        for layer in layers
+    assert all(layer["x"]["items"][0]["guid"] == "g_reg" for layer in layers)
+
+
+def test_combined_update_targets_selected_layer_and_preserves_unknown_nested_data() -> None:
+    dataset = _dataset()
+    builder = (
+        WizardChartCreateFactory(cast(Any, None))
+        .combined_chart(name="C", location=EntryLocation.path("/F"))
+        .dataset(dataset)
+        .x(["Order Date"])
+        .add_layer("line", y="Amount", name="First")
+        .add_layer("column", y="Amount", name="Selected")
     )
+    data = _payload_data(builder)
+    data["visualization"]["layers"][0]["futureLayerField"] = {"keep": True}
+    selected_id = data["visualization"]["selectedLayerId"]
+    chart = WizardChart(id="chart-1", installation="yacloud", data=data)
+
+    update = (
+        chart.update.labels([dataset.fields.by_name("Region")])
+        .labels_position(mode="inside")
+        .add_sort(dataset.fields.by_name("Order Date"))
+    )
+    visualization = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])[
+        "visualization"
+    ]
+    layers = visualization["layers"]
+    assert [layer["layerSettings"]["name"] for layer in layers] == ["First", "Selected"]
+    assert visualization["selectedLayerId"] == selected_id
+    assert layers[0]["futureLayerField"] == {"keep": True}
+    assert layers[0]["labels"]["items"] == []
+    assert layers[1]["labels"]["items"][0]["guid"] == "g_reg"
+    assert layers[1]["labels"]["settings"] == {"labelsPosition": "inside"}
+    assert layers[1]["sort"]["items"] == [{"guid": "g_date", "datasetId": "ds1", "direction": "ASC"}]
 
 
 def test_combined_add_layer_requires_measure() -> None:
@@ -195,7 +203,6 @@ def test_geolayer_live_heatmap_fixture_has_confirmed_common_placeholders() -> No
     }
 
 
-@_PHASE_3B_PENDING
 def test_geolayer_builds_layers_with_layer_local_fields() -> None:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
@@ -203,63 +210,43 @@ def test_geolayer_builds_layers_with_layer_local_fields() -> None:
     builder.add_layer("geopoint", geopoint="Region", color="Amount", tooltips=["Order Date"], labels=["Region"])
     data = _payload_data(builder)
     viz = data["visualization"]
-    assert viz["id"] == "geolayer"
-    assert viz["placeholders"] == []
+    assert viz["type"] == "geolayer"
     layers = viz["layers"]
     assert len(layers) == 1
     layer = layers[0]
-    assert layer["id"] == "geopoint"
+    assert layer["type"] == "geopoint"
     assert layer["layerSettings"]["name"] == "Layer 1"
     assert viz["selectedLayerId"] == layer["layerSettings"]["id"]
-    geopoint_ph = next(p for p in layer["placeholders"] if p["id"] == "geopoint")
-    assert geopoint_ph["items"][0]["guid"] == "g_reg"
-    common = layer["commonPlaceholders"]
-    assert set(common) == {
-        "colors",
-        "colorsConfig",
-        "filters",
-        "geopointsConfig",
-        "labels",
-        "segments",
-        "shapes",
-        "shapesConfig",
-        "sort",
-        "tooltips",
+    assert layer["points"]["items"][0]["guid"] == "g_reg"
+    assert layer["colors"]["items"][0]["guid"] == "g_amt"
+    assert layer["tooltip"]["items"][0]["guid"] == "g_date"
+    assert layer["labels"]["items"][0] == {
+        "guid": "g_reg",
+        "datasetId": "ds1",
+        "formatting": {"labelMode": "absolute"},
     }
-    assert common["colors"][0]["guid"] == "g_amt"
-    assert common["tooltips"][0]["guid"] == "g_date"
-    assert common["labels"][0]["guid"] == "g_reg"
-    assert common["labels"][0]["mode"] == "absolute"
-    assert {key: data[key] for key in common if key != "filters"} == {
-        key: value for key, value in common.items() if key != "filters"
-    }
-    assert data["filters"] == []
+    assert "filters" not in data["sources"]
 
 
-@_PHASE_3B_PENDING
-def test_geolayer_generic_labels_and_tooltips_update_selected_layer() -> None:
+def test_geolayer_generic_labels_update_selected_layer_without_mirroring_tooltip() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
-    cast(
-        Any,
-        builder.add_layer(
-            "geopoint",
-            geopoint="Point",
-            labels=["Region"],
-            tooltips=["Order Date"],
-        ).labels(["Amount"]),
-    ).tooltips(["Currency"])
+    builder.add_layer(
+        "geopoint",
+        geopoint="Point",
+        labels=["Region"],
+        tooltips=["Order Date"],
+    ).labels(["Amount"])
 
     data = _payload_data(builder)
-    common = data["visualization"]["layers"][0]["commonPlaceholders"]
-    assert [(item["guid"], item["mode"]) for item in common["labels"]] == [("g_amt", "absolute")]
-    assert [item["guid"] for item in common["tooltips"]] == ["g_currency"]
-    assert data["labels"] == common["labels"]
-    assert data["tooltips"] == common["tooltips"]
+    layer = data["visualization"]["layers"][0]
+    assert [item["guid"] for item in layer["labels"]["items"]] == ["g_amt"]
+    assert [item["guid"] for item in layer["tooltip"]["items"]] == ["g_date"]
+    assert "labels" not in data["visualization"]
+    assert "tooltip" not in data["visualization"]
 
 
-@_PHASE_3B_PENDING
-def test_geolayer_measure_format_updates_layer_and_root_labels() -> None:
+def test_geolayer_measure_format_updates_layer_labels() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
     cast(Any, builder.add_layer("geopoint", geopoint="Point", labels=["Amount"])).measure_format(
@@ -269,9 +256,35 @@ def test_geolayer_measure_format_updates_layer_and_root_labels() -> None:
     )
 
     data = _payload_data(builder)
-    common = data["visualization"]["layers"][0]["commonPlaceholders"]
-    assert common["labels"][0]["formatting"] == {"format": "number", "prefix": "$"}
-    assert data["labels"] == common["labels"]
+    labels = data["visualization"]["layers"][0]["labels"]["items"]
+    assert labels[0]["formatting"] == {"format": "number", "labelMode": "absolute", "prefix": "$"}
+
+
+def test_geolayer_update_targets_only_selected_layer() -> None:
+    dataset = _dataset()
+    builder = (
+        WizardChartCreateFactory(cast(Any, None))
+        .geolayer(name="G", location=EntryLocation.path("/F"))
+        .dataset(dataset)
+        .add_layer("heatmap", geopoint="Point", name="Density")
+        .add_layer("geopoint", geopoint="Point", labels=["Region"], name="Selected")
+    )
+    data = _payload_data(builder)
+    selected_id = data["visualization"]["selectedLayerId"]
+    chart = WizardChart(id="chart-1", installation="yacloud", data=data)
+
+    update = chart.update.labels([dataset.fields.by_name("Amount")]).measure_format(
+        dataset.fields.by_name("Amount"),
+        precision=1,
+    )
+    visualization = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])[
+        "visualization"
+    ]
+    assert visualization["selectedLayerId"] == selected_id
+    assert [layer["type"] for layer in visualization["layers"]] == ["heatmap", "geopoint"]
+    assert "labels" not in visualization["layers"][0]
+    label = visualization["layers"][1]["labels"]["items"][0]
+    assert label == {"guid": "g_amt", "datasetId": "ds1", "formatting": {"precision": 1}}
 
 
 @pytest.mark.parametrize(
@@ -295,14 +308,13 @@ def test_geolayer_generic_fields_reject_unsupported_selected_layer(
 @pytest.mark.parametrize(
     ("layer_type", "field_argument", "field_name", "placeholder_id"),
     [
-        ("geopoint", "geopoint", "Point", "geopoint"),
-        ("geopoint-with-cluster", "geopoint", "Point", "geopoint"),
-        ("heatmap", "geopoint", "Point", "heatmap"),
-        ("geopolygon", "polygon", "Region", "geopolygon"),
-        ("polyline", "polyline", "Region", "polyline"),
+        ("geopoint", "geopoint", "Point", "points"),
+        ("geopoint-with-cluster", "geopoint", "Point", "points"),
+        ("heatmap", "geopoint", "Point", "points"),
+        ("geopolygon", "polygon", "Region", "polygons"),
+        ("polyline", "polyline", "Region", "polylines"),
     ],
 )
-@_PHASE_3B_PENDING
 def test_geolayer_supports_each_layer_type(
     layer_type: str,
     field_argument: str,
@@ -314,13 +326,12 @@ def test_geolayer_supports_each_layer_type(
     cast(Any, builder).add_layer(layer_type, **{field_argument: field_name})
     data = _payload_data(builder)
     layer = data["visualization"]["layers"][0]
-    assert layer["id"] == layer_type
-    placeholder = next(item for item in layer["placeholders"] if item["id"] == placeholder_id)
+    assert layer["type"] == layer_type
+    placeholder = layer[placeholder_id]
     expected_guid = "g_point" if field_name == "Point" else "g_reg"
     assert placeholder["items"][0]["guid"] == expected_guid
 
 
-@_PHASE_3B_PENDING
 def test_polyline_builds_live_reference_grouping_color_and_sort_contract() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
@@ -337,56 +348,30 @@ def test_polyline_builds_live_reference_grouping_color_and_sort_contract() -> No
 
     data = _payload_data(builder)
     layer = data["visualization"]["layers"][0]
-    placeholders = {placeholder["id"]: placeholder for placeholder in layer["placeholders"]}
-    assert [item["guid"] for item in placeholders["polyline"]["items"]] == ["g_point"]
-    assert placeholders["polyline"]["settings"] == {"polylinePoints": "off"}
-    assert placeholders["measures"]["items"] == []
-    assert [item["guid"] for item in placeholders["grouping"]["items"]] == ["g_reg"]
-    common = layer["commonPlaceholders"]
-    assert set(common) == {
-        "colors",
-        "colorsConfig",
-        "filters",
-        "geopointsConfig",
-        "labels",
-        "sort",
-        "tooltips",
-    }
-    assert [item["guid"] for item in common["colors"]] == ["g_amt"]
-    assert common["colorsConfig"] == {
+    assert [item["guid"] for item in layer["polylines"]["items"]] == ["g_point"]
+    assert layer["polylines"]["settings"] == {"polylinePoints": "off"}
+    assert layer["measures"]["items"] == []
+    assert [item["guid"] for item in layer["grouping"]["items"]] == ["g_reg"]
+    assert [item["guid"] for item in layer["colors"]["items"]] == ["g_amt"]
+    assert layer["colors"]["settings"] == {
+        "colorMode": "gradient",
+        "fieldGuid": "g_amt",
         "gradientMode": "3-point",
         "gradientPalette": "red-orange-green",
         "polygonBorders": "show",
         "reversed": False,
         "thresholdsMode": "auto",
     }
-    assert common["sort"] == [
-        {
-            "guid": "g_date",
-            "datasetId": "ds1",
-            "datasetName": "sales",
-            "data_type": "date",
-            "id": "dimension-0",
-            "title": "Order Date",
-            "type": "DIMENSION",
-            "calc_mode": "direct",
-            "direction": "ASC",
-        }
-    ]
-    assert data["colors"] == common["colors"]
-    assert data["colorsConfig"] == common["colorsConfig"]
-    assert data["sort"] == common["sort"]
-    assert "segments" not in data
-    assert "allowedFinalTypes" in placeholders["measures"]
-    assert "allowedDataTypes" not in placeholders["measures"]
+    assert layer["sort"]["items"] == [{"guid": "g_date", "datasetId": "ds1", "direction": "ASC"}]
+    assert "colors" not in data["visualization"]
+    assert "sort" not in data["visualization"]
 
 
 @pytest.mark.parametrize(
     "layer_type",
     ["geopoint", "geopoint-with-cluster", "heatmap", "geopolygon"],
 )
-@_PHASE_3B_PENDING
-def test_non_polyline_geo_layers_keep_their_live_common_placeholder_contract(layer_type: str) -> None:
+def test_non_polyline_geo_layers_use_their_exact_v1_slot_contract(layer_type: str) -> None:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(dataset)
@@ -395,20 +380,15 @@ def test_non_polyline_geo_layers_keep_their_live_common_placeholder_contract(lay
     cast(Any, builder).add_layer(layer_type, **{argument: field})
 
     data = _payload_data(builder)
-    common = data["visualization"]["layers"][0]["commonPlaceholders"]
-    assert set(common) == {
-        "colors",
-        "colorsConfig",
-        "filters",
-        "geopointsConfig",
-        "labels",
-        "segments",
-        "shapes",
-        "shapesConfig",
-        "sort",
-        "tooltips",
+    layer = data["visualization"]["layers"][0]
+    expected_slots = {
+        "geopoint": {"colors", "filters", "labels", "points", "size", "tooltip"},
+        "geopoint-with-cluster": {"colors", "filters", "labels", "points", "size", "tooltip"},
+        "heatmap": {"colors", "filters", "points"},
+        "geopolygon": {"colors", "filters", "polygons", "tooltip"},
     }
-    assert data["segments"] == []
+    assert set(layer) == {"type", "layerSettings", *expected_slots[layer_type]}
+    assert "segments" not in data["visualization"]
 
 
 _GEO_LAYER_GEOMETRY: dict[str, dict[str, str]] = {
@@ -461,7 +441,6 @@ def test_geolayer_rejects_sort_direction_without_sort_by(layer_type: str, geomet
         cast(Any, builder).add_layer(layer_type, **geometry, sort_direction="desc")
 
 
-@_PHASE_3B_PENDING
 def test_geolayer_builds_confirmed_mixed_heatmap_and_cluster_topology() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
@@ -472,20 +451,12 @@ def test_geolayer_builds_confirmed_mixed_heatmap_and_cluster_topology() -> None:
     )
 
     visualization = _payload_data(builder)["visualization"]
-    assert [layer["id"] for layer in visualization["layers"]] == ["heatmap", "geopoint-with-cluster"]
-    assert [layer["layerSettings"]["type"] for layer in visualization["layers"]] == [
-        "heatmap",
-        "geopoint-with-cluster",
-    ]
-    assert [placeholder["id"] for placeholder in visualization["layers"][0]["placeholders"]] == ["heatmap"]
-    assert [placeholder["id"] for placeholder in visualization["layers"][1]["placeholders"]] == [
-        "geopoint",
-        "size",
-    ]
+    assert [layer["type"] for layer in visualization["layers"]] == ["heatmap", "geopoint-with-cluster"]
+    assert visualization["layers"][0]["points"]["items"][0]["guid"] == "g_point"
+    assert visualization["layers"][1]["points"]["items"][0]["guid"] == "g_point"
     assert visualization["selectedLayerId"] == visualization["layers"][1]["layerSettings"]["id"]
 
 
-@_PHASE_3B_PENDING
 def test_geolayer_builds_chart_level_filters_from_confirmed_reference_shape() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = (
@@ -496,7 +467,7 @@ def test_geolayer_builds_chart_level_filters_from_confirmed_reference_shape() ->
         .add_layer("geopoint", geopoint="Point")
     )
 
-    filters = _payload_data(builder)["filters"]
+    filters = _payload_data(builder)["sources"]["filters"]
     assert [item["filter"]["operation"]["code"] for item in filters] == ["IN", "BETWEEN"]
     assert filters[0]["filter"]["value"] == ["North"]
     assert filters[1]["filter"]["value"] == ["__interval___relative_-1d___relative_-0d"]
@@ -512,7 +483,6 @@ def test_geolayer_builds_chart_level_filters_from_confirmed_reference_shape() ->
         ("polyline", {"polyline": "Region"}),
     ],
 )
-@_PHASE_3B_PENDING
 def test_geolayer_builds_layer_local_filters_for_every_layer_type(
     layer_type: str,
     geometry: dict[str, str],
@@ -526,22 +496,15 @@ def test_geolayer_builds_layer_local_filters_for_every_layer_type(
     )
 
     data = _payload_data(builder)
-    assert data["filters"] == []
-    layer_filter = data["visualization"]["layers"][0]["commonPlaceholders"]["filters"][0]
+    assert "filters" not in data["sources"]
+    layer_filter = data["visualization"]["layers"][0]["filters"]["items"][0]
     assert layer_filter == {
-        "calc_mode": "direct",
         "datasetId": "ds1",
-        "datasetName": "sales",
-        "data_type": "string",
         "filter": {"operation": {"code": "IN"}, "value": ["RUB"]},
         "guid": "g_currency",
-        "id": "dimension-0",
-        "title": "Currency",
-        "type": "DIMENSION",
     }
 
 
-@_PHASE_3B_PENDING
 def test_geopolygon_builds_live_reference_gradient_contract() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
@@ -554,10 +517,11 @@ def test_geopolygon_builds_live_reference_gradient_contract() -> None:
         color_reversed=True,
     )
 
-    common = _payload_data(builder)["visualization"]["layers"][0]["commonPlaceholders"]
-    assert common["colors"][0]["guid"] == "g_amt"
-    assert common["colorsConfig"] == {
+    colors = _payload_data(builder)["visualization"]["layers"][0]["colors"]
+    assert colors["items"][0]["guid"] == "g_amt"
+    assert colors["settings"] == {
         "colorMode": "gradient",
+        "fieldGuid": "g_amt",
         "gradientMode": "2-point",
         "gradientPalette": "orange-yellow",
         "polygonBorders": "show",
@@ -573,7 +537,6 @@ def test_geopolygon_builds_live_reference_gradient_contract() -> None:
         ("orange-gray-blue", "3-point"),
     ],
 )
-@_PHASE_3B_PENDING
 def test_geolayer_infers_gradient_mode_from_palette(
     palette: GradientPaletteId,
     expected_mode: Literal["2-point", "3-point"],
@@ -588,9 +551,9 @@ def test_geolayer_infers_gradient_mode_from_palette(
     )
 
     data = _payload_data(builder)
-    common = data["visualization"]["layers"][0]["commonPlaceholders"]
-    assert common["colorsConfig"]["gradientMode"] == expected_mode
-    assert data["colorsConfig"] == common["colorsConfig"]
+    settings = data["visualization"]["layers"][0]["colors"]["settings"]
+    assert settings["gradientMode"] == expected_mode
+    assert "colors" not in data["visualization"]
 
 
 @pytest.mark.parametrize(
@@ -615,18 +578,16 @@ def test_geolayer_rejects_gradient_settings_for_dimension_color(
         )
 
 
-@_PHASE_3B_PENDING
 def test_geolayer_accepts_dimension_color_without_gradient_settings() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
     builder.add_layer("geopoint", geopoint="Point", color="Region")
 
-    common = _payload_data(builder)["visualization"]["layers"][0]["commonPlaceholders"]
-    assert [(item["guid"], item["type"]) for item in common["colors"]] == [("g_reg", "DIMENSION")]
-    assert common["colorsConfig"] == {}
+    colors = _payload_data(builder)["visualization"]["layers"][0]["colors"]
+    assert [item["guid"] for item in colors["items"]] == ["g_reg"]
+    assert colors["settings"] == {}
 
 
-@_PHASE_3B_PENDING
 def test_geopoint_builds_all_live_reference_field_sections() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
@@ -645,18 +606,12 @@ def test_geopoint_builds_all_live_reference_field_sections() -> None:
 
     data = _payload_data(builder)
     layer = data["visualization"]["layers"][0]
-    size = next(placeholder for placeholder in layer["placeholders"] if placeholder["id"] == "size")["items"]
-    common = layer["commonPlaceholders"]
-    assert [item["guid"] for item in size] == ["g_amt"]
-    assert [item["guid"] for item in common["colors"]] == ["g_amt"]
-    assert [item["guid"] for item in common["tooltips"]] == ["g_amt"]
-    assert [(item["guid"], item["mode"]) for item in common["labels"]] == [("g_amt", "absolute")]
-    assert data["colors"] == common["colors"]
-    assert data["colorsConfig"] == common["colorsConfig"]
-    assert data["labels"] == common["labels"]
-    assert data["tooltips"] == common["tooltips"]
-    assert [item["guid"] for item in data["filters"]] == ["g_reg"]
-    assert [item["guid"] for item in common["filters"]] == ["g_currency"]
+    assert [item["guid"] for item in layer["size"]["items"]] == ["g_amt"]
+    assert [item["guid"] for item in layer["colors"]["items"]] == ["g_amt"]
+    assert [item["guid"] for item in layer["tooltip"]["items"]] == ["g_amt"]
+    assert [item["guid"] for item in layer["labels"]["items"]] == ["g_amt"]
+    assert [item["guid"] for item in data["sources"]["filters"]] == ["g_reg"]
+    assert [item["guid"] for item in layer["filters"]["items"]] == ["g_currency"]
 
 
 def test_geolayer_gradient_settings_require_color() -> None:
@@ -703,7 +658,6 @@ def test_geolayer_rejects_incompatible_gradient_mode_and_palette() -> None:
         )
 
 
-@_PHASE_3B_PENDING
 def test_geolayer_adds_multiple_datasets() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     secondary = Dataset(
@@ -717,8 +671,8 @@ def test_geolayer_adds_multiple_datasets() -> None:
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
     builder.add_dataset(secondary).add_layer("geopoint", geopoint="Secondary region", dataset=secondary)
     data = _payload_data(builder)
-    assert data["datasetsIds"] == ["ds1", "ds2"]
-    geopoint_ph = data["visualization"]["layers"][0]["placeholders"][0]
+    assert data["sources"]["datasetsIds"] == ["ds1", "ds2"]
+    geopoint_ph = data["visualization"]["layers"][0]["points"]
     assert geopoint_ph["items"][0]["guid"] == "g_secondary"
 
 

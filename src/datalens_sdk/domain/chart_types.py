@@ -17,7 +17,6 @@ __all__ = [
     "GeoLayerFilter",
     "GeoLayerType",
     "GradientPaletteId",
-    "MapType",
     "MeasureFormat",
     "PaletteId",
     "QLCast",
@@ -91,8 +90,6 @@ ShapeStyle: TypeAlias = Literal[
     "LongDashDot",
     "LongDashDotDot",
 ]
-
-MapType: TypeAlias = Literal["light", "dark", "satellite"]
 
 CombinedLayerType: TypeAlias = Literal["column", "line", "area"]
 

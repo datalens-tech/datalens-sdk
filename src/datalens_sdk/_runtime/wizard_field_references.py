@@ -241,6 +241,27 @@ class WizardFieldReferences:
                     continue
                 carrier: FieldCarrier = "sort" if slot_name == "sort" else "slot"
                 yield from self._iter_list(items, carrier=carrier, path=("visualization", slot_name, "items"))
+            layers = visualization.get("layers")
+            if isinstance(layers, list):
+                for layer_index, layer in enumerate(layers):
+                    if not isinstance(layer, dict):
+                        continue
+                    settings = layer.get("layerSettings")
+                    raw_layer_id = settings.get("id") if isinstance(settings, Mapping) else None
+                    layer_id = raw_layer_id if isinstance(raw_layer_id, str) else None
+                    for slot_name, slot in layer.items():
+                        if not isinstance(slot, dict):
+                            continue
+                        items = slot.get("items")
+                        if not isinstance(items, list):
+                            continue
+                        carrier = "sort" if slot_name == "sort" else "slot"
+                        yield from self._iter_list(
+                            items,
+                            carrier=carrier,
+                            layer_id=layer_id,
+                            path=("visualization", "layers", layer_index, slot_name, "items"),
+                        )
 
         sources = self._data.get("sources")
         if not isinstance(sources, dict):
@@ -286,6 +307,7 @@ class WizardFieldReferences:
         items: list[object],
         *,
         carrier: FieldCarrier,
+        layer_id: str | None = None,
         path: tuple[PathPart, ...],
     ) -> Iterator[FieldSnapshotLocation]:
         for index, item in enumerate(items):
@@ -293,7 +315,7 @@ class WizardFieldReferences:
                 continue
             yield FieldSnapshotLocation(
                 carrier=carrier,
-                layer_id=None,
+                layer_id=layer_id,
                 path=(*path, index),
                 reference_kind="snapshot",
                 snapshot=item,
@@ -307,19 +329,20 @@ class WizardFieldReferences:
         visualization = self._data.get("visualization")
         if not isinstance(visualization, dict):
             return
-        yield from self._iter_guid_nodes(visualization, path=("visualization",))
+        yield from self._iter_guid_nodes(visualization, path=("visualization",), layer_id=None)
 
     def _iter_guid_nodes(
         self,
         node: dict[str, object],
         *,
         path: tuple[PathPart, ...],
+        layer_id: str | None,
     ) -> Iterator[FieldGuidLocation]:
         for key, value in list(node.items()):
             if key in _GUID_VALUE_KEYS and isinstance(value, str):
                 yield FieldGuidLocation(
                     carrier="config_pointer",
-                    layer_id=None,
+                    layer_id=layer_id,
                     path=(*path, key),
                     reference_kind="guid",
                     config=node,
@@ -329,7 +352,7 @@ class WizardFieldReferences:
                 for guid in list(value):
                     yield FieldGuidLocation(
                         carrier="config_pointer",
-                        layer_id=None,
+                        layer_id=layer_id,
                         path=(*path, key, guid),
                         reference_kind="guid",
                         config=value,
@@ -337,8 +360,17 @@ class WizardFieldReferences:
                         guid_is_key=True,
                     )
             elif isinstance(value, dict):
-                yield from self._iter_guid_nodes(value, path=(*path, key))
+                yield from self._iter_guid_nodes(value, path=(*path, key), layer_id=layer_id)
             elif isinstance(value, list):
                 for index, item in enumerate(value):
                     if isinstance(item, dict):
-                        yield from self._iter_guid_nodes(item, path=(*path, key, index))
+                        nested_layer_id = layer_id
+                        if key == "layers":
+                            settings = item.get("layerSettings")
+                            raw_layer_id = settings.get("id") if isinstance(settings, Mapping) else None
+                            nested_layer_id = raw_layer_id if isinstance(raw_layer_id, str) else None
+                        yield from self._iter_guid_nodes(
+                            item,
+                            path=(*path, key, index),
+                            layer_id=nested_layer_id,
+                        )

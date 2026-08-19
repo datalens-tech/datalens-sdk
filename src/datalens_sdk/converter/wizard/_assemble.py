@@ -22,6 +22,8 @@ from datalens_sdk.converter.wizard._normalizer import (
     _Normalizer,
 )
 from datalens_sdk.converter.wizard._types import (
+    CombinedLayerSettingsV1,
+    GeoLayerSettingsV1,
     WizardConfigV1,
     WizardJsonObject,
     WizardSourcesV1,
@@ -327,6 +329,135 @@ def _slot(items: list[WizardJsonObject], *, settings: WizardJsonObject | None = 
     if settings is not None:
         result["settings"] = settings
     return _json_object(result, context="Wizard slot")
+
+
+_COMBINED_LAYER_SLOTS: dict[str, tuple[str, ...]] = {
+    "column": ("colors", "labels", "sort", "x", "y"),
+    "line": ("colors", "labels", "shapes", "sort", "x", "y", "y2"),
+    "area": ("colors", "labels", "sort", "x", "y"),
+}
+_GEO_LAYER_SLOTS: dict[str, tuple[str, ...]] = {
+    "geopoint": ("colors", "filters", "labels", "points", "size", "tooltip"),
+    "geopoint-with-cluster": ("colors", "filters", "labels", "points", "size", "tooltip"),
+    "heatmap": ("colors", "filters", "points"),
+    "geopolygon": ("colors", "filters", "polygons", "tooltip"),
+    "polyline": ("colors", "filters", "grouping", "measures", "polylines", "sort"),
+}
+
+
+def _layer_structures(
+    visualization_type: str,
+    structure: WizardVisualizationStructure | None,
+) -> Mapping[str, object] | None:
+    raw = structure.get(visualization_type) if structure is not None else None
+    layers = raw.get("layers") if isinstance(raw, Mapping) else None
+    return layers if isinstance(layers, Mapping) else None
+
+
+def _layer_structure(
+    visualization_type: str,
+    layer_type: str,
+    structure: WizardVisualizationStructure | None,
+) -> Mapping[str, object] | None:
+    layers = _layer_structures(visualization_type, structure)
+    layer = layers.get(layer_type) if layers is not None else None
+    if structure and not isinstance(layer, Mapping):
+        raise DataLensConfigurationError(
+            f"Wizard V1 generated structure has no {visualization_type!r} layer {layer_type!r}."
+        )
+    return layer if isinstance(layer, Mapping) else None
+
+
+def _layer_slot_names(
+    visualization_type: str,
+    layer_type: str,
+    structure: WizardVisualizationStructure | None,
+) -> tuple[str, ...]:
+    layer = _layer_structure(visualization_type, layer_type, structure)
+    slots = layer.get("slots") if isinstance(layer, Mapping) else None
+    if isinstance(slots, Mapping) and all(isinstance(name, str) for name in slots):
+        return tuple(sorted(slots))
+    fallback = _COMBINED_LAYER_SLOTS if visualization_type == "combined-chart" else _GEO_LAYER_SLOTS
+    return fallback.get(layer_type, ())
+
+
+def _layer_slot_settings_structure(
+    visualization_type: str,
+    layer_type: str,
+    slot_name: str,
+    structure: WizardVisualizationStructure | None,
+) -> object:
+    layer = _layer_structure(visualization_type, layer_type, structure)
+    slots = layer.get("slots") if isinstance(layer, Mapping) else None
+    slot = slots.get(slot_name) if isinstance(slots, Mapping) else None
+    return slot.get("settings") if isinstance(slot, Mapping) else None
+
+
+def _new_layer(
+    visualization_type: str,
+    layer_type: str,
+    layer_settings: Mapping[str, object],
+    structure: WizardVisualizationStructure | None,
+) -> WizardJsonObject:
+    layer: WizardJsonObject = {
+        "type": layer_type,
+        "layerSettings": _json_object(layer_settings, context=f"Wizard {visualization_type} layer settings"),
+    }
+    for slot_name in _layer_slot_names(visualization_type, layer_type, structure):
+        settings = _default_slot_settings(layer_type, slot_name) if visualization_type == "combined-chart" else None
+        if visualization_type == "geolayer" and layer_type == "polyline" and slot_name == "polylines":
+            settings = {"polylinePoints": "off"}
+        layer[slot_name] = _slot([], settings=settings)
+    return layer
+
+
+def _selected_layer(visualization: WizardJsonObject) -> WizardJsonObject:
+    layers = visualization.get("layers")
+    if not isinstance(layers, list) or not layers:
+        raise DataLensConfigurationError("Wizard layered visualization requires at least one layer.")
+    selected_id = visualization.get("selectedLayerId")
+    for layer in layers:
+        if not isinstance(layer, dict):
+            continue
+        settings = layer.get("layerSettings")
+        if isinstance(settings, Mapping) and settings.get("id") == selected_id:
+            return layer
+    last = layers[-1]
+    if not isinstance(last, dict):
+        raise DataLensConfigurationError("Wizard visualization.layers must contain objects.")
+    return last
+
+
+def _layer_slot(layer: WizardJsonObject, slot_name: str) -> WizardJsonObject:
+    value = layer.get(slot_name)
+    if not isinstance(value, dict) or not isinstance(value.get("items"), list):
+        layer_type = layer.get("type")
+        raise DataLensConfigurationError(
+            f"Wizard V1 layer {layer_type!r} requires an object-valued {slot_name!r} slot."
+        )
+    return value
+
+
+def _filter_item(
+    normalizer: _Normalizer,
+    ref: object,
+    operation: str,
+    values: Sequence[str],
+    *,
+    dataset_id: str | None,
+) -> WizardJsonObject:
+    item = _normalize_fields(normalizer, [ref], dataset_id=dataset_id)[0]
+    filter_value: WizardJsonObject = {"operation": {"code": operation}}
+    if values:
+        filter_value["value"] = list(values)
+    result: WizardJsonObject = {
+        "guid": item["guid"],
+        "datasetId": item["datasetId"],
+        "filter": filter_value,
+    }
+    if "fakeTitle" in item:
+        result["fakeTitle"] = item["fakeTitle"]
+    return result
 
 
 def _field_guid(ref: object, normalizer: _Normalizer, *, dataset_id: str | None) -> str:
@@ -710,9 +841,7 @@ def _apply_item_mutations(
                 raise DataLensConfigurationError("column_background() requires an object-valued background setting.")
             normalized_value = {**normalized_value, "colorFieldGuid": guid}
         matched = False
-        for slot in visualization.values():
-            if not isinstance(slot, dict):
-                continue
+        for slot in _iter_visualization_slots(visualization):
             items = slot.get("items")
             if not isinstance(items, list):
                 continue
@@ -728,6 +857,22 @@ def _apply_item_mutations(
                     matched = True
         if not matched:
             raise DataLensConfigurationError(f"Wizard field {guid!r} is not placed in any visualization slot.")
+
+
+def _iter_visualization_slots(visualization: WizardJsonObject) -> Sequence[WizardJsonObject]:
+    slots: list[WizardJsonObject] = []
+    for value in visualization.values():
+        if isinstance(value, dict) and isinstance(value.get("items"), list):
+            slots.append(value)
+    layers = visualization.get("layers")
+    if isinstance(layers, list):
+        for layer in layers:
+            if not isinstance(layer, dict):
+                continue
+            for value in layer.values():
+                if isinstance(value, dict) and isinstance(value.get("items"), list):
+                    slots.append(value)
+    return slots
 
 
 def _apply_measure_formats(
@@ -787,15 +932,283 @@ def _apply_visualization_autofix(visualization: WizardJsonObject) -> None:
             ]
 
 
+def _assemble_combined_visualization(
+    spec: WizardChartCreateSpec,
+    *,
+    normalizer: _Normalizer,
+    dataset_id: str | None,
+    visualization_structure: WizardVisualizationStructure | None,
+) -> WizardJsonObject:
+    if not spec.combined_layers:
+        raise DataLensConfigurationError("combined_chart() requires at least one add_layer().")
+    x_snapshots = normalizer.normalize(list(spec.slots.get("x", ())))
+    x_items = [_project_field(item, dataset_id=dataset_id) for item in x_snapshots]
+    layers: list[WizardJsonObject] = []
+    measure_color_index = 0
+    for index, layer_input in enumerate(spec.combined_layers, start=1):
+        layer_type = layer_input["layer_type"]
+        layer_settings: CombinedLayerSettingsV1 = {
+            "id": layer_input["id"],
+            "name": layer_input["name"] or f"Layer {index}",
+        }
+        layer = _new_layer(
+            "combined-chart",
+            layer_type,
+            layer_settings,
+            visualization_structure,
+        )
+        x_slot = _layer_slot(layer, "x")
+        x_slot["items"] = _json_array(x_items, context="Wizard combined x items")
+        x_settings = x_slot.get("settings")
+        if isinstance(x_settings, Mapping) and "axisModeMap" in x_settings:
+            _sync_axis_modes(x_slot, x_snapshots)
+
+        measure_guids: list[str] = []
+        for slot_name in ("y", "y2"):
+            ref = layer_input[slot_name]
+            if ref is None:
+                continue
+            if slot_name not in _layer_slot_names("combined-chart", layer_type, visualization_structure):
+                raise DataLensConfigurationError(f"Combined layer type {layer_type!r} does not support {slot_name}=.")
+            snapshots = normalizer.normalize([ref])
+            target = _layer_slot(layer, slot_name)
+            target["items"] = _json_array(
+                [_project_field(item, dataset_id=dataset_id) for item in snapshots],
+                context=f"Wizard combined {slot_name} items",
+            )
+            for snapshot in snapshots:
+                guid = snapshot.get("guid")
+                if isinstance(guid, str):
+                    measure_guids.append(guid)
+        if measure_guids and "colors" in layer:
+            mounted = {guid: str(measure_color_index + offset) for offset, guid in enumerate(measure_guids)}
+            measure_color_index += len(measure_guids)
+            colors = _layer_slot(layer, "colors")
+            colors["items"] = [dict(_MEASURE_NAMES_ITEM)]
+            colors["settings"] = _json_object(
+                {
+                    "colorMode": "palette",
+                    "coloredByMeasure": True,
+                    "mountedColors": mounted,
+                    "palette": DEFAULT_CATEGORICAL_PALETTE,
+                    "polygonBorders": "show",
+                },
+                context="Wizard combined colors settings",
+            )
+        layers.append(layer)
+
+    visualization: WizardJsonObject = {
+        "type": "combined-chart",
+        "layers": _json_array(layers, context="Wizard combined layers"),
+        "selectedLayerId": spec.combined_layers[-1]["id"],
+    }
+    selected = _selected_layer(visualization)
+    if "labels" in spec.slots:
+        labels = _layer_slot(selected, "labels")
+        labels["items"] = _json_array(
+            _normalize_fields(normalizer, list(spec.slots["labels"]), dataset_id=dataset_id),
+            context="Wizard combined labels items",
+        )
+    if spec.sort_direction_items or spec.slots.get("sort"):
+        sort = _layer_slot(selected, "sort")
+        sort_items: list[WizardJsonObject] = []
+        if spec.sort_direction_items:
+            for ref, direction in spec.sort_direction_items:
+                item = _normalize_fields(normalizer, [ref], dataset_id=dataset_id)[0]
+                item["direction"] = direction.upper()
+                sort_items.append(item)
+        else:
+            for item in _normalize_fields(normalizer, list(spec.slots["sort"]), dataset_id=dataset_id):
+                item["direction"] = "ASC"
+                sort_items.append(item)
+        sort["items"] = _json_array(sort_items, context="Wizard combined sort items")
+    if spec.label_mode is not None:
+        _apply_label_mode(selected, spec.label_mode)
+    _apply_labels_position(selected, spec.labels_position)
+    _apply_item_mutations(
+        visualization,
+        spec.item_mutations,
+        normalizer=normalizer,
+        dataset_id=dataset_id,
+    )
+    _apply_measure_formats(
+        visualization,
+        spec.pending_measure_formats,
+        normalizer=normalizer,
+        dataset_id=dataset_id,
+    )
+    return visualization
+
+
+def _geo_normalizer(spec: WizardChartCreateSpec, dataset: object) -> _Normalizer:
+    return _Normalizer(
+        dataset=dataset,  # type: ignore[arg-type]
+        local_fields=_local_fields_map(spec.local_fields),
+        hierarchies=_hierarchies_map(spec.hierarchies),
+    )
+
+
+def _assemble_geo_visualization(
+    spec: WizardChartCreateSpec,
+    *,
+    normalizer: _Normalizer,
+    dataset_id: str | None,
+    visualization_structure: WizardVisualizationStructure | None,
+) -> WizardJsonObject:
+    if not spec.geo_layers:
+        raise DataLensConfigurationError("geolayer() requires at least one add_layer().")
+    layers: list[WizardJsonObject] = []
+    geometry_slots = {
+        "geopoint": ("geopoint", "points"),
+        "geopoint-with-cluster": ("geopoint", "points"),
+        "heatmap": ("geopoint", "points"),
+        "geopolygon": ("polygon", "polygons"),
+        "polyline": ("polyline", "polylines"),
+    }
+    input_slots = {
+        "grouping": "grouping",
+        "size": "size",
+        "color": "colors",
+        "tooltips": "tooltip",
+        "labels": "labels",
+    }
+    for index, layer_input in enumerate(spec.geo_layers, start=1):
+        layer_type = layer_input["layer_type"]
+        layer_dataset = layer_input.get("dataset") or spec.dataset
+        layer_dataset_id = layer_dataset.id if layer_dataset is not None and layer_dataset.id else dataset_id
+        layer_normalizer = _geo_normalizer(spec, layer_dataset) if layer_dataset is not None else normalizer
+        layer_settings: GeoLayerSettingsV1 = {
+            "id": layer_input["id"],
+            "name": layer_input["name"] or f"Layer {index}",
+            "alpha": layer_input["alpha"],
+        }
+        layer = _new_layer("geolayer", layer_type, layer_settings, visualization_structure)
+        geometry_input, geometry_slot = geometry_slots[layer_type]
+        geometry_ref = layer_input[geometry_input]  # type: ignore[literal-required]
+        if geometry_ref is None:
+            raise DataLensConfigurationError(f"Geo layer type {layer_type!r} requires {geometry_input}=.")
+        geometry = _layer_slot(layer, geometry_slot)
+        geometry["items"] = _json_array(
+            _normalize_fields(layer_normalizer, [geometry_ref], dataset_id=layer_dataset_id),
+            context=f"Wizard geo {geometry_slot} items",
+        )
+
+        for input_name, slot_name in input_slots.items():
+            raw_value = layer_input[input_name]  # type: ignore[literal-required]
+            refs = (
+                list(raw_value) if input_name in {"tooltips", "labels"} else ([] if raw_value is None else [raw_value])
+            )
+            if not refs:
+                continue
+            if slot_name not in layer:
+                raise DataLensConfigurationError(f"Geo layer type {layer_type!r} does not support {input_name}=.")
+            snapshots = layer_normalizer.normalize(refs)
+            target = _layer_slot(layer, slot_name)
+            target["items"] = _json_array(
+                [_project_field(item, dataset_id=layer_dataset_id) for item in snapshots],
+                context=f"Wizard geo {slot_name} items",
+            )
+            if input_name == "labels":
+                _apply_label_mode(layer, "absolute")
+            if input_name == "color":
+                color_type = snapshots[0].get("type") if snapshots else None
+                settings: WizardJsonObject = {}
+                if color_type == "MEASURE":
+                    palette = layer_input["color_palette"]
+                    mode = layer_input["color_mode"]
+                    if palette is not None and mode is None:
+                        gradient_types = gradient_types_for_palette(palette)
+                        mode = "2-point" if "2-point" in gradient_types else "3-point"
+                    target_items = target.get("items")
+                    if not isinstance(target_items, list) or not target_items or not isinstance(target_items[0], dict):
+                        raise DataLensConfigurationError("Wizard geo colors require a projected field item.")
+                    settings.update(
+                        {
+                            "colorMode": "gradient",
+                            "fieldGuid": target_items[0]["guid"],
+                            "gradientMode": mode or "2-point",
+                            "gradientPalette": palette or "orange-gray-blue",
+                            "polygonBorders": "show",
+                            "reversed": layer_input["color_reversed"] or False,
+                            "thresholdsMode": "auto",
+                        }
+                    )
+                target["settings"] = settings
+
+        filters = _layer_slot(layer, "filters")
+        filters["items"] = [
+            _filter_item(
+                layer_normalizer,
+                item.field,
+                item.operation,
+                item.values,
+                dataset_id=layer_dataset_id,
+            )
+            for item in layer_input["filters"]
+        ]
+        if layer_input["sort_by"] is not None:
+            sort = _layer_slot(layer, "sort")
+            item = _normalize_fields(layer_normalizer, [layer_input["sort_by"]], dataset_id=layer_dataset_id)[0]
+            item["direction"] = layer_input["sort_direction"].upper()
+            sort["items"] = [item]
+        layers.append(layer)
+
+    visualization: WizardJsonObject = {
+        "type": "geolayer",
+        "layers": _json_array(layers, context="Wizard geo layers"),
+        "selectedLayerId": spec.geo_layers[-1]["id"],
+    }
+    selected = _selected_layer(visualization)
+    selected_input = spec.geo_layers[-1]
+    selected_dataset = selected_input.get("dataset") or spec.dataset
+    selected_dataset_id = selected_dataset.id if selected_dataset is not None and selected_dataset.id else dataset_id
+    selected_normalizer = _geo_normalizer(spec, selected_dataset) if selected_dataset is not None else normalizer
+    if "labels" in spec.slots:
+        if "labels" not in selected:
+            raise DataLensConfigurationError(f"Geo layer type {selected.get('type')!r} does not support labels().")
+        labels = _layer_slot(selected, "labels")
+        labels["items"] = _json_array(
+            _normalize_fields(selected_normalizer, list(spec.slots["labels"]), dataset_id=selected_dataset_id),
+            context="Wizard geo labels items",
+        )
+        if labels["items"]:
+            _apply_label_mode(selected, "absolute")
+    _apply_item_mutations(
+        visualization,
+        spec.item_mutations,
+        normalizer=selected_normalizer,
+        dataset_id=selected_dataset_id,
+    )
+    _apply_measure_formats(
+        visualization,
+        spec.pending_measure_formats,
+        normalizer=selected_normalizer,
+        dataset_id=selected_dataset_id,
+    )
+    return visualization
+
+
+def _assemble_root_filters(
+    spec: WizardChartCreateSpec,
+    *,
+    normalizer: _Normalizer,
+    dataset_id: str | None,
+) -> list[WizardJsonObject]:
+    return [
+        _filter_item(normalizer, ref, operation, values, dataset_id=dataset_id)
+        for ref, operation, values in spec.pending_filters
+    ]
+
+
 def _assemble_wizard_data(
     spec: WizardChartCreateSpec,
     *,
     visualization_structure: WizardVisualizationStructure | None = None,
 ) -> WizardConfigV1:
     semantics = get_wizard_visualization_semantics(spec.visualization_type)
-    if semantics is None or spec.visualization_type in _LAYERED_VISUALIZATION_TYPES:
+    if semantics is None:
         raise DataLensConfigurationError(
-            f"Wizard API v3 phase 3A supports only non-layered visualization creation, got {spec.visualization_type!r}."
+            f"Wizard API v3 requires a known visualization, got {spec.visualization_type!r}."
         )
     if visualization_structure and spec.visualization_type not in visualization_structure:
         raise DataLensConfigurationError(
@@ -873,6 +1286,39 @@ def _assemble_wizard_data(
         )
     if hierarchies:
         sources["hierarchies"] = hierarchies
+
+    if visualization_type in _LAYERED_VISUALIZATION_TYPES:
+        _validate_structural_settings(
+            spec.chart_settings,
+            _chart_settings_structure(visualization_type, visualization_structure),
+            context=f"Wizard V1 visualization {visualization_type!r}",
+        )
+        if spec.slot_settings:
+            names = ", ".join(sorted(spec.slot_settings))
+            raise DataLensConfigurationError(
+                f"Wizard V1 layered visualization {visualization_type!r} has no top-level slot settings: {names}."
+            )
+        layered_visualization = (
+            _assemble_combined_visualization(
+                spec,
+                normalizer=normalizer,
+                dataset_id=dataset_id,
+                visualization_structure=visualization_structure,
+            )
+            if visualization_type == "combined-chart"
+            else _assemble_geo_visualization(
+                spec,
+                normalizer=normalizer,
+                dataset_id=dataset_id,
+                visualization_structure=visualization_structure,
+            )
+        )
+        if spec.chart_settings:
+            layered_visualization["chartSettings"] = _json_object(spec.chart_settings, context="Wizard chart settings")
+        filters = _assemble_root_filters(spec, normalizer=normalizer, dataset_id=dataset_id)
+        if filters:
+            sources["filters"] = filters
+        return {"sources": sources, "visualization": layered_visualization}
 
     visualization: WizardJsonObject = {"type": visualization_type}
     for slot_name in allowed_slots:
@@ -994,20 +1440,7 @@ def _assemble_wizard_data(
         dataset_id=dataset_id,
     )
 
-    filters: list[WizardJsonObject] = []
-    for ref, operation, values in spec.pending_filters:
-        item = _normalize_fields(normalizer, [ref], dataset_id=dataset_id)[0]
-        filter_value: WizardJsonObject = {"operation": {"code": operation}}
-        if values:
-            filter_value["value"] = list(values)
-        filter_item: WizardJsonObject = {
-            "guid": item["guid"],
-            "datasetId": item["datasetId"],
-            "filter": filter_value,
-        }
-        if "fakeTitle" in item:
-            filter_item["fakeTitle"] = item["fakeTitle"]
-        filters.append(filter_item)
+    filters = _assemble_root_filters(spec, normalizer=normalizer, dataset_id=dataset_id)
     if filters:
         sources["filters"] = filters
 

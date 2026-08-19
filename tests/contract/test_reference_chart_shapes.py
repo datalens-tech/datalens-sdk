@@ -13,7 +13,6 @@ from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
 
 _REFERENCE_CHARTS_DIR = Path(__file__).parent / "fixtures" / "reference_charts" / "wizard"
-_PHASE_3B_PENDING = pytest.mark.xfail(strict=True, reason="Phase 3B: layered reference serialization is pending")
 
 
 def _reference_chart(chart_id: str) -> dict[str, Any]:
@@ -293,11 +292,14 @@ def _assert_combined(reference: dict[str, Any]) -> None:
     assert len(produced_layers) == 2
     assert data["visualization"]["selectedLayerId"] == produced_layers[-1]["layerSettings"]["id"]
     assert all(
-        set(layer["commonPlaceholders"]["colorsConfig"])
-        == {"colorMode", "coloredByMeasure", "fieldGuid", "mountedColors", "palette", "polygonBorders"}
+        set(layer["colors"]["settings"])
+        == {"colorMode", "coloredByMeasure", "mountedColors", "palette", "polygonBorders"}
         for layer in produced_layers
     )
-    assert data["filters"][0]["filter"]["value"][0] == "__interval_2026-01-01T00:00:00.000Z_2026-05-11T23:59:59.999Z"
+    assert (
+        data["sources"]["filters"][0]["filter"]["value"][0]
+        == "__interval_2026-01-01T00:00:00.000Z_2026-05-11T23:59:59.999Z"
+    )
 
 
 def _assert_geo_heatmap(reference: dict[str, Any]) -> None:
@@ -323,9 +325,10 @@ def _assert_geo_heatmap(reference: dict[str, Any]) -> None:
         .add_layer("heatmap", geopoint="Dimension", color="Measure 1")
     )
     layer = data["visualization"]["layers"][0]
-    assert layer["id"] == "heatmap"
-    assert [placeholder["id"] for placeholder in layer["placeholders"]] == ["heatmap"]
-    assert set(layer["commonPlaceholders"]) == set(common)
+    assert layer["type"] == "heatmap"
+    assert layer["points"]["items"][0]["guid"] == "dimension"
+    assert layer["colors"]["items"][0]["guid"] == "measure-1"
+    assert set(layer) == {"type", "layerSettings", "colors", "filters", "points"}
     assert data["visualization"]["selectedLayerId"] == layer["layerSettings"]["id"]
 
 
@@ -352,8 +355,8 @@ _REFERENCE_SCENARIOS = (
     ("p4d4ls7744xi9", _assert_indicator),
     ("7mv82x84lga6r", _assert_indicator),
     ("p4dqkd01l3ty9", _assert_indicator),
-    pytest.param("zenewka5dvwij", _assert_combined, marks=_PHASE_3B_PENDING),
-    pytest.param("35prkj7b9xnun", _assert_geo_heatmap, marks=_PHASE_3B_PENDING),
+    ("zenewka5dvwij", _assert_combined),
+    ("35prkj7b9xnun", _assert_geo_heatmap),
     ("kz8zd49v19704", _assert_relative_interval),
     ("lz47d8gnsa4q5", _assert_table_bars),
     ("guz2i7a315cg0", _assert_table_bars),

@@ -29,7 +29,6 @@ from datalens_sdk._runtime.method_specs import (
 from datalens_sdk._runtime.viz_specs import factory_method_name
 from datalens_sdk._runtime.wizard_semantics import (
     WIZARD_VISUALIZATION_SEMANTICS,
-    deferred_fluent_methods_for_visualization,
     get_wizard_encoding,
     visualization_types_for_wizard_encoding,
 )
@@ -372,13 +371,12 @@ def test_generated_axis_helpers_use_leaf_axis_placeholder_literals() -> None:
 
 def _expected_create_capabilities(viz_id: str) -> set[str]:
     capabilities = set(method_specs_for_visualization(viz_id))
-    capabilities.update(deferred_fluent_methods_for_visualization(viz_id))
     if viz_id not in {"combined-chart", "geolayer"}:
         capabilities.update(_wizard_slot_methods(viz_id))
     if viz_id == "combined-chart":
         capabilities.update({"x", "add_layer"})
     if viz_id == "geolayer":
-        capabilities.update({"add_dataset", "add_layer", "map_type", "map_center"})
+        capabilities.update({"add_dataset", "add_layer", "map_center"})
     return capabilities
 
 
@@ -410,11 +408,21 @@ def test_raw_wizard_color_and_shape_placeholder_methods_are_not_generated() -> N
             assert not hasattr(builder, raw_method), f"{viz_id} unexpectedly exposes {raw_method}()"
 
 
-def test_combined_exposes_group_a_without_placeholder_methods() -> None:
+def test_combined_exposes_layer_and_chart_capabilities_without_raw_slots() -> None:
     builder = WizardChartCreateFactory(cast(Any, None)).combined_chart(
         name="Chart", location=EntryLocation.path("/Reports")
     )
-    for method_name in ("description", "add_filter", "add_sort", "labels", "labels_position"):
+    for method_name in (
+        "description",
+        "add_filter",
+        "add_sort",
+        "labels",
+        "labels_position",
+        "legend",
+        "tooltip",
+        "chart_title",
+        "measure_format",
+    ):
         assert callable(getattr(builder, method_name, None))
     for method_name in (
         "y",
@@ -422,10 +430,7 @@ def test_combined_exposes_group_a_without_placeholder_methods() -> None:
         "axis_title",
         "axis_scale",
         "grid",
-        "legend",
         "tooltip_sum",
-        "chart_title",
-        "measure_format",
     ):
         assert not hasattr(builder, method_name)
 

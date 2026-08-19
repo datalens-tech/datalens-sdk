@@ -34,7 +34,7 @@ _ALLOW_LABELS = visualization_types_where("allows_labels")
 
 _ALLOW_FILTERS = visualization_types_where("allows_filters")
 
-_NON_LAYERED = frozenset(WIZARD_VISUALIZATION_SEMANTICS) - {"combined-chart", "geolayer"}
+_ALL_VISUALIZATIONS = frozenset(WIZARD_VISUALIZATION_SEMANTICS)
 
 _CARTESIAN: frozenset[str] = frozenset(
     {
@@ -75,18 +75,32 @@ _AXIS_SCALE = frozenset(
 )
 
 _LEGEND = frozenset(
-    {"area", "area100p", "bar", "bar100p", "column", "column100p", "donut", "funnel", "line", "pie", "scatter"}
+    {
+        "area",
+        "area100p",
+        "bar",
+        "bar100p",
+        "column",
+        "column100p",
+        "combined-chart",
+        "donut",
+        "funnel",
+        "geolayer",
+        "line",
+        "pie",
+        "scatter",
+    }
 )
 
-_TOOLTIP = _LEGEND | {"treemap"}
+_TOOLTIP = (_LEGEND - {"geolayer"}) | {"treemap"}
 
 _TOOLTIP_SUM = frozenset({"area", "area100p", "bar", "bar100p", "column", "column100p", "line"})
 
-_CHART_TITLE = _NON_LAYERED - {"metric"}
+_CHART_TITLE = _ALL_VISUALIZATIONS - {"metric"}
 
 _NAVIGATOR = frozenset({"area", "area100p", "column", "column100p", "line"})
 
-_LABELS_POSITION = frozenset({"bar", "column", "funnel"})
+_LABELS_POSITION = frozenset({"bar", "column", "combined-chart", "funnel"})
 
 _TABLE: frozenset[str] = frozenset({"flatTable", "pivotTable"})
 
@@ -285,7 +299,7 @@ METHOD_SPECS: dict[str, MethodSpec] = {
     "measure_format": {
         "kind": "helper",
         "helper": "measure_format",
-        "visualization_types": _NON_LAYERED,
+        "visualization_types": _ALL_VISUALIZATIONS,
     },
     "shape": {
         "kind": "helper",

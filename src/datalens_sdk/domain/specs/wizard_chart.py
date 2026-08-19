@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, TypedDict
 
+from typing_extensions import NotRequired
+
+from datalens_sdk.domain.chart_types import CombinedLayerType, GeoLayerFilter, GeoLayerType, GradientPaletteId
 from datalens_sdk.domain.entry_location import EntryLocation
 
 if TYPE_CHECKING:
@@ -14,7 +17,37 @@ if TYPE_CHECKING:
 
     FieldRef = FieldLike | str
 
-__all__ = ["WizardChartCreateSpec"]
+__all__ = ["CombinedLayerInput", "GeoLayerInput", "WizardChartCreateSpec"]
+
+
+class CombinedLayerInput(TypedDict):
+    id: str
+    layer_type: CombinedLayerType
+    y: FieldLike | str | None
+    y2: FieldLike | str | None
+    name: str | None
+
+
+class GeoLayerInput(TypedDict):
+    id: str
+    layer_type: GeoLayerType
+    geopoint: FieldLike | str | None
+    polygon: FieldLike | str | None
+    polyline: FieldLike | str | None
+    grouping: FieldLike | str | None
+    size: FieldLike | str | None
+    color: FieldLike | str | None
+    color_mode: Literal["2-point", "3-point"] | None
+    color_palette: GradientPaletteId | None
+    color_reversed: bool | None
+    filters: tuple[GeoLayerFilter, ...]
+    tooltips: tuple[FieldLike | str, ...]
+    labels: tuple[FieldLike | str, ...]
+    sort_by: FieldLike | str | None
+    sort_direction: Literal["asc", "desc"]
+    alpha: int
+    name: str | None
+    dataset: NotRequired[Dataset | None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +80,6 @@ class WizardChartCreateSpec:
     geopoints_config: Mapping[str, object]
     label_mode: str | None
     labels_position: str | None
-    combined_layers: tuple[Mapping[str, object], ...]
-    geo_layers: tuple[Mapping[str, object], ...]
+    combined_layers: tuple[CombinedLayerInput, ...]
+    geo_layers: tuple[GeoLayerInput, ...]
     geo_datasets: tuple[Dataset, ...]

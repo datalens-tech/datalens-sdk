@@ -19,7 +19,7 @@ from datalens_sdk.runtime import (
     _TableWizardChartCreate,
 )
 from datalens_sdk.domain.entry_location import EntryLocation
-from datalens_sdk.domain.chart_types import CombinedLayerType, DiscretePaletteId, FilterOperation, FunnelShape, GeoLayerFilter, GeoLayerType, GradientPaletteId, MapType, MeasureFormat, PaletteId, ShapeStyle
+from datalens_sdk.domain.chart_types import CombinedLayerType, DiscretePaletteId, FilterOperation, FunnelShape, GeoLayerFilter, GeoLayerType, GradientPaletteId, MeasureFormat, PaletteId, ShapeStyle
 from datalens_sdk.domain.fields import DatasetField, FieldLike
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.ports import ChartOperations
@@ -624,11 +624,14 @@ class CombinedChartWizardChartCreate(_CombinedWizardChartCreate):
     def add_relative_date_filter(self, field: FieldLike | str, *, start_offset: str, end_offset: str) -> Self:
         return self._add_relative_date_filter(field, start_offset=start_offset, end_offset=end_offset)
 
-    def description(self, text: str) -> Self:
-        return self._set_description(text)
-
     def add_sort(self, field: FieldLike | str, *, direction: Literal['asc', 'desc'] = 'asc') -> Self:
         return self._add_sort(field, direction=direction)
+
+    def chart_title(self, *, text: str = '', mode: Literal['show', 'hide'] = 'show') -> Self:
+        return self._chart_title(text=text, mode=mode)
+
+    def description(self, text: str) -> Self:
+        return self._set_description(text)
 
     def labels(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('labels', fields)
@@ -636,8 +639,17 @@ class CombinedChartWizardChartCreate(_CombinedWizardChartCreate):
     def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
         return self._labels_position(mode=mode)
 
+    def legend(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('legendMode', mode)
+
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+        return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
+
     def sort(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('sort', fields)
+
+    def tooltip(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('tooltip', mode)
 
 class DonutWizardChartCreate(_BaseWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -861,9 +873,6 @@ class GeolayerWizardChartCreate(_GeolayerWizardChartCreate):
     def add_layer(self, layer_type: GeoLayerType, *, geopoint: FieldLike | str | None = None, polygon: FieldLike | str | None = None, polyline: FieldLike | str | None = None, grouping: FieldLike | str | None = None, size: FieldLike | str | None = None, color: FieldLike | str | None = None, color_mode: Literal['2-point', '3-point'] | None = None, color_palette: GradientPaletteId | None = None, color_reversed: bool | None = None, filters: Sequence[GeoLayerFilter] = (), tooltips: Sequence[FieldLike | str] = (), labels: Sequence[FieldLike | str] = (), sort_by: FieldLike | str | None = None, sort_direction: Literal['asc', 'desc'] = 'asc', alpha: int = 80, name: str | None = None, dataset: Dataset | None = None) -> Self:
         return self._geo_add_layer(layer_type, geopoint=geopoint, polygon=polygon, polyline=polyline, grouping=grouping, size=size, color=color, color_mode=color_mode, color_palette=color_palette, color_reversed=color_reversed, filters=filters, tooltips=tooltips, labels=labels, sort_by=sort_by, sort_direction=sort_direction, alpha=alpha, name=name, dataset=dataset)
 
-    def map_type(self, *, mode: MapType) -> Self:
-        return self._map_type(mode=mode)
-
     def map_center(self, *, lat: float, lon: float, zoom: int | None = None) -> Self:
         return self._map_center(lat=lat, lon=lon, zoom=zoom)
 
@@ -882,11 +891,20 @@ class GeolayerWizardChartCreate(_GeolayerWizardChartCreate):
     def add_relative_date_filter(self, field: FieldLike | str, *, start_offset: str, end_offset: str) -> Self:
         return self._add_relative_date_filter(field, start_offset=start_offset, end_offset=end_offset)
 
+    def chart_title(self, *, text: str = '', mode: Literal['show', 'hide'] = 'show') -> Self:
+        return self._chart_title(text=text, mode=mode)
+
     def description(self, text: str) -> Self:
         return self._set_description(text)
 
     def labels(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('labels', fields)
+
+    def legend(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('legendMode', mode)
+
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+        return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
 class LineWizardChartCreate(_BaseWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:

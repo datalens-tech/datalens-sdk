@@ -15,7 +15,6 @@ from datalens_sdk._runtime.method_specs import method_specs_for_visualization
 from datalens_sdk._runtime.viz_specs import QL_VIZ_SPECS, factory_method_name, to_snake
 from datalens_sdk._runtime.wizard_semantics import (
     WIZARD_VISUALIZATION_SEMANTICS,
-    deferred_fluent_methods_for_visualization,
 )
 from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object
 
@@ -160,6 +159,14 @@ class WizardVisualizationStructure(TypedDict):
     required: list[str]
     slots: dict[str, WizardSlotStructure]
     chart_settings: dict[str, WizardValueStructure]
+    layers: dict[str, WizardLayerStructure]
+
+
+class WizardLayerStructure(TypedDict):
+    properties: list[str]
+    required: list[str]
+    slots: dict[str, WizardSlotStructure]
+    layer_settings: dict[str, WizardValueStructure]
 
 
 class WizardContractMeta(TypedDict):
@@ -488,6 +495,98 @@ def _wizard_value_structure(value: object, *, context: str) -> WizardValueStruct
     return {"enum": list(enum)}
 
 
+def _wizard_slot_structures(
+    properties: Mapping[str, object],
+    required: set[str],
+    *,
+    context: str,
+) -> dict[str, WizardSlotStructure]:
+    slots: dict[str, WizardSlotStructure] = {}
+    for property_name, raw_property in sorted(properties.items()):
+        if not isinstance(raw_property, dict):
+            continue
+        nested_properties = raw_property.get("properties")
+        if not isinstance(nested_properties, dict) or "items" not in nested_properties:
+            continue
+        nested_required_value = raw_property.get("required", [])
+        if not isinstance(nested_required_value, list) or not all(
+            isinstance(item, str) for item in nested_required_value
+        ):
+            raise ValueError(f"{context}.{property_name}.required must contain strings")
+        settings: dict[str, WizardValueStructure] = {}
+        raw_settings = nested_properties.get("settings")
+        if isinstance(raw_settings, dict):
+            setting_properties = raw_settings.get("properties")
+            if isinstance(setting_properties, dict):
+                settings = {
+                    name: _wizard_value_structure(
+                        value,
+                        context=f"{context}.{property_name}.settings.{name}",
+                    )
+                    for name, value in sorted(setting_properties.items())
+                }
+        slots[property_name] = {
+            "required": property_name in required,
+            "items_required": "items" in nested_required_value,
+            "settings": settings,
+        }
+    return slots
+
+
+def _wizard_layer_structures(
+    meta: WizardSchemaMeta,
+    schema_name: str,
+    *,
+    context: str,
+) -> dict[str, WizardLayerStructure]:
+    schema = _string_object_dict(meta["schemas"].get(schema_name), context=schema_name)
+    branches = schema.get("oneOf")
+    if not isinstance(branches, list):
+        raise ValueError(f"{schema_name}.oneOf must be a list")
+    result: dict[str, WizardLayerStructure] = {}
+    for index, raw_branch in enumerate(branches):
+        branch = _string_object_dict(raw_branch, context=f"{context} branch {index}")
+        properties = _string_object_dict(
+            branch.get("properties"),
+            context=f"{context} branch {index}.properties",
+        )
+        type_schema = _string_object_dict(
+            properties.get("type"),
+            context=f"{context} branch {index}.properties.type",
+        )
+        type_enum = type_schema.get("enum")
+        if not isinstance(type_enum, list) or len(type_enum) != 1 or not isinstance(type_enum[0], str):
+            raise ValueError(f"{context} branch {index} requires one string type discriminator")
+        layer_type = type_enum[0]
+        required_value = branch.get("required", [])
+        if not isinstance(required_value, list) or not all(isinstance(item, str) for item in required_value):
+            raise ValueError(f"{context} branch {layer_type!r}.required must contain strings")
+        required = set(required_value)
+        raw_layer_settings = properties.get("layerSettings")
+        layer_settings: dict[str, WizardValueStructure] = {}
+        if isinstance(raw_layer_settings, dict):
+            setting_properties = raw_layer_settings.get("properties")
+            if isinstance(setting_properties, dict):
+                layer_settings = {
+                    name: _wizard_value_structure(
+                        value,
+                        context=f"{context} {layer_type}.layerSettings.{name}",
+                    )
+                    for name, value in sorted(setting_properties.items())
+                }
+        result[layer_type] = {
+            "properties": sorted(properties),
+            "required": sorted(required),
+            "slots": _wizard_slot_structures(
+                properties,
+                required,
+                context=f"{context} {layer_type}",
+            ),
+            "layer_settings": layer_settings,
+        }
+    return dict(sorted(result.items()))
+
+
 def build_wizard_visualization_structure(meta: WizardSchemaMeta) -> dict[str, WizardVisualizationStructure]:
     """Build the compact runtime registry for Wizard V1 visualization structure."""
 
@@ -534,43 +633,32 @@ def build_wizard_visualization_structure(meta: WizardSchemaMeta) -> dict[str, Wi
                     for name, value in sorted(chart_setting_properties.items())
                 }
 
-        slots: dict[str, WizardSlotStructure] = {}
-        for property_name, raw_property in sorted(properties.items()):
-            if not isinstance(raw_property, dict):
-                continue
-            nested_properties = raw_property.get("properties")
-            if not isinstance(nested_properties, dict) or "items" not in nested_properties:
-                continue
-            nested_required_value = raw_property.get("required", [])
-            if not isinstance(nested_required_value, list) or not all(
-                isinstance(item, str) for item in nested_required_value
-            ):
-                raise ValueError(
-                    f"Wizard visualization {visualization_type}.{property_name}.required must contain strings"
+        slots = _wizard_slot_structures(
+            properties,
+            required,
+            context=f"Wizard visualization {visualization_type}",
+        )
+        layers: dict[str, WizardLayerStructure] = {}
+        raw_layers = properties.get("layers")
+        if isinstance(raw_layers, dict):
+            raw_items = raw_layers.get("items")
+            if isinstance(raw_items, dict) and isinstance(raw_items.get("$ref"), str):
+                schema_name = _schema_ref_name(
+                    raw_items,
+                    context=f"Wizard visualization {visualization_type}.layers.items",
                 )
-            settings: dict[str, WizardValueStructure] = {}
-            raw_settings = nested_properties.get("settings")
-            if isinstance(raw_settings, dict):
-                setting_properties = raw_settings.get("properties")
-                if isinstance(setting_properties, dict):
-                    settings = {
-                        name: _wizard_value_structure(
-                            value,
-                            context=f"Wizard visualization {visualization_type}.{property_name}.settings.{name}",
-                        )
-                        for name, value in sorted(setting_properties.items())
-                    }
-            slots[property_name] = {
-                "required": property_name in required,
-                "items_required": "items" in nested_required_value,
-                "settings": settings,
-            }
+                layers = _wizard_layer_structures(
+                    meta,
+                    schema_name,
+                    context=f"Wizard visualization {visualization_type} layer",
+                )
 
         result[visualization_type] = {
             "properties": sorted(properties),
             "required": sorted(required),
             "slots": slots,
             "chart_settings": chart_settings,
+            "layers": layers,
         }
     return dict(sorted(result.items()))
 
@@ -1330,8 +1418,8 @@ def _emit_wizard_dto(metadata: Metadata) -> str:
     bindings: dict[str, dict[str, str | None]] = {}
     strict_models = ""
     read_models = ""
-    create_validation = "_validate_wizard_v1_non_layered_config(self.data)"
-    update_validation = "_validate_wizard_v1_non_layered_config(self.data)"
+    create_validation = "_validate_wizard_v1_config(self.data)"
+    update_validation = "_validate_wizard_v1_config(self.data)"
     entry_model = """class WizardChartEntryReadDTO(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
@@ -1376,12 +1464,12 @@ WIZARD_VISUALIZATION_STRUCTURE: dict[str, dict[str, JsonValue]] = {visualization
 {strict_models}
 {read_models}
 
-def _validate_wizard_v1_non_layered_config(data: Mapping[str, JsonValue]) -> None:
+def _validate_wizard_v1_config(data: Mapping[str, JsonValue]) -> None:
     sources = data.get("sources")
     visualization = data.get("visualization")
     if not isinstance(sources, Mapping) or not isinstance(sources.get("datasetsIds"), list):
         raise ValueError("Wizard V1 config sources.datasetsIds must be an array")
-    supported = {sorted(set(WIZARD_VISUALIZATION_SEMANTICS) - {"combined-chart", "geolayer"})!r}
+    supported = {sorted(WIZARD_VISUALIZATION_SEMANTICS)!r}
     if not isinstance(visualization, Mapping) or visualization.get("type") not in supported:
         raise ValueError(f"Wizard V1 config visualization.type must be one of {{sorted(supported)}}")
 
@@ -2835,27 +2923,34 @@ def _method_is_supported_by_structure(
     kind = spec.get("kind")
     chart_settings = visualization_structure["chart_settings"]
     slots = visualization_structure["slots"]
+    layers = visualization_structure.get("layers", {})
+    layer_slots = [slot for layer in layers.values() for slot in layer["slots"].values()]
+    layer_slot_names = {slot_name for layer in layers.values() for slot_name in layer["slots"]}
     if kind == "chart_setting":
         setting_key = spec.get("setting_key")
         return isinstance(setting_key, str) and setting_key in chart_settings
     if kind == "slot":
         slot_name = spec.get("slot_name")
-        return isinstance(slot_name, str) and slot_name in slots
+        return isinstance(slot_name, str) and (slot_name in slots or slot_name in layer_slot_names)
     if kind == "slot_setting":
         setting_key = spec.get("setting_key")
-        return isinstance(setting_key, str) and any(setting_key in slot["settings"] for slot in slots.values())
+        return isinstance(setting_key, str) and any(
+            setting_key in slot["settings"] for slot in [*slots.values(), *layer_slots]
+        )
 
     required_chart_settings = _HELPER_CHART_SETTINGS.get(method_name)
     if required_chart_settings is not None:
         return required_chart_settings <= chart_settings.keys()
     required_slot_settings = _HELPER_SLOT_SETTINGS.get(method_name)
     if required_slot_settings is not None:
-        return any(required_slot_settings <= slot["settings"].keys() for slot in slots.values())
+        return any(required_slot_settings <= slot["settings"].keys() for slot in [*slots.values(), *layer_slots])
     if method_name == "labels_position":
-        labels = slots.get("labels")
-        return labels is not None and bool({"labelsPosition", "position"} & labels["settings"].keys())
+        labels_slots = [slot for slot_name, slot in slots.items() if slot_name == "labels"] + [
+            slot for layer in layers.values() for slot_name, slot in layer["slots"].items() if slot_name == "labels"
+        ]
+        return any({"labelsPosition", "position"} & labels["settings"].keys() for labels in labels_slots)
     if method_name == "label_mode":
-        return "labels" in slots
+        return "labels" in slots or "labels" in layer_slot_names
     if method_name == "freeze_columns":
         # Provisional 3A carrier: staging acceptance is verified by the dedicated live test.
         return True
@@ -3139,38 +3234,6 @@ def _emit_wizard_methods(
     return lines
 
 
-def _emit_deferred_wizard_methods(visualization_type: str) -> list[str]:
-    lines: list[str] = []
-    for method_name in sorted(deferred_fluent_methods_for_visualization(visualization_type)):
-        if method_name in {"labels", "sort"}:
-            lines.extend(
-                [
-                    f"    def {method_name}(self, fields: Sequence[FieldLike | str]) -> Self:",
-                    f"        return self._set_slot({method_name!r}, fields)",
-                    "",
-                ]
-            )
-        elif method_name == "labels_position":
-            lines.extend(
-                [
-                    "    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:",
-                    "        return self._labels_position(mode=mode)",
-                    "",
-                ]
-            )
-        elif method_name == "add_sort":
-            lines.extend(
-                [
-                    "    def add_sort(self, field: FieldLike | str, *, direction: Literal['asc', 'desc'] = 'asc') -> Self:",
-                    "        return self._add_sort(field, direction=direction)",
-                    "",
-                ]
-            )
-        else:
-            raise ValueError(f"Unsupported deferred Wizard method {method_name!r}")
-    return lines
-
-
 def _wizard_slot_methods(
     visualization_type: str,
     visualization_structure: WizardVisualizationStructure | None = None,
@@ -3271,7 +3334,7 @@ def emit_chart_builders(metadata: Metadata) -> str:
         "    _TableWizardChartCreate,",
         ")",
         "from datalens_sdk.domain.entry_location import EntryLocation",
-        "from datalens_sdk.domain.chart_types import CombinedLayerType, DiscretePaletteId, FilterOperation, FunnelShape, GeoLayerFilter, GeoLayerType, GradientPaletteId, MapType, MeasureFormat, PaletteId, ShapeStyle",
+        "from datalens_sdk.domain.chart_types import CombinedLayerType, DiscretePaletteId, FilterOperation, FunnelShape, GeoLayerFilter, GeoLayerType, GradientPaletteId, MeasureFormat, PaletteId, ShapeStyle",
         "from datalens_sdk.domain.fields import DatasetField, FieldLike",
         "from datalens_sdk.domain.dataset import Dataset",
         "from datalens_sdk.domain.ports import ChartOperations",
@@ -3334,16 +3397,12 @@ def emit_chart_builders(metadata: Metadata) -> str:
                     "    def add_layer(self, layer_type: GeoLayerType, *, geopoint: FieldLike | str | None = None, polygon: FieldLike | str | None = None, polyline: FieldLike | str | None = None, grouping: FieldLike | str | None = None, size: FieldLike | str | None = None, color: FieldLike | str | None = None, color_mode: Literal['2-point', '3-point'] | None = None, color_palette: GradientPaletteId | None = None, color_reversed: bool | None = None, filters: Sequence[GeoLayerFilter] = (), tooltips: Sequence[FieldLike | str] = (), labels: Sequence[FieldLike | str] = (), sort_by: FieldLike | str | None = None, sort_direction: Literal['asc', 'desc'] = 'asc', alpha: int = 80, name: str | None = None, dataset: Dataset | None = None) -> Self:",
                     "        return self._geo_add_layer(layer_type, geopoint=geopoint, polygon=polygon, polyline=polyline, grouping=grouping, size=size, color=color, color_mode=color_mode, color_palette=color_palette, color_reversed=color_reversed, filters=filters, tooltips=tooltips, labels=labels, sort_by=sort_by, sort_direction=sort_direction, alpha=alpha, name=name, dataset=dataset)",
                     "",
-                    "    def map_type(self, *, mode: MapType) -> Self:",
-                    "        return self._map_type(mode=mode)",
-                    "",
                     "    def map_center(self, *, lat: float, lon: float, zoom: int | None = None) -> Self:",
                     "        return self._map_center(lat=lat, lon=lon, zoom=zoom)",
                     "",
                 ]
             )
         lines.extend(_emit_wizard_methods(visualization_type, visualization_structure))
-        lines.extend(_emit_deferred_wizard_methods(visualization_type))
 
     lines.extend(
         [

@@ -847,12 +847,12 @@ WIZARD_VISUALIZATION_STRUCTURE: dict[str, dict[str, JsonValue]] = {}
 
 
 
-def _validate_wizard_v1_non_layered_config(data: Mapping[str, JsonValue]) -> None:
+def _validate_wizard_v1_config(data: Mapping[str, JsonValue]) -> None:
     sources = data.get("sources")
     visualization = data.get("visualization")
     if not isinstance(sources, Mapping) or not isinstance(sources.get("datasetsIds"), list):
         raise ValueError("Wizard V1 config sources.datasetsIds must be an array")
-    supported = ['area', 'area100p', 'bar', 'bar100p', 'column', 'column100p', 'donut', 'flatTable', 'funnel', 'line', 'metric', 'pie', 'pivotTable', 'scatter', 'treemap']
+    supported = ['area', 'area100p', 'bar', 'bar100p', 'column', 'column100p', 'combined-chart', 'donut', 'flatTable', 'funnel', 'geolayer', 'line', 'metric', 'pie', 'pivotTable', 'scatter', 'treemap']
     if not isinstance(visualization, Mapping) or visualization.get("type") not in supported:
         raise ValueError(f"Wizard V1 config visualization.type must be one of {sorted(supported)}")
 
@@ -868,7 +868,7 @@ class WizardChartCreateDTO(BaseModel):
 
     @model_validator(mode="after")
     def _validate_data(self) -> WizardChartCreateDTO:
-        _validate_wizard_v1_non_layered_config(self.data)
+        _validate_wizard_v1_config(self.data)
         return self
 
     def to_payload(self) -> dict[str, object]:
@@ -895,7 +895,7 @@ class WizardChartUpdateDTO(BaseModel):
 
     @model_validator(mode="after")
     def _validate_data(self) -> WizardChartUpdateDTO:
-        _validate_wizard_v1_non_layered_config(self.data)
+        _validate_wizard_v1_config(self.data)
         return self
 
     def to_payload(self) -> dict[str, object]:

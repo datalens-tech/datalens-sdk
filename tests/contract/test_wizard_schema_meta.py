@@ -295,7 +295,10 @@ def test_build_metadata_accepts_an_explicit_wizard_spec(tmp_path: Path) -> None:
             }
         },
         "chart_settings": {"legendMode": {"enum": ["hide", "show"]}},
+        "layers": {},
     }
+    assert set(wizard["visualization_structure"]["geolayer"]["layers"]) == {"geopoint", "heatmap"}
+    assert set(wizard["visualization_structure"]["combined-chart"]["layers"]) == {"column", "line"}
 
 
 def test_build_metadata_rejects_wizard_specs_for_unknown_installations(tmp_path: Path) -> None:

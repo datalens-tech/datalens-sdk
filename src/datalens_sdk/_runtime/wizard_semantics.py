@@ -227,29 +227,16 @@ WIZARD_VISUALIZATION_SEMANTICS: dict[str, WizardVisualizationSemantics] = {
         "slots": (),
         "slot_aliases": {},
         "allows_filters": True,
-        "allows_labels": False,
-        "allows_sort": False,
+        "allows_labels": True,
+        "allows_sort": True,
     },
     "geolayer": {
         "slots": (),
         "slot_aliases": {},
         "allows_filters": True,
-        "allows_labels": False,
+        "allows_labels": True,
         "allows_sort": False,
     },
-}
-
-
-# Public fluent methods whose document-V1 representation is intentionally deferred to
-# Phase 3.  Keep this inventory separate from ``slots``: those describe the current
-# target DTO exactly, while these entries preserve the reviewed SDK surface without
-# inventing fields that are absent from that DTO.  Phase-1 assembly fails closed before
-# an RPC whenever one of these methods records unsupported target intent.
-WIZARD_DEFERRED_FLUENT_CAPABILITIES: dict[str, frozenset[str]] = {
-    "labels": frozenset({"combined-chart", "geolayer"}),
-    "labels_position": frozenset({"combined-chart"}),
-    "sort": frozenset({"combined-chart"}),
-    "add_sort": frozenset({"combined-chart"}),
 }
 
 
@@ -259,14 +246,6 @@ WIZARD_VISUALIZATION_TRANSITIONS: dict[tuple[str, str], WizardVisualizationTrans
     ("line", "bar"): {"slot_mapping": (("x", "y"), ("y", "x"))},
     ("bar", "line"): {"slot_mapping": (("y", "x"), ("x", "y"))},
 }
-
-
-def deferred_fluent_methods_for_visualization(visualization_type: str) -> frozenset[str]:
-    return frozenset(
-        method_name
-        for method_name, visualization_types in WIZARD_DEFERRED_FLUENT_CAPABILITIES.items()
-        if visualization_type in visualization_types
-    )
 
 
 def validate_visualization_transition(
@@ -416,6 +395,10 @@ def validate_slot_name(*, method: str, visualization_type: str, slot_name: str) 
         )
     canonical_name = resolve_slot_name(visualization_type, slot_name)
     if canonical_name in semantics["slots"]:
+        return canonical_name
+    if canonical_name == "labels" and semantics.get("allows_labels") is True:
+        return canonical_name
+    if canonical_name == "sort" and semantics.get("allows_sort") is True:
         return canonical_name
     allowed = sorted(set(semantics["slots"]) | set(semantics["slot_aliases"]))
     raise DataLensConfigurationError(

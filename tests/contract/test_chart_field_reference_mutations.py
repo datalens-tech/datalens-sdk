@@ -18,7 +18,6 @@ _OLD_GUID = "old-guid"
 _NEW_GUID = "new-guid"
 _OLD_DATASET = "old-dataset"
 _NEW_DATASET = "new-dataset"
-_PHASE_3B_PENDING = pytest.mark.xfail(strict=True, reason="Phase 3B: combined-layer traversal is pending")
 _CARRIERS: tuple[Carrier, ...] = (
     "slot",
     "filter",
@@ -251,33 +250,34 @@ def test_structural_mutations_update_color_and_shape_config_pointers(operation: 
 
 
 def _combined_data() -> dict[str, Any]:
-    common = {
-        "colors": [_field()],
-        "filters": [_field()],
-        "labels": [_field()],
-        "segments": [_field()],
-        "shapes": [_field()],
-        "sort": [_field()],
-        "tooltips": [_field()],
-        "colorsConfig": {"fieldGuid": _OLD_GUID, "palette": "classic20"},
-        "shapesConfig": {"fieldGuid": _OLD_GUID, "mountedShapes": {"Old field": "Solid"}},
-    }
     return {
-        "datasetsIds": [_OLD_DATASET],
+        "sources": {
+            "datasetsIds": [_OLD_DATASET],
+            "filters": [{**_field(), "filter": {"operation": {"code": "IN"}, "value": ["old"]}}],
+            "updates": [{"action": "add_field", "field": _field()}],
+        },
         "visualization": {
-            "id": "combined-chart",
-            "placeholders": [],
+            "type": "combined-chart",
+            "selectedLayerId": "layer-1",
             "layers": [
                 {
-                    "id": "line",
-                    "layerSettings": {"id": "layer-1", "type": "line"},
-                    "placeholders": [{"id": "x", "items": [_field()]}],
-                    "commonPlaceholders": common,
+                    "type": "line",
+                    "layerSettings": {"id": "layer-1", "name": "Line"},
+                    "x": {"items": [_field()]},
+                    "y": {"items": [_field()]},
+                    "colors": {
+                        "items": [_field()],
+                        "settings": {"fieldGuid": _OLD_GUID, "palette": "classic20"},
+                    },
+                    "labels": {"items": [_field()]},
+                    "shapes": {
+                        "items": [_field()],
+                        "settings": {"fieldGuid": _OLD_GUID, "mountedShapes": {_OLD_GUID: "Solid"}},
+                    },
+                    "sort": {"items": [{**_field(), "direction": "ASC"}]},
                 }
             ],
         },
-        "datasetsPartialFields": [[_field()]],
-        "updates": [{"action": "add_field", "field": _field()}],
     }
 
 
@@ -313,7 +313,6 @@ def _all_dataset_ids(value: object) -> list[str]:
 
 
 @pytest.mark.parametrize("operation", ["replace", "delete", "aggregation", "dataset"])
-@_PHASE_3B_PENDING
 def test_structural_mutations_traverse_combined_layers(operation: Operation) -> None:
     chart = _chart(_combined_data())
     if operation == "replace":
@@ -342,20 +341,18 @@ def test_structural_mutations_traverse_combined_layers(operation: Operation) -> 
         assert _NEW_DATASET in _all_dataset_ids(data)
 
 
-@_PHASE_3B_PENDING
-def test_wizard_chart_fields_includes_segments_shapes_and_combined_layer_carriers() -> None:
+def test_wizard_chart_fields_includes_combined_layer_carriers() -> None:
     data = _combined_data()
     layer = cast(dict[str, Any], data["visualization"]["layers"][0])
-    common = cast(dict[str, Any], layer["commonPlaceholders"])
-    common["segments"] = [_field("segment-guid", title="Segment")]
-    common["shapes"] = [_field("shape-guid", title="Shape")]
-    common["tooltips"] = [_field("tooltip-guid", title="Tooltip")]
-    layer["placeholders"] = [{"id": "x", "items": [_field("layer-guid", title="Layer")]}]
+    layer["colors"] = {"items": [_field("color-guid", title="Color")]}
+    layer["shapes"] = {"items": [_field("shape-guid", title="Shape")]}
+    layer["labels"] = {"items": [_field("label-guid", title="Label")]}
+    layer["x"] = {"items": [_field("layer-guid", title="Layer")]}
 
     assert {field.guid for field in _chart(data).fields} >= {
-        "segment-guid",
+        "color-guid",
         "shape-guid",
-        "tooltip-guid",
+        "label-guid",
         "layer-guid",
     }
 

@@ -22,7 +22,7 @@ from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.ql_chart import QLColumn, QLParam
 from datalens_sdk.domain.specs.editor_chart import EditorChartCreateSpec
 from datalens_sdk.domain.specs.ql_chart import QLChartCreateSpec
-from datalens_sdk.domain.specs.wizard_chart import WizardChartCreateSpec
+from datalens_sdk.domain.specs.wizard_chart import CombinedLayerInput, GeoLayerInput, WizardChartCreateSpec
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 if TYPE_CHECKING:
@@ -34,7 +34,6 @@ if TYPE_CHECKING:
         GeoLayerFilter,
         GeoLayerType,
         GradientPaletteId,
-        MapType,
         MeasureFormat,
         PaletteId,
         ShapeStyle,
@@ -224,8 +223,8 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
         self._dataset_ids: list[str] = []
         self._local_fields: list[dict[str, object]] = []
         self._init_chart_mutations()
-        self._combined_layers: list[dict[str, object]] = []
-        self._geo_layers: list[dict[str, object]] = []
+        self._combined_layers: list[CombinedLayerInput] = []
+        self._geo_layers: list[GeoLayerInput] = []
         self._geo_datasets: list[Dataset] = []
 
     @property
@@ -532,8 +531,8 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
             geopoints_config=dict(self._geopoints_config),
             label_mode=self._label_mode_value,
             labels_position=self._labels_position_value,
-            combined_layers=tuple(dict(layer) for layer in self._combined_layers),
-            geo_layers=tuple(dict(layer) for layer in self._geo_layers),
+            combined_layers=tuple(self._combined_layers),
+            geo_layers=tuple(self._geo_layers),
             geo_datasets=tuple(self._geo_datasets),
         )
 
@@ -672,6 +671,7 @@ class _CombinedWizardChartCreate(_BaseWizardChartCreate):
             raise DataLensConfigurationError("add_layer() requires at least one of y= or y2=.")
         self._combined_layers.append(
             {
+                "id": str(uuid.uuid4()),
                 "layer_type": layer_type,
                 "y": y,
                 "y2": y2,
@@ -766,6 +766,7 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
             self._geo_add_dataset(dataset)
         self._geo_layers.append(
             {
+                "id": str(uuid.uuid4()),
                 "layer_type": layer_type,
                 "geopoint": geopoint,
                 "polygon": polygon,
@@ -776,9 +777,9 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
                 "color_mode": color_mode,
                 "color_palette": color_palette,
                 "color_reversed": color_reversed,
-                "filters": list(filters),
-                "tooltips": list(tooltips),
-                "labels": list(labels),
+                "filters": tuple(filters),
+                "tooltips": tuple(tooltips),
+                "labels": tuple(labels),
                 "sort_by": sort_by,
                 "sort_direction": sort_direction,
                 "alpha": alpha,
@@ -788,15 +789,12 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
         )
         return self
 
-    def _map_type(self, *, mode: MapType) -> Self:
-        self._set_chart_setting("mapType", mode)
-        return self
-
     def _map_center(self, *, lat: float, lon: float, zoom: int | None = None) -> Self:
         self._set_chart_setting("mapCenterMode", "manual")
-        self._set_chart_setting("mapCenter", {"lat": lat, "lon": lon})
+        self._set_chart_setting("mapCenterValue", f"{lat},{lon}")
         if zoom is not None:
-            self._set_chart_setting("mapZoom", zoom)
+            self._set_chart_setting("zoomMode", "manual")
+            self._set_chart_setting("zoomValue", zoom)
         return self
 
 
