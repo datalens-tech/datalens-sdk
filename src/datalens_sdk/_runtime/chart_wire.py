@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 import re
 import uuid
 
@@ -51,6 +52,23 @@ def build_relative_date_interval(start_offset: str, end_offset: str) -> str:
     Produces ``__interval___relative_<start>___relative_<end>``.
     """
     return f"__interval___relative_{start_offset}___relative_{end_offset}"
+
+
+def build_navigator_settings(*, mode: str, current: object = None) -> dict[str, object]:
+    """Return the complete navigator object required by the Wizard v3 schema."""
+    settings = dict(current) if isinstance(current, Mapping) else {}
+    settings.setdefault("linesMode", "all")
+    settings["navigatorMode"] = mode
+    settings.setdefault(
+        "periodSettings",
+        {
+            "period": "year",
+            "type": "genericdatetime",
+            "value": "1",
+        },
+    )
+    settings.setdefault("selectedLines", [])
+    return settings
 
 
 def build_gradient_state(
@@ -156,6 +174,5 @@ def build_bars_settings(
             one_color_settings["palette"] = palette
         if color_index is not None:
             one_color_settings["colorIndex"] = color_index
-        if one_color_settings:
-            settings["colorSettings"] = {"colorType": "one-color", "settings": one_color_settings}
+        settings["colorSettings"] = {"colorType": "one-color", "settings": one_color_settings}
     return settings

@@ -28,6 +28,7 @@ class WizardVisualizationSemantics(TypedDict):
     allows_sort: bool
     label_modes: NotRequired[tuple[str, ...]]
     requires_x_measure_autofix: NotRequired[bool]
+    slot_capacities: NotRequired[dict[str, int]]
 
 
 class WizardGeoLayerSemantics(TypedDict):
@@ -41,7 +42,7 @@ class WizardVisualizationTransition(TypedDict):
 
 WIZARD_VISUALIZATION_SEMANTICS: dict[str, WizardVisualizationSemantics] = {
     "metric": {
-        "slots": ("colors", "measures"),
+        "slots": ("measures",),
         "slot_aliases": {"y": "measures"},
         "measure_slot": "measures",
         "allows_filters": True,
@@ -99,6 +100,7 @@ WIZARD_VISUALIZATION_SEMANTICS: dict[str, WizardVisualizationSemantics] = {
         "allows_sort": True,
         "label_modes": ("absolute",),
         "requires_x_measure_autofix": True,
+        "slot_capacities": {"y": 2},
     },
     "area": {
         "slots": ("colors", "labels", "segments", "sort", "x", "y"),
@@ -244,11 +246,8 @@ WIZARD_VISUALIZATION_SEMANTICS: dict[str, WizardVisualizationSemantics] = {
 # inventing fields that are absent from that DTO.  Phase-1 assembly fails closed before
 # an RPC whenever one of these methods records unsupported target intent.
 WIZARD_DEFERRED_FLUENT_CAPABILITIES: dict[str, frozenset[str]] = {
-    "tooltips": frozenset(WIZARD_VISUALIZATION_SEMANTICS),
-    "labels": frozenset({"combined-chart", "flatTable", "geolayer", "pivotTable", "scatter", "treemap"}),
-    "labels_position": frozenset(
-        {"combined-chart", "flatTable", "geolayer", "metric", "pivotTable", "scatter", "treemap"}
-    ),
+    "labels": frozenset({"combined-chart", "geolayer"}),
+    "labels_position": frozenset({"combined-chart"}),
     "sort": frozenset({"combined-chart"}),
     "add_sort": frozenset({"combined-chart"}),
 }
@@ -325,7 +324,7 @@ WIZARD_GEO_LAYER_SEMANTICS: dict[str, WizardGeoLayerSemantics] = {
     },
     "polyline": {
         "required_geometry": "polyline",
-        "supported_inputs": frozenset({"polyline", "grouping", "color", "filters", "sort_by"}),
+        "supported_inputs": frozenset({"polyline", "grouping", "measures", "color", "filters", "sort_by"}),
     },
 }
 
@@ -381,6 +380,16 @@ def visualization_types_with_label_mode(label_mode: str) -> frozenset[str]:
         for visualization_type, semantics in WIZARD_VISUALIZATION_SEMANTICS.items()
         if label_mode in semantics.get("label_modes", ())
     )
+
+
+def validate_label_mode(*, visualization_type: str, label_mode: str) -> None:
+    semantics = WIZARD_VISUALIZATION_SEMANTICS.get(visualization_type)
+    allowed = semantics.get("label_modes", ()) if semantics is not None else ()
+    if label_mode not in allowed:
+        raise DataLensConfigurationError(
+            f"label_mode: mode {label_mode!r} is not applicable to visualization {visualization_type!r}. "
+            f"Allowed modes: {list(allowed)}."
+        )
 
 
 def visualization_types_where(flag: Literal["allows_filters", "allows_labels", "allows_sort"]) -> frozenset[str]:

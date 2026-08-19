@@ -112,9 +112,9 @@ QLParamType: TypeAlias = Literal["number", "string", "date-interval"]
 
 
 class MeasureFormat(TypedDict, total=False):
-    format: Literal["number", "percent", "currency"]
+    format: Literal["number", "percent"]
     precision: int
-    unit: Literal["auto", "k", "m", "bln"]
+    unit: Literal["auto", "k", "m", "b", "t"]
     prefix: str
     postfix: str
     show_rank_delimiter: bool

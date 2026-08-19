@@ -236,7 +236,7 @@ def test_collection_workbook_and_folder_full_crud_is_bound_to_client() -> None:
     assert recorder.bodies("/rpc/getEntries") == [{"pageSize": 1, "ids": ["folder-1"], "scope": "folder"}]
     assert recorder.bodies("/rpc/renameEntry") == [{"entryId": "folder-1", "name": "Archive v2"}]
     assert recorder.bodies("/rpc/deleteFolder") == [{"folderId": "folder-1"}]
-    assert {request.headers["x-dl-api-version"] for request in recorder.requests} == {"2"}
+    assert {request.headers["x-dl-api-version"] for request in recorder.requests} == {"3"}
 
 
 def test_domain_objects_are_typed_entry_destinations_for_existing_create_apis() -> None:

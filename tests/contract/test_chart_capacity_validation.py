@@ -5,7 +5,8 @@ from typing import Any, cast
 import pytest
 
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
-from datalens_sdk._runtime.viz_specs import VIZ_SPECS, factory_method_name, get_viz_spec
+from datalens_sdk._runtime.viz_specs import factory_method_name
+from datalens_sdk._runtime.wizard_semantics import WIZARD_VISUALIZATION_SEMANTICS, resolve_slot_name
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
@@ -109,7 +110,7 @@ def test_combined_has_x_and_add_layer_but_not_y() -> None:
 
 
 # ---------------------------------------------------------------------------
-# G3b: capacity spec — formalise the contract (no hard-error, tracks state)
+# G3b: named single-value slots remain available on the generated leaves
 # ---------------------------------------------------------------------------
 
 _CAPACITY_ONE_VIZZES = [
@@ -124,16 +125,11 @@ _CAPACITY_ONE_VIZZES = [
 
 @pytest.mark.parametrize(("viz_id", "ph_name"), _CAPACITY_ONE_VIZZES)
 def test_capacity_one_placeholder_accepts_single_field(viz_id: str, ph_name: str) -> None:
-    spec = get_viz_spec(viz_id)
-    actual_ph_id_map = {
-        "x": "dimensions",
-        "y": "measures",
-    }
-    actual_ph_id = actual_ph_id_map.get(ph_name, ph_name)
-    ph_spec = cast(dict[str, object], spec.get("placeholders", {})).get(actual_ph_id)
-    if ph_spec is None:
-        pytest.skip(f"{viz_id} has no placeholder '{actual_ph_id}' in spec")
-    assert cast(dict[str, object], ph_spec).get("capacity") == 1, f"Expected capacity=1 for {viz_id}.{actual_ph_id}"
+    actual_slot = resolve_slot_name(viz_id, ph_name)
+    assert actual_slot in WIZARD_VISUALIZATION_SEMANTICS[viz_id]["slots"]
+    factory = WizardChartCreateFactory(cast(Any, None))
+    builder = getattr(factory, factory_method_name(viz_id))(name="T", location=EntryLocation.path("/F"))
+    assert callable(getattr(builder, ph_name))
 
 
 # ---------------------------------------------------------------------------
@@ -147,9 +143,7 @@ def test_metric_single_measure_builds_correctly() -> None:
     builder = factory.indicator(name="I", location=EntryLocation.path("/F")).dataset(dataset).y(["Meas1"])
     data = cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()["data"])
     viz = cast(dict[str, Any], data["visualization"])
-    y_ph = next((p for p in viz["placeholders"] if p["id"] == "measures"), None)
-    assert y_ph is not None, "metric payload must have 'measures' placeholder"
-    assert len(cast(list[Any], y_ph["items"])) == 1
+    assert len(cast(list[Any], viz["measures"]["items"])) == 1
 
 
 def test_pie_single_dim_and_measure_builds_correctly() -> None:
@@ -158,11 +152,8 @@ def test_pie_single_dim_and_measure_builds_correctly() -> None:
     builder = factory.pie(name="P", location=EntryLocation.path("/F")).dataset(dataset).x(["Dim1"]).y(["Meas1"])
     data = cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()["data"])
     viz = cast(dict[str, Any], data["visualization"])
-    phs = {p["id"]: p for p in viz["placeholders"]}
-    assert "dimensions" in phs
-    assert "measures" in phs
-    assert len(cast(list[Any], phs["dimensions"]["items"])) == 1
-    assert len(cast(list[Any], phs["measures"]["items"])) == 1
+    assert len(cast(list[Any], viz["dimensions"]["items"])) == 1
+    assert len(cast(list[Any], viz["measures"]["items"])) == 1
 
 
 def test_line_multiple_measures_on_y_accepted_no_exception() -> None:
@@ -173,20 +164,18 @@ def test_line_multiple_measures_on_y_accepted_no_exception() -> None:
     )
     data = cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()["data"])
     viz = cast(dict[str, Any], data["visualization"])
-    y_ph = next((p for p in viz["placeholders"] if p["id"] == "y"), None)
-    assert y_ph is not None
-    assert len(cast(list[Any], y_ph["items"])) == 2
+    assert len(cast(list[Any], viz["y"]["items"])) == 2
 
 
 # ---------------------------------------------------------------------------
-# G3d: all viz in VIZ_SPECS have a factory method
+# G3d: all semantic visualization types have a factory method
 # ---------------------------------------------------------------------------
 
 
 def test_all_viz_specs_have_factory_method() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     missing = []
-    for viz_id in VIZ_SPECS:
+    for viz_id in WIZARD_VISUALIZATION_SEMANTICS:
         if not hasattr(factory, factory_method_name(viz_id)):
             missing.append(viz_id)
     assert not missing, f"WizardChartCreateFactory missing methods for viz: {missing}"

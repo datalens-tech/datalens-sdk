@@ -842,20 +842,19 @@ INSTALLATION_EDITOR_NODE_TYPES: dict[str, frozenset[str]] = {
 
 WIZARD_SCHEMA_FINGERPRINT: str | None = None
 WIZARD_DTO_BINDINGS: dict[str, dict[str, str | None]] = {}
+WIZARD_VISUALIZATION_STRUCTURE: dict[str, dict[str, JsonValue]] = {}
 
 
 
 
-def _validate_wizard_v1_line_config(data: Mapping[str, JsonValue]) -> None:
+def _validate_wizard_v1_non_layered_config(data: Mapping[str, JsonValue]) -> None:
     sources = data.get("sources")
     visualization = data.get("visualization")
     if not isinstance(sources, Mapping) or not isinstance(sources.get("datasetsIds"), list):
         raise ValueError("Wizard V1 config sources.datasetsIds must be an array")
-    if not isinstance(visualization, Mapping) or visualization.get("type") != "line":
-        raise ValueError("Wizard V1 config visualization.type must be 'line'")
-    x_slot = visualization.get("x")
-    if not isinstance(x_slot, Mapping) or not isinstance(x_slot.get("items"), list):
-        raise ValueError("Wizard V1 line visualization.x.items must be an array")
+    supported = ['area', 'area100p', 'bar', 'bar100p', 'column', 'column100p', 'donut', 'flatTable', 'funnel', 'line', 'metric', 'pie', 'pivotTable', 'scatter', 'treemap']
+    if not isinstance(visualization, Mapping) or visualization.get("type") not in supported:
+        raise ValueError(f"Wizard V1 config visualization.type must be one of {sorted(supported)}")
 
 
 class WizardChartCreateDTO(BaseModel):
@@ -869,7 +868,7 @@ class WizardChartCreateDTO(BaseModel):
 
     @model_validator(mode="after")
     def _validate_data(self) -> WizardChartCreateDTO:
-        _validate_wizard_v1_line_config(self.data)
+        _validate_wizard_v1_non_layered_config(self.data)
         return self
 
     def to_payload(self) -> dict[str, object]:
@@ -896,7 +895,7 @@ class WizardChartUpdateDTO(BaseModel):
 
     @model_validator(mode="after")
     def _validate_data(self) -> WizardChartUpdateDTO:
-        _validate_wizard_v1_line_config(self.data)
+        _validate_wizard_v1_non_layered_config(self.data)
         return self
 
     def to_payload(self) -> dict[str, object]:

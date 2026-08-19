@@ -12,7 +12,7 @@ from datalens_sdk.converter.raw.chart import (
     RawWizardChartReplaceEnvelope,
 )
 from datalens_sdk.converter.wizard._assemble import _assemble_wizard_data
-from datalens_sdk.converter.wizard._types import WizardConfigV1, WizardJsonObject
+from datalens_sdk.converter.wizard._types import WizardConfigV1, WizardJsonObject, WizardVisualizationStructure
 from datalens_sdk.converter.wizard._update import _apply_update_operations, _refuse_orphaning_publish
 from datalens_sdk.domain.entry_location import (
     EntryLocation,
@@ -80,6 +80,7 @@ class WizardChartReadDTOClass(Protocol):
 
 
 class WizardChartDtoModule(Protocol):
+    WIZARD_VISUALIZATION_STRUCTURE: WizardVisualizationStructure
     WizardChartCreateDTO: WizardChartCreateDTOClass
     WizardChartUpdateDTO: WizardChartUpdateDTOClass
     WizardChartReadDTO: WizardChartReadDTOClass
@@ -97,7 +98,10 @@ class WizardChartConverter:
         dto_module: WizardChartDtoModule | None = None,
     ) -> WizardChartCreateDTOProtocol:
         generated = _dto_module(dto_module)
-        data = _assemble_wizard_data(spec)
+        data = _assemble_wizard_data(
+            spec,
+            visualization_structure=generated.WIZARD_VISUALIZATION_STRUCTURE,
+        )
         key = key_from_location(spec.location, name=spec.name)
         annotation: dict[str, object] | None = None
         if spec.description:
@@ -105,7 +109,7 @@ class WizardChartConverter:
         return generated.WizardChartCreateDTO(
             data=data,
             key=key,
-            name=spec.name,
+            name=None if key else spec.name,
             workbook_id=workbook_id_from_location(spec.location),
             annotation=annotation,
         )
@@ -120,14 +124,45 @@ class WizardChartConverter:
         chart = update.chart
         data: WizardJsonObject = copy.deepcopy(normalize_json_object(chart.data, context="Wizard V1 update snapshot"))
         _refuse_orphaning_publish(update)
-        _apply_update_operations(data, update)
+        _apply_update_operations(
+            data,
+            update,
+            visualization_structure=generated.WIZARD_VISUALIZATION_STRUCTURE,
+        )
         annotation = {"description": update.description_value} if update.description_value is not None else None
         return generated.WizardChartUpdateDTO(
             chart_id=cast(str, chart.id),
             mode=update.mode_value,
             data=data,
             annotation=annotation,
-            rev_id=_optional_str(chart.raw.get("revId")),
+        )
+
+    @staticmethod
+    def from_domain_publish_revision(
+        chart: WizardChart,
+        *,
+        rev_id: str,
+        dto_module: WizardChartDtoModule | None = None,
+    ) -> WizardChartUpdateDTOProtocol:
+        """Publish an existing Wizard revision without creating a new one."""
+        if not chart.id:
+            raise DataLensValidationError("Cannot publish a Wizard chart without an id")
+        if not rev_id:
+            raise DataLensValidationError("rev_id must be a non-empty string")
+        generated = _dto_module(dto_module)
+        data = copy.deepcopy(normalize_json_object(chart.data, context="Wizard V1 publish snapshot"))
+        raw_annotation = chart.raw.get("annotation")
+        annotation = (
+            normalize_json_object(raw_annotation, context="Wizard V1 publish annotation")
+            if isinstance(raw_annotation, Mapping)
+            else None
+        )
+        return generated.WizardChartUpdateDTO(
+            chart_id=chart.id,
+            mode="publish",
+            data=data,
+            annotation=annotation,
+            rev_id=rev_id,
         )
 
     @staticmethod

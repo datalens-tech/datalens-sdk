@@ -8,7 +8,7 @@ class APIErrorContext:
     status_code: int
     code: str | None
     message: str
-    details: dict[str, object] | None = None
+    details: dict[str, object] | list[object] | None = None
     request_url: str | None = None
     request_id: str | None = None
     request_method: str | None = None

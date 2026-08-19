@@ -32,7 +32,7 @@ Factory: `client.create.wizard_chart.indicator(name=..., location=...)`
 | `tooltip_sum()` | `*, enabled: bool` | CU |
 | `tooltips()` | `fields: Sequence[Field]` | CU |
 | `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
-| `measure_format()` | `field: Field, *, format: Literal['number', 'percent', 'currency'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'bln'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
+| `measure_format()` | `field: Field, *, format: Literal['number', 'percent'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
 | `font_size()` | `*, size: Literal['xs', 's', 'm', 'l']` | CU |
 | `font_color()` | `*, color: str` | CU |
 | `measure_title_mode()` | `*, mode: Literal['by-field', 'manual', 'hide']` | CU |

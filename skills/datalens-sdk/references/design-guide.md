@@ -95,10 +95,8 @@ Hide what carries no information; label what does.
   as `0.3729` instead of `37.3%` is a bug, and default float precision is
   visual noise. Set format, precision, and units (`unit=`, `prefix=`,
   `postfix=`) for every displayed measure.
-  Wizard `measure_format()` uses `format="number" | "percent" | "currency"`
-  and `unit="auto" | "k" | "m" | "bln"`. Do not reuse dataset-field
-  formatting literals here: dataset units include `"b"` and `"t"` instead
-  of chart-side `"bln"`.
+  Wizard `measure_format()` uses `format="number" | "percent"` and the
+  OpenAPI units `unit="auto" | "k" | "m" | "b" | "t"`.
 - **Do not mix measures of different scale on one axis.** Sales in the
   hundreds of thousands next to profit in the tens of thousands flattens
   the smaller series into an unreadable line at zero, and a second axis

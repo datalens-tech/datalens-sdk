@@ -12,6 +12,7 @@ from datalens_sdk.codegen import (
     WizardRouteMeta,
     build_metadata,
     build_wizard_schema_meta,
+    build_wizard_visualization_structure,
     diff_wizard_schema_meta,
     wizard_schema_fingerprint,
 )
@@ -40,8 +41,8 @@ def _route(request_schema: str, result_schema: str | None) -> dict[str, object]:
     }
 
 
-def _tag_branch(tag: str, **properties: object) -> dict[str, object]:
-    return {"properties": {"type": {"enum": [tag]}, **properties}, "required": ["type"]}
+def _tag_branch(tag: str, *, required: tuple[str, ...] = (), **properties: object) -> dict[str, object]:
+    return {"properties": {"type": {"enum": [tag]}, **properties}, "required": ["type", *required]}
 
 
 def _wizard_spec() -> dict[str, object]:
@@ -100,7 +101,29 @@ def _wizard_spec() -> dict[str, object]:
             "properties": {
                 "visualization": {
                     "oneOf": [
-                        _tag_branch("line"),
+                        _tag_branch(
+                            "line",
+                            required=("x",),
+                            chartSettings={
+                                "properties": {
+                                    "legendMode": {"enum": ["show", "hide"], "type": "string"},
+                                },
+                                "type": "object",
+                            },
+                            x={
+                                "properties": {
+                                    "items": {"items": {"type": "object"}, "type": "array"},
+                                    "settings": {
+                                        "properties": {
+                                            "axisVisibility": {"enum": ["show", "hide"], "type": "string"},
+                                        },
+                                        "type": "object",
+                                    },
+                                },
+                                "required": ["items"],
+                                "type": "object",
+                            },
+                        ),
                         _tag_branch(
                             "geolayer",
                             layers={"items": _ref("WizardV1GeolayerLayerSchema"), "type": "array"},
@@ -198,9 +221,9 @@ def test_wizard_schema_meta_extracts_routes_and_structural_inventory() -> None:
     assert manifest["geo_layers"] == ["geopoint", "heatmap"]
     assert manifest["combined_layers"] == ["column", "line"]
     assert manifest["visualization_variants"] == {
-        "combined-chart": "/schemas/WizardV1ConfigSchema/properties/visualization/oneOf/0",
-        "geolayer": "/schemas/WizardV1ConfigSchema/properties/visualization/oneOf/1",
-        "line": "/schemas/WizardV1ConfigSchema/properties/visualization/oneOf/2",
+        "combined-chart": "/schemas/WizardV1ConfigSchema/properties/visualization/oneOf/1",
+        "geolayer": "/schemas/WizardV1ConfigSchema/properties/visualization/oneOf/2",
+        "line": "/schemas/WizardV1ConfigSchema/properties/visualization/oneOf/0",
     }
     assert manifest["geo_layer_variants"] == {
         "geopoint": "/schemas/WizardV1GeolayerLayerSchema/oneOf/0",
@@ -260,6 +283,19 @@ def test_build_metadata_accepts_an_explicit_wizard_spec(tmp_path: Path) -> None:
     wizard = metadata["installations"]["enterprise"]["wizard"]
     assert wizard["manifest"] == build_wizard_schema_meta(_wizard_spec())
     assert wizard["fingerprint"] == wizard_schema_fingerprint(wizard["manifest"])
+    assert wizard["visualization_structure"] == build_wizard_visualization_structure(wizard["manifest"])
+    assert wizard["visualization_structure"]["line"] == {
+        "properties": ["chartSettings", "type", "x"],
+        "required": ["type", "x"],
+        "slots": {
+            "x": {
+                "required": True,
+                "items_required": True,
+                "settings": {"axisVisibility": {"enum": ["hide", "show"]}},
+            }
+        },
+        "chart_settings": {"legendMode": {"enum": ["hide", "show"]}},
+    }
 
 
 def test_build_metadata_rejects_wizard_specs_for_unknown_installations(tmp_path: Path) -> None:

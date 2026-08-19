@@ -90,16 +90,16 @@ class AreaWizardChartCreate(_BaseWizardChartCreate):
     def hide_labels(self, slot_name: Literal['x', 'y'], *, enabled: bool) -> Self:
         return self._set_slot_setting(slot_name, 'hideLabels', 'yes' if enabled else 'no')
 
+    def label_mode(self, *, mode: Literal['absolute']) -> Self:
+        return self._label_mode(mode=mode)
+
     def labels(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('labels', fields)
-
-    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
 
     def legend(self, *, mode: Literal['show', 'hide']) -> Self:
         return self._set_chart_setting('legendMode', mode)
 
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
     def navigator(self, *, mode: Literal['show', 'hide']) -> Self:
@@ -117,11 +117,11 @@ class AreaWizardChartCreate(_BaseWizardChartCreate):
     def sort(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('sort', fields)
 
+    def tooltip(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('tooltip', mode)
+
     def tooltip_sum(self, *, enabled: bool) -> Self:
         return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
 
 class Area100pWizardChartCreate(_BaseWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -184,18 +184,15 @@ class Area100pWizardChartCreate(_BaseWizardChartCreate):
         return self._set_slot_setting(slot_name, 'hideLabels', 'yes' if enabled else 'no')
 
     def label_mode(self, *, mode: Literal['absolute', 'percent']) -> Self:
-        return self._set_chart_setting('labelMode', mode)
+        return self._label_mode(mode=mode)
 
     def labels(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('labels', fields)
 
-    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
-
     def legend(self, *, mode: Literal['show', 'hide']) -> Self:
         return self._set_chart_setting('legendMode', mode)
 
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
     def navigator(self, *, mode: Literal['show', 'hide']) -> Self:
@@ -213,11 +210,11 @@ class Area100pWizardChartCreate(_BaseWizardChartCreate):
     def sort(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('sort', fields)
 
+    def tooltip(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('tooltip', mode)
+
     def tooltip_sum(self, *, enabled: bool) -> Self:
         return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
 
 class BarWizardChartCreate(_BaseWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -285,20 +282,20 @@ class BarWizardChartCreate(_BaseWizardChartCreate):
     def hide_labels(self, slot_name: Literal['x', 'y'], *, enabled: bool) -> Self:
         return self._set_slot_setting(slot_name, 'hideLabels', 'yes' if enabled else 'no')
 
+    def label_mode(self, *, mode: Literal['absolute']) -> Self:
+        return self._label_mode(mode=mode)
+
     def labels(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('labels', fields)
 
     def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
+        return self._labels_position(mode=mode)
 
     def legend(self, *, mode: Literal['show', 'hide']) -> Self:
         return self._set_chart_setting('legendMode', mode)
 
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
-
-    def navigator(self, *, mode: Literal['show', 'hide']) -> Self:
-        return self._navigator(mode=mode)
 
     def nulls_mode(self, slot_name: Literal['x', 'y'], *, mode: Literal['ignore', 'connect', 'as-0']) -> Self:
         return self._set_slot_setting(slot_name, 'nulls', mode)
@@ -309,11 +306,11 @@ class BarWizardChartCreate(_BaseWizardChartCreate):
     def sort(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('sort', fields)
 
+    def tooltip(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('tooltip', mode)
+
     def tooltip_sum(self, *, enabled: bool) -> Self:
         return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
 
 class Bar100pWizardChartCreate(_BaseWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -376,22 +373,16 @@ class Bar100pWizardChartCreate(_BaseWizardChartCreate):
         return self._set_slot_setting(slot_name, 'hideLabels', 'yes' if enabled else 'no')
 
     def label_mode(self, *, mode: Literal['absolute', 'percent']) -> Self:
-        return self._set_chart_setting('labelMode', mode)
+        return self._label_mode(mode=mode)
 
     def labels(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('labels', fields)
 
-    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
-
     def legend(self, *, mode: Literal['show', 'hide']) -> Self:
         return self._set_chart_setting('legendMode', mode)
 
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
-
-    def navigator(self, *, mode: Literal['show', 'hide']) -> Self:
-        return self._navigator(mode=mode)
 
     def nulls_mode(self, slot_name: Literal['x', 'y'], *, mode: Literal['ignore', 'connect', 'as-0']) -> Self:
         return self._set_slot_setting(slot_name, 'nulls', mode)
@@ -402,11 +393,11 @@ class Bar100pWizardChartCreate(_BaseWizardChartCreate):
     def sort(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('sort', fields)
 
+    def tooltip(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('tooltip', mode)
+
     def tooltip_sum(self, *, enabled: bool) -> Self:
         return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
 
 class ColumnWizardChartCreate(_BaseWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -474,16 +465,19 @@ class ColumnWizardChartCreate(_BaseWizardChartCreate):
     def hide_labels(self, slot_name: Literal['x', 'y'], *, enabled: bool) -> Self:
         return self._set_slot_setting(slot_name, 'hideLabels', 'yes' if enabled else 'no')
 
+    def label_mode(self, *, mode: Literal['absolute']) -> Self:
+        return self._label_mode(mode=mode)
+
     def labels(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('labels', fields)
 
     def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
+        return self._labels_position(mode=mode)
 
     def legend(self, *, mode: Literal['show', 'hide']) -> Self:
         return self._set_chart_setting('legendMode', mode)
 
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
     def navigator(self, *, mode: Literal['show', 'hide']) -> Self:
@@ -501,11 +495,11 @@ class ColumnWizardChartCreate(_BaseWizardChartCreate):
     def sort(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('sort', fields)
 
+    def tooltip(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('tooltip', mode)
+
     def tooltip_sum(self, *, enabled: bool) -> Self:
         return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
 
 class Column100pWizardChartCreate(_BaseWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -568,18 +562,15 @@ class Column100pWizardChartCreate(_BaseWizardChartCreate):
         return self._set_slot_setting(slot_name, 'hideLabels', 'yes' if enabled else 'no')
 
     def label_mode(self, *, mode: Literal['absolute', 'percent']) -> Self:
-        return self._set_chart_setting('labelMode', mode)
+        return self._label_mode(mode=mode)
 
     def labels(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('labels', fields)
 
-    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
-
     def legend(self, *, mode: Literal['show', 'hide']) -> Self:
         return self._set_chart_setting('legendMode', mode)
 
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
     def navigator(self, *, mode: Literal['show', 'hide']) -> Self:
@@ -597,11 +588,11 @@ class Column100pWizardChartCreate(_BaseWizardChartCreate):
     def sort(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('sort', fields)
 
+    def tooltip(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('tooltip', mode)
+
     def tooltip_sum(self, *, enabled: bool) -> Self:
         return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
 
 class CombinedChartWizardChartCreate(_CombinedWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -633,20 +624,8 @@ class CombinedChartWizardChartCreate(_CombinedWizardChartCreate):
     def add_relative_date_filter(self, field: FieldLike | str, *, start_offset: str, end_offset: str) -> Self:
         return self._add_relative_date_filter(field, start_offset=start_offset, end_offset=end_offset)
 
-    def chart_title(self, *, text: str = '', mode: Literal['show', 'hide'] = 'show') -> Self:
-        return self._chart_title(text=text, mode=mode)
-
     def description(self, text: str) -> Self:
         return self._set_description(text)
-
-    def legend(self, *, mode: Literal['show', 'hide']) -> Self:
-        return self._set_chart_setting('legendMode', mode)
-
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
-        return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
-
-    def tooltip_sum(self, *, enabled: bool) -> Self:
-        return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
 
     def add_sort(self, field: FieldLike | str, *, direction: Literal['asc', 'desc'] = 'asc') -> Self:
         return self._add_sort(field, direction=direction)
@@ -655,13 +634,10 @@ class CombinedChartWizardChartCreate(_CombinedWizardChartCreate):
         return self._set_slot('labels', fields)
 
     def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
+        return self._labels_position(mode=mode)
 
     def sort(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('sort', fields)
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
 
 class DonutWizardChartCreate(_BaseWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -706,18 +682,15 @@ class DonutWizardChartCreate(_BaseWizardChartCreate):
         return self._set_description(text)
 
     def label_mode(self, *, mode: Literal['absolute', 'percent']) -> Self:
-        return self._set_chart_setting('labelMode', mode)
+        return self._label_mode(mode=mode)
 
     def labels(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('labels', fields)
 
-    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
-
     def legend(self, *, mode: Literal['show', 'hide']) -> Self:
         return self._set_chart_setting('legendMode', mode)
 
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
     def palette(self, *, id: PaletteId) -> Self:
@@ -726,11 +699,11 @@ class DonutWizardChartCreate(_BaseWizardChartCreate):
     def sort(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('sort', fields)
 
-    def tooltip_sum(self, *, enabled: bool) -> Self:
-        return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
+    def tooltip(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('tooltip', mode)
 
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
+    def totals(self, *, enabled: bool) -> Self:
+        return self._set_chart_setting('totals', 'on' if enabled else 'off')
 
 class FlatTableWizardChartCreate(_TableWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -783,13 +756,7 @@ class FlatTableWizardChartCreate(_TableWizardChartCreate):
     def description(self, text: str) -> Self:
         return self._set_description(text)
 
-    def freeze_columns(self, *, count: int = 1) -> Self:
-        return self._freeze_columns(count=count)
-
-    def legend(self, *, mode: Literal['show', 'hide']) -> Self:
-        return self._set_chart_setting('legendMode', mode)
-
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
     def pagination(self, *, enabled: bool, limit: int = 100) -> Self:
@@ -804,20 +771,8 @@ class FlatTableWizardChartCreate(_TableWizardChartCreate):
     def table_size(self, *, size: Literal['s', 'm', 'l']) -> Self:
         return self._table_size(size=size)
 
-    def tooltip_sum(self, *, enabled: bool) -> Self:
-        return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
     def totals(self, *, enabled: bool) -> Self:
         return self._set_chart_setting('totals', 'on' if enabled else 'off')
-
-    def labels(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('labels', fields)
-
-    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
 
 class FunnelWizardChartCreate(_BaseWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -862,18 +817,18 @@ class FunnelWizardChartCreate(_BaseWizardChartCreate):
         return self._set_description(text)
 
     def label_mode(self, *, mode: Literal['absolute', 'percent']) -> Self:
-        return self._set_chart_setting('labelMode', mode)
+        return self._label_mode(mode=mode)
 
     def labels(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('labels', fields)
 
     def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
+        return self._labels_position(mode=mode)
 
     def legend(self, *, mode: Literal['show', 'hide']) -> Self:
         return self._set_chart_setting('legendMode', mode)
 
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
     def palette(self, *, id: PaletteId) -> Self:
@@ -885,14 +840,11 @@ class FunnelWizardChartCreate(_BaseWizardChartCreate):
     def sort(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('sort', fields)
 
+    def tooltip(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('tooltip', mode)
+
     def tooltip_percentage_base(self, *, mode: Literal['auto', 'first', 'previous']) -> Self:
         return self._set_chart_setting('tooltipPercentageBase', mode)
-
-    def tooltip_sum(self, *, enabled: bool) -> Self:
-        return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
 
 class GeolayerWizardChartCreate(_GeolayerWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -930,29 +882,11 @@ class GeolayerWizardChartCreate(_GeolayerWizardChartCreate):
     def add_relative_date_filter(self, field: FieldLike | str, *, start_offset: str, end_offset: str) -> Self:
         return self._add_relative_date_filter(field, start_offset=start_offset, end_offset=end_offset)
 
-    def chart_title(self, *, text: str = '', mode: Literal['show', 'hide'] = 'show') -> Self:
-        return self._chart_title(text=text, mode=mode)
-
     def description(self, text: str) -> Self:
         return self._set_description(text)
 
-    def legend(self, *, mode: Literal['show', 'hide']) -> Self:
-        return self._set_chart_setting('legendMode', mode)
-
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
-        return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
-
-    def tooltip_sum(self, *, enabled: bool) -> Self:
-        return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
     def labels(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('labels', fields)
-
-    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
 
 class LineWizardChartCreate(_BaseWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -1020,16 +954,16 @@ class LineWizardChartCreate(_BaseWizardChartCreate):
     def hide_labels(self, slot_name: Literal['x', 'y', 'y2'], *, enabled: bool) -> Self:
         return self._set_slot_setting(slot_name, 'hideLabels', 'yes' if enabled else 'no')
 
+    def label_mode(self, *, mode: Literal['absolute']) -> Self:
+        return self._label_mode(mode=mode)
+
     def labels(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('labels', fields)
-
-    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
 
     def legend(self, *, mode: Literal['show', 'hide']) -> Self:
         return self._set_chart_setting('legendMode', mode)
 
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
     def navigator(self, *, mode: Literal['show', 'hide']) -> Self:
@@ -1053,11 +987,11 @@ class LineWizardChartCreate(_BaseWizardChartCreate):
     def sort(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('sort', fields)
 
+    def tooltip(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('tooltip', mode)
+
     def tooltip_sum(self, *, enabled: bool) -> Self:
         return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
 
 class MetricWizardChartCreate(_MetricWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -1086,9 +1020,6 @@ class MetricWizardChartCreate(_MetricWizardChartCreate):
     def add_relative_date_filter(self, field: FieldLike | str, *, start_offset: str, end_offset: str) -> Self:
         return self._add_relative_date_filter(field, start_offset=start_offset, end_offset=end_offset)
 
-    def chart_title(self, *, text: str = '', mode: Literal['show', 'hide'] = 'show') -> Self:
-        return self._chart_title(text=text, mode=mode)
-
     def description(self, text: str) -> Self:
         return self._set_description(text)
 
@@ -1098,23 +1029,11 @@ class MetricWizardChartCreate(_MetricWizardChartCreate):
     def font_size(self, *, size: Literal['xs', 's', 'm', 'l']) -> Self:
         return self._font_size(size=size)
 
-    def legend(self, *, mode: Literal['show', 'hide']) -> Self:
-        return self._set_chart_setting('legendMode', mode)
-
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
     def measure_title_mode(self, *, mode: Literal['by-field', 'manual', 'hide']) -> Self:
         return self._measure_title_mode(mode=mode)
-
-    def tooltip_sum(self, *, enabled: bool) -> Self:
-        return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
-    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
 
 class PieWizardChartCreate(_BaseWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -1159,18 +1078,15 @@ class PieWizardChartCreate(_BaseWizardChartCreate):
         return self._set_description(text)
 
     def label_mode(self, *, mode: Literal['absolute', 'percent']) -> Self:
-        return self._set_chart_setting('labelMode', mode)
+        return self._label_mode(mode=mode)
 
     def labels(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('labels', fields)
 
-    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
-
     def legend(self, *, mode: Literal['show', 'hide']) -> Self:
         return self._set_chart_setting('legendMode', mode)
 
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
     def palette(self, *, id: PaletteId) -> Self:
@@ -1179,11 +1095,8 @@ class PieWizardChartCreate(_BaseWizardChartCreate):
     def sort(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('sort', fields)
 
-    def tooltip_sum(self, *, enabled: bool) -> Self:
-        return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
+    def tooltip(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('tooltip', mode)
 
 class PivotTableWizardChartCreate(_PivotWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -1245,10 +1158,7 @@ class PivotTableWizardChartCreate(_PivotWizardChartCreate):
     def freeze_columns(self, *, count: int = 1) -> Self:
         return self._freeze_columns(count=count)
 
-    def legend(self, *, mode: Literal['show', 'hide']) -> Self:
-        return self._set_chart_setting('legendMode', mode)
-
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
     def pagination(self, *, enabled: bool, limit: int = 100) -> Self:
@@ -1265,18 +1175,6 @@ class PivotTableWizardChartCreate(_PivotWizardChartCreate):
 
     def table_size(self, *, size: Literal['s', 'm', 'l']) -> Self:
         return self._table_size(size=size)
-
-    def tooltip_sum(self, *, enabled: bool) -> Self:
-        return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
-    def labels(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('labels', fields)
-
-    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
 
 class ScatterWizardChartCreate(_ScatterWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -1350,11 +1248,8 @@ class ScatterWizardChartCreate(_ScatterWizardChartCreate):
     def legend(self, *, mode: Literal['show', 'hide']) -> Self:
         return self._set_chart_setting('legendMode', mode)
 
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
-
-    def nulls_mode(self, slot_name: Literal['x', 'y'], *, mode: Literal['ignore', 'connect', 'as-0']) -> Self:
-        return self._set_slot_setting(slot_name, 'nulls', mode)
 
     def palette(self, *, id: PaletteId) -> Self:
         return self._palette(id=id)
@@ -1368,17 +1263,8 @@ class ScatterWizardChartCreate(_ScatterWizardChartCreate):
     def sort(self, fields: Sequence[FieldLike | str]) -> Self:
         return self._set_slot('sort', fields)
 
-    def tooltip_sum(self, *, enabled: bool) -> Self:
-        return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
-    def labels(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('labels', fields)
-
-    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
+    def tooltip(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('tooltip', mode)
 
 class TreemapWizardChartCreate(_BaseWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
@@ -1422,26 +1308,14 @@ class TreemapWizardChartCreate(_BaseWizardChartCreate):
     def description(self, text: str) -> Self:
         return self._set_description(text)
 
-    def legend(self, *, mode: Literal['show', 'hide']) -> Self:
-        return self._set_chart_setting('legendMode', mode)
-
-    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
+    def measure_format(self, field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
     def palette(self, *, id: PaletteId) -> Self:
         return self._palette(id=id)
 
-    def tooltip_sum(self, *, enabled: bool) -> Self:
-        return self._set_chart_setting('tooltipSum', 'on' if enabled else 'off')
-
-    def labels(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('labels', fields)
-
-    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:
-        return self._set_chart_setting('labelsPosition', mode)
-
-    def tooltips(self, fields: Sequence[FieldLike | str]) -> Self:
-        return self._set_slot('tooltips', fields)
+    def tooltip(self, *, mode: Literal['show', 'hide']) -> Self:
+        return self._set_chart_setting('tooltip', mode)
 
 class WizardChartCreateFactory:
     def __init__(self, operations: ChartOperations) -> None:

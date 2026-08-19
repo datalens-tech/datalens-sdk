@@ -145,9 +145,27 @@ class WizardSchemaMeta(TypedDict):
     inventory: WizardInventory
 
 
+class WizardValueStructure(TypedDict):
+    enum: NotRequired[list[str]]
+
+
+class WizardSlotStructure(TypedDict):
+    required: bool
+    items_required: bool
+    settings: dict[str, WizardValueStructure]
+
+
+class WizardVisualizationStructure(TypedDict):
+    properties: list[str]
+    required: list[str]
+    slots: dict[str, WizardSlotStructure]
+    chart_settings: dict[str, WizardValueStructure]
+
+
 class WizardContractMeta(TypedDict):
     fingerprint: str
     manifest: WizardSchemaMeta
+    visualization_structure: dict[str, WizardVisualizationStructure]
 
 
 class InstallationMetadata(TypedDict):
@@ -458,6 +476,103 @@ def build_wizard_schema_meta(spec: Mapping[str, object]) -> WizardSchemaMeta:
 def wizard_schema_fingerprint(meta: WizardSchemaMeta) -> str:
     canonical = normalize_json_object(meta, context="Wizard schema metadata")
     return hashlib.sha256(_canonical_json(canonical).encode("utf-8")).hexdigest()
+
+
+def _wizard_value_structure(value: object, *, context: str) -> WizardValueStructure:
+    schema = _string_object_dict(value, context=context)
+    enum = schema.get("enum")
+    if enum is None:
+        return {}
+    if not isinstance(enum, list) or not all(isinstance(item, str) for item in enum):
+        raise ValueError(f"{context}.enum must contain only strings")
+    return {"enum": list(enum)}
+
+
+def build_wizard_visualization_structure(meta: WizardSchemaMeta) -> dict[str, WizardVisualizationStructure]:
+    """Build the compact runtime registry for Wizard V1 visualization structure."""
+
+    config = _string_object_dict(meta["schemas"]["WizardV1ConfigSchema"], context="WizardV1ConfigSchema")
+    config_properties = _string_object_dict(config.get("properties"), context="WizardV1ConfigSchema.properties")
+    visualization = _string_object_dict(
+        config_properties.get("visualization"),
+        context="WizardV1ConfigSchema.properties.visualization",
+    )
+    branches = visualization.get("oneOf")
+    if not isinstance(branches, list):
+        raise ValueError("WizardV1ConfigSchema.properties.visualization.oneOf must be a list")
+
+    result: dict[str, WizardVisualizationStructure] = {}
+    for index, raw_branch in enumerate(branches):
+        branch = _string_object_dict(raw_branch, context=f"Wizard visualization branch {index}")
+        properties = _string_object_dict(
+            branch.get("properties"),
+            context=f"Wizard visualization branch {index}.properties",
+        )
+        type_schema = _string_object_dict(
+            properties.get("type"),
+            context=f"Wizard visualization branch {index}.properties.type",
+        )
+        type_enum = type_schema.get("enum")
+        if not isinstance(type_enum, list) or len(type_enum) != 1 or not isinstance(type_enum[0], str):
+            raise ValueError(f"Wizard visualization branch {index} requires one string type discriminator")
+        visualization_type = type_enum[0]
+        required_value = branch.get("required", [])
+        if not isinstance(required_value, list) or not all(isinstance(item, str) for item in required_value):
+            raise ValueError(f"Wizard visualization branch {visualization_type!r}.required must contain strings")
+        required = set(required_value)
+
+        chart_settings: dict[str, WizardValueStructure] = {}
+        raw_chart_settings = properties.get("chartSettings")
+        if isinstance(raw_chart_settings, dict):
+            chart_setting_properties = raw_chart_settings.get("properties")
+            if isinstance(chart_setting_properties, dict):
+                chart_settings = {
+                    name: _wizard_value_structure(
+                        value,
+                        context=f"Wizard visualization {visualization_type}.chartSettings.{name}",
+                    )
+                    for name, value in sorted(chart_setting_properties.items())
+                }
+
+        slots: dict[str, WizardSlotStructure] = {}
+        for property_name, raw_property in sorted(properties.items()):
+            if not isinstance(raw_property, dict):
+                continue
+            nested_properties = raw_property.get("properties")
+            if not isinstance(nested_properties, dict) or "items" not in nested_properties:
+                continue
+            nested_required_value = raw_property.get("required", [])
+            if not isinstance(nested_required_value, list) or not all(
+                isinstance(item, str) for item in nested_required_value
+            ):
+                raise ValueError(
+                    f"Wizard visualization {visualization_type}.{property_name}.required must contain strings"
+                )
+            settings: dict[str, WizardValueStructure] = {}
+            raw_settings = nested_properties.get("settings")
+            if isinstance(raw_settings, dict):
+                setting_properties = raw_settings.get("properties")
+                if isinstance(setting_properties, dict):
+                    settings = {
+                        name: _wizard_value_structure(
+                            value,
+                            context=f"Wizard visualization {visualization_type}.{property_name}.settings.{name}",
+                        )
+                        for name, value in sorted(setting_properties.items())
+                    }
+            slots[property_name] = {
+                "required": property_name in required,
+                "items_required": "items" in nested_required_value,
+                "settings": settings,
+            }
+
+        result[visualization_type] = {
+            "properties": sorted(properties),
+            "required": sorted(required),
+            "slots": slots,
+            "chart_settings": chart_settings,
+        }
+    return dict(sorted(result.items()))
 
 
 def _json_pointer_token(value: str) -> str:
@@ -873,6 +988,7 @@ def build_metadata(
             installation_metadata["wizard"] = {
                 "fingerprint": wizard_schema_fingerprint(wizard_manifest),
                 "manifest": wizard_manifest,
+                "visualization_structure": build_wizard_visualization_structure(wizard_manifest),
             }
         out["installations"][installation] = installation_metadata
     editor_methods_by_wire_type: dict[str, tuple[str, str]] = {}
@@ -1210,11 +1326,12 @@ class _WizardPydanticEmitter:
 def _emit_wizard_dto(metadata: Metadata) -> str:
     contract = _wizard_contract(metadata)
     fingerprint = contract["fingerprint"] if contract is not None else None
+    visualization_structure = contract["visualization_structure"] if contract is not None else {}
     bindings: dict[str, dict[str, str | None]] = {}
     strict_models = ""
     read_models = ""
-    create_validation = "_validate_wizard_v1_line_config(self.data)"
-    update_validation = "_validate_wizard_v1_line_config(self.data)"
+    create_validation = "_validate_wizard_v1_non_layered_config(self.data)"
+    update_validation = "_validate_wizard_v1_non_layered_config(self.data)"
     entry_model = """class WizardChartEntryReadDTO(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
@@ -1237,16 +1354,13 @@ def _emit_wizard_dto(metadata: Metadata) -> str:
             manifest["schemas"],
             read=True,
             open_schema_refs=frozenset({"WizardV1ConfigSchema"}),
-        ).emit((*result_schemas, update_request_schema))
+        ).emit((*result_schemas, update_request_schema, "WizardV1ConfigSchema"))
         create_request_dto = manifest["routes"]["/rpc/createWizardChart"]["request_dto"]
         update_request_read_dto = _wizard_schema_dto_name(update_request_schema, read=True)
-        create_validation = (
-            f"{create_request_dto}.model_validate(self.to_payload())\n"
-            "        _validate_wizard_v1_line_config(self.data)"
-        )
+        create_validation = f"{create_request_dto}.model_validate(self.to_payload())"
         update_validation = (
             f"{update_request_read_dto}.model_validate(self.to_payload())\n"
-            "        _validate_wizard_v1_line_config(self.data)"
+            "        WizardV1ConfigSchemaReadDTO.model_validate(self.data)"
         )
         entry_model = f"WizardChartEntryReadDTO = {_wizard_schema_dto_name('WizardV1', read=True)}"
         bindings = {
@@ -1257,20 +1371,19 @@ def _emit_wizard_dto(metadata: Metadata) -> str:
     return f"""
 WIZARD_SCHEMA_FINGERPRINT: str | None = {fingerprint!r}
 WIZARD_DTO_BINDINGS: dict[str, dict[str, str | None]] = {bindings!r}
+WIZARD_VISUALIZATION_STRUCTURE: dict[str, dict[str, JsonValue]] = {visualization_structure!r}
 
 {strict_models}
 {read_models}
 
-def _validate_wizard_v1_line_config(data: Mapping[str, JsonValue]) -> None:
+def _validate_wizard_v1_non_layered_config(data: Mapping[str, JsonValue]) -> None:
     sources = data.get("sources")
     visualization = data.get("visualization")
     if not isinstance(sources, Mapping) or not isinstance(sources.get("datasetsIds"), list):
         raise ValueError("Wizard V1 config sources.datasetsIds must be an array")
-    if not isinstance(visualization, Mapping) or visualization.get("type") != "line":
-        raise ValueError("Wizard V1 config visualization.type must be 'line'")
-    x_slot = visualization.get("x")
-    if not isinstance(x_slot, Mapping) or not isinstance(x_slot.get("items"), list):
-        raise ValueError("Wizard V1 line visualization.x.items must be an array")
+    supported = {sorted(set(WIZARD_VISUALIZATION_SEMANTICS) - {"combined-chart", "geolayer"})!r}
+    if not isinstance(visualization, Mapping) or visualization.get("type") not in supported:
+        raise ValueError(f"Wizard V1 config visualization.type must be one of {{sorted(supported)}}")
 
 
 class WizardChartCreateDTO(BaseModel):
@@ -2680,8 +2793,106 @@ def emit_dataset_sources(metadata: Metadata) -> str:
 
 _SLOT_NAME_HELPERS: frozenset[str] = frozenset({"axis_title", "axis_scale", "grid"})
 
+_HELPER_CHART_SETTINGS: dict[str, frozenset[str]] = {
+    "chart_title": frozenset({"title", "titleMode"}),
+    "navigator": frozenset({"navigatorSettings"}),
+    "pagination": frozenset({"limit", "pagination"}),
+    "table_size": frozenset({"size"}),
+    "shape": frozenset({"shape"}),
+    "font_size": frozenset({"metricFontSize"}),
+    "font_color": frozenset({"metricFontColor"}),
+    "measure_title_mode": frozenset({"titleMode"}),
+}
 
-def _axis_slot_names(visualization_type: str) -> list[str]:
+_HELPER_SLOT_SETTINGS: dict[str, frozenset[str]] = {
+    "axis_title": frozenset({"title"}),
+    "axis_scale": frozenset({"scale"}),
+    "grid": frozenset({"grid"}),
+    "point_size_range": frozenset({"minRadius", "maxRadius"}),
+}
+
+
+def _wizard_builder_structure(metadata: Metadata) -> dict[str, WizardVisualizationStructure] | None:
+    structures = [
+        info["wizard"]["visualization_structure"] for info in metadata["installations"].values() if "wizard" in info
+    ]
+    if not structures:
+        return None
+    first = structures[0]
+    if any(structure != first for structure in structures[1:]):
+        raise ValueError("Wizard builder generation requires identical installation structures")
+    return first
+
+
+def _method_is_supported_by_structure(
+    method_name: str,
+    spec: Mapping[str, object],
+    visualization_structure: WizardVisualizationStructure | None,
+) -> bool:
+    if visualization_structure is None:
+        return True
+
+    kind = spec.get("kind")
+    chart_settings = visualization_structure["chart_settings"]
+    slots = visualization_structure["slots"]
+    if kind == "chart_setting":
+        setting_key = spec.get("setting_key")
+        return isinstance(setting_key, str) and setting_key in chart_settings
+    if kind == "slot":
+        slot_name = spec.get("slot_name")
+        return isinstance(slot_name, str) and slot_name in slots
+    if kind == "slot_setting":
+        setting_key = spec.get("setting_key")
+        return isinstance(setting_key, str) and any(setting_key in slot["settings"] for slot in slots.values())
+
+    required_chart_settings = _HELPER_CHART_SETTINGS.get(method_name)
+    if required_chart_settings is not None:
+        return required_chart_settings <= chart_settings.keys()
+    required_slot_settings = _HELPER_SLOT_SETTINGS.get(method_name)
+    if required_slot_settings is not None:
+        return any(required_slot_settings <= slot["settings"].keys() for slot in slots.values())
+    if method_name == "labels_position":
+        labels = slots.get("labels")
+        return labels is not None and bool({"labelsPosition", "position"} & labels["settings"].keys())
+    if method_name == "label_mode":
+        return "labels" in slots
+    if method_name == "freeze_columns":
+        # Provisional 3A carrier: staging acceptance is verified by the dedicated live test.
+        return True
+    return True
+
+
+def _setting_enum(
+    visualization_structure: WizardVisualizationStructure | None,
+    *,
+    setting_key: str,
+    slot_names: Iterable[str] = (),
+) -> tuple[str, ...]:
+    if visualization_structure is None:
+        return ()
+    if slot_names:
+        values: list[str] = []
+        for slot_name in slot_names:
+            setting = visualization_structure["slots"][slot_name]["settings"].get(setting_key)
+            if setting is not None:
+                values.extend(setting.get("enum", ()))
+        return tuple(dict.fromkeys(values))
+    setting = visualization_structure["chart_settings"].get(setting_key)
+    return tuple(setting.get("enum", ())) if setting is not None else ()
+
+
+def _axis_slot_names(
+    visualization_type: str,
+    visualization_structure: WizardVisualizationStructure | None = None,
+    *,
+    setting_key: str | None = None,
+) -> list[str]:
+    if visualization_structure is not None:
+        return sorted(
+            slot_name
+            for slot_name, slot in visualization_structure["slots"].items()
+            if slot_name in {"x", "y", "y2"} and (setting_key is None or setting_key in slot["settings"])
+        )
     semantics = WIZARD_VISUALIZATION_SEMANTICS.get(visualization_type)
     if semantics is None:
         return []
@@ -2722,6 +2933,10 @@ _HELPER_WRAPPERS: dict[str, tuple[str, str]] = {
     "pagination": ("*, enabled: bool, limit: int = 100", "self._pagination(enabled=enabled, limit=limit)"),
     "table_size": ("*, size: Literal['s', 'm', 'l']", "self._table_size(size=size)"),
     "freeze_columns": ("*, count: int = 1", "self._freeze_columns(count=count)"),
+    "labels_position": (
+        "*, mode: Literal['inside', 'outside', 'auto']",
+        "self._labels_position(mode=mode)",
+    ),
     "column_background": (
         "field: FieldLike | str, *, mode: Literal['2-point', '3-point'] = '3-point', palette: GradientPaletteId = 'red-orange-green', thresholds: tuple[float, ...] | None = None, reversed: bool = False",
         "self._column_background(field, mode=mode, palette=palette, thresholds=thresholds, reversed=reversed)",
@@ -2733,7 +2948,7 @@ _HELPER_WRAPPERS: dict[str, tuple[str, str]] = {
     "column_title": ("field: FieldLike | str, *, title: str", "self._column_title(field, title=title)"),
     "subtotals": ("field: FieldLike | str, *, enabled: bool", "self._subtotals(field, enabled=enabled)"),
     "measure_format": (
-        "field: FieldLike | str, *, format: Literal['number', 'percent', 'currency'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'bln'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None",
+        "field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None",
         "self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)",
     ),
     "shape": ("*, value: FunnelShape", "self._funnel_shape(value=value)"),
@@ -2772,10 +2987,15 @@ _HELPER_WRAPPERS: dict[str, tuple[str, str]] = {
 }
 
 
-def _emit_wizard_methods(visualization_type: str) -> list[str]:
-    specs = method_specs_for_visualization(visualization_type)
-    axis_slot_names = _axis_slot_names(visualization_type)
-    axis_slot_literal = ", ".join(repr(slot_name) for slot_name in axis_slot_names)
+def _emit_wizard_methods(
+    visualization_type: str,
+    visualization_structure: WizardVisualizationStructure | None = None,
+) -> list[str]:
+    specs = {
+        name: spec
+        for name, spec in method_specs_for_visualization(visualization_type).items()
+        if _method_is_supported_by_structure(name, spec, visualization_structure)
+    }
     lines: list[str] = []
     for method_name, spec in sorted(specs.items()):
         kind = spec.get("kind", "")
@@ -2786,6 +3006,7 @@ def _emit_wizard_methods(visualization_type: str) -> list[str]:
         setting_key = spec.get("setting_key", "")
 
         if kind == "chart_setting":
+            literal_values = _setting_enum(visualization_structure, setting_key=setting_key) or literal_values
             if value_type == "literal":
                 lit = ", ".join(repr(v) for v in literal_values)
                 lines.extend(
@@ -2815,8 +3036,22 @@ def _emit_wizard_methods(visualization_type: str) -> list[str]:
                 )
 
         elif kind == "slot_setting":
+            axis_slot_names = _axis_slot_names(
+                visualization_type,
+                visualization_structure,
+                setting_key=setting_key,
+            )
+            axis_slot_literal = ", ".join(repr(slot_name) for slot_name in axis_slot_names)
             if not axis_slot_literal:
                 continue
+            literal_values = (
+                _setting_enum(
+                    visualization_structure,
+                    setting_key=setting_key,
+                    slot_names=axis_slot_names,
+                )
+                or literal_values
+            )
             if value_type == "literal":
                 lit = ", ".join(repr(v) for v in literal_values)
                 lines.extend(
@@ -2846,7 +3081,15 @@ def _emit_wizard_methods(visualization_type: str) -> list[str]:
                 ]
             )
 
-        elif kind == "helper" and method_name in _SLOT_NAME_HELPERS and axis_slot_literal:
+        elif kind == "helper" and method_name in _SLOT_NAME_HELPERS:
+            axis_slot_names = _axis_slot_names(
+                visualization_type,
+                visualization_structure,
+                setting_key={"axis_title": "title", "axis_scale": "scale", "grid": "grid"}[method_name],
+            )
+            axis_slot_literal = ", ".join(repr(slot_name) for slot_name in axis_slot_names)
+            if not axis_slot_literal:
+                continue
             if method_name == "axis_title":
                 lines.extend(
                     [
@@ -2873,6 +3116,16 @@ def _emit_wizard_methods(visualization_type: str) -> list[str]:
                         "",
                     ]
                 )
+        elif kind == "helper" and method_name == "label_mode":
+            semantics = WIZARD_VISUALIZATION_SEMANTICS[visualization_type]
+            modes = ", ".join(repr(mode) for mode in semantics["label_modes"])
+            lines.extend(
+                [
+                    f"    def label_mode(self, *, mode: Literal[{modes}]) -> Self:",
+                    "        return self._label_mode(mode=mode)",
+                    "",
+                ]
+            )
         elif kind == "helper" and method_name in _HELPER_WRAPPERS:
             signature, call = _HELPER_WRAPPERS[method_name]
             lines.extend(
@@ -2889,7 +3142,7 @@ def _emit_wizard_methods(visualization_type: str) -> list[str]:
 def _emit_deferred_wizard_methods(visualization_type: str) -> list[str]:
     lines: list[str] = []
     for method_name in sorted(deferred_fluent_methods_for_visualization(visualization_type)):
-        if method_name in {"labels", "sort", "tooltips"}:
+        if method_name in {"labels", "sort"}:
             lines.extend(
                 [
                     f"    def {method_name}(self, fields: Sequence[FieldLike | str]) -> Self:",
@@ -2901,7 +3154,7 @@ def _emit_deferred_wizard_methods(visualization_type: str) -> list[str]:
             lines.extend(
                 [
                     "    def labels_position(self, *, mode: Literal['inside', 'outside', 'auto']) -> Self:",
-                    "        return self._set_chart_setting('labelsPosition', mode)",
+                    "        return self._labels_position(mode=mode)",
                     "",
                 ]
             )
@@ -2918,11 +3171,14 @@ def _emit_deferred_wizard_methods(visualization_type: str) -> list[str]:
     return lines
 
 
-def _wizard_slot_methods(visualization_type: str) -> dict[str, str]:
+def _wizard_slot_methods(
+    visualization_type: str,
+    visualization_structure: WizardVisualizationStructure | None = None,
+) -> dict[str, str]:
     semantics = WIZARD_VISUALIZATION_SEMANTICS.get(visualization_type)
     if semantics is None:
         return {}
-    slots = semantics["slots"]
+    slots = frozenset(visualization_structure["slots"]) if visualization_structure is not None else semantics["slots"]
     aliases = semantics["slot_aliases"]
     method_slots = {
         spec["slot_name"]
@@ -2978,6 +3234,7 @@ def _ql_data_section_methods(viz_id: str) -> list[str]:
 
 
 def emit_chart_builders(metadata: Metadata) -> str:
+    wizard_structure = _wizard_builder_structure(metadata)
     wizard_factory_methods = _visualization_factory_methods(
         sorted(WIZARD_VISUALIZATION_SEMANTICS),
         family="Wizard",
@@ -3029,6 +3286,7 @@ def emit_chart_builders(metadata: Metadata) -> str:
     lines.append("")
 
     for visualization_type in sorted(WIZARD_VISUALIZATION_SEMANTICS):
+        visualization_structure = wizard_structure.get(visualization_type) if wizard_structure is not None else None
         base_create = _WIZARD_VISUALIZATION_BASE_CREATE.get(visualization_type, "_BaseWizardChartCreate")
         create_cls = _class_name(visualization_type, "WizardChartCreate")
 
@@ -3047,7 +3305,7 @@ def emit_chart_builders(metadata: Metadata) -> str:
         )
 
         if visualization_type not in {"combined-chart", "geolayer"}:
-            methods = _wizard_slot_methods(visualization_type)
+            methods = _wizard_slot_methods(visualization_type, visualization_structure)
             for method_name, slot_name in methods.items():
                 lines.extend(
                     [
@@ -3084,7 +3342,7 @@ def emit_chart_builders(metadata: Metadata) -> str:
                     "",
                 ]
             )
-        lines.extend(_emit_wizard_methods(visualization_type))
+        lines.extend(_emit_wizard_methods(visualization_type, visualization_structure))
         lines.extend(_emit_deferred_wizard_methods(visualization_type))
 
     lines.extend(

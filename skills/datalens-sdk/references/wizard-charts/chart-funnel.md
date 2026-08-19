@@ -42,7 +42,7 @@ Factory: `client.create.wizard_chart.funnel(name=..., location=...)`
 | `shape()` | `*, value: FunnelShape` | CU |
 | `palette()` | `*, id: PaletteId` | CU |
 | `color_by_dimension()` | `field: Field` | CU |
-| `measure_format()` | `field: Field, *, format: Literal['number', 'percent', 'currency'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'bln'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
+| `measure_format()` | `field: Field, *, format: Literal['number', 'percent'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
 | `replace_formula()` | `field: Field, *, formula: str` | U |
 | `change_aggregation()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str, guid: str \| None = None` | U |
 | `replace_field()` | `old: Field, new: Field` | U |

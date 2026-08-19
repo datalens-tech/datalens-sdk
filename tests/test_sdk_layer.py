@@ -1117,7 +1117,7 @@ def test_chart_create_get_delete_flow_uses_wizard_rpc() -> None:
     ]
     create_payload = recorder.request_json(0)
     assert create_payload["key"] == "/Users/me/Sales"
-    assert create_payload["name"] == "Sales"
+    assert "name" not in create_payload
     create_data = cast(dict[str, object], create_payload["data"])
     viz = cast(dict[str, object], create_data["visualization"])
     assert viz["type"] == "line"
@@ -1151,7 +1151,7 @@ def test_chart_converter_is_dto_boundary() -> None:
 
     assert isinstance(chart_dto, dto.WizardChartCreateDTO)
     payload = chart_dto.to_payload()
-    assert set(payload) == {"data", "key", "name"}
+    assert set(payload) == {"data", "key"}
 
 
 def test_public_exports_cover_user_visible_errors() -> None:

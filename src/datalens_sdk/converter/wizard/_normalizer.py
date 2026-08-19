@@ -55,6 +55,7 @@ class _Normalizer:
         local_fields: Mapping[str, Mapping[str, object]],
         hierarchies: Mapping[str, Mapping[str, object]] | None = None,
         fields: Sequence[FieldLike] | None = None,
+        dataset_replacement: tuple[str, str] | None = None,
     ) -> None:
         self._dataset = dataset
         self._local_fields = local_fields
@@ -65,6 +66,7 @@ class _Normalizer:
             self._fields = list(dataset.fields) if dataset is not None else []
         self._dataset_id = dataset.id if dataset is not None else None
         self._dataset_name = _dataset_name(dataset)
+        self._dataset_replacement = dataset_replacement
 
     def for_hierarchy_fields(self) -> _Normalizer:
         "Return a copy of this normalizer that skips hierarchy lookups."
@@ -75,6 +77,7 @@ class _Normalizer:
         clone._fields = self._fields
         clone._dataset_id = self._dataset_id
         clone._dataset_name = self._dataset_name
+        clone._dataset_replacement = self._dataset_replacement
         return clone
 
     def normalize(self, items: Sequence[FieldRef]) -> list[dict[str, object]]:
@@ -104,6 +107,8 @@ class _Normalizer:
                 bound_dataset_name=self._dataset_name or None,
             )
             snapshot = {k: v for k, v in snapshot.items() if v is not None}
+            if self._dataset_replacement is not None and snapshot.get("datasetId") == self._dataset_replacement[0]:
+                snapshot["datasetId"] = self._dataset_replacement[1]
             if self._dataset_id and not snapshot.get("datasetId"):
                 snapshot["datasetId"] = self._dataset_id
             out.append(snapshot)

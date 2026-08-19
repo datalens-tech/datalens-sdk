@@ -2,13 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 import re
-from typing import Any
+from typing import Any, cast
 
 from datalens_sdk._runtime.chart_constants import (
     DEFAULT_CATEGORICAL_PALETTE,
     VALID_DISCRETE_PALETTES,
     VALID_GRADIENT_PALETTES,
     gradient_types_for_palette,
+)
+from datalens_sdk._runtime.wizard_semantics import (
+    get_wizard_encoding,
+    get_wizard_visualization_semantics,
 )
 from datalens_sdk._wizard_encodings import WizardColorEncoding, WizardShapeEncoding
 from datalens_sdk.converter.wizard._normalizer import (
@@ -20,16 +24,15 @@ from datalens_sdk.converter.wizard._normalizer import (
 from datalens_sdk.converter.wizard._types import (
     WizardConfigV1,
     WizardJsonObject,
-    WizardLineVisualizationV1,
-    WizardSlotV1,
     WizardSourcesV1,
+    WizardVisualizationStructure,
 )
 from datalens_sdk.domain.chart_types import MeasureFormat
 from datalens_sdk.domain.specs.wizard_chart import WizardChartCreateSpec
 from datalens_sdk.errors import DataLensConfigurationError
-from datalens_sdk.serialization.json_types import normalize_json_object
+from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object, normalize_json_value
 
-_LINE_SLOTS = frozenset({"x", "y", "y2", "colors", "shapes", "labels", "sort", "segments"})
+_LAYERED_VISUALIZATION_TYPES = frozenset({"combined-chart", "geolayer"})
 _COLOR_ENCODING_SETTING_KEYS = frozenset(
     {
         "colorMode",
@@ -95,9 +98,7 @@ _UPDATE_FIELD_KEYS = frozenset(
         "grouping",
     }
 )
-_CHART_SETTING_KEYS = frozenset(
-    {"feed", "legendMode", "navigatorSettings", "title", "titleMode", "tooltip", "tooltipSum"}
-)
+_NULLABLE_UPDATE_FIELD_KEYS = frozenset({"default_value", "originalDateCast"})
 _X_SETTINGS: WizardJsonObject = {
     "axisFormatMode": "auto",
     "axisLabelDateFormat": "DD.MM.YYYY",
@@ -129,10 +130,146 @@ _Y_SETTINGS: WizardJsonObject = {
     "titleValue": "",
     "type": "linear",
 }
+_SCATTER_AXIS_SETTINGS: WizardJsonObject = {
+    "axisFormatMode": "auto",
+    "axisLabelDateFormat": "DD.MM.YYYY",
+    "axisModeMap": {},
+    "axisVisibility": "show",
+    "grid": "on",
+    "gridStep": "auto",
+    "gridStepValue": 50,
+    "hideLabels": "no",
+    "labelsView": "auto",
+    "scale": "auto",
+    "scaleValue": "min-max",
+    "title": "off",
+    "titleValue": "",
+    "type": "linear",
+}
+
+
+def _visualization_type(visualization: Mapping[str, object]) -> str:
+    value = visualization.get("type")
+    if not isinstance(value, str):
+        raise DataLensConfigurationError("Wizard V1 visualization requires a string type discriminator.")
+    return value
+
+
+def _visualization_slots(
+    visualization_type: str,
+    structure: WizardVisualizationStructure | None,
+) -> tuple[str, ...]:
+    raw = structure.get(visualization_type) if structure is not None else None
+    slots = raw.get("slots") if isinstance(raw, Mapping) else None
+    if isinstance(slots, Mapping) and all(isinstance(name, str) for name in slots):
+        return tuple(sorted(slots))
+    semantics = get_wizard_visualization_semantics(visualization_type)
+    return semantics["slots"] if semantics is not None else ()
+
+
+def _chart_setting_names(
+    visualization_type: str,
+    structure: WizardVisualizationStructure | None,
+) -> frozenset[str] | None:
+    raw = structure.get(visualization_type) if structure is not None else None
+    settings = raw.get("chart_settings") if isinstance(raw, Mapping) else None
+    if not isinstance(settings, Mapping) or not all(isinstance(name, str) for name in settings):
+        return None
+    return frozenset(settings)
+
+
+def _slot_setting_names(
+    visualization_type: str,
+    slot_name: str,
+    structure: WizardVisualizationStructure | None,
+) -> frozenset[str] | None:
+    raw = structure.get(visualization_type) if structure is not None else None
+    slots = raw.get("slots") if isinstance(raw, Mapping) else None
+    slot = slots.get(slot_name) if isinstance(slots, Mapping) else None
+    settings = slot.get("settings") if isinstance(slot, Mapping) else None
+    if not isinstance(settings, Mapping) or not all(isinstance(name, str) for name in settings):
+        return None
+    return frozenset(settings)
+
+
+def _validate_structural_settings(
+    edits: Mapping[str, object],
+    structure: object,
+    *,
+    context: str,
+) -> None:
+    if not isinstance(structure, Mapping):
+        return
+    unsupported = set(edits) - set(structure)
+    if unsupported:
+        names = ", ".join(sorted(unsupported))
+        raise DataLensConfigurationError(f"{context} does not support settings: {names}.")
+    for setting_name, value in edits.items():
+        setting = structure.get(setting_name)
+        enum = setting.get("enum") if isinstance(setting, Mapping) else None
+        if isinstance(enum, list) and value not in enum:
+            raise DataLensConfigurationError(f"{context}.{setting_name} must be one of {enum!r}; got {value!r}.")
+
+
+def _chart_settings_structure(
+    visualization_type: str,
+    structure: WizardVisualizationStructure | None,
+) -> object:
+    raw = structure.get(visualization_type) if structure is not None else None
+    return raw.get("chart_settings") if isinstance(raw, Mapping) else None
+
+
+def _slot_settings_structure(
+    visualization_type: str,
+    slot_name: str,
+    structure: WizardVisualizationStructure | None,
+) -> object:
+    raw = structure.get(visualization_type) if structure is not None else None
+    slots = raw.get("slots") if isinstance(raw, Mapping) else None
+    slot = slots.get(slot_name) if isinstance(slots, Mapping) else None
+    return slot.get("settings") if isinstance(slot, Mapping) else None
+
+
+def _default_slot_settings(visualization_type: str, slot_name: str) -> WizardJsonObject | None:
+    if visualization_type in {"line", "column", "column100p", "area", "area100p"}:
+        if slot_name == "x":
+            return dict(_X_SETTINGS)
+        if slot_name in {"y", "y2"}:
+            return dict(_Y_SETTINGS)
+    if visualization_type in {"bar", "bar100p"}:
+        if slot_name == "y":
+            settings = dict(_X_SETTINGS)
+            settings.pop("holidays", None)
+            return settings
+        if slot_name == "x":
+            return dict(_Y_SETTINGS)
+    if visualization_type == "scatter" and slot_name in {"x", "y"}:
+        settings = dict(_SCATTER_AXIS_SETTINGS)
+        if slot_name == "x":
+            settings["holidays"] = "off"
+        return settings
+    if slot_name in {"colors", "shapes", "size"}:
+        return {}
+    return None
 
 
 def _json_object(value: Mapping[str, object], *, context: str) -> WizardJsonObject:
     return normalize_json_object(value, context=context)
+
+
+def _json_array(value: object, *, context: str) -> list[JsonValue]:
+    normalized = normalize_json_value(value, context=context)
+    if not isinstance(normalized, list):
+        raise AssertionError(f"{context} was narrowed to an array")
+    return normalized
+
+
+def _project_update_field(snapshot: Mapping[str, object]) -> dict[str, object]:
+    return {
+        key: value
+        for key, value in snapshot.items()
+        if key in _UPDATE_FIELD_KEYS and (value is not None or key in _NULLABLE_UPDATE_FIELD_KEYS)
+    }
 
 
 def _project_field(snapshot: Mapping[str, object], *, dataset_id: str | None) -> WizardJsonObject:
@@ -185,11 +322,11 @@ def _normalize_fields(
     return [_project_field(item, dataset_id=dataset_id) for item in normalizer.normalize(refs)]  # type: ignore[arg-type]
 
 
-def _slot(items: list[WizardJsonObject], *, settings: WizardJsonObject | None = None) -> WizardSlotV1:
-    result: WizardSlotV1 = {"items": items}
+def _slot(items: list[WizardJsonObject], *, settings: WizardJsonObject | None = None) -> WizardJsonObject:
+    result: dict[str, object] = {"items": items}
     if settings is not None:
         result["settings"] = settings
-    return result
+    return _json_object(result, context="Wizard slot")
 
 
 def _field_guid(ref: object, normalizer: _Normalizer, *, dataset_id: str | None) -> str:
@@ -201,7 +338,7 @@ def _field_guid(ref: object, normalizer: _Normalizer, *, dataset_id: str | None)
 
 
 def _encoding_settings(
-    slot: WizardSlotV1,
+    slot: WizardJsonObject,
     *,
     owned_keys: frozenset[str],
 ) -> WizardJsonObject:
@@ -213,9 +350,15 @@ def _encoding_settings(
     return settings
 
 
-def _placed_measure_guids(visualization: WizardLineVisualizationV1) -> list[str]:
+def _placed_measure_guids(visualization: WizardJsonObject) -> list[str]:
     guids: list[str] = []
-    for slot_name in ("y", "y2"):
+    visualization_type = _visualization_type(visualization)
+    rule = get_wizard_encoding(visualization_type, "color", "measure_name") or get_wizard_encoding(
+        visualization_type,
+        "shape",
+        "measure_name",
+    )
+    for slot_name in rule.get("measure_slots", ()) if rule is not None else ():
         slot = visualization.get(slot_name)
         if not isinstance(slot, dict):
             continue
@@ -230,7 +373,7 @@ def _placed_measure_guids(visualization: WizardLineVisualizationV1) -> list[str]
 
 
 def _measure_mapping(
-    visualization: WizardLineVisualizationV1,
+    visualization: WizardJsonObject,
     values: Mapping[Any, str],
     *,
     normalizer: _Normalizer,
@@ -297,12 +440,17 @@ def _apply_palette(
 
 
 def _color_item_types(
-    slot: WizardSlotV1,
+    slot: WizardJsonObject,
     *,
     normalizer: _Normalizer,
 ) -> frozenset[str]:
     result: set[str] = set()
-    for item in slot.get("items", []):
+    items = slot.get("items")
+    if not isinstance(items, list):
+        return frozenset()
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
         item_type = item.get("type")
         if not isinstance(item_type, str):
             guid = item.get("guid")
@@ -312,23 +460,32 @@ def _color_item_types(
                 item_type = normalized_type if isinstance(normalized_type, str) else None
         if isinstance(item_type, str):
             result.add(item_type)
+    if not result and items:
+        settings = slot.get("settings")
+        if isinstance(settings, Mapping):
+            if settings.get("coloredByMeasure") is True:
+                result.add("PSEUDO")
+            elif isinstance(settings.get("fieldGuid"), str):
+                result.add("MEASURE")
+            else:
+                result.add("DIMENSION")
     return frozenset(result)
 
 
 def _apply_palette_to_visualization(
-    visualization: WizardLineVisualizationV1,
+    visualization: WizardJsonObject,
     palette: str,
     *,
     normalizer: _Normalizer,
 ) -> None:
-    colors = visualization.setdefault("colors", _slot([], settings={}))
+    colors = _ensure_visualization_slot(visualization, "colors", settings={})
     current = colors.get("settings")
     settings = dict(current) if isinstance(current, dict) else {}
     _apply_palette(settings, palette, color_types=_color_item_types(colors, normalizer=normalizer))
     colors["settings"] = settings
 
 
-def _sync_x_axis_modes(slot: WizardSlotV1, normalized_items: Sequence[Mapping[str, object]]) -> None:
+def _sync_axis_modes(slot: WizardJsonObject, normalized_items: Sequence[Mapping[str, object]]) -> None:
     current = slot.get("settings")
     settings = dict(current) if isinstance(current, dict) else {}
     current_modes = settings.get("axisModeMap")
@@ -346,22 +503,93 @@ def _sync_x_axis_modes(slot: WizardSlotV1, normalized_items: Sequence[Mapping[st
     slot["settings"] = settings
 
 
-def _apply_implicit_measure_names(visualization: WizardLineVisualizationV1) -> None:
-    colors = visualization.setdefault("colors", _slot([], settings={}))
+def _visualization_slot(visualization: WizardJsonObject, slot_name: str) -> WizardJsonObject:
+    value = visualization.get(slot_name)
+    if not isinstance(value, dict):
+        visualization_type = _visualization_type(visualization)
+        raise DataLensConfigurationError(
+            f"Wizard V1 visualization {visualization_type!r} requires an object-valued {slot_name!r} slot."
+        )
+    items = value.get("items")
+    if not isinstance(items, list):
+        raise DataLensConfigurationError(f"Wizard V1 visualization.{slot_name}.items must be an array.")
+    return value
+
+
+def _ensure_visualization_slot(
+    visualization: WizardJsonObject,
+    slot_name: str,
+    *,
+    settings: WizardJsonObject | None = None,
+) -> WizardJsonObject:
+    if visualization.get(slot_name) is None:
+        visualization[slot_name] = _slot([], settings=settings)
+    return _visualization_slot(visualization, slot_name)
+
+
+def _apply_implicit_measure_names(visualization: WizardJsonObject) -> None:
+    visualization_type = _visualization_type(visualization)
+    if get_wizard_encoding(visualization_type, "color", "measure_name") is None:
+        return
+    colors = _ensure_visualization_slot(visualization, "colors", settings={})
     if colors.get("items") or len(_placed_measure_guids(visualization)) < 2:
         return
     colors["items"] = [dict(_MEASURE_NAMES_ITEM)]
 
 
+def _apply_label_mode(visualization: WizardJsonObject, mode: str | None) -> None:
+    if mode is None:
+        return
+    labels = _visualization_slot(visualization, "labels")
+    items = labels.get("items")
+    if not isinstance(items, list) or not items:
+        raise DataLensConfigurationError("label_mode() requires at least one field in the labels slot.")
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        current = item.get("formatting")
+        formatting = current if isinstance(current, dict) else {}
+        formatting["labelMode"] = mode
+        item["formatting"] = formatting
+
+
+def _apply_labels_position(visualization: WizardJsonObject, mode: str | None) -> None:
+    if mode is None:
+        return
+    visualization_type = _visualization_type(visualization)
+    setting_name = {"bar": "labelsPosition", "column": "labelsPosition", "funnel": "position"}.get(visualization_type)
+    if setting_name is None:
+        raise DataLensConfigurationError(
+            f"labels_position() is not supported for Wizard V1 visualization {visualization_type!r}."
+        )
+    labels = _visualization_slot(visualization, "labels")
+    items = labels.get("items")
+    if not isinstance(items, list) or not items:
+        raise DataLensConfigurationError("labels_position() requires at least one field in the labels slot.")
+    current = labels.get("settings")
+    settings = current if isinstance(current, dict) else {}
+    if mode == "auto":
+        settings.pop(setting_name, None)
+    else:
+        settings[setting_name] = mode
+    labels["settings"] = settings
+
+
 def _apply_color_encoding(
-    visualization: WizardLineVisualizationV1,
+    visualization: WizardJsonObject,
     encoding: WizardColorEncoding,
     *,
     normalizer: _Normalizer,
     dataset_id: str | None,
     palette: str | None,
 ) -> None:
-    colors = visualization.setdefault("colors", _slot([], settings={}))
+    visualization_type = _visualization_type(visualization)
+    rule = get_wizard_encoding(visualization_type, "color", encoding.kind)
+    if rule is None:
+        raise DataLensConfigurationError(
+            f"color_by_{encoding.kind}() is not supported for Wizard V1 visualization {visualization_type!r}."
+        )
+    colors = _ensure_visualization_slot(visualization, "colors", settings={})
     settings = _encoding_settings(colors, owned_keys=_COLOR_ENCODING_SETTING_KEYS)
     items: list[WizardJsonObject]
     if encoding.kind == "measure_name":
@@ -394,6 +622,7 @@ def _apply_color_encoding(
         items = [_project_field(normalized[0], dataset_id=dataset_id)]
         color_types = frozenset({expected_type})
         if encoding.kind == "measure":
+            settings["fieldGuid"] = items[0]["guid"]
             has_gradient_settings = any(
                 value is not None for value in (encoding.gradient_mode, encoding.gradient_palette, encoding.reversed)
             )
@@ -405,7 +634,6 @@ def _apply_color_encoding(
                     gradient_mode = "2-point" if "2-point" in gradient_types else "3-point"
             if has_gradient_settings:
                 settings["colorMode"] = "gradient"
-                settings["fieldGuid"] = items[0]["guid"]
                 settings["gradientMode"] = gradient_mode or "2-point"
                 settings["reversed"] = encoding.reversed if encoding.reversed is not None else False
                 settings["thresholdsMode"] = "auto"
@@ -413,17 +641,22 @@ def _apply_color_encoding(
             settings["palette"] = DEFAULT_CATEGORICAL_PALETTE
     if palette is not None:
         _apply_palette(settings, palette, color_types=color_types)
-    colors["items"] = items
+    colors["items"] = _json_array(items, context="Wizard colors items")
 
 
 def _apply_shape_encoding(
-    visualization: WizardLineVisualizationV1,
+    visualization: WizardJsonObject,
     encoding: WizardShapeEncoding,
     *,
     normalizer: _Normalizer,
     dataset_id: str | None,
 ) -> None:
-    shapes = visualization.setdefault("shapes", _slot([], settings={}))
+    visualization_type = _visualization_type(visualization)
+    if get_wizard_encoding(visualization_type, "shape", encoding.kind) is None:
+        raise DataLensConfigurationError(
+            f"shape_by_{encoding.kind}() is not supported for Wizard V1 visualization {visualization_type!r}."
+        )
+    shapes = _ensure_visualization_slot(visualization, "shapes", settings={})
     settings = _encoding_settings(shapes, owned_keys=_SHAPE_ENCODING_SETTING_KEYS)
     items: list[WizardJsonObject]
     if encoding.kind == "measure_name":
@@ -458,11 +691,11 @@ def _apply_shape_encoding(
                 dimension_shapes,
                 context="Wizard mounted dimension shapes",
             )
-    shapes["items"] = items
+    shapes["items"] = _json_array(items, context="Wizard shapes items")
 
 
 def _apply_item_mutations(
-    visualization: WizardLineVisualizationV1,
+    visualization: WizardJsonObject,
     mutations: Sequence[tuple[object, str, object]],
     *,
     normalizer: _Normalizer,
@@ -494,11 +727,11 @@ def _apply_item_mutations(
                         item[target_key] = normalized_value
                     matched = True
         if not matched:
-            raise DataLensConfigurationError(f"Wizard field {guid!r} is not placed in any line visualization slot.")
+            raise DataLensConfigurationError(f"Wizard field {guid!r} is not placed in any visualization slot.")
 
 
 def _apply_measure_formats(
-    visualization: WizardLineVisualizationV1,
+    visualization: WizardJsonObject,
     formats: Sequence[tuple[object, MeasureFormat]],
     *,
     normalizer: _Normalizer,
@@ -506,10 +739,7 @@ def _apply_measure_formats(
 ) -> None:
     mutations: list[tuple[object, str, object]] = []
     for ref, value in formats:
-        formatting = {
-            "showRankDelimiter" if key == "show_rank_delimiter" else key: "b" if item == "bln" else item
-            for key, item in value.items()
-        }
+        formatting = {"showRankDelimiter" if key == "show_rank_delimiter" else key: item for key, item in value.items()}
         mutations.append((ref, "formatting", formatting))
     _apply_item_mutations(
         visualization,
@@ -519,11 +749,60 @@ def _apply_measure_formats(
     )
 
 
-def _assemble_wizard_data(spec: WizardChartCreateSpec) -> WizardConfigV1:
-    if spec.visualization_type != "line":
+def _apply_visualization_autofix(visualization: WizardJsonObject) -> None:
+    visualization_type = visualization.get("type")
+    if visualization_type == "bar":
+        sort = _visualization_slot(visualization, "sort")
+        sort_items = sort.get("items")
+        y_items = _visualization_slot(visualization, "y").get("items")
+        if isinstance(sort_items, list) and not sort_items and isinstance(y_items, list) and y_items:
+            item = _json_object(
+                cast(Mapping[str, object], y_items[0]),
+                context="Wizard bar sort autofix",
+            )
+            item["direction"] = "DESC"
+            sort["items"] = [item]
+
+        labels = _visualization_slot(visualization, "labels")
+        label_items = labels.get("items")
+        x_items = _visualization_slot(visualization, "x").get("items")
+        if isinstance(label_items, list) and not label_items and isinstance(x_items, list) and x_items:
+            labels["items"] = [
+                _json_object(
+                    cast(Mapping[str, object], x_items[0]),
+                    context="Wizard bar labels autofix",
+                )
+            ]
+
+    if visualization_type in {"pie", "donut"}:
+        colors = _visualization_slot(visualization, "colors")
+        color_items = colors.get("items")
+        dimensions = _visualization_slot(visualization, "dimensions").get("items")
+        if isinstance(color_items, list) and not color_items and isinstance(dimensions, list) and dimensions:
+            colors["items"] = [
+                _json_object(
+                    cast(Mapping[str, object], dimensions[0]),
+                    context="Wizard pie colors autofix",
+                )
+            ]
+
+
+def _assemble_wizard_data(
+    spec: WizardChartCreateSpec,
+    *,
+    visualization_structure: WizardVisualizationStructure | None = None,
+) -> WizardConfigV1:
+    semantics = get_wizard_visualization_semantics(spec.visualization_type)
+    if semantics is None or spec.visualization_type in _LAYERED_VISUALIZATION_TYPES:
         raise DataLensConfigurationError(
-            f"Wizard API v3 phase 1 supports only line chart creation, got {spec.visualization_type!r}"
+            f"Wizard API v3 phase 3A supports only non-layered visualization creation, got {spec.visualization_type!r}."
         )
+    if visualization_structure and spec.visualization_type not in visualization_structure:
+        raise DataLensConfigurationError(
+            f"Wizard V1 generated structure has no visualization {spec.visualization_type!r}."
+        )
+    visualization_type = spec.visualization_type
+    allowed_slots = _visualization_slots(visualization_type, visualization_structure)
 
     dataset = _dataset_of(spec.dataset)
     dataset_ids = list(dict.fromkeys(spec.dataset_ids))
@@ -541,7 +820,7 @@ def _assemble_wizard_data(spec: WizardChartCreateSpec) -> WizardConfigV1:
     update_guids: set[str] = set()
     if dataset is not None:
         for parameter in dataset.parameters:
-            field = {key: value for key, value in parameter.raw.items() if key in _UPDATE_FIELD_KEYS}
+            field = _project_update_field(parameter.raw)
             field.setdefault("guid", parameter.guid)
             field.setdefault("title", parameter.title)
             field.setdefault("calc_mode", "parameter")
@@ -565,7 +844,7 @@ def _assemble_wizard_data(spec: WizardChartCreateSpec) -> WizardConfigV1:
             )
             update_guids.add(guid)
     for local_field in spec.local_fields:
-        field = {key: value for key, value in local_field.items() if key in _UPDATE_FIELD_KEYS}
+        field = _project_update_field(local_field)
         if dataset_id is not None and "datasetId" not in field:
             field["datasetId"] = dataset_id
         guid = field.get("guid")
@@ -595,52 +874,76 @@ def _assemble_wizard_data(spec: WizardChartCreateSpec) -> WizardConfigV1:
     if hierarchies:
         sources["hierarchies"] = hierarchies
 
-    visualization: WizardLineVisualizationV1 = {
-        "type": "line",
-        "x": _slot([], settings=dict(_X_SETTINGS)),
-        "y": _slot([], settings=dict(_Y_SETTINGS)),
-        "y2": _slot([], settings=dict(_Y_SETTINGS)),
-        "colors": _slot([], settings={}),
-        "shapes": _slot([], settings={}),
-        "labels": _slot([]),
-        "sort": _slot([]),
-        "segments": _slot([]),
-    }
+    visualization: WizardJsonObject = {"type": visualization_type}
+    for slot_name in allowed_slots:
+        visualization[slot_name] = _slot(
+            [],
+            settings=_default_slot_settings(visualization_type, slot_name),
+        )
 
     for slot_name, slot_refs in spec.slots.items():
-        if slot_name not in _LINE_SLOTS:
-            raise DataLensConfigurationError(f"Line visualization has no {slot_name!r} slot in Wizard V1.")
+        if slot_name not in allowed_slots:
+            raise DataLensConfigurationError(
+                f"Wizard V1 visualization {visualization_type!r} has no {slot_name!r} slot."
+            )
         slot_snapshots = normalizer.normalize(list(slot_refs))
-        slot = visualization[slot_name]  # type: ignore[literal-required]
-        slot["items"] = [_project_field(item, dataset_id=dataset_id) for item in slot_snapshots]
-        if slot_name == "x":
-            _sync_x_axis_modes(slot, slot_snapshots)
+        slot = _visualization_slot(visualization, slot_name)
+        slot["items"] = _json_array(
+            [_project_field(item, dataset_id=dataset_id) for item in slot_snapshots],
+            context=f"Wizard {slot_name} items",
+        )
+        settings = slot.get("settings")
+        if isinstance(settings, Mapping) and "axisModeMap" in settings:
+            _sync_axis_modes(slot, slot_snapshots)
     if spec.sort_direction_items:
+        if "sort" not in allowed_slots:
+            raise DataLensConfigurationError(
+                f"Wizard V1 visualization {visualization_type!r} does not support sorting."
+            )
         sort_items: list[WizardJsonObject] = []
         for ref, direction in spec.sort_direction_items:
             item = _normalize_fields(normalizer, [ref], dataset_id=dataset_id)[0]
             item["direction"] = direction.upper()
             sort_items.append(item)
-        visualization["sort"]["items"] = sort_items
+        _visualization_slot(visualization, "sort")["items"] = _json_array(
+            sort_items,
+            context="Wizard sort items",
+        )
     elif spec.slots.get("sort"):
         sort_items = _normalize_fields(normalizer, list(spec.slots["sort"]), dataset_id=dataset_id)
         for item in sort_items:
             item["direction"] = "ASC"
-        visualization["sort"]["items"] = sort_items
+        _visualization_slot(visualization, "sort")["items"] = _json_array(
+            sort_items,
+            context="Wizard sort items",
+        )
 
-    for slot_name, settings in spec.slot_settings.items():
-        if slot_name not in _LINE_SLOTS:
-            raise DataLensConfigurationError(f"Line visualization has no {slot_name!r} slot in Wizard V1.")
-        slot = visualization[slot_name]  # type: ignore[literal-required]
-        current = slot.setdefault("settings", {})
-        current.update(_json_object(settings, context=f"Wizard {slot_name} settings"))
+    for slot_name, slot_settings in spec.slot_settings.items():
+        if slot_name not in allowed_slots:
+            raise DataLensConfigurationError(
+                f"Wizard V1 visualization {visualization_type!r} has no {slot_name!r} slot."
+            )
+        _validate_structural_settings(
+            slot_settings,
+            _slot_settings_structure(visualization_type, slot_name, visualization_structure),
+            context=f"Wizard V1 visualization {visualization_type!r} slot {slot_name!r}",
+        )
+        slot = _visualization_slot(visualization, slot_name)
+        current_value = slot.get("settings")
+        current = current_value if isinstance(current_value, dict) else {}
+        current.update(_json_object(slot_settings, context=f"Wizard {slot_name} settings"))
+        slot["settings"] = current
 
-    unsupported_settings = set(spec.chart_settings) - _CHART_SETTING_KEYS
-    if unsupported_settings:
-        names = ", ".join(sorted(unsupported_settings))
-        raise DataLensConfigurationError(f"Line chart settings are not supported by Wizard V1: {names}.")
+    _validate_structural_settings(
+        spec.chart_settings,
+        _chart_settings_structure(visualization_type, visualization_structure),
+        context=f"Wizard V1 visualization {visualization_type!r}",
+    )
     if spec.chart_settings:
         visualization["chartSettings"] = _json_object(spec.chart_settings, context="Wizard chart settings")
+
+    _apply_label_mode(visualization, spec.label_mode)
+    _apply_labels_position(visualization, spec.labels_position)
 
     if spec.color_encoding is None:
         _apply_implicit_measure_names(visualization)
@@ -665,6 +968,18 @@ def _assemble_wizard_data(spec: WizardChartCreateSpec) -> WizardConfigV1:
             normalizer=normalizer,
             dataset_id=dataset_id,
         )
+    if spec.geopoints_config:
+        if visualization_type != "scatter":
+            raise DataLensConfigurationError(
+                f"Wizard V1 visualization {visualization_type!r} has no point-size settings."
+            )
+        size = _visualization_slot(visualization, "size")
+        current_value = size.get("settings")
+        size_settings = current_value if isinstance(current_value, dict) else {}
+        size_settings.update(_json_object(spec.geopoints_config, context="Wizard scatter size settings"))
+        size["settings"] = size_settings
+
+    _apply_visualization_autofix(visualization)
 
     _apply_item_mutations(
         visualization,

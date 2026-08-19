@@ -33,6 +33,7 @@ from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
 from datalens_sdk.errors import (
+    DataLensValidationError,
     NotSupportedError,
     translate_dto_validation_error,
 )
@@ -211,6 +212,29 @@ class ChartService(ChartOperations):
             operations=self,
             location=builder.chart.location,
             name=builder.chart.name,
+            id_fallback=chart_id,
+            dto_module=self._dto_module,
+        )
+
+    def publish_wizard_chart(self, chart: WizardChart, rev_id: str) -> WizardChart:
+        chart_id = chart.id
+        if not chart_id:
+            raise DataLensValidationError("Cannot publish a Wizard chart without an id")
+        try:
+            dto_obj = WizardChartConverter.from_domain_publish_revision(
+                chart,
+                rev_id=rev_id,
+                dto_module=self._dto_module,
+            )
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="updateWizardChart", reason=str(exc)) from exc
+        response = self._api.update_wizard(dto_obj.to_payload())
+        return WizardChartConverter.to_domain(
+            response,
+            installation=self._installation,
+            operations=self,
+            location=chart.location,
+            name=chart.name,
             id_fallback=chart_id,
             dto_module=self._dto_module,
         )

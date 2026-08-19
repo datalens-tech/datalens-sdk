@@ -158,10 +158,31 @@ class WizardChart(Chart):
         return tuple(item for item in value if isinstance(item, str))
 
     @property
+    def rev_id(self) -> str | None:
+        value = self.raw.get("revId")
+        return value if isinstance(value, str) else None
+
+    @property
     def update(self) -> WizardChartUpdate:
         if not self.id:
             raise DataLensValidationError("Cannot update a chart without an id")
         return WizardChartUpdate(chart=self, operations=self._operations)
+
+    def publish_revision(self, *, rev_id: str | None = None) -> WizardChart:
+        """Publish an existing revision without creating a new one.
+
+        ``rev_id=None`` publishes the revision this object was loaded as. To
+        persist changes and publish them in one call, use
+        ``chart.update.mode("publish").execute()`` instead.
+        """
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot publish a chart without an id")
+        effective_rev_id = rev_id if rev_id is not None else self.rev_id
+        if not effective_rev_id:
+            raise DataLensValidationError("Cannot publish: no rev_id given and the chart carries none")
+        return self._operations.publish_wizard_chart(self, effective_rev_id)
 
     def delete(self) -> None:
         if self._operations is None:

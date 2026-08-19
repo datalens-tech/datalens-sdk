@@ -7,7 +7,7 @@ from typing import Any, cast, get_args
 
 from datalens_sdk import GeoLayerFilter
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
-from datalens_sdk._runtime.viz_specs import get_geo_layer_spec
+from datalens_sdk._runtime.wizard_semantics import WIZARD_GEO_LAYER_SEMANTICS
 from datalens_sdk.domain.chart_types import GeoLayerType, GradientPaletteId
 from datalens_sdk.domain.entry_location import EntryLocation
 
@@ -137,36 +137,15 @@ def test_documented_geolayer_surface_matches_the_public_sdk() -> None:
     assert set(documented_capabilities) == set(get_args(GeoLayerType))
 
     for layer_type, documented in documented_capabilities.items():
-        layer_spec = get_geo_layer_spec(layer_type)
-        viz = cast(dict[str, object], layer_spec["viz"])
-        placeholders = cast(dict[str, dict[str, object]], layer_spec["placeholders"])
-        placeholder_inputs = cast(dict[str, str], layer_spec["placeholder_inputs"])
-        required_groups = [
-            placeholder_id
-            for placeholder_id, placeholder in placeholders.items()
-            if placeholder.get("required") is True
-        ]
-        assert len(required_groups) == 1
-        geometry_group = required_groups[0]
-
-        expected_optional_inputs: set[str] = set()
-        if "size" in placeholder_inputs.values():
-            expected_optional_inputs.add("size")
-        if "grouping" in placeholder_inputs.values():
-            expected_optional_inputs.add("grouping")
-        for capability, public_input in (
-            ("allowColors", "color"),
-            ("allowLayerFilters", "filters"),
-            ("allowTooltips", "tooltips"),
-            ("allowLabels", "labels"),
-        ):
-            if viz.get(capability) is True:
-                expected_optional_inputs.add(public_input)
-        if viz.get("allowSort") is True:
-            expected_optional_inputs.add("sort_by")
+        semantics = WIZARD_GEO_LAYER_SEMANTICS[layer_type]
+        geometry_group = {"geopolygon": "geopolygon", "heatmap": "heatmap"}.get(
+            layer_type, semantics["required_geometry"]
+        )
+        public_optional_inputs = {"size", "grouping", "color", "filters", "tooltips", "labels", "sort_by"}
+        expected_optional_inputs = set(semantics["supported_inputs"]) & public_optional_inputs
 
         assert documented == {
-            "geometry_argument": placeholder_inputs[geometry_group],
+            "geometry_argument": semantics["required_geometry"],
             "geometry_group": geometry_group,
             "optional_inputs": expected_optional_inputs,
         }

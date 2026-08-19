@@ -45,6 +45,8 @@ class WizardChartCreateSpec:
     pending_measure_formats: tuple[tuple[FieldRef, MeasureFormat], ...]
     shape_encoding: WizardShapeEncoding | None
     geopoints_config: Mapping[str, object]
+    label_mode: str | None
+    labels_position: str | None
     combined_layers: tuple[Mapping[str, object], ...]
     geo_layers: tuple[Mapping[str, object], ...]
     geo_datasets: tuple[Dataset, ...]

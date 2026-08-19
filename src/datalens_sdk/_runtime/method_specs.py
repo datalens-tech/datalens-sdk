@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Literal, TypedDict
 
 from datalens_sdk._runtime.wizard_semantics import (
+    WIZARD_VISUALIZATION_SEMANTICS,
     visualization_types_for_wizard_encoding,
     visualization_types_where,
     visualization_types_with_color_encoding,
@@ -33,6 +34,8 @@ _ALLOW_LABELS = visualization_types_where("allows_labels")
 
 _ALLOW_FILTERS = visualization_types_where("allows_filters")
 
+_NON_LAYERED = frozenset(WIZARD_VISUALIZATION_SEMANTICS) - {"combined-chart", "geolayer"}
+
 _CARTESIAN: frozenset[str] = frozenset(
     {
         "line",
@@ -58,11 +61,40 @@ _CARTESIAN_LINEAR: frozenset[str] = frozenset(
     }
 )
 
+_AXIS_SCALE = frozenset(
+    {
+        "line",
+        "column",
+        "bar",
+        "area",
+        "area100p",
+        "column100p",
+        "bar100p",
+        "scatter",
+    }
+)
+
+_LEGEND = frozenset(
+    {"area", "area100p", "bar", "bar100p", "column", "column100p", "donut", "funnel", "line", "pie", "scatter"}
+)
+
+_TOOLTIP = _LEGEND | {"treemap"}
+
+_TOOLTIP_SUM = frozenset({"area", "area100p", "bar", "bar100p", "column", "column100p", "line"})
+
+_CHART_TITLE = _NON_LAYERED - {"metric"}
+
+_NAVIGATOR = frozenset({"area", "area100p", "column", "column100p", "line"})
+
+_LABELS_POSITION = frozenset({"bar", "column", "funnel"})
+
 _TABLE: frozenset[str] = frozenset({"flatTable", "pivotTable"})
 
 _SEGMENT_VISUALIZATIONS = visualization_types_with_slot("segments")
 
-_LABEL_MODE_VISUALIZATIONS = visualization_types_with_label_mode("percent")
+_LABEL_MODE_VISUALIZATIONS = visualization_types_with_label_mode("absolute") | visualization_types_with_label_mode(
+    "percent"
+)
 
 _TABLE_AND_CARTESIAN: frozenset[str] = _TABLE | _CARTESIAN
 
@@ -77,33 +109,38 @@ METHOD_SPECS: dict[str, MethodSpec] = {
         "setting_key": "legendMode",
         "value_type": "literal",
         "literal_values": ("show", "hide"),
+        "visualization_types": _LEGEND,
+    },
+    "tooltip": {
+        "kind": "chart_setting",
+        "setting_key": "tooltip",
+        "value_type": "literal",
+        "literal_values": ("show", "hide"),
+        "visualization_types": _TOOLTIP,
     },
     "tooltip_sum": {
         "kind": "chart_setting",
         "setting_key": "tooltipSum",
         "value_type": "bool",
         "value_map": _BOOL_ON_OFF,
+        "visualization_types": _TOOLTIP_SUM,
     },
     "totals": {
         "kind": "chart_setting",
         "setting_key": "totals",
         "value_type": "bool",
         "value_map": _BOOL_ON_OFF,
-        "visualization_types": frozenset({"flatTable"}),
+        "visualization_types": frozenset({"donut", "flatTable"}),
     },
     "label_mode": {
-        "kind": "chart_setting",
-        "setting_key": "labelMode",
-        "value_type": "literal",
-        "literal_values": ("absolute", "percent"),
+        "kind": "helper",
+        "helper": "label_mode",
         "visualization_types": _LABEL_MODE_VISUALIZATIONS,
     },
     "labels_position": {
-        "kind": "chart_setting",
-        "setting_key": "labelsPosition",
-        "value_type": "literal",
-        "literal_values": ("inside", "outside", "auto"),
-        "visualization_types": _ALLOW_LABELS,
+        "kind": "helper",
+        "helper": "labels_position",
+        "visualization_types": _LABELS_POSITION,
     },
     "tooltip_percentage_base": {
         "kind": "chart_setting",
@@ -131,7 +168,7 @@ METHOD_SPECS: dict[str, MethodSpec] = {
         "setting_key": "nulls",
         "value_type": "literal",
         "literal_values": ("ignore", "connect", "as-0"),
-        "visualization_types": _CARTESIAN,
+        "visualization_types": _CARTESIAN_LINEAR,
     },
     "segments": {
         "kind": "slot",
@@ -156,6 +193,7 @@ METHOD_SPECS: dict[str, MethodSpec] = {
     "chart_title": {
         "kind": "helper",
         "helper": "chart_title",
+        "visualization_types": _CHART_TITLE,
     },
     "description": {
         "kind": "helper",
@@ -192,7 +230,7 @@ METHOD_SPECS: dict[str, MethodSpec] = {
     "navigator": {
         "kind": "helper",
         "helper": "navigator",
-        "visualization_types": _CARTESIAN_LINEAR,
+        "visualization_types": _NAVIGATOR,
     },
     "axis_title": {
         "kind": "helper",
@@ -202,7 +240,7 @@ METHOD_SPECS: dict[str, MethodSpec] = {
     "axis_scale": {
         "kind": "helper",
         "helper": "axis_scale",
-        "visualization_types": _CARTESIAN,
+        "visualization_types": _AXIS_SCALE,
     },
     "grid": {
         "kind": "helper",
@@ -222,7 +260,7 @@ METHOD_SPECS: dict[str, MethodSpec] = {
     "freeze_columns": {
         "kind": "helper",
         "helper": "freeze_columns",
-        "visualization_types": _TABLE,
+        "visualization_types": frozenset({"pivotTable"}),
     },
     "column_background": {
         "kind": "helper",
@@ -247,6 +285,7 @@ METHOD_SPECS: dict[str, MethodSpec] = {
     "measure_format": {
         "kind": "helper",
         "helper": "measure_format",
+        "visualization_types": _NON_LAYERED,
     },
     "shape": {
         "kind": "helper",

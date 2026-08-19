@@ -8,12 +8,13 @@ from typing_extensions import Self
 
 from datalens_sdk._runtime.chart_constants import INDICATOR_FONT_SIZE_UI_TO_PAYLOAD, gradient_types_for_palette
 from datalens_sdk._runtime.chart_mutations import _ChartMutationsMixin
-from datalens_sdk._runtime.chart_wire import build_date_interval, build_relative_date_interval
+from datalens_sdk._runtime.chart_wire import build_date_interval, build_navigator_settings, build_relative_date_interval
 from datalens_sdk._runtime.validators import HEX_COLOR_RE
 from datalens_sdk._runtime.viz_specs import build_ql_item, get_ql_viz_spec
 from datalens_sdk._runtime.wizard_semantics import (
     geo_layer_supports_input,
     get_geo_layer_semantics,
+    validate_label_mode,
 )
 from datalens_sdk.domain.entry_location import EntryLocation, resolve_entry_location, validate_entry_name
 from datalens_sdk.domain.fields import DatasetField
@@ -298,9 +299,9 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
         self,
         field: FieldLike | str,
         *,
-        format: Literal["number", "percent", "currency"] | None = None,
+        format: Literal["number", "percent"] | None = None,
         precision: int | None = None,
-        unit: Literal["auto", "k", "m", "bln"] | None = None,
+        unit: Literal["auto", "k", "m", "b", "t"] | None = None,
         prefix: str | None = None,
         postfix: str | None = None,
         show_rank_delimiter: bool | None = None,
@@ -342,10 +343,19 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
         return self
 
     def _navigator(self, *, mode: Literal["show", "hide"]) -> Self:
-        existing = self._chart_settings.get("navigatorSettings", {})
-        settings = dict(existing) if isinstance(existing, dict) else {}
-        settings["navigatorMode"] = mode
-        self._chart_settings["navigatorSettings"] = settings
+        self._chart_settings["navigatorSettings"] = build_navigator_settings(
+            mode=mode,
+            current=self._chart_settings.get("navigatorSettings"),
+        )
+        return self
+
+    def _label_mode(self, *, mode: Literal["absolute", "percent"]) -> Self:
+        validate_label_mode(visualization_type=self._visualization_type, label_mode=mode)
+        self._label_mode_value = mode
+        return self
+
+    def _labels_position(self, *, mode: Literal["inside", "outside", "auto"]) -> Self:
+        self._labels_position_value = mode
         return self
 
     def _axis_title(
@@ -369,10 +379,8 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
         min: str | None = None,
         max: str | None = None,
     ) -> Self:
-        if mode == "manual" and min is None and max is None:
-            raise DataLensConfigurationError(
-                "axis_scale(mode='manual') requires at least one of min= or max= to be specified."
-            )
+        if mode == "manual" and (min is None or max is None):
+            raise DataLensConfigurationError("axis_scale(mode='manual') requires both min= and max= to be specified.")
         self._set_slot_setting(slot_name, "type", scale)
         self._set_slot_setting(slot_name, "scale", mode)
         if mode == "manual":
@@ -522,6 +530,8 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
             pending_measure_formats=tuple(self._pending_measure_formats),
             shape_encoding=self._shape_encoding,
             geopoints_config=dict(self._geopoints_config),
+            label_mode=self._label_mode_value,
+            labels_position=self._labels_position_value,
             combined_layers=tuple(dict(layer) for layer in self._combined_layers),
             geo_layers=tuple(dict(layer) for layer in self._geo_layers),
             geo_datasets=tuple(self._geo_datasets),
@@ -637,7 +647,7 @@ class _MetricWizardChartCreate(_BaseWizardChartCreate):
         return self
 
     def _measure_title_mode(self, *, mode: Literal["by-field", "manual", "hide"]) -> Self:
-        self._set_chart_setting("indicatorTitleMode", mode)
+        self._set_chart_setting("titleMode", mode)
         return self
 
 
@@ -729,6 +739,18 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
             raise DataLensConfigurationError("Geo layer sort_direction= requires sort_by=.")
         if color is None and any(value is not None for value in (color_mode, color_palette, color_reversed)):
             raise DataLensConfigurationError("Geo layer color settings require color=.")
+        if color is not None and any(value is not None for value in (color_mode, color_palette, color_reversed)):
+            effective_dataset = dataset or self._dataset
+            color_field: DatasetField | None = color if isinstance(color, DatasetField) else None
+            if color_field is None and isinstance(color, str) and effective_dataset is not None:
+                try:
+                    color_field = effective_dataset.fields.by_guid(color)
+                except DataLensValidationError:
+                    color_field = effective_dataset.fields.by_name(color)
+            if color_field is not None and color_field.type != "MEASURE":
+                raise DataLensConfigurationError(
+                    f"A geo layer gradient color setting requires a MEASURE, got {color_field.type!r}."
+                )
         if color_mode is not None and color_mode not in {"2-point", "3-point"}:
             raise DataLensConfigurationError(f"Unsupported geo layer color_mode: {color_mode!r}.")
         if color_palette is not None:

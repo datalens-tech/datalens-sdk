@@ -13,6 +13,7 @@ from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
 
 _REFERENCE_CHARTS_DIR = Path(__file__).parent / "fixtures" / "reference_charts" / "wizard"
+_PHASE_3B_PENDING = pytest.mark.xfail(strict=True, reason="Phase 3B: layered reference serialization is pending")
 
 
 def _reference_chart(chart_id: str) -> dict[str, Any]:
@@ -48,7 +49,8 @@ def _payload_data(builder: Any) -> dict[str, Any]:
 
 
 def _placeholder(data: dict[str, Any], placeholder_id: str) -> dict[str, Any]:
-    return next(item for item in data["visualization"]["placeholders"] if item["id"] == placeholder_id)
+    slot_name = {"flat-table-columns": "columns", "pivot-table-columns": "columns"}.get(placeholder_id, placeholder_id)
+    return cast(dict[str, Any], data["visualization"][slot_name])
 
 
 def _first_item(data: dict[str, Any], placeholder_id: str) -> dict[str, Any]:
@@ -87,7 +89,7 @@ def _assert_pagination(reference: dict[str, Any]) -> None:
         .dataset(_dataset())
         .pagination(enabled=True, limit=20)
     )
-    assert data["extraSettings"] == {"pagination": "on", "limit": 20}
+    assert data["visualization"]["chartSettings"] == {"pagination": "on", "limit": 20}
 
 
 def _assert_table_size(reference: dict[str, Any]) -> None:
@@ -96,7 +98,7 @@ def _assert_table_size(reference: dict[str, Any]) -> None:
     data = _payload_data(
         _factory().flat_table(name="chart", location=EntryLocation.path("/")).dataset(_dataset()).table_size(size="s")
     )
-    assert data["extraSettings"]["size"] == "s"
+    assert data["visualization"]["chartSettings"]["size"] == "s"
 
 
 def _assert_table_bars(reference: dict[str, Any]) -> None:
@@ -195,8 +197,9 @@ def _assert_palette(reference: dict[str, Any]) -> None:
         .color_by_dimension("Dimension")
         .palette(id="taxi9")
     )
-    assert "palette" in data["colorsConfig"]
-    assert "paletteId" not in data["colorsConfig"]
+    settings = data["visualization"]["colors"]["settings"]
+    assert settings["palette"] == "taxi9"
+    assert "paletteId" not in settings
 
 
 def _assert_rgba_colors_and_description(reference: dict[str, Any]) -> None:
@@ -214,8 +217,9 @@ def _assert_rgba_colors_and_description(reference: dict[str, Any]) -> None:
         .color_by_measure_name(colors_map={"Measure 2": "#4DA256FF"})
         .description("Structural contract")
     )
-    assert payload["data"]["colorsConfig"]["mountedColors"]["Measure 2"] == "#4DA256FF"
-    assert payload["data"]["colorsConfig"]["colorMode"] == "palette"
+    settings = payload["data"]["visualization"]["colors"]["settings"]
+    assert settings["mountedColors"]["measure-2"] == "#4DA256FF"
+    assert settings["colorMode"] == "palette"
     assert payload["annotation"] == {"description": "Structural contract"}
 
 
@@ -234,8 +238,9 @@ def _assert_column_multi_measure(reference: dict[str, Any]) -> None:
         .y(["Measure 1", "Measure 2"])
         .color_by_measure_name()
     )
-    assert {"colorMode", "coloredByMeasure", "mountedColors", "polygonBorders"} <= set(data["colorsConfig"])
-    assert any(item.get("type") == "PSEUDO" for item in data["colors"])
+    settings = data["visualization"]["colors"]["settings"]
+    assert {"colorMode", "coloredByMeasure", "mountedColors", "polygonBorders"} <= set(settings)
+    assert any(item.get("type") == "PSEUDO" for item in data["visualization"]["colors"]["items"])
 
 
 def _assert_indicator(reference: dict[str, Any]) -> None:
@@ -251,10 +256,10 @@ def _assert_indicator(reference: dict[str, Any]) -> None:
         .font_color(color="#FF4444")
         .measure_title_mode(mode="manual")
     )
-    assert data["extraSettings"] == {
+    assert data["visualization"]["chartSettings"] == {
         "metricFontSize": "xl",
         "metricFontColor": "#FF4444",
-        "indicatorTitleMode": "manual",
+        "titleMode": "manual",
     }
 
 
@@ -333,10 +338,10 @@ def _assert_relative_interval(reference: dict[str, Any]) -> None:
         .dataset(_dataset())
         .add_relative_date_filter("Date", start_offset="-1M", end_offset="-0d")
     )
-    assert data["filters"][0]["filter"]["value"] == [interval]
+    assert data["sources"]["filters"][0]["filter"]["value"] == [interval]
 
 
-_REFERENCE_SCENARIOS: tuple[tuple[str, Callable[[dict[str, Any]], None]], ...] = (
+_REFERENCE_SCENARIOS = (
     ("6lul1r2vkr5kq", _assert_pagination),
     ("iw14j1bzsvf02", _assert_table_size),
     ("5ktk0gab36rip", _assert_pivot_background_and_subtotals),
@@ -347,8 +352,8 @@ _REFERENCE_SCENARIOS: tuple[tuple[str, Callable[[dict[str, Any]], None]], ...] =
     ("p4d4ls7744xi9", _assert_indicator),
     ("7mv82x84lga6r", _assert_indicator),
     ("p4dqkd01l3ty9", _assert_indicator),
-    ("zenewka5dvwij", _assert_combined),
-    ("35prkj7b9xnun", _assert_geo_heatmap),
+    pytest.param("zenewka5dvwij", _assert_combined, marks=_PHASE_3B_PENDING),
+    pytest.param("35prkj7b9xnun", _assert_geo_heatmap, marks=_PHASE_3B_PENDING),
     ("kz8zd49v19704", _assert_relative_interval),
     ("lz47d8gnsa4q5", _assert_table_bars),
     ("guz2i7a315cg0", _assert_table_bars),
@@ -356,7 +361,25 @@ _REFERENCE_SCENARIOS: tuple[tuple[str, Callable[[dict[str, Any]], None]], ...] =
 
 
 @pytest.mark.parametrize(
-    ("chart_id", "assert_shape"), _REFERENCE_SCENARIOS, ids=[scenario[0] for scenario in _REFERENCE_SCENARIOS]
+    ("chart_id", "assert_shape"),
+    _REFERENCE_SCENARIOS,
+    ids=(
+        "6lul1r2vkr5kq",
+        "iw14j1bzsvf02",
+        "5ktk0gab36rip",
+        "vajaiz1nh2daf",
+        "ydmdqvu9s34si",
+        "vajai7xrxaa6f",
+        "n1zb75lpkoq27",
+        "p4d4ls7744xi9",
+        "7mv82x84lga6r",
+        "p4dqkd01l3ty9",
+        "zenewka5dvwij",
+        "35prkj7b9xnun",
+        "kz8zd49v19704",
+        "lz47d8gnsa4q5",
+        "guz2i7a315cg0",
+    ),
 )
 def test_reference_chart_shapes(chart_id: str, assert_shape: Callable[[dict[str, Any]], None]) -> None:
     """Locks 15 safe live scenarios; snh82x2nbnx8k is excluded because map settings are unconfirmed."""

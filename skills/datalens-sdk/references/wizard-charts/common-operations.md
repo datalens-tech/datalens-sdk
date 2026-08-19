@@ -357,8 +357,8 @@ review the result before publishing.
 - `FilterOperation`: `"IN"`, `"EQ"`, `"NE"`, `"GT"`, `"GTE"`, `"LT"`,
   `"LTE"`, `"BETWEEN"`, `"ISNULL"`, `"ISNOTNULL"`, `"STARTSWITH"`,
   `"CONTAINS"`.
-- `MeasureFormat.format`: `"number"`, `"percent"`, `"currency"`.
-- `MeasureFormat.unit`: `"auto"`, `"k"`, `"m"`, `"bln"`.
+- `MeasureFormat.format`: `"number"`, `"percent"`.
+- `MeasureFormat.unit`: `"auto"`, `"k"`, `"m"`, `"b"`, `"t"`.
 - `CombinedLayerType`: `"column"`, `"line"`, `"area"`.
 - `GeoLayerType`: `"geopoint"`, `"geopoint-with-cluster"`, `"geopolygon"`, `"heatmap"`, `"polyline"`.
 - `ShapeStyle`: `"Solid"`, `"Dash"`, `"Dot"`, `"ShortDash"`, `"ShortDot"`,

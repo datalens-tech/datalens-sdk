@@ -4,22 +4,31 @@ from typing import Any, cast
 
 import pytest
 
-from datalens_sdk._runtime.viz_specs import VIZ_SPECS
-from datalens_sdk._runtime.wizard_visualization_transitions import WIZARD_VISUALIZATION_TRANSITIONS
+from datalens_sdk._runtime.wizard_semantics import (
+    WIZARD_VISUALIZATION_SEMANTICS,
+    WIZARD_VISUALIZATION_TRANSITIONS,
+)
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 
-def _chart(*, visualization_id: str = "line", placeholders: list[dict[str, object]] | None = None) -> WizardChart:
+def _chart(*, visualization_id: str = "line", slots: dict[str, list[dict[str, object]]] | None = None) -> WizardChart:
+    semantics = WIZARD_VISUALIZATION_SEMANTICS.get(visualization_id)
+    named_slots: dict[str, object] = (
+        {slot_name: {"items": []} for slot_name in semantics["slots"]} if semantics is not None else {}
+    )
+    for slot_name, items in (slots or {}).items():
+        named_slots[slot_name] = {"items": items}
     return WizardChart(
         id="chart-1",
         installation="yacloud",
         data={
+            "sources": {"datasetsIds": ["dataset-1"]},
             "visualization": {
-                "id": visualization_id,
-                "placeholders": placeholders or [],
-            }
+                "type": visualization_id,
+                **named_slots,
+            },
         },
     )
 
@@ -29,19 +38,19 @@ def _payload_data(update: object) -> dict[str, object]:
     return cast(dict[str, object], dto.to_payload()["data"])
 
 
-def test_placeholder_typo_is_rejected_at_the_public_update_call() -> None:
+def test_slot_typo_is_rejected_at_the_public_update_call() -> None:
     with pytest.raises(
         DataLensConfigurationError,
-        match=r"axis_visibility: placeholder 'typo'.*active visualization 'line'.*Allowed placeholders",
+        match=r"axis_visibility: slot 'typo'.*active visualization 'line'.*Allowed slots",
     ):
         _chart().update.axis_visibility("typo", mode="show")
 
 
-def test_converter_rejects_an_invalid_staged_placeholder_as_defense_in_depth() -> None:
+def test_converter_rejects_an_invalid_staged_slot_as_defense_in_depth() -> None:
     update = _chart().update
-    update._placeholder_edits["typo"] = []
+    cast(dict[str, list[Any]], update.slot_edits)["typo"] = []
 
-    with pytest.raises(DataLensConfigurationError, match=r"typo.*Allowed placeholders"):
+    with pytest.raises(DataLensConfigurationError, match=r"typo.*Allowed slots"):
         _payload_data(update)
 
 
@@ -89,9 +98,9 @@ def test_verified_visualization_transition_matrix_remains_explicit() -> None:
 
 
 @pytest.mark.parametrize(
-    ("source_visualization_id", "target_visualization_id", "placeholder_mapping"),
+    ("source_visualization_id", "target_visualization_id", "slot_mapping"),
     [
-        (source, target, transition["placeholder_mapping"])
+        (source, target, transition["slot_mapping"])
         for (source, target), transition in WIZARD_VISUALIZATION_TRANSITIONS.items()
     ],
     ids=[f"{source}-to-{target}" for source, target in WIZARD_VISUALIZATION_TRANSITIONS],
@@ -99,84 +108,75 @@ def test_verified_visualization_transition_matrix_remains_explicit() -> None:
 def test_every_verified_visualization_transition_preserves_declared_axes(
     source_visualization_id: str,
     target_visualization_id: str,
-    placeholder_mapping: tuple[tuple[str, str], ...],
+    slot_mapping: tuple[tuple[str, str], ...],
 ) -> None:
-    source_items = {
-        placeholder_id: [
+    source_items: dict[str, list[dict[str, object]]] = {
+        slot_name: [
             {
-                "guid": f"g_{placeholder_id}",
-                "title": placeholder_id.upper(),
-                "type": "DIMENSION" if placeholder_id == "x" else "MEASURE",
+                "guid": f"g_{slot_name}",
+                "datasetId": "dataset-1",
             }
         ]
-        for placeholder_id, _ in placeholder_mapping
+        for slot_name, _ in slot_mapping
     }
     chart = _chart(
         visualization_id=source_visualization_id,
-        placeholders=[{"id": placeholder_id, "items": items} for placeholder_id, items in source_items.items()],
+        slots=source_items,
     )
 
     data = _payload_data(chart.update.change_visualization_to(visualization_id=target_visualization_id))
     visualization = cast(dict[str, object], data["visualization"])
-    placeholders = cast(list[dict[str, object]], visualization["placeholders"])
-    items_by_id = {cast(str, placeholder["id"]): placeholder["items"] for placeholder in placeholders}
-    target_spec = VIZ_SPECS[target_visualization_id]
-    target_meta = cast(dict[str, object], target_spec["viz"])
-    target_placeholders = cast(dict[str, object], target_spec["placeholders"])
+    target_slots = WIZARD_VISUALIZATION_SEMANTICS[target_visualization_id]["slots"]
     expected_items = {
-        target_placeholder_id: source_items[source_placeholder_id]
-        for source_placeholder_id, target_placeholder_id in placeholder_mapping
+        target_slot_name: source_items[source_slot_name] for source_slot_name, target_slot_name in slot_mapping
     }
 
-    assert visualization["id"] == target_visualization_id
-    assert visualization["type"] == target_meta["type"]
-    assert set(items_by_id) == set(target_placeholders)
-    assert items_by_id == {
-        placeholder_id: expected_items.get(placeholder_id, []) for placeholder_id in target_placeholders
+    assert visualization["type"] == target_visualization_id
+    assert set(visualization) == {"type", *target_slots}
+    assert {slot_name: cast(dict[str, Any], visualization[slot_name])["items"] for slot_name in target_slots} == {
+        slot_name: expected_items.get(slot_name, []) for slot_name in target_slots
     }
 
 
 def test_change_visualization_to_rebuilds_metadata_maps_axes_and_drops_incompatible_state() -> None:
-    dimension = {"guid": "g_date", "title": "Date", "type": "DIMENSION", "data_type": "date"}
-    measure = {"guid": "g_amount", "title": "Amount", "type": "MEASURE", "data_type": "float"}
-    chart = _chart(
-        placeholders=[
-            {"id": "x", "items": [dimension]},
-            {"id": "y", "items": [measure]},
-            {"id": "y2", "items": [measure]},
-            {"id": "shapes", "items": [dimension]},
-        ]
-    )
-    cast(dict[str, object], chart.data).update(
-        {
-            "colors": [dimension],
-            "extraSettings": {"navigatorSettings": {"navigatorMode": "show"}},
-            "labels": [dimension],
-            "shapesConfig": {"fieldGuid": "g_date"},
-            "tooltips": [measure],
-        }
-    )
+    dimension: dict[str, object] = {
+        "guid": "g_date",
+        "datasetId": "dataset-1",
+        "title": "Date",
+        "type": "DIMENSION",
+        "data_type": "date",
+    }
+    measure: dict[str, object] = {
+        "guid": "g_amount",
+        "datasetId": "dataset-1",
+        "title": "Amount",
+        "type": "MEASURE",
+        "data_type": "float",
+    }
+    chart = _chart(slots={"x": [dimension], "y": [measure], "y2": [measure], "shapes": [dimension]})
+    source_visualization = cast(dict[str, object], chart.data["visualization"])
+    source_visualization["chartSettings"] = {"navigatorSettings": {"navigatorMode": "show"}}
+    source_visualization["colors"] = {"items": [dimension]}
+    source_visualization["labels"] = {"items": [dimension]}
+    source_visualization["shapes"] = {"items": [dimension], "settings": {"fieldGuid": "g_date"}}
 
     data = _payload_data(chart.update.change_visualization_to(visualization_id="bar"))
     visualization = cast(dict[str, object], data["visualization"])
-    placeholders = cast(list[dict[str, object]], visualization["placeholders"])
-    items_by_id = {cast(str, placeholder["id"]): placeholder["items"] for placeholder in placeholders}
-
-    assert visualization["id"] == "bar"
-    assert visualization["type"] == "column"
-    assert set(items_by_id) == {"x", "y"}
-    assert items_by_id["x"] == [measure]
-    assert items_by_id["y"] == [dimension]
-    for key in ("colors", "extraSettings", "labels", "shapesConfig", "tooltips"):
-        assert key not in data
-    y_placeholder = next(placeholder for placeholder in placeholders if placeholder["id"] == "y")
-    assert cast(dict[str, object], y_placeholder["settings"])["axisModeMap"] == {"g_date": "continuous"}
+    untyped_visualization = cast(dict[str, Any], visualization)
+    assert visualization["type"] == "bar"
+    assert set(visualization) == {"type", *WIZARD_VISUALIZATION_SEMANTICS["bar"]["slots"]}
+    assert untyped_visualization["x"]["items"] == [measure]
+    assert untyped_visualization["y"]["items"] == [dimension]
+    assert untyped_visualization["colors"]["items"] == []
+    assert untyped_visualization["labels"]["items"] == []
+    assert "chartSettings" not in visualization
+    assert cast(dict[str, object], untyped_visualization["y"]["settings"])["axisModeMap"] == {"g_date": "continuous"}
 
 
-def test_change_visualization_to_validates_retained_target_placeholder_capacity_before_rpc() -> None:
-    chart = _chart(placeholders=[{"id": "x", "items": [{"guid": "a"}, {"guid": "b"}, {"guid": "c"}]}])
+def test_change_visualization_to_validates_retained_target_slot_capacity_before_rpc() -> None:
+    chart = _chart(slots={"x": [{"guid": guid, "datasetId": "dataset-1"} for guid in ("a", "b", "c")]})
 
-    with pytest.raises(DataLensValidationError, match=r"transition to 'bar'.*placeholder 'y'.*capacity is 2"):
+    with pytest.raises(DataLensValidationError, match=r"transition to 'bar'.*slot 'y'.*capacity is 2"):
         _payload_data(chart.update.change_visualization_to(visualization_id="bar"))
 
 
@@ -184,5 +184,5 @@ def test_update_method_after_transition_uses_target_applicability() -> None:
     update = _chart().update.change_visualization_to(visualization_id="bar")
 
     update.axis_scale("x", scale="linear")
-    with pytest.raises(DataLensConfigurationError, match=r"shape_by_dimension.*not applicable.*viz 'bar'"):
+    with pytest.raises(DataLensConfigurationError, match=r"shape_by_dimension.*not applicable.*visualization 'bar'"):
         update.shape_by_dimension("g_category")

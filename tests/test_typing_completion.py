@@ -527,6 +527,26 @@ def _object_transport() -> httpx.MockTransport:
                     }
                 },
             )
+        if request.url.path in ("/rpc/getWizardChart", "/rpc/updateWizardChart"):
+            return httpx.Response(
+                200,
+                json={
+                    "entry": {
+                        "version": 1,
+                        "entryId": "chart-1",
+                        "revId": "rev-1",
+                        "type": "d3_wizard_node",
+                        "data": {
+                            "sources": {"datasetsIds": [], "filters": []},
+                            "visualization": {
+                                "type": "line",
+                                "x": {"items": []},
+                                "y": {"items": []},
+                            },
+                        },
+                    }
+                },
+            )
         if request.url.path == "/rpc/listDirectory":
             return httpx.Response(
                 200,
@@ -724,6 +744,10 @@ def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> Non
     assert_type(client.create.dataset(location=workbook, name="Dataset"), DatasetCreate)
     assert_type(client.create.connection.postgres(location=workbook, name="PostgreSQL"), PostgresConnectionCreate)
     assert_type(client.create.wizard_chart.line(location=workbook, name="Chart"), LineWizardChartCreate)
+    wizard_chart = client.get.wizard_chart(by_id="chart-1")
+    assert_type(wizard_chart, WizardChart)
+    assert_type(wizard_chart.rev_id, str | None)
+    assert_type(wizard_chart.publish_revision(rev_id="rev-1"), WizardChart)
     assert_type(
         client.create.editor_chart.advanced_chart(location=workbook, name="Editor chart"),
         AdvancedChartNodeNodeCreate,

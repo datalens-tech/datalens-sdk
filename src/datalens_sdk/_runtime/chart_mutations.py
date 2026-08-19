@@ -39,6 +39,8 @@ class _ChartMutationsMixin:
         self._pending_measure_formats: list[tuple[FieldLike | str, MeasureFormat]] = []
         self._shape_encoding: WizardShapeEncoding | None = None
         self._geopoints_config: dict[str, object] = {}
+        self._label_mode_value: str | None = None
+        self._labels_position_value: str | None = None
 
     def _set_palette(self, *, id: PaletteId) -> None:
         if id not in VALID_PALETTES:

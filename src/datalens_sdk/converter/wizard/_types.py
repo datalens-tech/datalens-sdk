@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Literal, TypedDict
 
 from typing_extensions import NotRequired
@@ -7,7 +8,23 @@ from typing_extensions import NotRequired
 from datalens_sdk.serialization.json_types import JsonValue
 
 WizardJsonObject = dict[str, JsonValue]
-WizardVisualizationTypeV1 = Literal["line"]
+WizardNonLayeredVisualizationTypeV1 = Literal[
+    "area",
+    "area100p",
+    "bar",
+    "bar100p",
+    "column",
+    "column100p",
+    "donut",
+    "flatTable",
+    "funnel",
+    "line",
+    "metric",
+    "pie",
+    "pivotTable",
+    "scatter",
+    "treemap",
+]
 WizardFieldUpdateActionV1 = Literal[
     "add_field",
     "add",
@@ -26,24 +43,9 @@ class WizardSourcesV1(TypedDict):
     filters: NotRequired[list[WizardJsonObject]]
 
 
-class WizardSlotV1(TypedDict):
-    items: list[WizardJsonObject]
-    settings: NotRequired[WizardJsonObject]
-
-
-class WizardLineVisualizationV1(TypedDict):
-    type: WizardVisualizationTypeV1
-    x: WizardSlotV1
-    chartSettings: NotRequired[WizardJsonObject]
-    y: NotRequired[WizardSlotV1]
-    y2: NotRequired[WizardSlotV1]
-    colors: NotRequired[WizardSlotV1]
-    shapes: NotRequired[WizardSlotV1]
-    labels: NotRequired[WizardSlotV1]
-    sort: NotRequired[WizardSlotV1]
-    segments: NotRequired[WizardSlotV1]
+WizardVisualizationStructure = Mapping[str, Mapping[str, JsonValue]]
 
 
 class WizardConfigV1(TypedDict):
     sources: WizardSourcesV1
-    visualization: WizardLineVisualizationV1
+    visualization: WizardJsonObject

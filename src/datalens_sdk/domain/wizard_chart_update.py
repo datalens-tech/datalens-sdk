@@ -8,10 +8,14 @@ from typing_extensions import Self
 
 from datalens_sdk._runtime.chart_constants import INDICATOR_FONT_SIZE_UI_TO_PAYLOAD
 from datalens_sdk._runtime.chart_mutations import _ChartMutationsMixin
-from datalens_sdk._runtime.chart_wire import build_date_interval, build_relative_date_interval
+from datalens_sdk._runtime.chart_wire import build_date_interval, build_navigator_settings, build_relative_date_interval
 from datalens_sdk._runtime.method_specs import validate_method_applicability
 from datalens_sdk._runtime.validators import HEX_COLOR_RE
-from datalens_sdk._runtime.wizard_semantics import validate_slot_name, validate_visualization_transition
+from datalens_sdk._runtime.wizard_semantics import (
+    validate_label_mode,
+    validate_slot_name,
+    validate_visualization_transition,
+)
 from datalens_sdk._wizard_encodings import WizardColorEncoding, WizardShapeEncoding
 from datalens_sdk.domain.chart_types import (
     DiscretePaletteId,
@@ -143,6 +147,14 @@ class WizardChartUpdate(_ChartMutationsMixin):
         return self._geopoints_config
 
     @property
+    def label_mode_value(self) -> str | None:
+        return self._label_mode_value
+
+    @property
+    def labels_position_value(self) -> str | None:
+        return self._labels_position_value
+
+    @property
     def description_value(self) -> str | None:
         return self._description
 
@@ -179,6 +191,10 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self._check_viz_applicability("legend")
         return self._set_chart_setting("legendMode", mode)
 
+    def tooltip(self, *, mode: Literal["show", "hide"]) -> Self:
+        self._check_viz_applicability("tooltip")
+        return self._set_chart_setting("tooltip", mode)
+
     def tooltip_sum(self, *, enabled: bool) -> Self:
         self._check_viz_applicability("tooltip_sum")
         return self._set_chart_setting("tooltipSum", "on" if enabled else "off")
@@ -189,11 +205,14 @@ class WizardChartUpdate(_ChartMutationsMixin):
 
     def label_mode(self, *, mode: Literal["absolute", "percent"]) -> Self:
         self._check_viz_applicability("label_mode")
-        return self._set_chart_setting("labelMode", mode)
+        validate_label_mode(visualization_type=self.visualization_id or "", label_mode=mode)
+        self._label_mode_value = mode
+        return self
 
     def labels_position(self, *, mode: Literal["inside", "outside", "auto"]) -> Self:
         self._check_viz_applicability("labels_position")
-        return self._set_chart_setting("labelsPosition", mode)
+        self._labels_position_value = mode
+        return self
 
     def tooltip_percentage_base(self, *, mode: Literal["auto", "first", "previous"]) -> Self:
         self._check_viz_applicability("tooltip_percentage_base")
@@ -223,10 +242,6 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self._check_viz_applicability("labels")
         return self._set_slot("labels", fields)
 
-    def tooltips(self, fields: Sequence[FieldRef]) -> Self:
-        self._check_viz_applicability("tooltips")
-        return self._set_slot("tooltips", fields)
-
     def _mutate_item_by_guid(self, field: FieldRef, setting_key: str, value: object) -> Self:
         self._item_mutations.append((field, setting_key, value))
         return self
@@ -242,10 +257,20 @@ class WizardChartUpdate(_ChartMutationsMixin):
 
     def navigator(self, *, mode: Literal["show", "hide"]) -> Self:
         self._check_viz_applicability("navigator")
-        current = self._chart_settings.get("navigatorSettings")
-        settings = dict(current) if isinstance(current, Mapping) else {}
-        settings["navigatorMode"] = mode
-        return self._set_chart_setting("navigatorSettings", settings)
+        current: object = self._chart_settings.get("navigatorSettings")
+        if current is None:
+            visualization = self._chart.data.get("visualization")
+            if isinstance(visualization, Mapping):
+                chart_settings = visualization.get("chartSettings")
+                if isinstance(chart_settings, Mapping):
+                    current = chart_settings.get("navigatorSettings")
+        return self._set_chart_setting(
+            "navigatorSettings",
+            build_navigator_settings(
+                mode=mode,
+                current=current,
+            ),
+        )
 
     def axis_title(self, slot_name: str, *, mode: Literal["off", "manual", "auto"], text: str = "") -> Self:
         self._check_viz_applicability("axis_title")
@@ -264,10 +289,8 @@ class WizardChartUpdate(_ChartMutationsMixin):
         max: str | None = None,
     ) -> Self:
         self._check_viz_applicability("axis_scale")
-        if mode == "manual" and min is None and max is None:
-            raise DataLensConfigurationError(
-                "axis_scale(mode='manual') requires at least one of min= or max= to be specified."
-            )
+        if mode == "manual" and (min is None or max is None):
+            raise DataLensConfigurationError("axis_scale(mode='manual') requires both min= and max= to be specified.")
         self._set_slot_setting("axis_scale", slot_name, "type", scale)
         self._set_slot_setting("axis_scale", slot_name, "scale", mode)
         if mode == "manual":
@@ -423,9 +446,9 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self,
         field: FieldRef,
         *,
-        format: Literal["number", "percent", "currency"] | None = None,
+        format: Literal["number", "percent"] | None = None,
         precision: int | None = None,
-        unit: Literal["auto", "k", "m", "bln"] | None = None,
+        unit: Literal["auto", "k", "m", "b", "t"] | None = None,
         prefix: str | None = None,
         postfix: str | None = None,
         show_rank_delimiter: bool | None = None,
@@ -544,7 +567,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
 
     def measure_title_mode(self, *, mode: Literal["by-field", "manual", "hide"]) -> Self:
         self._check_viz_applicability("measure_title_mode")
-        return self._set_chart_setting("indicatorTitleMode", mode)
+        return self._set_chart_setting("titleMode", mode)
 
     def mode(self, value: EntryUpdateMode) -> Self:
         if value not in get_args(EntryUpdateMode):

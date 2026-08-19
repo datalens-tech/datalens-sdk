@@ -138,6 +138,11 @@ class WizardFieldReferences:
         return [location.snapshot for location in self.snapshot_locations()]
 
     def unique_active_snapshots(self) -> list[dict[str, object]]:
+        definitions = {
+            location.guid: location.snapshot
+            for location in self.snapshot_locations(include_definitions=True)
+            if location.carrier == "field_definition" and location.guid is not None
+        }
         unique: list[dict[str, object]] = []
         by_guid: dict[str, dict[str, object]] = {}
         for snapshot in self.active_snapshots():
@@ -145,6 +150,9 @@ class WizardFieldReferences:
             if guid is None:
                 unique.append(snapshot)
                 continue
+            definition = definitions.get(guid)
+            if definition is not None:
+                snapshot = {**definition, **snapshot}
             existing = by_guid.get(guid)
             if existing is None:
                 by_guid[guid] = snapshot

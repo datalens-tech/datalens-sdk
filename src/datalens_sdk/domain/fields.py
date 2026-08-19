@@ -71,6 +71,8 @@ FieldRef = FieldLike | str
 
 
 def field_from_mapping(value: Mapping[str, object], *, dataset_id: str | None = None) -> DatasetField:
+    if dataset_id is None:
+        dataset_id = _str_or_none(value.get("datasetId")) or _str_or_none(value.get("dataset_id"))
     default_value = value.get("default_value")
     if default_value is None:
         default_value = value.get("defaultValue")

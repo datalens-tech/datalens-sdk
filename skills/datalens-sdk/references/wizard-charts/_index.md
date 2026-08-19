@@ -106,7 +106,7 @@ Every cell describes only the installed package's typed public API.
 | `shape_by_dimension()` | `field: Field, *, shapes_map: Mapping[str, ShapeStyle] \| None = None` | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | CU | — |
 | `shape_by_measure_name()` | `*, shapes_map: Mapping[Field, ShapeStyle] \| None = None` | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | — | — |
 | `point_size_range()` | `*, min_radius: float = 4.5, max_radius: float = 9.0` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — |
-| `measure_format()` | `field: Field, *, format: Literal['number', 'percent', 'currency'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'bln'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
+| `measure_format()` | `field: Field, *, format: Literal['number', 'percent'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `font_size()` | `*, size: Literal['xs', 's', 'm', 'l']` | — | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | — |
 | `font_color()` | `*, color: str` | — | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | — |
 | `measure_title_mode()` | `*, mode: Literal['by-field', 'manual', 'hide']` | — | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | — |

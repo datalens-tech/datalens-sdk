@@ -6,6 +6,14 @@
 
 - Add `EnterpriseServiceAccountCredentialsAuthProvider` for PS256 service-account
   JWT exchange and automatic Bearer access-token refresh in DataLens Enterprise.
+- Extend target-only Wizard v1 assembly and updates to all 15 non-layered
+  visualization branches, using generated slot and settings structure metadata.
+- Align Wizard measure-format units with OpenAPI: use `b` instead of the former
+  SDK-only `bln` alias, and add the `t` unit.
+- Omit non-nullable Wizard field properties whose source value is `None`, and
+  preserve array-shaped API validation details in `DataLensAPIError.context`.
+- Keep ordinary Wizard updates one-phase and free of `revId`; use
+  `WizardChart.publish_revision()` to publish an existing revision explicitly.
 
 ## 0.8.0 - 2026-08-14
 
