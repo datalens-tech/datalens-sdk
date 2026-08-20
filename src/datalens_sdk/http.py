@@ -26,6 +26,7 @@ HTTPEventHook = Callable[[httpx.Request | httpx.Response], object]
 HTTPEventHooks = Mapping[str, list[HTTPEventHook]]
 ResponseAcceptancePredicate = Callable[[int, object | None], bool]
 
+_API_VERSION = "2"
 _DEFAULT_RETRYABLE_STATUS_CODES: frozenset[int] = frozenset(
     {
         HTTPStatus.TOO_MANY_REQUESTS,
@@ -37,6 +38,20 @@ _DEFAULT_RETRYABLE_STATUS_CODES: frozenset[int] = frozenset(
         521,
     }
 )
+
+
+def _post_json_with_api_version(
+    url: str,
+    *,
+    json: Mapping[str, object],
+    timeout: httpx.Timeout,
+) -> httpx.Response:
+    return httpx.post(
+        url,
+        headers={"x-dl-api-version": _API_VERSION},
+        json=json,
+        timeout=timeout,
+    )
 
 
 def _dict_with_string_keys(value: object) -> dict[str, object]:
@@ -115,7 +130,7 @@ class DataLensHTTPClient:
         *,
         installation: str,
         sdk_version: str,
-        api_version: str,
+        api_version: str = _API_VERSION,
         base_url: str,
         auth: httpx.Auth | None = None,
         transport: httpx.BaseTransport | None = None,

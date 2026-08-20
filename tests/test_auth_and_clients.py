@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError
@@ -9,12 +10,14 @@ import threading
 import time
 
 import httpx
+import jwt
 import pytest
 
 from datalens_sdk import (
     DataLensClientEnterprise,
     DataLensClientYC,
     DataLensConfigurationError,
+    EnterpriseServiceAccountCredentialsAuthProvider,
     EntryLocation,
     NoAuthProvider,
     NotSupportedError,
@@ -23,7 +26,7 @@ from datalens_sdk import (
     YCIAMAuthProvider,
     YCServiceAccountCredentialsAuthProvider,
 )
-from datalens_sdk.auth import _IAMToken
+from datalens_sdk.auth import _ExpiringToken
 
 AUTH_ENV_NAMES = (
     "DATALENS_OAUTH_TOKEN",
@@ -83,9 +86,9 @@ def test_auth_provider_repr_hides_static_tokens() -> None:
     assert "org_id='org-1'" in repr(iam)
 
 
-def test_cached_iam_token_repr_hides_value() -> None:
+def test_cached_expiring_token_repr_hides_value() -> None:
     secret = "repr-secret-sentinel"
-    token = _IAMToken(value=secret, expires_at=123.0)
+    token = _ExpiringToken(value=secret, expires_at=123.0)
 
     assert secret not in repr(token)
     assert "expires_at=123.0" in repr(token)
@@ -172,6 +175,243 @@ def test_client_resolves_auth_headers_for_every_request() -> None:
 
 def _expiry(timestamp: float) -> str:
     return datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()
+
+
+def _access_token(expiry: float) -> str:
+    return jwt.encode({"exp": expiry}, "test-secret-key-with-at-least-32-bytes", algorithm="HS256")
+
+
+def test_enterprise_service_account_provider_signs_exchanges_and_caches_jwt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    access_token = _access_token(2000.0)
+    encoded_payloads: list[dict[str, object]] = []
+    encoded_headers: list[dict[str, str]] = []
+    exchange_requests: list[tuple[str, object, object]] = []
+
+    def fake_encode(
+        payload: dict[str, object],
+        key: str,
+        *,
+        algorithm: str,
+        headers: dict[str, str],
+    ) -> str:
+        assert key == "private-key"
+        assert algorithm == "PS256"
+        encoded_payloads.append(payload)
+        encoded_headers.append(headers)
+        return "signed-jwt"
+
+    def fake_post(
+        url: str,
+        *,
+        headers: dict[str, str],
+        json: object,
+        timeout: httpx.Timeout,
+    ) -> httpx.Response:
+        assert timeout.connect == 10.0
+        exchange_requests.append((url, headers, json))
+        return httpx.Response(
+            200,
+            json={"accessToken": access_token},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr("datalens_sdk.auth.time.time", lambda: 1000.0)
+    monkeypatch.setattr("datalens_sdk.auth.jwt.encode", fake_encode)
+    monkeypatch.setattr("datalens_sdk.auth.httpx.post", fake_post)
+    provider = EnterpriseServiceAccountCredentialsAuthProvider(
+        base_url="https://enterprise.example.test/prefix",
+        key_id="key-id",
+        service_account_id="sa-id",
+        private_key="private-key",
+    )
+
+    expected_headers = {"Authorization": f"Bearer {access_token}"}
+    assert provider.get_headers() == expected_headers
+    assert provider.get_headers() == expected_headers
+    assert encoded_payloads == [{"iss": "sa-id", "iat": 1000, "exp": 1300}]
+    assert encoded_headers == [{"kid": "key-id", "typ": "JWT"}]
+    assert exchange_requests == [
+        (
+            "https://enterprise.example.test/rpc/exchangeServiceAccountToken",
+            {"x-dl-api-version": "2"},
+            {"saToken": "signed-jwt"},
+        )
+    ]
+    assert "private-key" not in repr(provider)
+    assert access_token not in repr(provider)
+
+
+def test_enterprise_service_account_provider_refreshes_before_access_token_expiry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = [1000.0]
+    access_tokens = [_access_token(1120.0), _access_token(1240.0)]
+    calls = 0
+
+    def fake_encode(*_: object, **__: object) -> str:
+        return "signed-jwt"
+
+    def fake_post(url: str, **_: object) -> httpx.Response:
+        nonlocal calls
+        access_token = access_tokens[calls]
+        calls += 1
+        return httpx.Response(
+            200,
+            json={"accessToken": access_token},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr("datalens_sdk.auth.time.time", lambda: now[0])
+    monkeypatch.setattr("datalens_sdk.auth.jwt.encode", fake_encode)
+    monkeypatch.setattr("datalens_sdk.auth.httpx.post", fake_post)
+    provider = EnterpriseServiceAccountCredentialsAuthProvider(
+        base_url="https://enterprise.example.test",
+        key_id="key-id",
+        service_account_id="sa-id",
+        private_key="private-key",
+        token_expiry_margin_seconds=30,
+    )
+
+    assert provider.get_headers() == {"Authorization": f"Bearer {access_tokens[0]}"}
+    now[0] = 1091.0
+    assert provider.get_headers() == {"Authorization": f"Bearer {access_tokens[1]}"}
+    assert calls == 2
+
+
+def test_enterprise_service_account_provider_supports_async_headers(monkeypatch: pytest.MonkeyPatch) -> None:
+    access_token = _access_token(time.time() + 3600)
+
+    def fake_encode(*_: object, **__: object) -> str:
+        return "signed-jwt"
+
+    def fake_post(url: str, **_: object) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"accessToken": access_token},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr("datalens_sdk.auth.jwt.encode", fake_encode)
+    monkeypatch.setattr("datalens_sdk.auth.httpx.post", fake_post)
+    provider = EnterpriseServiceAccountCredentialsAuthProvider(
+        base_url="https://enterprise.example.test",
+        key_id="key-id",
+        service_account_id="sa-id",
+        private_key="private-key",
+    )
+
+    assert asyncio.run(provider.get_headers_async()) == {"Authorization": f"Bearer {access_token}"}
+
+
+@pytest.mark.parametrize(
+    ("base_url", "token_expiry_margin_seconds", "jwt_lifetime_seconds", "message"),
+    [
+        ("", 60, 300, "base URL is required"),
+        ("relative", 60, 300, "base URL must be absolute"),
+        ("https://enterprise.example.test", -1, 300, "must not be negative"),
+        ("https://enterprise.example.test", 60, 0, "must be between 1 and 600"),
+        ("https://enterprise.example.test", 60, 601, "must be between 1 and 600"),
+    ],
+)
+def test_enterprise_service_account_provider_validates_configuration(
+    base_url: str,
+    token_expiry_margin_seconds: int,
+    jwt_lifetime_seconds: int,
+    message: str,
+) -> None:
+    with pytest.raises(DataLensConfigurationError, match=message):
+        EnterpriseServiceAccountCredentialsAuthProvider(
+            base_url=base_url,
+            key_id="key-id",
+            service_account_id="sa-id",
+            private_key="private-key",
+            token_expiry_margin_seconds=token_expiry_margin_seconds,
+            jwt_lifetime_seconds=jwt_lifetime_seconds,
+        )
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ([], "not an object"),
+        ({}, "empty accessToken"),
+        ({"accessToken": "not-a-jwt"}, "invalid accessToken JWT"),
+        (
+            {"accessToken": jwt.encode({}, "test-secret-key-with-at-least-32-bytes", algorithm="HS256")},
+            "invalid exp claim",
+        ),
+        ({"accessToken": _access_token(999.0)}, "already expired"),
+    ],
+)
+def test_enterprise_service_account_provider_rejects_invalid_exchange_response(
+    monkeypatch: pytest.MonkeyPatch,
+    payload: object,
+    message: str,
+) -> None:
+    def fake_encode(*_: object, **__: object) -> str:
+        return "signed-jwt"
+
+    def fake_post(url: str, **_: object) -> httpx.Response:
+        return httpx.Response(200, json=payload, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr("datalens_sdk.auth.time.time", lambda: 1000.0)
+    monkeypatch.setattr("datalens_sdk.auth.jwt.encode", fake_encode)
+    monkeypatch.setattr("datalens_sdk.auth.httpx.post", fake_post)
+    provider = EnterpriseServiceAccountCredentialsAuthProvider(
+        base_url="https://enterprise.example.test",
+        key_id="key-id",
+        service_account_id="sa-id",
+        private_key="private-key",
+    )
+
+    with pytest.raises(DataLensConfigurationError, match=message):
+        provider.get_headers()
+
+
+def test_enterprise_service_account_provider_rejects_invalid_exchange_json(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_encode(*_: object, **__: object) -> str:
+        return "signed-jwt"
+
+    def fake_post(url: str, **_: object) -> httpx.Response:
+        return httpx.Response(200, text="not-json", request=httpx.Request("POST", url))
+
+    monkeypatch.setattr("datalens_sdk.auth.jwt.encode", fake_encode)
+    monkeypatch.setattr("datalens_sdk.auth.httpx.post", fake_post)
+    provider = EnterpriseServiceAccountCredentialsAuthProvider(
+        base_url="https://enterprise.example.test",
+        key_id="key-id",
+        service_account_id="sa-id",
+        private_key="private-key",
+    )
+
+    with pytest.raises(DataLensConfigurationError, match="invalid JSON"):
+        provider.get_headers()
+
+
+def test_enterprise_service_account_provider_surfaces_exchange_http_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_encode(*_: object, **__: object) -> str:
+        return "signed-jwt"
+
+    def fake_post(url: str, **_: object) -> httpx.Response:
+        return httpx.Response(401, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr("datalens_sdk.auth.jwt.encode", fake_encode)
+    monkeypatch.setattr("datalens_sdk.auth.httpx.post", fake_post)
+    provider = EnterpriseServiceAccountCredentialsAuthProvider(
+        base_url="https://enterprise.example.test",
+        key_id="key-id",
+        service_account_id="sa-id",
+        private_key="private-key",
+    )
+
+    with pytest.raises(httpx.HTTPStatusError):
+        provider.get_headers()
 
 
 def test_yc_iam_provider_fetches_with_profile_and_caches_token(monkeypatch: pytest.MonkeyPatch) -> None:

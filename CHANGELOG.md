@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add `EnterpriseServiceAccountCredentialsAuthProvider` for PS256 service-account
+  JWT exchange and automatic Bearer access-token refresh in DataLens Enterprise.
+
 ## 0.8.0 - 2026-08-14
 
 - Standardize authentication environment variables: OAuth now uses
