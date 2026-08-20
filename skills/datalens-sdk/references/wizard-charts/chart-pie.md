@@ -3,7 +3,7 @@
 Factory: `client.create.wizard_chart.pie(name=..., location=...)`
 `chart.visualization_id`: `pie`
 
-`Field` below means a `DatasetField` or an exact string reference. Prefer `DatasetField`; strings on create require a bound `.dataset(dataset)`, while updates can resolve strings only from fields already placed in the fetched chart.
+`Field` below means `DatasetField`, `WizardLocalField`, `WizardAggregatedMeasure`, `WizardHierarchy`, or an exact string reference. Prefer identity objects: save Dataset fields from the dataset schema and reuse GUID-bearing Wizard handles. After fetching a chart, resolve direct snapshots by exact GUID with `chart.fields.by_guid(...)`, never by title.
 
 ## Placeholders
 
@@ -24,8 +24,8 @@ Factory: `client.create.wizard_chart.pie(name=..., location=...)`
 | `x()` | `fields: Sequence[Field]` | CU |
 | `y()` | `fields: Sequence[Field]` | CU |
 | `measures()` | `fields: Sequence[Field]` | U |
-| `add_aggregated_measure()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str \| None = None, guid: str \| None = None` | CU |
-| `add_local_field()` | `*, title: str, formula: str, guid: str \| None = None, cast: str = 'float', measure: bool = False, aggregation: str \| None = None, formatting: MeasureFormat \| None = None` | CU |
+| `add_aggregated_measure()` | `field: WizardAggregatedMeasure` | CU |
+| `add_local_field()` | `field: WizardLocalField` | CU |
 | `add_filter()` | `field: Field, *, operation: FilterOperation, values: Sequence[str] = ()` | CU |
 | `add_date_filter()` | `field: Field, *, start: str, end: str, inclusive_end: bool = True` | CU |
 | `add_relative_date_filter()` | `field: Field, *, start_offset: str, end_offset: str` | CU |
@@ -87,7 +87,7 @@ Create and update responses can be minimal. Re-fetch before any state-dependent 
 ```python
 chart = client.get.wizard_chart(by_id=chart.id)
 profit = dataset.fields.by_name("Profit")
-chart = chart.update.measures([profit]).measure_format(profit, format="currency").mode("publish").execute()
+chart = chart.update.measures([profit]).measure_format(profit, format="number").mode("publish").execute()
 ```
 
 ## Constraints and gotchas

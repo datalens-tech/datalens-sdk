@@ -3,7 +3,7 @@
 Factory: `client.create.wizard_chart.flat_table(name=..., location=...)`
 `chart.visualization_id`: `flatTable`
 
-`Field` below means a `DatasetField` or an exact string reference. Prefer `DatasetField`; strings on create require a bound `.dataset(dataset)`, while updates can resolve strings only from fields already placed in the fetched chart.
+`Field` below means `DatasetField`, `WizardLocalField`, `WizardAggregatedMeasure`, `WizardHierarchy`, or an exact string reference. Prefer identity objects: save Dataset fields from the dataset schema and reuse GUID-bearing Wizard handles. After fetching a chart, resolve direct snapshots by exact GUID with `chart.fields.by_guid(...)`, never by title.
 
 ## Placeholders
 
@@ -20,9 +20,9 @@ Factory: `client.create.wizard_chart.flat_table(name=..., location=...)`
 | `client.create.wizard_chart.flat_table()` | `name: str`, `location: EntryLocation` | C |
 | `dataset()` | `dataset: Dataset` | C |
 | `columns()` | `fields: Sequence[Field]` | CU |
-| `add_aggregated_measure()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str \| None = None, guid: str \| None = None` | CU |
-| `add_local_field()` | `*, title: str, formula: str, guid: str \| None = None, cast: str = 'float', measure: bool = False, aggregation: str \| None = None, formatting: MeasureFormat \| None = None` | CU |
-| `add_hierarchy()` | `title: str, fields: Sequence[Field], *, guid: str \| None = None` | CU |
+| `add_aggregated_measure()` | `field: WizardAggregatedMeasure` | CU |
+| `add_local_field()` | `field: WizardLocalField` | CU |
+| `add_hierarchy()` | `hierarchy: WizardHierarchy` | CU |
 | `add_filter()` | `field: Field, *, operation: FilterOperation, values: Sequence[str] = ()` | CU |
 | `add_date_filter()` | `field: Field, *, start: str, end: str, inclusive_end: bool = True` | CU |
 | `add_relative_date_filter()` | `field: Field, *, start_offset: str, end_offset: str` | CU |
@@ -86,7 +86,7 @@ chart = (
         color="#4DA2F1",
         show_labels=True,
     )
-    .measure_format(value, format="currency", precision=0)
+    .measure_format(value, format="number", precision=0)
     .totals(enabled=True)
     .freeze_columns(count=1)
     .pagination(enabled=True, limit=50)
@@ -101,10 +101,9 @@ Create and update responses can be minimal. Re-fetch before any state-dependent 
 
 ```python
 chart = client.get.wizard_chart(by_id=chart.id)
-placed_value = chart.fields.by_name("Revenue")
 chart = (
     chart.update.column_bars(
-        placed_value,
+        value,
         color_type="two-color",
         color_positive="#0FA08D",
         color_negative="#FF3D64",

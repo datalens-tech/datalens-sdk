@@ -17,7 +17,7 @@ from typing import Any, cast
 import pytest
 
 from datalens_sdk.converter.wizard.converter import WizardChartConverter
-from datalens_sdk.domain.fields import DatasetField
+from datalens_sdk.domain.fields import DatasetField, WizardAggregatedMeasure, WizardLocalField
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.errors import DataLensValidationError
 
@@ -90,7 +90,8 @@ def _x_item(data: dict[str, Any]) -> dict[str, Any]:
 
 def test_add_local_field_appends_add_field_to_updates() -> None:
     chart = _line_chart_with_data(_base_line_data())
-    data = _payload(chart.update.add_local_field(title="GMV/trip", formula="[gmv]/[trips]", guid="lf1"))
+    local = WizardLocalField.dimension(title="GMV/trip", formula="[gmv]/[trips]", guid="lf1")
+    data = _payload(chart.update.add_local_field(local))
     field = _added_field(data, "lf1")
     assert field["guid"] == "lf1"
     assert field["calc_mode"] == "formula"
@@ -101,7 +102,8 @@ def test_add_local_field_appends_add_field_to_updates() -> None:
 
 def test_add_local_field_measure_default_is_none_aggregation() -> None:
     chart = _line_chart_with_data(_base_line_data())
-    data = _payload(chart.update.add_local_field(title="M", formula="[x]", guid="m1", measure=True))
+    local = WizardLocalField.measure(title="M", formula="[x]", guid="m1")
+    data = _payload(chart.update.add_local_field(local))
     field = _added_field(data, "m1")
     assert field["type"] == "MEASURE"
     assert field["aggregation"] == "none"
@@ -119,7 +121,13 @@ def test_add_aggregated_measure_appends_direct_field() -> None:
         type="DIMENSION",
         source="g_gmv_src",
     )
-    data = _payload(chart.update.add_aggregated_measure(field_ref, aggregation="sum", guid="agg1", name="GMV (sum)"))
+    measure = WizardAggregatedMeasure(
+        field=field_ref,
+        aggregation="sum",
+        guid="agg1",
+        title="GMV (sum)",
+    )
+    data = _payload(chart.update.add_aggregated_measure(measure).add_sort(measure))
     field = _added_field(data, "agg1")
     assert field["guid"] == "agg1"
     assert field["calc_mode"] == "direct"
@@ -128,6 +136,8 @@ def test_add_aggregated_measure_appends_direct_field() -> None:
     assert field["aggregation"] == "sum"
     assert field["autoaggregated"] is False
     assert field["local"] is True
+    sort_item = cast(dict[str, Any], data["visualization"]["sort"]["items"][0])
+    assert sort_item["guid"] == measure.guid
 
 
 def test_add_aggregated_measure_copies_formula_dimension() -> None:
@@ -143,10 +153,12 @@ def test_add_aggregated_measure_copies_formula_dimension() -> None:
     )
     data = _payload(
         chart.update.add_aggregated_measure(
-            formula_dimension,
-            aggregation="avg",
-            name="Average GMV",
-            guid="agg_formula",
+            WizardAggregatedMeasure(
+                field=formula_dimension,
+                aggregation="avg",
+                title="Average GMV",
+                guid="agg_formula",
+            )
         )
     )
     field = _added_field(data, "agg_formula")
@@ -281,11 +293,113 @@ def test_change_aggregation_rejects_automatic_measure() -> None:
 def test_add_local_field_resolves_in_add_sort_same_update_race_fix() -> None:
     """A field added in this update is available to subsequent mutations."""
     chart = _line_chart_with_data(_base_line_data())
-    data = _payload(
-        chart.update.add_local_field(title="GMV/trip", formula="[gmv]/[trips]", guid="lf_race").add_sort("lf_race")
-    )
+    local = WizardLocalField.measure(title="GMV/trip", formula="[gmv]/[trips]", guid="lf_race")
+    data = _payload(chart.update.add_local_field(local).add_sort(local))
     sort = cast(list[dict[str, Any]], data["visualization"]["sort"]["items"])
     assert sort == [{"guid": "lf_race", "datasetId": "ds1", "direction": "ASC"}]
+
+
+def test_add_local_field_formatting_stays_on_carrier_in_same_update() -> None:
+    chart = _line_chart_with_data(_base_line_data())
+    local = WizardLocalField.measure(
+        title="GMV/trip",
+        formula="[gmv]/[trips]",
+        guid="lf_formatted",
+        formatting={"format": "number", "precision": 2},
+    )
+
+    data = _payload(chart.update.add_local_field(local).y([local]).add_sort(local, direction="desc"))
+
+    source_field = _added_field(data, local.guid)
+    assert "formatting" not in source_field
+    y_items = cast(list[dict[str, Any]], data["visualization"]["y"]["items"])
+    assert y_items[0]["formatting"] == {"format": "number", "precision": 2}
+    assert data["visualization"]["sort"]["items"] == [{"guid": local.guid, "datasetId": "ds1", "direction": "DESC"}]
+
+
+def test_remembered_local_field_handle_resolves_after_fetch_by_guid() -> None:
+    local = WizardLocalField.measure(
+        title="GMV/trip",
+        formula="[gmv]/[trips]",
+        guid="lf-remembered",
+        formatting={"format": "number", "precision": 3},
+    )
+    data_in = _base_line_data()
+    data_in["sources"]["updates"].append(
+        {
+            "action": "add_field",
+            "field": {
+                "guid": local.guid,
+                "title": local.title,
+                "formula": local.formula,
+                "calc_mode": "formula",
+                "cast": "float",
+                "data_type": "float",
+                "type": "MEASURE",
+                "aggregation": "none",
+                "autoaggregated": True,
+                "local": True,
+                "datasetId": "ds1",
+            },
+        }
+    )
+    data_in["visualization"]["y"]["items"] = [{"guid": local.guid, "datasetId": "ds1"}]
+    chart = _line_chart_with_data(data_in)
+
+    fetched = chart.fields.by_guid(local.guid)
+    assert isinstance(fetched, DatasetField)
+    assert fetched.title == local.title
+
+    data = _payload(chart.update.y([local]).add_sort(local))
+    y_item = cast(dict[str, Any], data["visualization"]["y"]["items"][0])
+    assert y_item["formatting"] == {"format": "number", "precision": 3}
+    sort = cast(list[dict[str, Any]], data["visualization"]["sort"]["items"])
+    assert sort == [{"guid": local.guid, "datasetId": "ds1", "direction": "ASC"}]
+
+
+def test_remembered_aggregated_measure_handle_resolves_after_fetch_by_guid() -> None:
+    source = DatasetField(
+        guid="g_city",
+        title="City",
+        name="City",
+        calc_mode="direct",
+        data_type="string",
+        type="DIMENSION",
+        source="city",
+        dataset_id="ds1",
+    )
+    measure = WizardAggregatedMeasure(
+        field=source,
+        aggregation="countunique",
+        title="Unique cities",
+        guid="agg-remembered",
+    )
+    data_in = _base_line_data()
+    data_in["sources"]["updates"].append(
+        {
+            "action": "add_field",
+            "field": {
+                "guid": measure.guid,
+                "title": measure.title,
+                "calc_mode": "direct",
+                "source": "city",
+                "cast": "string",
+                "data_type": "integer",
+                "type": "MEASURE",
+                "aggregation": "countunique",
+                "autoaggregated": False,
+                "local": True,
+                "datasetId": "ds1",
+            },
+        }
+    )
+    data_in["visualization"]["y"]["items"] = [{"guid": measure.guid, "datasetId": "ds1"}]
+    chart = _line_chart_with_data(data_in)
+
+    assert isinstance(chart.fields.by_guid(measure.guid), DatasetField)
+    data = _payload(chart.update.add_sort(measure))
+    sort = cast(list[dict[str, Any]], data["visualization"]["sort"]["items"])
+    assert sort == [{"guid": measure.guid, "datasetId": "ds1", "direction": "ASC"}]
 
 
 def test_add_local_field_preserves_existing_source_updates() -> None:
@@ -293,7 +407,7 @@ def test_add_local_field_preserves_existing_source_updates() -> None:
     existing = {"action": "update_field", "field": {"guid": "g_reg", "title": "Region Renamed"}}
     data_in["sources"]["updates"] = [existing]
     chart = _line_chart_with_data(data_in)
-    data = _payload(chart.update.add_local_field(title="M", formula="[x]", guid="lf_keep"))
+    data = _payload(chart.update.add_local_field(WizardLocalField.dimension(title="M", formula="[x]", guid="lf_keep")))
     updates = _source_updates(data)
     assert updates[0] == existing
     assert updates[1]["action"] == "add_field"
@@ -304,7 +418,7 @@ def test_add_local_field_collision_raises() -> None:
     data_in = _base_line_data()
     data_in["sources"]["updates"].append({"action": "add_field", "field": {"guid": "dup", "title": "Old"}})
     chart = _line_chart_with_data(data_in)
-    update = chart.update.add_local_field(title="New", formula="[x]", guid="dup")
+    update = chart.update.add_local_field(WizardLocalField.dimension(title="New", formula="[x]", guid="dup"))
     with pytest.raises(DataLensValidationError, match="already exists"):
         _payload(update)
 
@@ -314,7 +428,7 @@ def test_add_local_field_preserves_existing_field_definition() -> None:
     existing = {"action": "add_field", "field": {**_region_definition(), "local": True}}
     data_in["sources"]["updates"] = [existing]
     chart = _line_chart_with_data(data_in)
-    data = _payload(chart.update.add_local_field(title="M", formula="[x]", guid="lf_dp"))
+    data = _payload(chart.update.add_local_field(WizardLocalField.dimension(title="M", formula="[x]", guid="lf_dp")))
     updates = _source_updates(data)
     assert updates[0] == existing
     assert updates[1]["action"] == "add_field"
@@ -323,7 +437,7 @@ def test_add_local_field_preserves_existing_field_definition() -> None:
 
 def test_add_local_field_alone_counts_as_mutation() -> None:
     chart = _line_chart_with_data(_base_line_data())
-    update = chart.update.add_local_field(title="M", formula="[x]", guid="lf_only")
+    update = chart.update.add_local_field(WizardLocalField.dimension(title="M", formula="[x]", guid="lf_only"))
     data = _payload(update)
     assert _added_field(data, "lf_only")["guid"] == "lf_only"
 
@@ -348,7 +462,7 @@ def test_add_local_field_preserves_existing_field_definition_order() -> None:
     ]
     data_in["sources"]["updates"] = existing
     chart = _line_chart_with_data(data_in)
-    data = _payload(chart.update.add_local_field(title="M", formula="[x]", guid="lf_snap"))
+    data = _payload(chart.update.add_local_field(WizardLocalField.dimension(title="M", formula="[x]", guid="lf_snap")))
     updates = _source_updates(data)
     assert updates[:2] == existing
     assert updates[2]["action"] == "add_field"

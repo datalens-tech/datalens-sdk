@@ -7,15 +7,21 @@ import difflib
 from datalens_sdk._runtime.wizard_field_references import WizardFieldReferences
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.chart_types import ChartCategory
-from datalens_sdk.domain.fields import DatasetField, FieldLike, FieldRef, FieldsProxy
+from datalens_sdk.domain.fields import (
+    DatasetField,
+    FieldsProxy,
+    WizardAggregatedMeasure,
+    WizardFieldRef,
+    WizardLocalField,
+)
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
-__all__ = ["FieldRef", "WizardChart", "WizardChartUpdate", "resolve_field_snapshot"]
+__all__ = ["WizardChart", "WizardChartUpdate", "WizardFieldRef", "resolve_field_snapshot"]
 
 _UNBOUND = "Object is not bound to client operations. Use a client namespace."
 
 
-def _field_snapshot(field_obj: FieldLike) -> dict[str, object]:
+def _field_snapshot(field_obj: DatasetField) -> dict[str, object]:
     if field_obj.raw:
         snapshot: dict[str, object] = dict(field_obj.raw)
     else:
@@ -57,13 +63,25 @@ def _field_snapshot(field_obj: FieldLike) -> dict[str, object]:
 
 
 def resolve_field_snapshot(
-    ref: FieldLike | str | Mapping[str, object],
+    ref: WizardFieldRef | Mapping[str, object],
     *,
-    fields: Sequence[FieldLike],
+    fields: Sequence[DatasetField],
     local_fields: Mapping[str, Mapping[str, object]] | None = None,
     bound_dataset_name: str | None = None,
 ) -> dict[str, object]:
     local_fields = local_fields or {}
+    if isinstance(ref, (WizardLocalField, WizardAggregatedMeasure)):
+        registered = local_fields.get(ref.guid)
+        if registered is None:
+            method_name = "add_local_field" if isinstance(ref, WizardLocalField) else "add_aggregated_measure"
+            raise DataLensValidationError(
+                f"Wizard field {ref.title!r} ({ref.guid}) is not registered in this chart. "
+                f"Call {method_name}(field) before using the handle as a field reference."
+            )
+        snapshot = dict(registered)
+        if isinstance(ref, WizardLocalField) and ref.formatting:
+            snapshot["formatting"] = dict(ref.formatting)
+        return snapshot
     if isinstance(ref, DatasetField):
         return _field_snapshot(ref)
     if isinstance(ref, Mapping):

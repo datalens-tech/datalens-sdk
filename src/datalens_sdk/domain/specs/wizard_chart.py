@@ -13,9 +13,7 @@ if TYPE_CHECKING:
     from datalens_sdk._wizard_encodings import WizardColorEncoding, WizardShapeEncoding
     from datalens_sdk.domain.chart_types import MeasureFormat
     from datalens_sdk.domain.dataset import Dataset
-    from datalens_sdk.domain.fields import FieldLike
-
-    FieldRef = FieldLike | str
+    from datalens_sdk.domain.fields import WizardFieldRef
 
 __all__ = ["CombinedLayerInput", "GeoLayerInput", "WizardChartCreateSpec"]
 
@@ -23,27 +21,27 @@ __all__ = ["CombinedLayerInput", "GeoLayerInput", "WizardChartCreateSpec"]
 class CombinedLayerInput(TypedDict):
     id: str
     layer_type: CombinedLayerType
-    y: FieldLike | str | None
-    y2: FieldLike | str | None
+    y: WizardFieldRef | None
+    y2: WizardFieldRef | None
     name: str | None
 
 
 class GeoLayerInput(TypedDict):
     id: str
     layer_type: GeoLayerType
-    geopoint: FieldLike | str | None
-    polygon: FieldLike | str | None
-    polyline: FieldLike | str | None
-    grouping: FieldLike | str | None
-    size: FieldLike | str | None
-    color: FieldLike | str | None
+    geopoint: WizardFieldRef | None
+    polygon: WizardFieldRef | None
+    polyline: WizardFieldRef | None
+    grouping: WizardFieldRef | None
+    size: WizardFieldRef | None
+    color: WizardFieldRef | None
     color_mode: Literal["2-point", "3-point"] | None
     color_palette: GradientPaletteId | None
     color_reversed: bool | None
     filters: tuple[GeoLayerFilter, ...]
-    tooltips: tuple[FieldLike | str, ...]
-    labels: tuple[FieldLike | str, ...]
-    sort_by: FieldLike | str | None
+    tooltips: tuple[WizardFieldRef, ...]
+    labels: tuple[WizardFieldRef, ...]
+    sort_by: WizardFieldRef | None
     sort_direction: Literal["asc", "desc"]
     alpha: int
     name: str | None
@@ -65,17 +63,17 @@ class WizardChartCreateSpec:
     description: str | None
     dataset: Dataset | None
     dataset_ids: tuple[str, ...]
-    slots: Mapping[str, tuple[FieldRef, ...]]
+    slots: Mapping[str, tuple[WizardFieldRef, ...]]
     local_fields: tuple[Mapping[str, object], ...]
     chart_settings: Mapping[str, object]
     slot_settings: Mapping[str, Mapping[str, object]]
-    item_mutations: tuple[tuple[FieldRef, str, object], ...]
-    pending_filters: tuple[tuple[FieldRef, str, list[str]], ...]
-    sort_direction_items: tuple[tuple[FieldRef, str], ...]
+    item_mutations: tuple[tuple[WizardFieldRef, str, object], ...]
+    pending_filters: tuple[tuple[WizardFieldRef, str, list[str]], ...]
+    sort_direction_items: tuple[tuple[WizardFieldRef, str], ...]
     colors_palette: str | None
     color_encoding: WizardColorEncoding | None
     hierarchies: tuple[Mapping[str, object], ...]
-    pending_measure_formats: tuple[tuple[FieldRef, MeasureFormat], ...]
+    pending_measure_formats: tuple[tuple[WizardFieldRef, MeasureFormat], ...]
     shape_encoding: WizardShapeEncoding | None
     geopoints_config: Mapping[str, object]
     label_mode: str | None

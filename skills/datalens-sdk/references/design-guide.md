@@ -18,7 +18,8 @@ communicates.
   one formula instead of hunting it down in every chart.
 - **Chart-local fields are for one-off, chart-specific needs only** — a
   presentation-only ratio, a label tweak for a single visualization
-  (`.add_local_field(title=..., formula=...)` on a chart builder). The
+  (`WizardLocalField.measure(...)` or `.dimension(...)`, followed by
+  `.add_local_field(handle)` on a chart builder). The
   moment a second chart needs the field, move it into the dataset.
 - **Comment complex formulas.** Six months later nobody remembers why the
   denominator excludes weekends.

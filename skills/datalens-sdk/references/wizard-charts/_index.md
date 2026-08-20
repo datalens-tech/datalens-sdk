@@ -53,8 +53,11 @@ Naming traps:
 ## Full fluent-operation matrix
 
 `C` = create builder, `U` = `WizardChartUpdate`, `CU` = both, `—` =
-unsupported. `Field` means `DatasetField | str`. `StructuralTarget` means
-`DatasetField | exact GUID str`; titles do not resolve for those arguments.
+unsupported. `Field` means `DatasetField | WizardLocalField |
+WizardAggregatedMeasure | WizardHierarchy | str`; prefer identity objects and
+use strings only for exact identifiers. `StructuralTarget` means a
+`DatasetField`, a saved Wizard handle, or an exact GUID string; titles do not
+resolve for those arguments.
 Every cell describes only the installed package's typed public API.
 
 | Operation | Arguments | area | area_100p | bar | bar_100p | column | column_100p | combined_chart | donut | flat_table | funnel | geolayer | line | indicator | pie | pivot_table | scatter | treemap |
@@ -63,19 +66,19 @@ Every cell describes only the installed package's typed public API.
 | `dataset()` | `dataset: Dataset` | C | C | C | C | C | C | C | C | C | C | C | C | C | C | C | C | C |
 | `add_dataset()` | `dataset: Dataset` | — | — | — | — | — | — | — | — | — | — | C | — | — | — | — | — | — |
 | `x()` | `fields: Sequence[Field]` | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | — | CU | CU |
-| `y()` | `fields: Sequence[Field]` | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | CU | CU | CU | CU | CU |
+| `y()` | `fields: Sequence[Field]` | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | CU | CU | — | CU | CU |
 | `y2()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | — | — |
 | `columns()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | CU | — | — |
 | `rows()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — | — |
-| `measures()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | U | — | U | — | — | U | U | U | — | U |
+| `measures()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | U | — | U | — | — | U | U | CU | — | U |
 | `points()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — |
 | `size()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — |
 | `add_layer()` | `combined_chart`: `layer_type: CombinedLayerType, *, y: Field \| None = None, y2: Field \| None = None, name: str \| None = None`<br>`geolayer`: `layer_type: GeoLayerType, *, ...` — [full signature and layer capabilities](chart-geolayer.md#fluent-operations) | — | — | — | — | — | — | C | — | — | — | C | — | — | — | — | — | — |
 | `map_type()` | `*, mode: MapType` | — | — | — | — | — | — | — | — | — | — | C | — | — | — | — | — | — |
 | `map_center()` | `*, lat: float, lon: float, zoom: int \| None = None` | — | — | — | — | — | — | — | — | — | — | C | — | — | — | — | — | — |
-| `add_aggregated_measure()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str \| None = None, guid: str \| None = None` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
-| `add_local_field()` | `*, title: str, formula: str, guid: str \| None = None, cast: str = 'float', measure: bool = False, aggregation: str \| None = None, formatting: MeasureFormat \| None = None` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
-| `add_hierarchy()` | `title: str, fields: Sequence[Field], *, guid: str \| None = None` | CU | CU | CU | CU | CU | CU | — | — | CU | — | — | CU | — | — | CU | CU | — |
+| `add_aggregated_measure()` | `field: WizardAggregatedMeasure` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
+| `add_local_field()` | `field: WizardLocalField` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
+| `add_hierarchy()` | `hierarchy: WizardHierarchy` | CU | CU | CU | CU | CU | CU | — | — | CU | — | — | CU | — | — | CU | CU | — |
 | `add_filter()` | `field: Field, *, operation: FilterOperation, values: Sequence[str] = ()` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `add_date_filter()` | `field: Field, *, start: str, end: str, inclusive_end: bool = True` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `add_relative_date_filter()` | `field: Field, *, start_offset: str, end_offset: str` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
@@ -147,7 +150,9 @@ Every other source/target pair, unknown target, and same-visualization transitio
 - `dataset()` is create-only. On update, pass a `DatasetField` for any new or unplaced field.
 - `sort(fields)` is create-only by design; update uses append-style `add_sort(field, direction=...)`.
 - `add_layer()` and geolayer map/layer topology operations are create-only.
-- `measures()` is an update-only field-group spelling for indicator, pie, donut, funnel, treemap, and pivot. Their create builders expose `y()`.
+- `measures()` is the canonical create/update field group for pivot. It is an
+  update-only spelling for indicator, pie, donut, funnel, and treemap, whose
+  create builders expose `y()`.
 - Structural target strings are exact GUIDs. Prefer `DatasetField` objects from
   `chart.fields`, especially for `replace_formula()`.
 - `build()` performs create. Update uses `mode('save'|'publish').execute()`; update defaults to `save`.

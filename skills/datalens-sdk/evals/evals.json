@@ -112,12 +112,12 @@
       "id": 7,
       "name": "formula-ownership-routing",
       "prompt": "Dataset ds-commerce-7 has Revenue and Refunds fields and feeds chart ch-commerce-9. Add Net revenue = [Revenue] - [Refunds] so every chart using the dataset can reuse it. Also add Revenue after refunds = SUM([Revenue]) - SUM([Refunds]) only to ch-commerce-9; it is an experiment and must not appear in the shared dataset.",
-      "expected_output": "Routes formula ownership by scope: fetches the Dataset and adds Net revenue through the Dataset update calculation API, then re-fetches the Dataset/chart and adds Revenue after refunds through the Wizard chart's local-field API. Each owner is mutated once with its own terminal .execute(), and both owners are re-fetched to verify that the reusable formula is in the Dataset while the experiment remains chart-local.",
+      "expected_output": "Routes formula ownership by scope: fetches the Dataset and adds Net revenue through the Dataset update calculation API, then constructs Revenue after refunds with WizardLocalField.measure(...) and passes that stable handle to the Wizard chart update. Each owner is mutated once with its own terminal .execute(), and both owners are re-fetched to verify that the reusable formula is in the Dataset while the experiment remains chart-local.",
       "files": [],
       "assertions": [
         {"text": "Fetches ds-commerce-7 and ch-commerce-9 and verifies that the chart is backed by the intended Dataset before mutating either owner", "type": "workflow"},
         {"text": "Adds Net revenue as a reusable Dataset calculation via dataset.update.add_calculation(... formula='[Revenue] - [Refunds]' ...).execute()", "type": "code"},
-        {"text": "Adds Revenue after refunds as a Wizard-local field via chart.update.add_local_field(... formula='SUM([Revenue]) - SUM([Refunds])' ...).execute()", "type": "code"},
+        {"text": "Constructs Revenue after refunds with WizardLocalField.measure(title='Revenue after refunds', formula='SUM([Revenue]) - SUM([Refunds])', ...) and passes that handle to chart.update.add_local_field(handle).execute()", "type": "code"},
         {"text": "Does NOT put the experimental Revenue after refunds formula in the Dataset and does NOT put the reusable Net revenue formula only in the chart", "type": "workflow"},
         {"text": "Re-fetches both owners and verifies the Dataset calculation and chart-local field separately", "type": "workflow"},
         {"text": "Does NOT use QL SQL, Editor JavaScript, httpx/requests, or hand-built JSON payloads for either formula", "type": "code"}
@@ -150,6 +150,35 @@
         {"text": "Reports that the requested renderer is unavailable on the selected installation and stops", "type": "workflow"},
         {"text": "Does NOT invent client.create.editor_chart.vega or substitute an unrequested renderer", "type": "code"},
         {"text": "Does NOT use raw HTTP, hand-built payloads, or private imports to bypass the public SDK boundary", "type": "code"}
+      ]
+    },
+    {
+      "id": 10,
+      "name": "wizard-owned-field-handles",
+      "prompt": "Create a flat-table Wizard chart from dataset ds-orders with Country, City, Customer, Revenue, and Orders. Add a chart-local Revenue per order measure, a count-unique Customers measure, and a Country to City hierarchy; place all three. Re-fetch the chart and update the local formula without relying on titles.",
+      "expected_output": "Fetches the Dataset fields, creates WizardLocalField, WizardAggregatedMeasure, and WizardHierarchy handles with stable GUID identity, passes each handle to its matching add method, and reuses those same handles in columns. After re-fetch it uses the remembered local handle or an exact GUID rather than chart.fields.by_name, performs one update, and verifies the persisted result.",
+      "files": [],
+      "assertions": [
+        {"text": "Creates Revenue per order with WizardLocalField.measure(title=..., formula='SUM([Revenue]) / SUM([Orders])', cast='float')", "type": "code"},
+        {"text": "Creates the count-unique measure with WizardAggregatedMeasure(field=customer, aggregation='countunique', title=...) and the hierarchy with WizardHierarchy(title=..., fields=[country, city])", "type": "code"},
+        {"text": "Calls add_local_field(local), add_aggregated_measure(aggregated), and add_hierarchy(hierarchy), then places the same handle objects instead of their title strings", "type": "code"},
+        {"text": "After re-fetch, targets the local field with its remembered handle or exact GUID; does NOT call chart.fields.by_name(...) for a direct or Wizard-owned field", "type": "code"},
+        {"text": "Re-fetches and verifies the created chart and the persisted formula update before reporting success", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 11,
+      "name": "pivot-semantic-measures",
+      "prompt": "Create a pivot-table heatmap from dataset ds-sales with Country in rows, Month in columns, and Revenue as the cell measure. Use a three-point background gradient and keep the code native to the typed SDK.",
+      "expected_output": "Fetches the Dataset and exact DatasetField objects, creates the chart with client.create.wizard_chart.pivot_table(...), places Revenue through the canonical measures([revenue]) setter, applies column_background to that same field, builds, re-fetches, and verifies the persisted measure/formatting state.",
+      "files": [],
+      "assertions": [
+        {"text": "Uses client.create.wizard_chart.pivot_table(...) with rows([country]), columns([month]), and measures([revenue])", "type": "code"},
+        {"text": "Does NOT call .y(...) for a pivot table; the canonical typed carrier is .measures(...) on create and update", "type": "code"},
+        {"text": "Resolves Country, Month, and Revenue as exact DatasetField objects from the fetched Dataset", "type": "code"},
+        {"text": "Applies a three-point column_background(...) to the same Revenue field and terminates creation with .build()", "type": "code"},
+        {"text": "Re-fetches the chart and verifies the persisted measure or formatting state before reporting success", "type": "workflow"},
+        {"text": "Does NOT use httpx/requests or hand-built JSON payloads", "type": "code"}
       ]
     }
   ]

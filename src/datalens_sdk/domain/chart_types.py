@@ -4,9 +4,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, TypeAlias
 
-from typing_extensions import TypedDict
-
-from datalens_sdk.domain.fields import FieldLike
+from datalens_sdk.domain.fields import WizardFieldRef
+from datalens_sdk.domain.formatting import MeasureFormat
 
 __all__ = [
     "ChartCategory",
@@ -44,7 +43,7 @@ FilterOperation: TypeAlias = Literal[
 class GeoLayerFilter:
     """A filter evaluated only within one geolayer visualization layer."""
 
-    field: FieldLike | str
+    field: WizardFieldRef
     operation: FilterOperation
     values: Sequence[str] = ()
 
@@ -106,12 +105,3 @@ ChartCategory: TypeAlias = Literal["wizard", "editor", "ql"]
 QLCast: TypeAlias = Literal["string", "integer", "genericdatetime"]
 
 QLParamType: TypeAlias = Literal["number", "string", "date-interval"]
-
-
-class MeasureFormat(TypedDict, total=False):
-    format: Literal["number", "percent"]
-    precision: int
-    unit: Literal["auto", "k", "m", "b", "t"]
-    prefix: str
-    postfix: str
-    show_rank_delimiter: bool

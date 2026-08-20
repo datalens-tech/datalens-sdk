@@ -54,6 +54,15 @@ def test_converter_rejects_an_invalid_staged_slot_as_defense_in_depth() -> None:
         _payload_data(update)
 
 
+def test_pivot_rejects_legacy_y_and_accepts_canonical_measures() -> None:
+    chart = _chart(visualization_id="pivotTable")
+
+    with pytest.raises(DataLensConfigurationError, match=r"slot 'y'.*visualization 'pivotTable'"):
+        chart.update.y([])
+
+    assert chart.update.measures([]).slot_edits == {"measures": []}
+
+
 def test_change_visualization_to_rejects_unknown_target_locally() -> None:
     with pytest.raises(
         DataLensConfigurationError,

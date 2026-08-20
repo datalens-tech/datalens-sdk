@@ -259,7 +259,7 @@ def test_table_helpers_scoped_to_table_viz() -> None:
     assert "pagination" in method_specs_for_visualization("flatTable")
     assert "pagination" in method_specs_for_visualization("pivotTable")
     assert "pagination" not in method_specs_for_visualization("line")
-    assert "freeze_columns" not in method_specs_for_visualization("flatTable")
+    assert "freeze_columns" in method_specs_for_visualization("flatTable")
     assert "freeze_columns" in method_specs_for_visualization("pivotTable")
     assert "freeze_columns" not in method_specs_for_visualization("line")
     assert "column_background" in method_specs_for_visualization("pivotTable")

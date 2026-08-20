@@ -78,13 +78,14 @@ def test_flat_table_has_columns_but_not_x_or_y2() -> None:
     assert not hasattr(builder, "y2")
 
 
-def test_pivot_has_columns_rows_y_but_not_x() -> None:
+def test_pivot_has_columns_rows_measures_but_not_xy() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.pivot_table(name="T", location=EntryLocation.path("/F"))
     assert hasattr(builder, "columns")
     assert hasattr(builder, "rows")
-    assert hasattr(builder, "y")
+    assert hasattr(builder, "measures")
     assert not hasattr(builder, "x")
+    assert not hasattr(builder, "y")
 
 
 def test_metric_has_y_and_font_color_but_no_color_encoding_or_axes() -> None:

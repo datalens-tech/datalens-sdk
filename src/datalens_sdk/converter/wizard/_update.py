@@ -31,6 +31,7 @@ from datalens_sdk.converter.wizard._assemble import (
     _slot_settings_structure,
     _sync_axis_modes,
     _validate_structural_settings,
+    _without_field_decorations,
 )
 from datalens_sdk.converter.wizard._normalizer import _hierarchies_map, _local_fields_map, _Normalizer
 from datalens_sdk.converter.wizard._types import WizardJsonObject, WizardVisualizationStructure
@@ -379,7 +380,7 @@ def _apply_filters_and_sort(data: WizardJsonObject, update: WizardChartUpdate) -
         if not isinstance(items, list):
             raise AssertionError("Wizard sort slot items were narrowed to a list")
         for ref, direction in update.sort_direction_items:
-            item = _normalize_fields(normalizer, [ref], dataset_id=dataset_id)[0]
+            item = _without_field_decorations(_normalize_fields(normalizer, [ref], dataset_id=dataset_id)[0])
             item["direction"] = direction.upper()
             items.append(item)
 

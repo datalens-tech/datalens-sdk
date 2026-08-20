@@ -18,12 +18,14 @@ from datalens_sdk import (
     DataLensClientEnterprise,
     DataLensClientYC,
     Dataset,
+    DatasetField,
     DatasetUpdate,
     DirectoryPager,
     EditorChart,
     EntryLocation,
     EntryRelation,
     EntrySummary,
+    FieldLike,
     FieldsProxy,
     Folder,
     FolderCreate,
@@ -44,7 +46,13 @@ from datalens_sdk import (
     RawQLChartReplace,
     RawWizardChartCreate,
     RawWizardChartReplace,
+    WizardAggregatedMeasure,
     WizardChart,
+    WizardChartUpdate,
+    WizardFieldLike,
+    WizardFieldRef,
+    WizardHierarchy,
+    WizardLocalField,
     Workbook,
     WorkbookCreate,
     WorkbookSummary,
@@ -54,6 +62,7 @@ from datalens_sdk._generated.builders.charts import (
     AdvancedChartNodeNodeCreate,
     EnterpriseEditorChartCreateFactory,
     LineWizardChartCreate,
+    PivotTableWizardChartCreate,
     WizardChartCreateFactory,
     YacloudEditorChartCreateFactory,
 )
@@ -748,6 +757,49 @@ def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> Non
     assert_type(wizard_chart, WizardChart)
     assert_type(wizard_chart.rev_id, str | None)
     assert_type(wizard_chart.publish_revision(rev_id="rev-1"), WizardChart)
+    local = WizardLocalField.measure(title="Revenue", formula="SUM([Sales])", cast="float")
+    assert_type(local, WizardLocalField)
+    assert_type(
+        client.create.wizard_chart.line(location=workbook, name="Chart").add_local_field(local),
+        LineWizardChartCreate,
+    )
+    assert_type(wizard_chart.update.add_local_field(local), WizardChartUpdate)
+    city = DatasetField(
+        guid="city",
+        title="City",
+        name="City",
+        calc_mode="direct",
+        data_type="string",
+        type="DIMENSION",
+    )
+    dataset_field: FieldLike = city
+    wizard_field: WizardFieldLike = local
+    wizard_ref: WizardFieldRef = local
+    assert_type(dataset_field, DatasetField)
+    assert_type(wizard_field, WizardFieldLike)
+    assert_type(wizard_ref, WizardFieldRef)
+    assert_type(
+        client.create.wizard_chart.pivot_table(location=workbook, name="Pivot").measures([city]),
+        PivotTableWizardChartCreate,
+    )
+    unique_cities = WizardAggregatedMeasure(
+        field=city,
+        aggregation="countunique",
+        title="Unique cities",
+    )
+    hierarchy = WizardHierarchy(title="Geo", fields=[city])
+    assert_type(unique_cities, WizardAggregatedMeasure)
+    assert_type(hierarchy, WizardHierarchy)
+    assert_type(
+        client.create.wizard_chart.line(location=workbook, name="Chart").add_aggregated_measure(unique_cities),
+        LineWizardChartCreate,
+    )
+    assert_type(
+        client.create.wizard_chart.line(location=workbook, name="Chart").add_hierarchy(hierarchy),
+        LineWizardChartCreate,
+    )
+    assert_type(wizard_chart.update.add_aggregated_measure(unique_cities), WizardChartUpdate)
+    assert_type(wizard_chart.update.add_hierarchy(hierarchy), WizardChartUpdate)
     assert_type(
         client.create.editor_chart.advanced_chart(location=workbook, name="Editor chart"),
         AdvancedChartNodeNodeCreate,

@@ -30,8 +30,9 @@ from datalens_sdk.converter.wizard._types import (
     WizardVisualizationStructure,
 )
 from datalens_sdk.domain.chart_types import MeasureFormat
+from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.specs.wizard_chart import WizardChartCreateSpec
-from datalens_sdk.errors import DataLensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object, normalize_json_value
 
 _LAYERED_VISUALIZATION_TYPES = frozenset({"combined-chart", "geolayer"})
@@ -73,6 +74,7 @@ _FIELD_DECORATION_KEYS = frozenset(
         "subTotalsSettings",
     }
 )
+_REFERENCE_ONLY_SLOT_NAMES = frozenset({"filters", "sort"})
 _UPDATE_FIELD_KEYS = frozenset(
     {
         "aggregation",
@@ -272,6 +274,39 @@ def _project_update_field(snapshot: Mapping[str, object]) -> dict[str, object]:
         for key, value in snapshot.items()
         if key in _UPDATE_FIELD_KEYS and (value is not None or key in _NULLABLE_UPDATE_FIELD_KEYS)
     }
+
+
+def _without_field_decorations(item: WizardJsonObject) -> WizardJsonObject:
+    return {key: value for key, value in item.items() if key not in _FIELD_DECORATION_KEYS}
+
+
+def _validate_create_semantic_guids(
+    *,
+    dataset: Dataset | None,
+    local_fields: Sequence[Mapping[str, object]],
+    hierarchies: Sequence[Mapping[str, object]],
+) -> None:
+    registrations: dict[str, str] = {}
+
+    def register(guid: object, owner: str) -> None:
+        if not isinstance(guid, str) or not guid:
+            raise DataLensValidationError(f"{owner} requires a non-empty semantic GUID.")
+        previous = registrations.get(guid)
+        if previous is not None:
+            raise DataLensValidationError(
+                f"Wizard semantic GUID {guid!r} is registered by both {previous} and {owner}. "
+                "Use a distinct stable GUID for every dataset parameter, chart-local field, and hierarchy."
+            )
+        registrations[guid] = owner
+
+    if dataset is not None:
+        for dataset_field in dataset.fields:
+            kind = "dataset parameter" if dataset_field.calc_mode == "parameter" else "dataset field"
+            register(dataset_field.guid, f"{kind} {dataset_field.title!r}")
+    for local_field in local_fields:
+        register(local_field.get("guid"), f"chart-local field {local_field.get('title')!r}")
+    for hierarchy in hierarchies:
+        register(hierarchy.get("guid"), f"hierarchy {hierarchy.get('title')!r}")
 
 
 def _project_field(snapshot: Mapping[str, object], *, dataset_id: str | None) -> WizardJsonObject:
@@ -841,7 +876,7 @@ def _apply_item_mutations(
                 raise DataLensConfigurationError("column_background() requires an object-valued background setting.")
             normalized_value = {**normalized_value, "colorFieldGuid": guid}
         matched = False
-        for slot in _iter_visualization_slots(visualization):
+        for slot in _iter_field_decoration_slots(visualization):
             items = slot.get("items")
             if not isinstance(items, list):
                 continue
@@ -859,19 +894,33 @@ def _apply_item_mutations(
             raise DataLensConfigurationError(f"Wizard field {guid!r} is not placed in any visualization slot.")
 
 
+def _iter_field_decoration_slots(visualization: WizardJsonObject) -> Sequence[WizardJsonObject]:
+    """Yield presentation slots whose field items own decorations."""
+    return [
+        slot
+        for slot_name, slot in _iter_named_visualization_slots(visualization)
+        if slot_name not in _REFERENCE_ONLY_SLOT_NAMES
+    ]
+
+
 def _iter_visualization_slots(visualization: WizardJsonObject) -> Sequence[WizardJsonObject]:
-    slots: list[WizardJsonObject] = []
-    for value in visualization.values():
+    """Yield every visualization slot, including reference-only carriers."""
+    return [slot for _, slot in _iter_named_visualization_slots(visualization)]
+
+
+def _iter_named_visualization_slots(visualization: WizardJsonObject) -> Sequence[tuple[str, WizardJsonObject]]:
+    slots: list[tuple[str, WizardJsonObject]] = []
+    for slot_name, value in visualization.items():
         if isinstance(value, dict) and isinstance(value.get("items"), list):
-            slots.append(value)
+            slots.append((slot_name, value))
     layers = visualization.get("layers")
     if isinstance(layers, list):
         for layer in layers:
             if not isinstance(layer, dict):
                 continue
-            for value in layer.values():
+            for slot_name, value in layer.items():
                 if isinstance(value, dict) and isinstance(value.get("items"), list):
-                    slots.append(value)
+                    slots.append((slot_name, value))
     return slots
 
 
@@ -1222,6 +1271,11 @@ def _assemble_wizard_data(
     if dataset is not None and dataset.id and dataset.id not in dataset_ids:
         dataset_ids.insert(0, dataset.id)
     dataset_id = dataset_ids[0] if dataset_ids else None
+    _validate_create_semantic_guids(
+        dataset=dataset,
+        local_fields=spec.local_fields,
+        hierarchies=spec.hierarchies,
+    )
     normalizer = _Normalizer(
         dataset=dataset,
         local_fields=_local_fields_map(spec.local_fields),
@@ -1348,7 +1402,7 @@ def _assemble_wizard_data(
             )
         sort_items: list[WizardJsonObject] = []
         for ref, direction in spec.sort_direction_items:
-            item = _normalize_fields(normalizer, [ref], dataset_id=dataset_id)[0]
+            item = _without_field_decorations(_normalize_fields(normalizer, [ref], dataset_id=dataset_id)[0])
             item["direction"] = direction.upper()
             sort_items.append(item)
         _visualization_slot(visualization, "sort")["items"] = _json_array(
@@ -1356,7 +1410,10 @@ def _assemble_wizard_data(
             context="Wizard sort items",
         )
     elif spec.slots.get("sort"):
-        sort_items = _normalize_fields(normalizer, list(spec.slots["sort"]), dataset_id=dataset_id)
+        sort_items = [
+            _without_field_decorations(item)
+            for item in _normalize_fields(normalizer, list(spec.slots["sort"]), dataset_id=dataset_id)
+        ]
         for item in sort_items:
             item["direction"] = "ASC"
         _visualization_slot(visualization, "sort")["items"] = _json_array(

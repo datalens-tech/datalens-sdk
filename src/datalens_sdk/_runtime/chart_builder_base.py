@@ -17,7 +17,7 @@ from datalens_sdk._runtime.wizard_semantics import (
     validate_label_mode,
 )
 from datalens_sdk.domain.entry_location import EntryLocation, resolve_entry_location, validate_entry_name
-from datalens_sdk.domain.fields import DatasetField
+from datalens_sdk.domain.fields import DatasetField, WizardAggregatedMeasure, WizardHierarchy, WizardLocalField
 from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.ql_chart import QLColumn, QLParam
 from datalens_sdk.domain.specs.editor_chart import EditorChartCreateSpec
@@ -41,57 +41,10 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.connection import Connection
     from datalens_sdk.domain.dataset import Dataset
     from datalens_sdk.domain.editor_chart import EditorChart
-    from datalens_sdk.domain.fields import FieldLike
+    from datalens_sdk.domain.fields import WizardFieldLike, WizardFieldRef
     from datalens_sdk.domain.ql_chart import QLChart
     from datalens_sdk.domain.wizard_chart import WizardChart
     from datalens_sdk.domain.wizard_chart_update import WizardChartUpdate
-
-
-def build_local_field_entry(
-    *,
-    title: str,
-    formula: str,
-    guid: str | None = None,
-    cast: str = "float",
-    measure: bool = False,
-    aggregation: str | None = None,
-    formatting: MeasureFormat | None = None,
-) -> dict[str, object]:
-    """Build a wire field-entry for a formula-based local field.
-
-    Shared by create-side ``_add_local_field`` and update-side
-    ``WizardChartUpdate.add_local_field`` so both produce identical entries.
-    """
-    effective_guid = guid if guid is not None else str(uuid.uuid4())
-    if measure:
-        field_type = "MEASURE"
-        if aggregation is None:
-            effective_agg = "none"
-            autoaggregated = True
-        else:
-            effective_agg = aggregation
-            autoaggregated = False
-    else:
-        field_type = "DIMENSION"
-        effective_agg = "none"
-        autoaggregated = False
-    field_entry: dict[str, object] = {
-        "guid": effective_guid,
-        "title": title,
-        "calc_mode": "formula",
-        "formula": formula,
-        "cast": cast,
-        "data_type": cast,
-        "type": field_type,
-        "aggregation": effective_agg,
-        "autoaggregated": autoaggregated,
-        "has_auto_aggregation": autoaggregated,
-        "aggregation_locked": True,
-        "local": True,
-    }
-    if formatting:
-        field_entry["formatting"] = dict(formatting)
-    return field_entry
 
 
 def build_aggregated_measure_entry(
@@ -237,66 +190,32 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
             self._dataset_ids.append(dataset.id)
         return self
 
-    def _add_local_field(
-        self,
-        *,
-        title: str,
-        formula: str,
-        guid: str | None = None,
-        cast: str = "float",
-        measure: bool = False,
-        aggregation: str | None = None,
-        formatting: MeasureFormat | None = None,
-    ) -> Self:
-        self._local_fields.append(
-            build_local_field_entry(
-                title=title,
-                formula=formula,
-                guid=guid,
-                cast=cast,
-                measure=measure,
-                aggregation=aggregation,
-                formatting=formatting,
-            )
-        )
+    def _add_local_field(self, field: WizardLocalField) -> Self:
+        self._local_fields.append(field._to_field_definition())
         return self
 
-    def _add_aggregated_measure(
-        self,
-        field: DatasetField,
-        *,
-        aggregation: Literal["sum", "avg", "min", "max", "count", "countunique"],
-        name: str | None = None,
-        guid: str | None = None,
-    ) -> Self:
-        self._local_fields.append(build_aggregated_measure_entry(field, aggregation=aggregation, name=name, guid=guid))
+    def _add_aggregated_measure(self, field: WizardAggregatedMeasure) -> Self:
+        self._local_fields.append(
+            build_aggregated_measure_entry(
+                field.field,
+                aggregation=field.aggregation,
+                name=field.title,
+                guid=field.guid,
+            )
+        )
         return self
 
     def _set_description(self, text: str) -> Self:
         self._description = text
         return self
 
-    def _add_hierarchy(
-        self,
-        title: str,
-        fields: Sequence[FieldLike | str],
-        *,
-        guid: str | None = None,
-    ) -> Self:
-        effective_guid = guid if guid is not None else str(uuid.uuid4())
-        self._hierarchies.append(
-            {
-                "guid": effective_guid,
-                "title": title,
-                "type": "PSEUDO",
-                "fields": list(fields),
-            }
-        )
+    def _add_hierarchy(self, hierarchy: WizardHierarchy) -> Self:
+        self._hierarchies.append(hierarchy._to_hierarchy_definition())
         return self
 
     def _measure_format(
         self,
-        field: FieldLike | str,
+        field: WizardFieldRef,
         *,
         format: Literal["number", "percent"] | None = None,
         precision: int | None = None,
@@ -321,7 +240,7 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
         self._pending_measure_formats.append((field, fmt))
         return self
 
-    def _set_slot(self, slot_name: str, fields: Sequence[FieldLike | str]) -> Self:
+    def _set_slot(self, slot_name: str, fields: Sequence[WizardFieldRef]) -> Self:
         self._slot_fields[slot_name] = list(fields)
         return self
 
@@ -397,13 +316,13 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
         self._set_palette(id=id)
         return self
 
-    def _color_by_dimension(self, field: FieldLike | str) -> Self:
+    def _color_by_dimension(self, field: WizardFieldRef) -> Self:
         self._set_color_by_dimension(field)
         return self
 
     def _color_by_measure(
         self,
-        field: FieldLike | str,
+        field: WizardFieldRef,
         *,
         mode: Literal["2-point", "3-point"] | None = None,
         palette: GradientPaletteId | None = None,
@@ -415,14 +334,14 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
     def _color_by_measure_name(
         self,
         *,
-        colors_map: Mapping[FieldLike | str, str] | None = None,
+        colors_map: Mapping[WizardFieldRef, str] | None = None,
     ) -> Self:
         self._set_color_by_measure_name(colors_map)
         return self
 
     def _add_filter(
         self,
-        field: FieldLike | str,
+        field: WizardFieldRef,
         *,
         operation: FilterOperation,
         values: Sequence[str] = (),
@@ -432,7 +351,7 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
 
     def _add_date_filter(
         self,
-        field: FieldLike | str,
+        field: WizardFieldRef,
         *,
         start: str,
         end: str,
@@ -444,7 +363,7 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
 
     def _add_relative_date_filter(
         self,
-        field: FieldLike | str,
+        field: WizardFieldRef,
         *,
         start_offset: str,
         end_offset: str,
@@ -456,7 +375,7 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
 
     def _add_sort(
         self,
-        field: FieldLike | str,
+        field: WizardFieldRef,
         *,
         direction: Literal["asc", "desc"] = "asc",
     ) -> Self:
@@ -465,7 +384,7 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
 
     def _shape_by_dimension(
         self,
-        field: FieldLike | str,
+        field: WizardFieldRef,
         *,
         shapes_map: Mapping[str, ShapeStyle] | None = None,
     ) -> Self:
@@ -475,24 +394,24 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
     def _shape_by_measure_name(
         self,
         *,
-        shapes_map: Mapping[FieldLike | str, ShapeStyle] | None = None,
+        shapes_map: Mapping[WizardFieldRef, ShapeStyle] | None = None,
     ) -> Self:
         self._set_shape_by_measure_name(shapes_map)
         return self
 
     @staticmethod
-    def _field_ref_matches(placed: FieldLike | str, ref: FieldLike | str) -> bool:
-        if isinstance(ref, DatasetField):
-            if isinstance(placed, DatasetField):
+    def _field_ref_matches(placed: WizardFieldRef, ref: WizardFieldRef) -> bool:
+        if not isinstance(ref, str):
+            if not isinstance(placed, str):
                 return placed.guid == ref.guid
             return placed == ref.guid or placed == ref.title
-        if isinstance(placed, DatasetField):
+        if not isinstance(placed, str):
             return placed.guid == ref or placed.title == ref or placed.name == ref
         return placed == ref
 
     def _mutate_item_by_guid(
         self,
-        field: FieldLike | str,
+        field: WizardFieldRef,
         setting_key: str,
         value: object,
     ) -> Self:
@@ -545,7 +464,7 @@ class _BaseWizardChartCreate(_ChartMutationsMixin):
 class _TableWizardChartCreate(_BaseWizardChartCreate):
     def _column_background(
         self,
-        field: FieldLike | str,
+        field: WizardFieldRef,
         *,
         mode: Literal["2-point", "3-point"] = "3-point",
         palette: GradientPaletteId = "red-orange-green",
@@ -562,7 +481,7 @@ class _TableWizardChartCreate(_BaseWizardChartCreate):
 
     def _column_bars(
         self,
-        field: FieldLike | str,
+        field: WizardFieldRef,
         *,
         enabled: bool = True,
         color_type: Literal["one-color", "two-color", "gradient"] = "one-color",
@@ -599,7 +518,7 @@ class _TableWizardChartCreate(_BaseWizardChartCreate):
         )
         return self._mutate_item_by_guid(field, "barsSettings", settings)
 
-    def _column_title(self, field: FieldLike | str, *, title: str) -> Self:
+    def _column_title(self, field: WizardFieldRef, *, title: str) -> Self:
         return self._mutate_item_by_guid(field, "_title_override", title)
 
     def _pagination(self, *, enabled: bool, limit: int = 100) -> Self:
@@ -613,6 +532,7 @@ class _TableWizardChartCreate(_BaseWizardChartCreate):
         return self
 
     def _freeze_columns(self, *, count: int = 1) -> Self:
+        self._ensure_freeze_columns_supported(self._visualization_type)
         self._set_chart_setting("pinnedColumns", count)
         return self
 
@@ -651,20 +571,20 @@ class _MetricWizardChartCreate(_BaseWizardChartCreate):
 
 
 class _PivotWizardChartCreate(_TableWizardChartCreate):
-    def _subtotals(self, field: FieldLike | str, *, enabled: bool) -> Self:
+    def _subtotals(self, field: WizardFieldRef, *, enabled: bool) -> Self:
         return self._mutate_item_by_guid(field, "subTotalsSettings", {"enabled": enabled})
 
 
 class _CombinedWizardChartCreate(_BaseWizardChartCreate):
-    def _combined_x(self, fields: Sequence[FieldLike | str]) -> Self:
+    def _combined_x(self, fields: Sequence[WizardFieldRef]) -> Self:
         return self._set_slot("x", fields)
 
     def _combined_add_layer(
         self,
         layer_type: CombinedLayerType,
         *,
-        y: FieldLike | str | None = None,
-        y2: FieldLike | str | None = None,
+        y: WizardFieldRef | None = None,
+        y2: WizardFieldRef | None = None,
         name: str | None = None,
     ) -> Self:
         if y is None and y2 is None:
@@ -693,19 +613,19 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
         self,
         layer_type: GeoLayerType,
         *,
-        geopoint: FieldLike | str | None = None,
-        polygon: FieldLike | str | None = None,
-        polyline: FieldLike | str | None = None,
-        grouping: FieldLike | str | None = None,
-        size: FieldLike | str | None = None,
-        color: FieldLike | str | None = None,
+        geopoint: WizardFieldRef | None = None,
+        polygon: WizardFieldRef | None = None,
+        polyline: WizardFieldRef | None = None,
+        grouping: WizardFieldRef | None = None,
+        size: WizardFieldRef | None = None,
+        color: WizardFieldRef | None = None,
         color_mode: Literal["2-point", "3-point"] | None = None,
         color_palette: GradientPaletteId | None = None,
         color_reversed: bool | None = None,
         filters: Sequence[GeoLayerFilter] = (),
-        tooltips: Sequence[FieldLike | str] = (),
-        labels: Sequence[FieldLike | str] = (),
-        sort_by: FieldLike | str | None = None,
+        tooltips: Sequence[WizardFieldRef] = (),
+        labels: Sequence[WizardFieldRef] = (),
+        sort_by: WizardFieldRef | None = None,
         sort_direction: Literal["asc", "desc"] = "asc",
         alpha: int = 80,
         name: str | None = None,
@@ -741,7 +661,7 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
             raise DataLensConfigurationError("Geo layer color settings require color=.")
         if color is not None and any(value is not None for value in (color_mode, color_palette, color_reversed)):
             effective_dataset = dataset or self._dataset
-            color_field: DatasetField | None = color if isinstance(color, DatasetField) else None
+            color_field: WizardFieldLike | None = color if not isinstance(color, str) else None
             if color_field is None and isinstance(color, str) and effective_dataset is not None:
                 try:
                     color_field = effective_dataset.fields.by_guid(color)

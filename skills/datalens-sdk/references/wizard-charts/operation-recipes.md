@@ -26,7 +26,7 @@ a field that is not yet referenced.
 ```python
 chart = client.get.wizard_chart(by_id="chart-id")
 
-placed_revenue = chart.fields.by_name("Revenue")
+placed_revenue = chart.fields.by_guid("revenue-guid")
 dataset = client.get.dataset(by_id=chart.dataset_ids[0])
 new_profit = dataset.fields.by_name("Profit")
 
@@ -40,8 +40,9 @@ report which placeholder each field occupies. This example assumes Revenue is
 the complete current `y` list; if the current layout is unknown, ask the user
 instead of guessing.
 
-`measures()` is update-only. Typed create builders for indicator, pie, donut,
-funnel, treemap, and pivot table use `y()` instead.
+`measures()` is update-only for indicator, pie, donut, funnel, and treemap;
+their typed create builders use `y()` instead. Pivot table uses `measures()`
+on both create and update.
 
 ```python
 indicator = client.get.wizard_chart(by_id="indicator-id")
@@ -84,7 +85,6 @@ the field it references before adding its replacement.
 
 ```python
 chart = client.get.wizard_chart(by_id=chart.id)
-date = chart.fields.by_name("Order Date")
 
 chart = (
     chart.update.delete_filter(date)
@@ -118,8 +118,9 @@ chart = builder.build()
 
 ## Create and Mutate Chart-Local Fields
 
-A newly added local field, aggregated measure, or hierarchy has no
-`DatasetField` yet. Reference it later in the same fluent chain by its title.
+Create every Wizard-owned field as an immutable, GUID-bearing handle before
+building the chain. Pass the handle to its matching `add_*` method, then reuse
+the same object anywhere a field reference is accepted.
 
 ```python
 import datalens_sdk as dl
@@ -129,9 +130,23 @@ country = dataset.fields.by_name("Country")
 city = dataset.fields.by_name("City")
 customer = dataset.fields.by_name("Customer")
 
-revenue_per_order = "Revenue per order"
-unique_customers = "Unique customers"
-geo_hierarchy = "Country → City"
+revenue_per_order = dl.WizardLocalField.measure(
+    guid="customer-revenue-per-order",
+    title="Revenue per order",
+    formula="SUM([Revenue]) / SUM([Orders])",
+    cast="float",
+)
+unique_customers = dl.WizardAggregatedMeasure(
+    guid="customer-unique-customers",
+    field=customer,
+    aggregation="countunique",
+    title="Unique customers",
+)
+geo_hierarchy = dl.WizardHierarchy(
+    guid="customer-country-city",
+    title="Country → City",
+    fields=[country, city],
+)
 
 chart = (
     client.create.wizard_chart.flat_table(
@@ -139,38 +154,28 @@ chart = (
         location=dl.EntryLocation.path("/Charts"),
     )
     .dataset(dataset)
-    .add_local_field(
-        title=revenue_per_order,
-        formula="SUM([Revenue]) / SUM([Orders])",
-        cast="float",
-        measure=True,
-    )
-    .add_aggregated_measure(
-        customer,
-        aggregation="countunique",
-        name=unique_customers,
-    )
-    .add_hierarchy(geo_hierarchy, [country, city])
+    .add_local_field(revenue_per_order)
+    .add_aggregated_measure(unique_customers)
+    .add_hierarchy(geo_hierarchy)
     .columns([geo_hierarchy, revenue_per_order, unique_customers])
     .build()
 )
 ```
 
-After re-fetching, placed chart-local fields are available through
-`chart.fields`. `replace_formula()` preserves the field identity.
-`change_aggregation()` creates a replacement local measure and rewrites active
+Remembered handles remain valid after re-fetch because they resolve by GUID;
+`FieldsProxy` still returns `DatasetField` snapshots rather than reconstructing
+handles. If a process does not have the original handle, use a known exact GUID
+with `chart.fields.by_guid(...)`, never a title lookup. `replace_formula()`
+preserves field identity. `change_aggregation()` takes the fetched
+`DatasetField`, creates a replacement local measure, and rewrites active
 references to it.
 
 ```python
 chart = client.get.wizard_chart(by_id=chart.id)
-ratio = chart.fields.by_name("Revenue per order")
-customers = chart.fields.by_name("Unique customers")
+customers = chart.fields.by_guid(unique_customers.guid)
 
 chart = (
-    chart.update.replace_formula(
-        ratio,
-        formula="SUM([Net Revenue]) / SUM([Orders])",
-    )
+    chart.update.replace_formula(revenue_per_order, formula="SUM([Net Revenue]) / SUM([Orders])")
     .change_aggregation(
         customers,
         aggregation="count",
@@ -219,7 +224,7 @@ chart = (
     .labels_position(mode="auto")
     .measure_format(
         revenue,
-        format="currency",
+        format="number",
         precision=0,
         unit="m",
         prefix="$",
@@ -251,7 +256,7 @@ chart = (
 
 ## Configure Table Items
 
-Place a field in `columns()` or pivot `y()` before applying item-level table
+Place a field in `columns()` or pivot `measures()` before applying item-level table
 settings to it. Each `column_bars()` call configures one placed field.
 
 ```python
@@ -320,9 +325,9 @@ target field, not only one placeholder.
 chart = client.get.wizard_chart(by_id="chart-id")
 dataset = client.get.dataset(by_id=chart.dataset_ids[0])
 
-old_date = chart.fields.by_name("Order Date")
+old_date = chart.fields.by_guid("order-date-guid")
 new_date = dataset.fields.by_name("Order Month")
-obsolete_profit = chart.fields.by_name("Outdated Profit")
+obsolete_profit = chart.fields.by_guid("outdated-profit-guid")
 
 chart = chart.update.replace_field(old_date, new_date).delete_field(obsolete_profit).mode("save").execute()
 ```

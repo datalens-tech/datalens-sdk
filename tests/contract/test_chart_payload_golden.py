@@ -25,7 +25,7 @@ _ALIAS_TO_BUILDER: dict[str, dict[str, str]] = {
     "funnel": {"dimensions": "x", "measures": "y"},
     "pie": {"dimensions": "x", "measures": "y"},
     "flatTable": {"flat-table-columns": "columns"},
-    "pivotTable": {"pivot-table-columns": "columns", "measures": "y", "rows": "rows"},
+    "pivotTable": {"pivot-table-columns": "columns", "rows": "rows"},
     "treemap": {"dimensions": "x", "measures": "y"},
 }
 
@@ -88,10 +88,11 @@ def test_from_domain_create_emits_minimal_wizard_defaults(viz_id: str) -> None:
     assert data["visualization"]["type"] == viz_id
 
 
-def test_alias_maps_builder_names_to_named_slot_ids() -> None:
+def test_builder_names_map_to_canonical_slot_ids() -> None:
     assert resolve_slot_name("pie", "x") == "dimensions"
     assert resolve_slot_name("pie", "y") == "measures"
     assert resolve_slot_name("metric", "y") == "measures"
     assert resolve_slot_name("flatTable", "columns") == "columns"
-    assert resolve_slot_name("pivotTable", "y") == "measures"
+    assert WIZARD_VISUALIZATION_SEMANTICS["pivotTable"]["slot_aliases"] == {}
+    assert resolve_slot_name("pivotTable", "measures") == "measures"
     assert resolve_slot_name("line", "x") == "x"

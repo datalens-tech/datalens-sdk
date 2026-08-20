@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Literal, get_args
-import uuid
 
 from typing_extensions import Self
 
@@ -27,7 +26,13 @@ from datalens_sdk.domain.chart_types import (
     ShapeStyle,
 )
 from datalens_sdk.domain.entry_types import EntryUpdateMode
-from datalens_sdk.domain.fields import DatasetField, FieldRef
+from datalens_sdk.domain.fields import (
+    DatasetField,
+    WizardAggregatedMeasure,
+    WizardFieldRef,
+    WizardHierarchy,
+    WizardLocalField,
+)
 from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
@@ -37,8 +42,8 @@ if TYPE_CHECKING:
 _UNBOUND = "Object is not bound to client operations. Use a client namespace."
 
 
-def _field_guid(field: FieldRef) -> str:
-    return field.guid if isinstance(field, DatasetField) else field
+def _field_guid(field: WizardFieldRef) -> str:
+    return field if isinstance(field, str) else field.guid
 
 
 class WizardChartUpdate(_ChartMutationsMixin):
@@ -46,7 +51,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self._chart = chart
         self._operations = operations
         self._mode: EntryUpdateMode = "save"
-        self._field_replacements: dict[str, FieldRef] = {}
+        self._field_replacements: dict[str, WizardFieldRef] = {}
         self._deleted_field_guids: set[str] = set()
         self._deleted_filter_guids: set[str] = set()
         self._target_visualization_type: str | None = None
@@ -87,7 +92,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
         return self._mode
 
     @property
-    def field_replacements(self) -> Mapping[str, FieldRef]:
+    def field_replacements(self) -> Mapping[str, WizardFieldRef]:
         return self._field_replacements
 
     @property
@@ -103,7 +108,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
         return self._dataset_replacement
 
     @property
-    def slot_edits(self) -> Mapping[str, list[FieldRef]]:
+    def slot_edits(self) -> Mapping[str, list[WizardFieldRef]]:
         return self._slot_fields
 
     @property
@@ -115,15 +120,15 @@ class WizardChartUpdate(_ChartMutationsMixin):
         return self._slot_settings
 
     @property
-    def item_mutations(self) -> Sequence[tuple[FieldRef, str, object]]:
+    def item_mutations(self) -> Sequence[tuple[WizardFieldRef, str, object]]:
         return self._item_mutations
 
     @property
-    def pending_filters(self) -> Sequence[tuple[FieldRef, str, list[str]]]:
+    def pending_filters(self) -> Sequence[tuple[WizardFieldRef, str, list[str]]]:
         return self._pending_filters
 
     @property
-    def sort_direction_items(self) -> Sequence[tuple[FieldRef, str]]:
+    def sort_direction_items(self) -> Sequence[tuple[WizardFieldRef, str]]:
         return self._sort_direction_items
 
     @property
@@ -135,7 +140,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
         return self._color_encoding
 
     @property
-    def pending_measure_formats(self) -> Sequence[tuple[FieldRef, MeasureFormat]]:
+    def pending_measure_formats(self) -> Sequence[tuple[WizardFieldRef, MeasureFormat]]:
         return self._pending_measure_formats
 
     @property
@@ -234,19 +239,19 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self._check_viz_applicability("nulls_mode")
         return self._set_slot_setting("nulls_mode", slot_name, "nulls", mode)
 
-    def segments(self, fields: Sequence[FieldRef]) -> Self:
+    def segments(self, fields: Sequence[WizardFieldRef]) -> Self:
         self._check_viz_applicability("segments")
         return self._set_slot("segments", fields)
 
-    def labels(self, fields: Sequence[FieldRef]) -> Self:
+    def labels(self, fields: Sequence[WizardFieldRef]) -> Self:
         self._check_viz_applicability("labels")
         return self._set_slot("labels", fields)
 
-    def _mutate_item_by_guid(self, field: FieldRef, setting_key: str, value: object) -> Self:
+    def _mutate_item_by_guid(self, field: WizardFieldRef, setting_key: str, value: object) -> Self:
         self._item_mutations.append((field, setting_key, value))
         return self
 
-    def replace_formula(self, field: FieldRef, *, formula: str) -> Self:
+    def replace_formula(self, field: WizardFieldRef, *, formula: str) -> Self:
         self._replace_formulas[_field_guid(field)] = formula
         return self
 
@@ -318,6 +323,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
 
     def freeze_columns(self, *, count: int = 1) -> Self:
         self._check_viz_applicability("freeze_columns")
+        self._ensure_freeze_columns_supported(self.visualization_id or "")
         return self._set_chart_setting("pinnedColumns", count)
 
     def description(self, text: str) -> Self:
@@ -329,14 +335,14 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self._set_palette(id=id)
         return self
 
-    def color_by_dimension(self, field: FieldRef) -> Self:
+    def color_by_dimension(self, field: WizardFieldRef) -> Self:
         self._check_viz_applicability("color_by_dimension")
         self._set_color_by_dimension(field)
         return self
 
     def color_by_measure(
         self,
-        field: FieldRef,
+        field: WizardFieldRef,
         *,
         mode: Literal["2-point", "3-point"] | None = None,
         palette: GradientPaletteId | None = None,
@@ -346,80 +352,50 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self._set_color_by_measure(field, mode=mode, palette=palette, reversed=reversed)
         return self
 
-    def color_by_measure_name(self, *, colors_map: Mapping[FieldRef, str] | None = None) -> Self:
+    def color_by_measure_name(self, *, colors_map: Mapping[WizardFieldRef, str] | None = None) -> Self:
         self._check_viz_applicability("color_by_measure_name")
         self._set_color_by_measure_name(colors_map)
         return self
 
-    def add_filter(self, field: FieldRef, *, operation: FilterOperation, values: Sequence[str] = ()) -> Self:
+    def add_filter(self, field: WizardFieldRef, *, operation: FilterOperation, values: Sequence[str] = ()) -> Self:
         self._check_viz_applicability("add_filter")
         self._pending_filters.append((field, operation, list(values)))
         return self
 
-    def add_date_filter(self, field: FieldRef, *, start: str, end: str, inclusive_end: bool = True) -> Self:
+    def add_date_filter(self, field: WizardFieldRef, *, start: str, end: str, inclusive_end: bool = True) -> Self:
         self._check_viz_applicability("add_date_filter")
         self._pending_filters.append((field, "BETWEEN", [build_date_interval(start, end, inclusive_end=inclusive_end)]))
         return self
 
-    def add_relative_date_filter(self, field: FieldRef, *, start_offset: str, end_offset: str) -> Self:
+    def add_relative_date_filter(self, field: WizardFieldRef, *, start_offset: str, end_offset: str) -> Self:
         self._check_viz_applicability("add_relative_date_filter")
         self._pending_filters.append((field, "BETWEEN", [build_relative_date_interval(start_offset, end_offset)]))
         return self
 
-    def add_sort(self, field: FieldRef, *, direction: Literal["asc", "desc"] = "asc") -> Self:
+    def add_sort(self, field: WizardFieldRef, *, direction: Literal["asc", "desc"] = "asc") -> Self:
         self._check_viz_applicability("add_sort")
         self._sort_direction_items.append((field, direction))
         return self
 
-    def add_hierarchy(
-        self,
-        title: str,
-        fields: Sequence[FieldRef],
-        *,
-        guid: str | None = None,
-    ) -> Self:
+    def add_hierarchy(self, hierarchy: WizardHierarchy) -> Self:
         self._check_viz_applicability("add_hierarchy")
-        effective_guid = guid if guid is not None else str(uuid.uuid4())
-        self._new_hierarchies.append({"guid": effective_guid, "title": title, "type": "PSEUDO", "fields": list(fields)})
+        self._new_hierarchies.append(hierarchy._to_hierarchy_definition())
         return self
 
-    def add_local_field(
-        self,
-        *,
-        title: str,
-        formula: str,
-        guid: str | None = None,
-        cast: str = "float",
-        measure: bool = False,
-        aggregation: str | None = None,
-        formatting: MeasureFormat | None = None,
-    ) -> Self:
-        from datalens_sdk._runtime.chart_builder_base import build_local_field_entry  # noqa: PLC0415
-
-        entry = build_local_field_entry(
-            title=title,
-            formula=formula,
-            guid=guid,
-            cast=cast,
-            measure=measure,
-            aggregation=aggregation,
-            formatting=formatting,
-        )
-        self._local_field_additions.append(entry)
+    def add_local_field(self, field: WizardLocalField) -> Self:
+        self._local_field_additions.append(field._to_field_definition())
         return self
 
-    def add_aggregated_measure(
-        self,
-        field: DatasetField,
-        *,
-        aggregation: Literal["sum", "avg", "min", "max", "count", "countunique"],
-        name: str | None = None,
-        guid: str | None = None,
-    ) -> Self:
+    def add_aggregated_measure(self, field: WizardAggregatedMeasure) -> Self:
         from datalens_sdk._runtime.chart_builder_base import build_aggregated_measure_entry  # noqa: PLC0415
 
         self._local_field_additions.append(
-            build_aggregated_measure_entry(field, aggregation=aggregation, name=name, guid=guid)
+            build_aggregated_measure_entry(
+                field.field,
+                aggregation=field.aggregation,
+                name=field.title,
+                guid=field.guid,
+            )
         )
         return self
 
@@ -444,7 +420,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
 
     def measure_format(
         self,
-        field: FieldRef,
+        field: WizardFieldRef,
         *,
         format: Literal["number", "percent"] | None = None,
         precision: int | None = None,
@@ -472,7 +448,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
 
     def column_background(
         self,
-        field: FieldRef,
+        field: WizardFieldRef,
         *,
         mode: Literal["2-point", "3-point"] = "3-point",
         palette: GradientPaletteId = "red-orange-green",
@@ -490,7 +466,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
 
     def column_bars(
         self,
-        field: FieldRef,
+        field: WizardFieldRef,
         *,
         enabled: bool = True,
         color_type: Literal["one-color", "two-color", "gradient"] = "one-color",
@@ -528,20 +504,20 @@ class WizardChartUpdate(_ChartMutationsMixin):
         )
         return self._mutate_item_by_guid(field, "barsSettings", settings)
 
-    def column_title(self, field: FieldRef, *, title: str) -> Self:
+    def column_title(self, field: WizardFieldRef, *, title: str) -> Self:
         self._check_viz_applicability("column_title")
         return self._mutate_item_by_guid(field, "_title_override", title)
 
-    def subtotals(self, field: FieldRef, *, enabled: bool) -> Self:
+    def subtotals(self, field: WizardFieldRef, *, enabled: bool) -> Self:
         self._check_viz_applicability("subtotals")
         return self._mutate_item_by_guid(field, "subTotalsSettings", {"enabled": enabled})
 
-    def shape_by_dimension(self, field: FieldRef, *, shapes_map: Mapping[str, ShapeStyle] | None = None) -> Self:
+    def shape_by_dimension(self, field: WizardFieldRef, *, shapes_map: Mapping[str, ShapeStyle] | None = None) -> Self:
         self._check_viz_applicability("shape_by_dimension")
         self._set_shape_by_dimension(field, shapes_map)
         return self
 
-    def shape_by_measure_name(self, *, shapes_map: Mapping[FieldRef, ShapeStyle] | None = None) -> Self:
+    def shape_by_measure_name(self, *, shapes_map: Mapping[WizardFieldRef, ShapeStyle] | None = None) -> Self:
         self._check_viz_applicability("shape_by_measure_name")
         self._set_shape_by_measure_name(shapes_map)
         return self
@@ -584,11 +560,11 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self._target_visualization_type = visualization_id
         return self
 
-    def replace_field(self, old: FieldRef, new: FieldRef) -> Self:
+    def replace_field(self, old: WizardFieldRef, new: WizardFieldRef) -> Self:
         self._field_replacements[_field_guid(old)] = new
         return self
 
-    def delete_field(self, field: FieldRef) -> Self:
+    def delete_field(self, field: WizardFieldRef) -> Self:
         self._deleted_field_guids.add(_field_guid(field))
         return self
 
@@ -596,37 +572,37 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self._dataset_replacement = (old, new)
         return self
 
-    def delete_filter(self, field: FieldRef) -> Self:
+    def delete_filter(self, field: WizardFieldRef) -> Self:
         self._deleted_filter_guids.add(_field_guid(field))
         return self
 
-    def _set_slot(self, slot_name: str, fields: Sequence[FieldRef]) -> Self:
+    def _set_slot(self, slot_name: str, fields: Sequence[WizardFieldRef]) -> Self:
         canonical_name = self._check_slot_applicability(method_name=slot_name, slot_name=slot_name)
         self._slot_fields[canonical_name] = list(fields)
         return self
 
-    def x(self, fields: Sequence[FieldRef]) -> Self:
+    def x(self, fields: Sequence[WizardFieldRef]) -> Self:
         return self._set_slot("x", fields)
 
-    def y(self, fields: Sequence[FieldRef]) -> Self:
+    def y(self, fields: Sequence[WizardFieldRef]) -> Self:
         return self._set_slot("y", fields)
 
-    def y2(self, fields: Sequence[FieldRef]) -> Self:
+    def y2(self, fields: Sequence[WizardFieldRef]) -> Self:
         return self._set_slot("y2", fields)
 
-    def columns(self, fields: Sequence[FieldRef]) -> Self:
+    def columns(self, fields: Sequence[WizardFieldRef]) -> Self:
         return self._set_slot("columns", fields)
 
-    def rows(self, fields: Sequence[FieldRef]) -> Self:
+    def rows(self, fields: Sequence[WizardFieldRef]) -> Self:
         return self._set_slot("rows", fields)
 
-    def measures(self, fields: Sequence[FieldRef]) -> Self:
+    def measures(self, fields: Sequence[WizardFieldRef]) -> Self:
         return self._set_slot("measures", fields)
 
-    def points(self, fields: Sequence[FieldRef]) -> Self:
+    def points(self, fields: Sequence[WizardFieldRef]) -> Self:
         return self._set_slot("points", fields)
 
-    def size(self, fields: Sequence[FieldRef]) -> Self:
+    def size(self, fields: Sequence[WizardFieldRef]) -> Self:
         return self._set_slot("size", fields)
 
     def execute(self) -> WizardChart:

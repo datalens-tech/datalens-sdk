@@ -126,6 +126,48 @@ with DataLensClientYC() as client:
     dataset = client.create.dataset(name="SDK dataset", location=workbook).build()
 ```
 
+Wizard-owned fields use immutable, GUID-bearing handles. Register each handle
+once and reuse the same object in placeholders, filters, sorting, and
+decorations:
+
+```python
+from datalens_sdk import WizardAggregatedMeasure, WizardHierarchy, WizardLocalField
+
+dataset = client.get.dataset(by_id=dataset.id)
+country = dataset.fields.by_name("Country")
+city = dataset.fields.by_name("City")
+customer = dataset.fields.by_name("Customer")
+
+revenue_per_order = WizardLocalField.measure(
+    guid="customer-revenue-per-order",
+    title="Revenue per order",
+    formula="SUM([Revenue]) / SUM([Orders])",
+    cast="float",
+)
+unique_customers = WizardAggregatedMeasure(
+    guid="customer-unique-customers",
+    field=customer,
+    aggregation="countunique",
+    title="Unique customers",
+)
+geo = WizardHierarchy(guid="customer-country-city", title="Country → City", fields=[country, city])
+
+chart = (
+    client.create.wizard_chart.flat_table(name="Customer geography", location=workbook)
+    .dataset(dataset)
+    .add_local_field(revenue_per_order)
+    .add_aggregated_measure(unique_customers)
+    .add_hierarchy(geo)
+    .columns([geo, revenue_per_order, unique_customers])
+    .build()
+)
+```
+
+The remembered handles remain valid after re-fetch because references resolve
+by GUID. Without a saved handle, use an exact GUID through
+`chart.fields.by_guid(...)`; `chart.fields` intentionally returns
+`DatasetField` snapshots and does not reconstruct handles.
+
 ## Examples
 
 Runnable Yandex Cloud examples are available in [`examples/`](examples/):

@@ -274,7 +274,7 @@ METHOD_SPECS: dict[str, MethodSpec] = {
     "freeze_columns": {
         "kind": "helper",
         "helper": "freeze_columns",
-        "visualization_types": frozenset({"pivotTable"}),
+        "visualization_types": _TABLE,
     },
     "column_background": {
         "kind": "helper",

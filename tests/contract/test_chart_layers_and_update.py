@@ -16,7 +16,7 @@ from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.chart_types import GradientPaletteId
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
-from datalens_sdk.domain.fields import DatasetField
+from datalens_sdk.domain.fields import DatasetField, WizardHierarchy
 from datalens_sdk.domain.ports import NavigationOperations
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.errors import DataLensAPIError, DataLensConfigurationError
@@ -258,6 +258,28 @@ def test_geolayer_measure_format_updates_layer_labels() -> None:
     data = _payload_data(builder)
     labels = data["visualization"]["layers"][0]["labels"]["items"]
     assert labels[0]["formatting"] == {"format": "number", "labelMode": "absolute", "prefix": "$"}
+
+
+def test_geolayer_measure_format_skips_layer_filter_reference() -> None:
+    factory = WizardChartCreateFactory(cast(Any, None))
+    builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
+    cast(
+        Any,
+        builder.add_layer(
+            "geopoint",
+            geopoint="Point",
+            size="Amount",
+            filters=[GeoLayerFilter(field="Amount", operation="GT", values=["0"])],
+        ),
+    ).measure_format("Amount", precision=1)
+
+    layer = _payload_data(builder)["visualization"]["layers"][0]
+    assert layer["size"]["items"][0]["formatting"] == {"precision": 1}
+    assert layer["filters"]["items"][0] == {
+        "datasetId": "ds1",
+        "filter": {"operation": {"code": "GT"}, "value": ["0"]},
+        "guid": "g_amt",
+    }
 
 
 def test_geolayer_update_targets_only_selected_layer() -> None:
@@ -1008,9 +1030,11 @@ def test_replace_dataset_then_add_hierarchy_uses_new_dataset_id() -> None:
     chart = _chart_for_replace_dataset_regression()
 
     update = chart.update.replace_dataset(old="ds1", new="ds2").add_hierarchy(
-        "Date hierarchy",
-        ["g_date"],
-        guid="h-date",
+        WizardHierarchy(
+            title="Date hierarchy",
+            fields=["g_date"],
+            guid="h-date",
+        )
     )
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
 

@@ -86,12 +86,12 @@ def build_gradient_state(
     if thresholds is not None:
         state["thresholdsMode"] = "manual"
         if mode == "2-point" and len(thresholds) == 2:
-            state["leftThreshold"] = thresholds[0]
-            state["rightThreshold"] = thresholds[1]
+            state["leftThreshold"] = str(thresholds[0])
+            state["rightThreshold"] = str(thresholds[1])
         elif mode == "3-point" and len(thresholds) == 3:
-            state["leftThreshold"] = thresholds[0]
-            state["middleThreshold"] = thresholds[1]
-            state["rightThreshold"] = thresholds[2]
+            state["leftThreshold"] = str(thresholds[0])
+            state["middleThreshold"] = str(thresholds[1])
+            state["rightThreshold"] = str(thresholds[2])
     else:
         state["thresholdsMode"] = "auto"
     return state

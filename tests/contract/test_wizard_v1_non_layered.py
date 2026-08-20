@@ -59,7 +59,7 @@ def _configure_flat_table(builder: Any) -> Any:
 
 
 def _configure_pivot_table(builder: Any) -> Any:
-    return builder.columns(["Region"]).rows(["Date"]).y(["Amount"])
+    return builder.columns(["Region"]).rows(["Date"]).measures(["Amount"])
 
 
 _CASE_BUILDERS: dict[str, tuple[str, Callable[[Any], Any]]] = {

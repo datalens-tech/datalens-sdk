@@ -57,7 +57,7 @@ _VIZ_BUILDER_SETUP: dict[str, dict[str, list[str]]] = {
     "scatter": {"x": ["g_meas1"], "y": ["g_meas2"], "points": ["g_dim1"]},
     "metric": {"y": ["g_meas1"]},
     "flatTable": {"columns": ["g_dim1", "g_meas1"]},
-    "pivotTable": {"columns": ["g_dim1"], "rows": ["g_dim1"], "y": ["g_meas1"]},
+    "pivotTable": {"columns": ["g_dim1"], "rows": ["g_dim1"], "measures": ["g_meas1"]},
 }
 
 
@@ -411,9 +411,9 @@ def test_update_funnel_specific_settings_land_in_chart_settings() -> None:
     assert data["visualization"]["chartSettings"]["tooltipPercentageBase"] == "first"
 
 
-def test_update_freeze_columns_lands_in_pivot_chart_settings() -> None:
+def test_update_freeze_columns_lands_in_flat_table_chart_settings() -> None:
     chart = _chart_for_update()
-    _set_chart_visualization(chart, "pivotTable")
+    _set_chart_visualization(chart, "flatTable")
 
     data = cast(
         dict[str, Any],
@@ -421,6 +421,14 @@ def test_update_freeze_columns_lands_in_pivot_chart_settings() -> None:
     )
 
     assert data["visualization"]["chartSettings"]["pinnedColumns"] == 2
+
+
+def test_update_pivot_freeze_columns_fails_before_payload_construction() -> None:
+    chart = _chart_for_update()
+    _set_chart_visualization(chart, "pivotTable")
+
+    with pytest.raises(NotImplementedError, match=r"pivotTable.*pinnedColumns"):
+        chart.update.freeze_columns(count=2)
 
 
 def test_unrelated_update_does_not_mutate_colors_settings() -> None:

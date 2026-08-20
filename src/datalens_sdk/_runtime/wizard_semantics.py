@@ -216,7 +216,7 @@ WIZARD_VISUALIZATION_SEMANTICS: dict[str, WizardVisualizationSemantics] = {
     },
     "pivotTable": {
         "slots": ("colors", "columns", "measures", "rows", "sort"),
-        "slot_aliases": {"y": "measures"},
+        "slot_aliases": {},
         "measure_slot": "measures",
         "encodings": {"color": {"measure": {"slot": "colors"}}},
         "allows_filters": True,

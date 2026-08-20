@@ -6,6 +6,14 @@
 
 - Add `EnterpriseServiceAccountCredentialsAuthProvider` for PS256 service-account
   JWT exchange and automatic Bearer access-token refresh in DataLens Enterprise.
+- Replace split Wizard local-field, aggregated-measure, and hierarchy builder
+  arguments with immutable GUID-bearing handles that can be reused as field
+  references on create and update.
+- Rename the pivot-table measure setter from `.y(...)` to the canonical
+  `.measures(...)` spelling on create and update.
+- Keep Wizard field decorations off sort and filter reference carriers, serialize
+  manual gradient thresholds in their wire string form, and make table column
+  freezing fail explicitly where the upstream carrier is unavailable.
 - Extend target-only Wizard v1 assembly and updates to all 15 non-layered
   visualization branches, using generated slot and settings structure metadata.
 - Align Wizard measure-format units with OpenAPI: use `b` instead of the former

@@ -3,7 +3,7 @@
 Factory: `client.create.wizard_chart.geolayer(name=..., location=...)`
 `chart.visualization_id`: `geolayer`
 
-`Field` below means a `DatasetField` or an exact string reference. Prefer `DatasetField`; strings on create require a bound `.dataset(dataset)`, while updates can resolve strings only from fields already placed in the fetched chart.
+`Field` below means `DatasetField`, `WizardLocalField`, `WizardAggregatedMeasure`, `WizardHierarchy`, or an exact string reference. Prefer identity objects: save Dataset fields from the dataset schema and reuse GUID-bearing Wizard handles. After fetching a chart, resolve direct snapshots by exact GUID with `chart.fields.by_guid(...)`, never by title.
 
 ## Placeholders
 
@@ -36,8 +36,8 @@ Non-empty field inputs outside the selected layer's row are rejected.
 | `add_layer()` | `layer_type: GeoLayerType, *, geopoint: Field \| None = None, polygon: Field \| None = None, polyline: Field \| None = None, grouping: Field \| None = None, size: Field \| None = None, color: Field \| None = None, color_mode: Literal['2-point', '3-point'] \| None = None, color_palette: GradientPaletteId \| None = None, color_reversed: bool \| None = None, filters: Sequence[GeoLayerFilter] = (), tooltips: Sequence[Field] = (), labels: Sequence[Field] = (), sort_by: Field \| None = None, sort_direction: Literal['asc', 'desc'] = 'asc', alpha: int = 80, name: str \| None = None, dataset: Dataset \| None = None` | C |
 | `map_type()` | `*, mode: MapType` | C |
 | `map_center()` | `*, lat: float, lon: float, zoom: int \| None = None` | C |
-| `add_aggregated_measure()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str \| None = None, guid: str \| None = None` | CU |
-| `add_local_field()` | `*, title: str, formula: str, guid: str \| None = None, cast: str = 'float', measure: bool = False, aggregation: str \| None = None, formatting: MeasureFormat \| None = None` | CU |
+| `add_aggregated_measure()` | `field: WizardAggregatedMeasure` | CU |
+| `add_local_field()` | `field: WizardLocalField` | CU |
 | `add_filter()` | `field: Field, *, operation: FilterOperation, values: Sequence[str] = ()` | CU |
 | `add_date_filter()` | `field: Field, *, start: str, end: str, inclusive_end: bool = True` | CU |
 | `add_relative_date_filter()` | `field: Field, *, start_offset: str, end_offset: str` | CU |

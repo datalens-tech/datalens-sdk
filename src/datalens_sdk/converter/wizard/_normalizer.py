@@ -3,8 +3,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 from datalens_sdk.domain.dataset import Dataset
-from datalens_sdk.domain.fields import FieldLike, FieldRef
+from datalens_sdk.domain.fields import DatasetField, WizardFieldRef, WizardHierarchy
 from datalens_sdk.domain.wizard_chart import resolve_field_snapshot
+from datalens_sdk.errors import DataLensValidationError
 
 
 def _local_fields_map(local_fields: Sequence[Mapping[str, object]]) -> dict[str, dict[str, object]]:
@@ -54,7 +55,7 @@ class _Normalizer:
         dataset: Dataset | None,
         local_fields: Mapping[str, Mapping[str, object]],
         hierarchies: Mapping[str, Mapping[str, object]] | None = None,
-        fields: Sequence[FieldLike] | None = None,
+        fields: Sequence[DatasetField] | None = None,
         dataset_replacement: tuple[str, str] | None = None,
     ) -> None:
         self._dataset = dataset
@@ -80,10 +81,16 @@ class _Normalizer:
         clone._dataset_replacement = self._dataset_replacement
         return clone
 
-    def normalize(self, items: Sequence[FieldRef]) -> list[dict[str, object]]:
+    def normalize(self, items: Sequence[WizardFieldRef]) -> list[dict[str, object]]:
         out: list[dict[str, object]] = []
         for item in items:
-            hier_spec = self._hierarchies.get(item) if isinstance(item, str) else None
+            hierarchy_key = item.guid if isinstance(item, WizardHierarchy) else item
+            hier_spec = self._hierarchies.get(hierarchy_key) if isinstance(hierarchy_key, str) else None
+            if isinstance(item, WizardHierarchy) and hier_spec is None:
+                raise DataLensValidationError(
+                    f"Wizard hierarchy {item.title!r} ({item.guid}) is not registered in this chart. "
+                    "Call add_hierarchy(hierarchy) before using the handle as a field reference."
+                )
             if hier_spec is not None:
                 fields = hier_spec.get("fields")
                 refs = list(fields) if isinstance(fields, Sequence) and not isinstance(fields, (str, bytes)) else []

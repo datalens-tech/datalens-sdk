@@ -2952,7 +2952,8 @@ def _method_is_supported_by_structure(
     if method_name == "label_mode":
         return "labels" in slots or "labels" in layer_slot_names
     if method_name == "freeze_columns":
-        # Provisional 3A carrier: staging acceptance is verified by the dedicated live test.
+        # Keep the typed method on pivotTable while its missing carrier is rejected explicitly
+        # by the runtime helper. flatTable has the chartSettings.pinnedColumns carrier.
         return True
     return True
 
@@ -3001,27 +3002,27 @@ _HELPER_WRAPPERS: dict[str, tuple[str, str]] = {
     ),
     "description": ("text: str", "self._set_description(text)"),
     "add_local_field": (
-        "*, title: str, formula: str, guid: str | None = None, cast: str = 'float', measure: bool = False, aggregation: str | None = None, formatting: MeasureFormat | None = None",
-        "self._add_local_field(title=title, formula=formula, guid=guid, cast=cast, measure=measure, aggregation=aggregation, formatting=formatting)",
+        "field: WizardLocalField",
+        "self._add_local_field(field)",
     ),
     "add_aggregated_measure": (
-        "field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str | None = None, guid: str | None = None",
-        "self._add_aggregated_measure(field, aggregation=aggregation, name=name, guid=guid)",
+        "field: WizardAggregatedMeasure",
+        "self._add_aggregated_measure(field)",
     ),
     "add_filter": (
-        "field: FieldLike | str, *, operation: FilterOperation, values: Sequence[str] = ()",
+        "field: WizardFieldRef, *, operation: FilterOperation, values: Sequence[str] = ()",
         "self._add_filter(field, operation=operation, values=values)",
     ),
     "add_date_filter": (
-        "field: FieldLike | str, *, start: str, end: str, inclusive_end: bool = True",
+        "field: WizardFieldRef, *, start: str, end: str, inclusive_end: bool = True",
         "self._add_date_filter(field, start=start, end=end, inclusive_end=inclusive_end)",
     ),
     "add_relative_date_filter": (
-        "field: FieldLike | str, *, start_offset: str, end_offset: str",
+        "field: WizardFieldRef, *, start_offset: str, end_offset: str",
         "self._add_relative_date_filter(field, start_offset=start_offset, end_offset=end_offset)",
     ),
     "add_sort": (
-        "field: FieldLike | str, *, direction: Literal['asc', 'desc'] = 'asc'",
+        "field: WizardFieldRef, *, direction: Literal['asc', 'desc'] = 'asc'",
         "self._add_sort(field, direction=direction)",
     ),
     "navigator": ("*, mode: Literal['show', 'hide']", "self._navigator(mode=mode)"),
@@ -3033,39 +3034,39 @@ _HELPER_WRAPPERS: dict[str, tuple[str, str]] = {
         "self._labels_position(mode=mode)",
     ),
     "column_background": (
-        "field: FieldLike | str, *, mode: Literal['2-point', '3-point'] = '3-point', palette: GradientPaletteId = 'red-orange-green', thresholds: tuple[float, ...] | None = None, reversed: bool = False",
+        "field: WizardFieldRef, *, mode: Literal['2-point', '3-point'] = '3-point', palette: GradientPaletteId = 'red-orange-green', thresholds: tuple[float, ...] | None = None, reversed: bool = False",
         "self._column_background(field, mode=mode, palette=palette, thresholds=thresholds, reversed=reversed)",
     ),
     "column_bars": (
-        "field: FieldLike | str, *, enabled: bool = True, color_type: Literal['one-color', 'two-color', 'gradient'] = 'one-color', color: str | None = None, palette: DiscretePaletteId | None = None, color_index: int | None = None, color_positive: str | None = None, color_negative: str | None = None, positive_color_index: int | None = None, negative_color_index: int | None = None, gradient_palette: GradientPaletteId | None = None, gradient_type: Literal['2-point', '3-point'] = '2-point', reversed: bool = False, show_labels: bool = True, show_in_totals: bool = False, align: Literal['default', 'left', 'right'] = 'default'",
+        "field: WizardFieldRef, *, enabled: bool = True, color_type: Literal['one-color', 'two-color', 'gradient'] = 'one-color', color: str | None = None, palette: DiscretePaletteId | None = None, color_index: int | None = None, color_positive: str | None = None, color_negative: str | None = None, positive_color_index: int | None = None, negative_color_index: int | None = None, gradient_palette: GradientPaletteId | None = None, gradient_type: Literal['2-point', '3-point'] = '2-point', reversed: bool = False, show_labels: bool = True, show_in_totals: bool = False, align: Literal['default', 'left', 'right'] = 'default'",
         "self._column_bars(field, enabled=enabled, color_type=color_type, color=color, palette=palette, color_index=color_index, color_positive=color_positive, color_negative=color_negative, positive_color_index=positive_color_index, negative_color_index=negative_color_index, gradient_palette=gradient_palette, gradient_type=gradient_type, reversed=reversed, show_labels=show_labels, show_in_totals=show_in_totals, align=align)",
     ),
-    "column_title": ("field: FieldLike | str, *, title: str", "self._column_title(field, title=title)"),
-    "subtotals": ("field: FieldLike | str, *, enabled: bool", "self._subtotals(field, enabled=enabled)"),
+    "column_title": ("field: WizardFieldRef, *, title: str", "self._column_title(field, title=title)"),
+    "subtotals": ("field: WizardFieldRef, *, enabled: bool", "self._subtotals(field, enabled=enabled)"),
     "measure_format": (
-        "field: FieldLike | str, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None",
+        "field: WizardFieldRef, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None",
         "self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)",
     ),
     "shape": ("*, value: FunnelShape", "self._funnel_shape(value=value)"),
     "palette": ("*, id: PaletteId", "self._palette(id=id)"),
     "color_by_dimension": (
-        "field: FieldLike | str",
+        "field: WizardFieldRef",
         "self._color_by_dimension(field)",
     ),
     "color_by_measure": (
-        "field: FieldLike | str, *, mode: Literal['2-point', '3-point'] | None = None, palette: GradientPaletteId | None = None, reversed: bool | None = None",
+        "field: WizardFieldRef, *, mode: Literal['2-point', '3-point'] | None = None, palette: GradientPaletteId | None = None, reversed: bool | None = None",
         "self._color_by_measure(field, mode=mode, palette=palette, reversed=reversed)",
     ),
     "color_by_measure_name": (
-        "*, colors_map: Mapping[FieldLike | str, str] | None = None",
+        "*, colors_map: Mapping[WizardFieldRef, str] | None = None",
         "self._color_by_measure_name(colors_map=colors_map)",
     ),
     "shape_by_dimension": (
-        "field: FieldLike | str, *, shapes_map: Mapping[str, ShapeStyle] | None = None",
+        "field: WizardFieldRef, *, shapes_map: Mapping[str, ShapeStyle] | None = None",
         "self._shape_by_dimension(field, shapes_map=shapes_map)",
     ),
     "shape_by_measure_name": (
-        "*, shapes_map: Mapping[FieldLike | str, ShapeStyle] | None = None",
+        "*, shapes_map: Mapping[WizardFieldRef, ShapeStyle] | None = None",
         "self._shape_by_measure_name(shapes_map=shapes_map)",
     ),
     "point_size_range": (
@@ -3076,8 +3077,8 @@ _HELPER_WRAPPERS: dict[str, tuple[str, str]] = {
     "font_color": ("*, color: str", "self._font_color(color=color)"),
     "measure_title_mode": ("*, mode: Literal['by-field', 'manual', 'hide']", "self._measure_title_mode(mode=mode)"),
     "add_hierarchy": (
-        "title: str, fields: Sequence[FieldLike | str], *, guid: str | None = None",
-        "self._add_hierarchy(title, fields, guid=guid)",
+        "hierarchy: WizardHierarchy",
+        "self._add_hierarchy(hierarchy)",
     ),
 }
 
@@ -3170,7 +3171,7 @@ def _emit_wizard_methods(
         elif kind == "slot":
             lines.extend(
                 [
-                    f"    def {method_name}(self, fields: Sequence[FieldLike | str]) -> Self:",
+                    f"    def {method_name}(self, fields: Sequence[WizardFieldRef]) -> Self:",
                     f"        return self._set_slot({slot_name!r}, fields)",
                     "",
                 ]
@@ -3335,7 +3336,13 @@ def emit_chart_builders(metadata: Metadata) -> str:
         ")",
         "from datalens_sdk.domain.entry_location import EntryLocation",
         "from datalens_sdk.domain.chart_types import CombinedLayerType, DiscretePaletteId, FilterOperation, FunnelShape, GeoLayerFilter, GeoLayerType, GradientPaletteId, MeasureFormat, PaletteId, ShapeStyle",
-        "from datalens_sdk.domain.fields import DatasetField, FieldLike",
+        "from datalens_sdk.domain.fields import (",
+        "    DatasetField,",
+        "    WizardFieldRef,",
+        "    WizardAggregatedMeasure,",
+        "    WizardHierarchy,",
+        "    WizardLocalField,",
+        ")",
         "from datalens_sdk.domain.dataset import Dataset",
         "from datalens_sdk.domain.ports import ChartOperations",
         "from datalens_sdk.domain.ql_chart import QLColumn",
@@ -3372,7 +3379,7 @@ def emit_chart_builders(metadata: Metadata) -> str:
             for method_name, slot_name in methods.items():
                 lines.extend(
                     [
-                        f"    def {method_name}(self, fields: Sequence[FieldLike | str]) -> Self:",
+                        f"    def {method_name}(self, fields: Sequence[WizardFieldRef]) -> Self:",
                         f"        return self._set_slot({slot_name!r}, fields)",
                         "",
                     ]
@@ -3380,10 +3387,10 @@ def emit_chart_builders(metadata: Metadata) -> str:
         if visualization_type == "combined-chart":
             lines.extend(
                 [
-                    "    def x(self, fields: Sequence[FieldLike | str]) -> Self:",
+                    "    def x(self, fields: Sequence[WizardFieldRef]) -> Self:",
                     "        return self._combined_x(fields)",
                     "",
-                    "    def add_layer(self, layer_type: CombinedLayerType, *, y: FieldLike | str | None = None, y2: FieldLike | str | None = None, name: str | None = None) -> Self:",
+                    "    def add_layer(self, layer_type: CombinedLayerType, *, y: WizardFieldRef | None = None, y2: WizardFieldRef | None = None, name: str | None = None) -> Self:",
                     "        return self._combined_add_layer(layer_type, y=y, y2=y2, name=name)",
                     "",
                 ]
@@ -3394,7 +3401,7 @@ def emit_chart_builders(metadata: Metadata) -> str:
                     "    def add_dataset(self, dataset: Dataset) -> Self:",
                     "        return self._geo_add_dataset(dataset)",
                     "",
-                    "    def add_layer(self, layer_type: GeoLayerType, *, geopoint: FieldLike | str | None = None, polygon: FieldLike | str | None = None, polyline: FieldLike | str | None = None, grouping: FieldLike | str | None = None, size: FieldLike | str | None = None, color: FieldLike | str | None = None, color_mode: Literal['2-point', '3-point'] | None = None, color_palette: GradientPaletteId | None = None, color_reversed: bool | None = None, filters: Sequence[GeoLayerFilter] = (), tooltips: Sequence[FieldLike | str] = (), labels: Sequence[FieldLike | str] = (), sort_by: FieldLike | str | None = None, sort_direction: Literal['asc', 'desc'] = 'asc', alpha: int = 80, name: str | None = None, dataset: Dataset | None = None) -> Self:",
+                    "    def add_layer(self, layer_type: GeoLayerType, *, geopoint: WizardFieldRef | None = None, polygon: WizardFieldRef | None = None, polyline: WizardFieldRef | None = None, grouping: WizardFieldRef | None = None, size: WizardFieldRef | None = None, color: WizardFieldRef | None = None, color_mode: Literal['2-point', '3-point'] | None = None, color_palette: GradientPaletteId | None = None, color_reversed: bool | None = None, filters: Sequence[GeoLayerFilter] = (), tooltips: Sequence[WizardFieldRef] = (), labels: Sequence[WizardFieldRef] = (), sort_by: WizardFieldRef | None = None, sort_direction: Literal['asc', 'desc'] = 'asc', alpha: int = 80, name: str | None = None, dataset: Dataset | None = None) -> Self:",
                     "        return self._geo_add_layer(layer_type, geopoint=geopoint, polygon=polygon, polyline=polyline, grouping=grouping, size=size, color=color, color_mode=color_mode, color_palette=color_palette, color_reversed=color_reversed, filters=filters, tooltips=tooltips, labels=labels, sort_by=sort_by, sort_direction=sort_direction, alpha=alpha, name=name, dataset=dataset)",
                     "",
                     "    def map_center(self, *, lat: float, lon: float, zoom: int | None = None) -> Self:",
