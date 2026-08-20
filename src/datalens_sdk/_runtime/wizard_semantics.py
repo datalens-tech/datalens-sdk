@@ -12,28 +12,22 @@ WizardEncodingBinding = Literal["dimension", "measure", "measure_name"]
 
 class WizardEncodingRule(TypedDict):
     slot: str
-    requires_field_in_slot: NotRequired[str]
     implicit_from_slot: NotRequired[str]
     measure_slots: NotRequired[tuple[str, ...]]
-    category_slot: NotRequired[str]
+
+
+class WizardAutofixRule(TypedDict):
+    sort_from_slot: str
+    sort_direction: str
+    labels_from_slot: str
 
 
 class WizardVisualizationSemantics(TypedDict):
-    slots: tuple[str, ...]
     slot_aliases: dict[str, str]
-    measure_slot: NotRequired[str]
     encodings: NotRequired[dict[WizardEncoding, dict[WizardEncodingBinding, WizardEncodingRule]]]
-    allows_filters: bool
-    allows_labels: bool
-    allows_sort: bool
     label_modes: NotRequired[tuple[str, ...]]
-    requires_x_measure_autofix: NotRequired[bool]
+    autofix: NotRequired[WizardAutofixRule]
     slot_capacities: NotRequired[dict[str, int]]
-
-
-class WizardGeoLayerSemantics(TypedDict):
-    required_geometry: Literal["geopoint", "polygon", "polyline"]
-    supported_inputs: frozenset[str]
 
 
 class WizardVisualizationTransition(TypedDict):
@@ -42,17 +36,10 @@ class WizardVisualizationTransition(TypedDict):
 
 WIZARD_VISUALIZATION_SEMANTICS: dict[str, WizardVisualizationSemantics] = {
     "metric": {
-        "slots": ("measures",),
         "slot_aliases": {"y": "measures"},
-        "measure_slot": "measures",
-        "allows_filters": True,
-        "allows_labels": False,
-        "allows_sort": False,
     },
     "line": {
-        "slots": ("colors", "labels", "segments", "shapes", "sort", "x", "y", "y2"),
         "slot_aliases": {},
-        "measure_slot": "y",
         "encodings": {
             "color": {
                 "dimension": {"slot": "colors"},
@@ -63,126 +50,75 @@ WIZARD_VISUALIZATION_SEMANTICS: dict[str, WizardVisualizationSemantics] = {
                 "measure_name": {"slot": "shapes", "measure_slots": ("y", "y2")},
             },
         },
-        "allows_filters": True,
-        "allows_labels": True,
-        "allows_sort": True,
         "label_modes": ("absolute",),
     },
     "column": {
-        "slots": ("colors", "labels", "segments", "sort", "x", "y"),
         "slot_aliases": {},
-        "measure_slot": "y",
         "encodings": {
             "color": {
                 "dimension": {"slot": "colors"},
                 "measure": {"slot": "colors"},
-                "measure_name": {"slot": "colors", "measure_slots": ("y",), "category_slot": "x"},
+                "measure_name": {"slot": "colors", "measure_slots": ("y",)},
             },
         },
-        "allows_filters": True,
-        "allows_labels": True,
-        "allows_sort": True,
         "label_modes": ("absolute",),
     },
     "bar": {
-        "slots": ("colors", "labels", "sort", "x", "y"),
         "slot_aliases": {},
-        "measure_slot": "x",
         "encodings": {
             "color": {
                 "dimension": {"slot": "colors"},
                 "measure": {"slot": "colors"},
-                "measure_name": {"slot": "colors", "measure_slots": ("x",), "category_slot": "y"},
+                "measure_name": {"slot": "colors", "measure_slots": ("x",)},
             },
         },
-        "allows_filters": True,
-        "allows_labels": True,
-        "allows_sort": True,
         "label_modes": ("absolute",),
-        "requires_x_measure_autofix": True,
+        "autofix": {"sort_from_slot": "y", "sort_direction": "DESC", "labels_from_slot": "x"},
         "slot_capacities": {"y": 2},
     },
     "area": {
-        "slots": ("colors", "labels", "segments", "sort", "x", "y"),
         "slot_aliases": {},
-        "measure_slot": "y",
         "encodings": {"color": {"dimension": {"slot": "colors"}}},
-        "allows_filters": True,
-        "allows_labels": True,
-        "allows_sort": True,
         "label_modes": ("absolute",),
     },
     "area100p": {
-        "slots": ("colors", "labels", "segments", "sort", "x", "y"),
         "slot_aliases": {},
-        "measure_slot": "y",
         "encodings": {"color": {"dimension": {"slot": "colors"}}},
-        "allows_filters": True,
-        "allows_labels": True,
-        "allows_sort": True,
         "label_modes": ("absolute", "percent"),
     },
     "column100p": {
-        "slots": ("colors", "labels", "segments", "sort", "x", "y"),
         "slot_aliases": {},
-        "measure_slot": "y",
         "encodings": {"color": {"dimension": {"slot": "colors"}}},
-        "allows_filters": True,
-        "allows_labels": True,
-        "allows_sort": True,
         "label_modes": ("absolute", "percent"),
     },
     "bar100p": {
-        "slots": ("colors", "labels", "sort", "x", "y"),
         "slot_aliases": {},
-        "measure_slot": "x",
         "encodings": {"color": {"dimension": {"slot": "colors"}}},
-        "allows_filters": True,
-        "allows_labels": True,
-        "allows_sort": True,
         "label_modes": ("absolute", "percent"),
-        "requires_x_measure_autofix": True,
     },
     "donut": {
-        "slots": ("colors", "dimensions", "labels", "measures", "sort"),
         "slot_aliases": {"x": "dimensions", "y": "measures"},
-        "measure_slot": "measures",
         "encodings": {
             "color": {"dimension": {"slot": "colors", "implicit_from_slot": "dimensions"}},
         },
-        "allows_filters": True,
-        "allows_labels": True,
-        "allows_sort": True,
         "label_modes": ("absolute", "percent"),
     },
     "funnel": {
-        "slots": ("colors", "dimensions", "labels", "measures", "sort"),
         "slot_aliases": {"x": "dimensions", "y": "measures"},
-        "measure_slot": "measures",
         "encodings": {"color": {"dimension": {"slot": "colors"}}},
-        "allows_filters": True,
-        "allows_labels": True,
-        "allows_sort": True,
         "label_modes": ("absolute", "percent"),
     },
     "treemap": {
-        "slots": ("colors", "dimensions", "measures"),
         "slot_aliases": {"x": "dimensions", "y": "measures", "color": "colors"},
-        "measure_slot": "measures",
         "encodings": {
             "color": {
-                "dimension": {"slot": "colors", "requires_field_in_slot": "dimensions"},
+                "dimension": {"slot": "colors"},
                 "measure": {"slot": "colors"},
             },
         },
-        "allows_filters": True,
-        "allows_labels": False,
-        "allows_sort": False,
     },
     "scatter": {
-        "slots": ("colors", "points", "shapes", "size", "sort", "x", "y"),
         "slot_aliases": {},
-        "measure_slot": "y",
         "encodings": {
             "color": {
                 "dimension": {"slot": "colors"},
@@ -190,52 +126,21 @@ WIZARD_VISUALIZATION_SEMANTICS: dict[str, WizardVisualizationSemantics] = {
             },
             "shape": {"dimension": {"slot": "shapes"}},
         },
-        "allows_filters": True,
-        "allows_labels": False,
-        "allows_sort": True,
     },
     "pie": {
-        "slots": ("colors", "dimensions", "labels", "measures", "sort"),
         "slot_aliases": {"x": "dimensions", "y": "measures"},
-        "measure_slot": "measures",
         "encodings": {
             "color": {"dimension": {"slot": "colors", "implicit_from_slot": "dimensions"}},
         },
-        "allows_filters": True,
-        "allows_labels": True,
-        "allows_sort": True,
         "label_modes": ("absolute", "percent"),
     },
     "flatTable": {
-        "slots": ("colors", "columns", "sort"),
         "slot_aliases": {},
         "encodings": {"color": {"measure": {"slot": "colors"}}},
-        "allows_filters": True,
-        "allows_labels": False,
-        "allows_sort": True,
     },
     "pivotTable": {
-        "slots": ("colors", "columns", "measures", "rows", "sort"),
         "slot_aliases": {},
-        "measure_slot": "measures",
         "encodings": {"color": {"measure": {"slot": "colors"}}},
-        "allows_filters": True,
-        "allows_labels": False,
-        "allows_sort": True,
-    },
-    "combined-chart": {
-        "slots": (),
-        "slot_aliases": {},
-        "allows_filters": True,
-        "allows_labels": True,
-        "allows_sort": True,
-    },
-    "geolayer": {
-        "slots": (),
-        "slot_aliases": {},
-        "allows_filters": True,
-        "allows_labels": True,
-        "allows_sort": False,
     },
 }
 
@@ -254,17 +159,6 @@ def validate_visualization_transition(
     source_visualization_type: str,
     target_visualization_type: str,
 ) -> WizardVisualizationTransition:
-    known_types = frozenset(WIZARD_VISUALIZATION_SEMANTICS)
-    if source_visualization_type not in known_types:
-        raise DataLensConfigurationError(
-            f"{method}: active visualization {source_visualization_type!r} is unknown. "
-            f"Supported visualizations: {sorted(known_types)}."
-        )
-    if target_visualization_type not in known_types:
-        raise DataLensConfigurationError(
-            f"{method}: target visualization {target_visualization_type!r} is unknown for active visualization "
-            f"{source_visualization_type!r}. Supported visualizations: {sorted(known_types)}."
-        )
     if target_visualization_type == source_visualization_type:
         raise DataLensConfigurationError(
             f"{method}: target visualization {target_visualization_type!r} is already active; "
@@ -282,30 +176,6 @@ def validate_visualization_transition(
         f"{method}: transition from active visualization {source_visualization_type!r} to "
         f"{target_visualization_type!r} is not supported. Verified targets: {targets}."
     )
-
-
-WIZARD_GEO_LAYER_SEMANTICS: dict[str, WizardGeoLayerSemantics] = {
-    "geopoint": {
-        "required_geometry": "geopoint",
-        "supported_inputs": frozenset({"geopoint", "size", "color", "filters", "tooltips", "labels"}),
-    },
-    "geopoint-with-cluster": {
-        "required_geometry": "geopoint",
-        "supported_inputs": frozenset({"geopoint", "size", "color", "filters", "tooltips", "labels"}),
-    },
-    "heatmap": {
-        "required_geometry": "geopoint",
-        "supported_inputs": frozenset({"geopoint", "color", "filters"}),
-    },
-    "geopolygon": {
-        "required_geometry": "polygon",
-        "supported_inputs": frozenset({"polygon", "color", "filters", "tooltips"}),
-    },
-    "polyline": {
-        "required_geometry": "polyline",
-        "supported_inputs": frozenset({"polyline", "grouping", "measures", "color", "filters", "sort_by"}),
-    },
-}
 
 
 def get_wizard_visualization_semantics(visualization_type: str) -> WizardVisualizationSemantics | None:
@@ -345,14 +215,6 @@ def visualization_types_with_color_encoding() -> frozenset[str]:
     )
 
 
-def visualization_types_with_slot(slot_name: str) -> frozenset[str]:
-    return frozenset(
-        visualization_type
-        for visualization_type, semantics in WIZARD_VISUALIZATION_SEMANTICS.items()
-        if slot_name in semantics["slots"]
-    )
-
-
 def visualization_types_with_label_mode(label_mode: str) -> frozenset[str]:
     return frozenset(
         visualization_type
@@ -371,14 +233,6 @@ def validate_label_mode(*, visualization_type: str, label_mode: str) -> None:
         )
 
 
-def visualization_types_where(flag: Literal["allows_filters", "allows_labels", "allows_sort"]) -> frozenset[str]:
-    return frozenset(
-        visualization_type
-        for visualization_type, semantics in WIZARD_VISUALIZATION_SEMANTICS.items()
-        if semantics.get(flag) is True
-    )
-
-
 def resolve_slot_name(visualization_type: str, slot_name: str) -> str:
     semantics = WIZARD_VISUALIZATION_SEMANTICS.get(visualization_type)
     if semantics is None:
@@ -387,34 +241,5 @@ def resolve_slot_name(visualization_type: str, slot_name: str) -> str:
 
 
 def validate_slot_name(*, method: str, visualization_type: str, slot_name: str) -> str:
-    semantics = WIZARD_VISUALIZATION_SEMANTICS.get(visualization_type)
-    if semantics is None:
-        raise DataLensConfigurationError(
-            f"{method}: active visualization {visualization_type!r} is unknown. "
-            f"Supported visualizations: {sorted(WIZARD_VISUALIZATION_SEMANTICS)}."
-        )
-    canonical_name = resolve_slot_name(visualization_type, slot_name)
-    if canonical_name in semantics["slots"]:
-        return canonical_name
-    if canonical_name == "labels" and semantics.get("allows_labels") is True:
-        return canonical_name
-    if canonical_name == "sort" and semantics.get("allows_sort") is True:
-        return canonical_name
-    allowed = sorted(set(semantics["slots"]) | set(semantics["slot_aliases"]))
-    raise DataLensConfigurationError(
-        f"{method}: slot {slot_name!r} is not applicable to active visualization "
-        f"{visualization_type!r}. Allowed slots: {allowed}."
-    )
-
-
-def get_geo_layer_semantics(layer_type: str) -> WizardGeoLayerSemantics | None:
-    return WIZARD_GEO_LAYER_SEMANTICS.get(layer_type)
-
-
-def geo_layer_supports_input(layer_semantics: WizardGeoLayerSemantics, input_name: str) -> bool:
-    return input_name in layer_semantics["supported_inputs"]
-
-
-def requires_x_measure_autofix(visualization_type: str) -> bool:
-    semantics = WIZARD_VISUALIZATION_SEMANTICS.get(visualization_type)
-    return bool(semantics and semantics.get("requires_x_measure_autofix"))
+    del method
+    return resolve_slot_name(visualization_type, slot_name)

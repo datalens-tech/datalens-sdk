@@ -61,8 +61,6 @@ from datalens_sdk import (
 from datalens_sdk._generated.builders.charts import (
     AdvancedChartNodeNodeCreate,
     EnterpriseEditorChartCreateFactory,
-    LineWizardChartCreate,
-    PivotTableWizardChartCreate,
     WizardChartCreateFactory,
     YacloudEditorChartCreateFactory,
 )
@@ -752,17 +750,13 @@ def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> Non
 
     assert_type(client.create.dataset(location=workbook, name="Dataset"), DatasetCreate)
     assert_type(client.create.connection.postgres(location=workbook, name="PostgreSQL"), PostgresConnectionCreate)
-    assert_type(client.create.wizard_chart.line(location=workbook, name="Chart"), LineWizardChartCreate)
+    assert "line" not in WizardChartCreateFactory.__dict__
     wizard_chart = client.get.wizard_chart(by_id="chart-1")
     assert_type(wizard_chart, WizardChart)
     assert_type(wizard_chart.rev_id, str | None)
     assert_type(wizard_chart.publish_revision(rev_id="rev-1"), WizardChart)
     local = WizardLocalField.measure(title="Revenue", formula="SUM([Sales])", cast="float")
     assert_type(local, WizardLocalField)
-    assert_type(
-        client.create.wizard_chart.line(location=workbook, name="Chart").add_local_field(local),
-        LineWizardChartCreate,
-    )
     assert_type(wizard_chart.update.add_local_field(local), WizardChartUpdate)
     city = DatasetField(
         guid="city",
@@ -778,10 +772,6 @@ def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> Non
     assert_type(dataset_field, DatasetField)
     assert_type(wizard_field, WizardFieldLike)
     assert_type(wizard_ref, WizardFieldRef)
-    assert_type(
-        client.create.wizard_chart.pivot_table(location=workbook, name="Pivot").measures([city]),
-        PivotTableWizardChartCreate,
-    )
     unique_cities = WizardAggregatedMeasure(
         field=city,
         aggregation="countunique",
@@ -790,14 +780,6 @@ def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> Non
     hierarchy = WizardHierarchy(title="Geo", fields=[city])
     assert_type(unique_cities, WizardAggregatedMeasure)
     assert_type(hierarchy, WizardHierarchy)
-    assert_type(
-        client.create.wizard_chart.line(location=workbook, name="Chart").add_aggregated_measure(unique_cities),
-        LineWizardChartCreate,
-    )
-    assert_type(
-        client.create.wizard_chart.line(location=workbook, name="Chart").add_hierarchy(hierarchy),
-        LineWizardChartCreate,
-    )
     assert_type(wizard_chart.update.add_aggregated_measure(unique_cities), WizardChartUpdate)
     assert_type(wizard_chart.update.add_hierarchy(hierarchy), WizardChartUpdate)
     assert_type(
@@ -877,7 +859,6 @@ def test_create_placement_signatures_use_one_entry_location_type() -> None:
     dashboard_hints = get_type_hints(DashboardCreateFactory.__call__)
     dataset_hints = get_type_hints(DatasetCreateFactory.__call__)
     connection_hints = get_type_hints(YacloudConnectionCreateFactory.postgres)
-    wizard_chart_hints = get_type_hints(WizardChartCreateFactory.line)
     editor_chart_hints = get_type_hints(YacloudEditorChartCreateFactory.advanced_chart)
 
     assert collection_hints["parent"] == EntryLocation | None
@@ -888,7 +869,6 @@ def test_create_placement_signatures_use_one_entry_location_type() -> None:
     assert dataset_hints["name"] is str
     assert connection_hints["location"] == EntryLocation
     assert connection_hints["name"] is str
-    assert wizard_chart_hints["location"] == EntryLocation
-    assert wizard_chart_hints["name"] is str
+    assert "line" not in WizardChartCreateFactory.__dict__
     assert editor_chart_hints["location"] == EntryLocation
     assert editor_chart_hints["name"] is str

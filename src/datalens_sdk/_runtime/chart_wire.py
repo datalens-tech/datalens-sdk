@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import date, datetime, timezone
 import re
 import uuid
 
@@ -20,6 +21,10 @@ def _normalize_iso_date(value: str, *, end: bool = False, inclusive_end: bool = 
     if not _ISO_DATE_RE.match(value):
         return value
     if "T" not in value:
+        try:
+            date.fromisoformat(value)
+        except ValueError:
+            return value
         if end and not inclusive_end:
             time_part = "T00:00:00.000Z"
         elif end:
@@ -27,11 +32,20 @@ def _normalize_iso_date(value: str, *, end: bool = False, inclusive_end: bool = 
         else:
             time_part = "T00:00:00.000Z"
         return value + time_part
-    if not value.endswith("Z"):
-        value = re.sub(r"[+-]\d{2}:\d{2}$", "", value)
-        if not value.endswith("Z"):
-            value = value + "Z"
-    return value
+    parseable = value[:-1] + "+00:00" if value.endswith("Z") else value
+    try:
+        parsed = datetime.fromisoformat(parseable)
+    except ValueError:
+        return value
+    if value.endswith("Z"):
+        return value
+    offset = re.search(r"[+-]\d{2}:\d{2}$", value)
+    if offset is None:
+        return value + "Z"
+    fraction = re.search(r"T\d{2}:\d{2}:\d{2}(\.\d+)?", value)
+    fractional_part = fraction.group(1) if fraction is not None and fraction.group(1) is not None else ""
+    utc = parsed.astimezone(timezone.utc)
+    return utc.strftime("%Y-%m-%dT%H:%M:%S") + fractional_part + "Z"
 
 
 def build_date_interval(start: str, end: str, *, inclusive_end: bool = True) -> str:

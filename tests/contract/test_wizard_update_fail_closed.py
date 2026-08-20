@@ -1,22 +1,25 @@
 from __future__ import annotations
 
+import copy
 from typing import Any, cast
 
 import pytest
 
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk._runtime.wizard_semantics import (
-    WIZARD_VISUALIZATION_SEMANTICS,
     WIZARD_VISUALIZATION_TRANSITIONS,
 )
+from datalens_sdk._runtime.wizard_structure import WizardSlotStructure, WizardVisualizationRegistry
+from datalens_sdk.converter.wizard._update import _validate_update_structure
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 
 def _chart(*, visualization_id: str = "line", slots: dict[str, list[dict[str, object]]] | None = None) -> WizardChart:
-    semantics = WIZARD_VISUALIZATION_SEMANTICS.get(visualization_id)
+    structure = WIZARD_VISUALIZATION_STRUCTURE.get(visualization_id)
     named_slots: dict[str, object] = (
-        {slot_name: {"items": []} for slot_name in semantics["slots"]} if semantics is not None else {}
+        {slot_name: {"items": []} for slot_name in structure["slots"]} if structure is not None else {}
     )
     for slot_name, items in (slots or {}).items():
         named_slots[slot_name] = {"items": items}
@@ -36,6 +39,82 @@ def _chart(*, visualization_id: str = "line", slots: dict[str, list[dict[str, ob
 def _payload_data(update: object) -> dict[str, object]:
     dto = WizardChartConverter.from_domain_update(cast(Any, update))
     return cast(dict[str, object], dto.to_payload()["data"])
+
+
+def _structure(
+    visualization_id: str,
+    *,
+    chart_settings: tuple[str, ...] = (),
+    slot_settings: dict[str, tuple[str, ...]] | None = None,
+) -> WizardVisualizationRegistry:
+    slots: dict[str, WizardSlotStructure] = {
+        slot_name: {
+            "required": False,
+            "items_required": False,
+            "settings": {setting_name: {} for setting_name in setting_names},
+        }
+        for slot_name, setting_names in (slot_settings or {}).items()
+    }
+    return {
+        visualization_id: {
+            "properties": ["type", *slots],
+            "required": ["type"],
+            "slots": slots,
+            "chart_settings": {setting_name: {} for setting_name in chart_settings},
+            "layers": {},
+        }
+    }
+
+
+def test_update_helper_requires_every_declared_chart_setting_before_mutation() -> None:
+    chart = _chart()
+    original = copy.deepcopy(chart.data)
+    update = chart.update.chart_title(text="Title")
+
+    with pytest.raises(DataLensConfigurationError, match=r"chart_title.*not supported by generated structure"):
+        _validate_update_structure(
+            cast(Any, chart.data),
+            update,
+            _structure("line", chart_settings=("title",)),
+        )
+
+    assert chart.data == original
+
+
+def test_update_axis_helper_rejects_a_partial_slot_setting_carrier() -> None:
+    chart = _chart(slots={"x": []})
+    update = chart.update.axis_title("x", mode="auto")
+
+    with pytest.raises(DataLensConfigurationError, match=r"axis_title.*not supported by generated structure"):
+        _validate_update_structure(
+            cast(Any, chart.data),
+            update,
+            _structure("line", slot_settings={"x": ("title",)}),
+        )
+
+
+def test_update_labels_position_accepts_either_declared_schema_carrier() -> None:
+    for setting_name in ("labelsPosition", "position"):
+        chart = _chart(visualization_id="funnel", slots={"labels": []})
+        update = chart.update.labels_position(mode="inside")
+
+        _validate_update_structure(
+            cast(Any, chart.data),
+            update,
+            _structure("funnel", slot_settings={"labels": (setting_name,)}),
+        )
+
+
+def test_update_labels_position_rejects_a_missing_schema_carrier() -> None:
+    chart = _chart(visualization_id="funnel", slots={"labels": []})
+    update = chart.update.labels_position(mode="inside")
+
+    with pytest.raises(DataLensConfigurationError, match=r"labels_position.*not supported by generated structure"):
+        _validate_update_structure(
+            cast(Any, chart.data),
+            update,
+            _structure("funnel", slot_settings={"labels": ()}),
+        )
 
 
 def test_slot_typo_is_rejected_at_the_public_update_call() -> None:
@@ -135,7 +214,7 @@ def test_every_verified_visualization_transition_preserves_declared_axes(
 
     data = _payload_data(chart.update.change_visualization_to(visualization_id=target_visualization_id))
     visualization = cast(dict[str, object], data["visualization"])
-    target_slots = WIZARD_VISUALIZATION_SEMANTICS[target_visualization_id]["slots"]
+    target_slots = WIZARD_VISUALIZATION_STRUCTURE[target_visualization_id]["slots"]
     expected_items = {
         target_slot_name: source_items[source_slot_name] for source_slot_name, target_slot_name in slot_mapping
     }
@@ -173,7 +252,7 @@ def test_change_visualization_to_rebuilds_metadata_maps_axes_and_drops_incompati
     visualization = cast(dict[str, object], data["visualization"])
     untyped_visualization = cast(dict[str, Any], visualization)
     assert visualization["type"] == "bar"
-    assert set(visualization) == {"type", *WIZARD_VISUALIZATION_SEMANTICS["bar"]["slots"]}
+    assert set(visualization) == {"type", *WIZARD_VISUALIZATION_STRUCTURE["bar"]["slots"]}
     assert untyped_visualization["x"]["items"] == [measure]
     assert untyped_visualization["y"]["items"] == [dimension]
     assert untyped_visualization["colors"]["items"] == []

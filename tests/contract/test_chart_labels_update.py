@@ -6,7 +6,7 @@ from typing import Any, cast
 
 import pytest
 
-from datalens_sdk._runtime.wizard_semantics import WIZARD_VISUALIZATION_SEMANTICS
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.errors import DataLensConfigurationError
@@ -22,8 +22,8 @@ def _chart_with_viz(viz_id: str, *, fields: list[dict[str, Any]] | None = None) 
             {"guid": "g_amt", "title": "Amount", "type": "MEASURE", "data_type": "float", "calc_mode": "direct"},
         ]
     )
-    semantics = WIZARD_VISUALIZATION_SEMANTICS[viz_id]
-    slots: dict[str, Any] = {slot_name: {"items": []} for slot_name in semantics["slots"]}
+    structure = WIZARD_VISUALIZATION_STRUCTURE[viz_id]
+    slots: dict[str, Any] = {slot_name: {"items": []} for slot_name in structure["slots"]}
     carrier = next(name for name in ("y", "measures", "columns") if name in slots)
     slots[carrier]["items"] = [{**field, "datasetId": "ds1"} for field in field_items]
     return WizardChartConverter.to_domain(
@@ -125,7 +125,7 @@ def test_labels_applicability_gate_on_metric() -> None:
             "sources": {"datasetsIds": ["ds1"]},
             "visualization": {
                 "type": "metric",
-                **{slot_name: {"items": []} for slot_name in WIZARD_VISUALIZATION_SEMANTICS["metric"]["slots"]},
+                **{slot_name: {"items": []} for slot_name in WIZARD_VISUALIZATION_STRUCTURE["metric"]["slots"]},
             },
         },
     )

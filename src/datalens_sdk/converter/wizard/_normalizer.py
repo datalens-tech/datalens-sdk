@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
+from datalens_sdk._runtime.wizard_structure import WizardFieldStructure
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.fields import DatasetField, WizardFieldRef, WizardHierarchy
 from datalens_sdk.domain.wizard_chart import resolve_field_snapshot
@@ -57,6 +58,7 @@ class _Normalizer:
         hierarchies: Mapping[str, Mapping[str, object]] | None = None,
         fields: Sequence[DatasetField] | None = None,
         dataset_replacement: tuple[str, str] | None = None,
+        field_structure: WizardFieldStructure,
     ) -> None:
         self._dataset = dataset
         self._local_fields = local_fields
@@ -68,6 +70,29 @@ class _Normalizer:
         self._dataset_id = dataset.id if dataset is not None else None
         self._dataset_name = _dataset_name(dataset)
         self._dataset_replacement = dataset_replacement
+        self._direct_field_properties = frozenset(field_structure["direct_properties"])
+        self._update_field_properties = frozenset(field_structure["update_properties"])
+        self._nullable_update_field_properties = frozenset(field_structure["nullable_update_properties"])
+
+    @property
+    def direct_field_properties(self) -> frozenset[str]:
+        return self._direct_field_properties
+
+    @property
+    def update_field_properties(self) -> frozenset[str]:
+        return self._update_field_properties
+
+    @property
+    def nullable_update_field_properties(self) -> frozenset[str]:
+        return self._nullable_update_field_properties
+
+    @property
+    def field_structure(self) -> WizardFieldStructure:
+        return {
+            "direct_properties": tuple(sorted(self._direct_field_properties)),
+            "update_properties": tuple(sorted(self._update_field_properties)),
+            "nullable_update_properties": tuple(sorted(self._nullable_update_field_properties)),
+        }
 
     def for_hierarchy_fields(self) -> _Normalizer:
         "Return a copy of this normalizer that skips hierarchy lookups."
@@ -79,6 +104,9 @@ class _Normalizer:
         clone._dataset_id = self._dataset_id
         clone._dataset_name = self._dataset_name
         clone._dataset_replacement = self._dataset_replacement
+        clone._direct_field_properties = self._direct_field_properties
+        clone._update_field_properties = self._update_field_properties
+        clone._nullable_update_field_properties = self._nullable_update_field_properties
         return clone
 
     def normalize(self, items: Sequence[WizardFieldRef]) -> list[dict[str, object]]:

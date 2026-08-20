@@ -3,14 +3,15 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
+from datalens_sdk._runtime.method_specs import METHOD_SPECS, resolve_method_carriers
 from datalens_sdk._runtime.wizard_field_references import WizardFieldReferences
 from datalens_sdk._runtime.wizard_semantics import (
     get_wizard_visualization_semantics,
     validate_slot_name,
     validate_visualization_transition,
 )
+from datalens_sdk._runtime.wizard_structure import WizardFieldStructure, WizardVisualizationRegistry
 from datalens_sdk.converter.wizard._assemble import (
-    _UPDATE_FIELD_KEYS,
     _apply_color_encoding,
     _apply_implicit_measure_names,
     _apply_item_mutations,
@@ -34,7 +35,7 @@ from datalens_sdk.converter.wizard._assemble import (
     _without_field_decorations,
 )
 from datalens_sdk.converter.wizard._normalizer import _hierarchies_map, _local_fields_map, _Normalizer
-from datalens_sdk.converter.wizard._types import WizardJsonObject, WizardVisualizationStructure
+from datalens_sdk.converter.wizard._types import WizardJsonObject
 from datalens_sdk.domain.wizard_chart import resolve_field_snapshot
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.json_types import JsonValue
@@ -60,17 +61,20 @@ def _visualization(data: WizardJsonObject) -> WizardJsonObject:
 def _known_visualization(data: WizardJsonObject, *, mutation_requested: bool) -> WizardJsonObject:
     visualization = _visualization(data)
     visualization_type = visualization.get("type")
-    semantics = get_wizard_visualization_semantics(visualization_type) if isinstance(visualization_type, str) else None
-    if mutation_requested and semantics is None:
+    if mutation_requested and not isinstance(visualization_type, str):
         raise DataLensConfigurationError(
-            f"Typed Wizard V1 updates require a known visualization; got {visualization_type!r}."
+            f"Typed Wizard V1 updates require a string visualization type; got {visualization_type!r}."
         )
     return visualization
 
 
+def _has_layers(visualization: Mapping[str, object]) -> bool:
+    return isinstance(visualization.get("layers"), list)
+
+
 def _slots_for_edit(visualization: WizardJsonObject, slot_name: str) -> list[WizardJsonObject]:
     visualization_type = visualization.get("type")
-    if visualization_type not in {"combined-chart", "geolayer"}:
+    if not _has_layers(visualization):
         return [_slot(visualization, slot_name)]
     layers = visualization.get("layers")
     if visualization_type == "combined-chart" and slot_name == "x":
@@ -122,13 +126,19 @@ def _hierarchies_for_update(
     return _hierarchies_map(combined)
 
 
-def _normalizer(data: WizardJsonObject, update: WizardChartUpdate) -> _Normalizer:
+def _normalizer(
+    data: WizardJsonObject,
+    update: WizardChartUpdate,
+    *,
+    field_structure: WizardFieldStructure,
+) -> _Normalizer:
     return _Normalizer(
         dataset=None,
         local_fields=_local_fields_from_data(data),
         fields=list(update.chart.fields),
         hierarchies=_hierarchies_for_update(data, update),
         dataset_replacement=update.dataset_replacement,
+        field_structure=field_structure,
     )
 
 
@@ -153,7 +163,12 @@ def _slot(visualization: WizardJsonObject, slot_name: str) -> WizardJsonObject:
     return value
 
 
-def _apply_local_field_additions(data: WizardJsonObject, update: WizardChartUpdate) -> None:
+def _apply_local_field_additions(
+    data: WizardJsonObject,
+    update: WizardChartUpdate,
+    *,
+    field_structure: WizardFieldStructure,
+) -> None:
     additions = update.local_field_additions
     if not additions:
         return
@@ -173,7 +188,7 @@ def _apply_local_field_additions(data: WizardJsonObject, update: WizardChartUpda
         if addition_guid in existing_guids:
             raise DataLensValidationError(f"add_local_field: field guid {addition_guid!r} already exists in the chart.")
         field = _json_object(
-            {key: value for key, value in addition.items() if key in _UPDATE_FIELD_KEYS},
+            {key: value for key, value in addition.items() if key in field_structure["update_properties"]},
             context="Wizard local field",
         )
         if dataset_id is not None and "datasetId" not in field:
@@ -183,22 +198,27 @@ def _apply_local_field_additions(data: WizardJsonObject, update: WizardChartUpda
             existing_guids.add(addition_guid)
 
 
-def _apply_slot_edits(data: WizardJsonObject, update: WizardChartUpdate) -> None:
+def _apply_slot_edits(
+    data: WizardJsonObject,
+    update: WizardChartUpdate,
+    *,
+    field_structure: WizardFieldStructure,
+) -> None:
     if not update.slot_edits:
         return
     visualization = _known_visualization(data, mutation_requested=True)
-    normalizer = _normalizer(data, update)
+    normalizer = _normalizer(data, update, field_structure=field_structure)
     dataset_id = _primary_dataset_id(data)
     for slot_name, refs in update.slot_edits.items():
         normalized = normalizer.normalize(refs)
         for target in _slots_for_edit(visualization, slot_name):
-            target["items"] = [_project_field(item, dataset_id=dataset_id) for item in normalized]
+            target["items"] = [
+                _project_field(item, dataset_id=dataset_id, normalizer=normalizer) for item in normalized
+            ]
             settings = target.get("settings")
             if isinstance(settings, Mapping) and "axisModeMap" in settings:
                 _sync_axis_modes(target, normalized)
-    if visualization.get("type") not in {"combined-chart", "geolayer"} and (
-        "colors" not in update.slot_edits and update.color_encoding is None
-    ):
+    if not _has_layers(visualization) and ("colors" not in update.slot_edits and update.color_encoding is None):
         _apply_implicit_measure_names(visualization)
 
 
@@ -244,10 +264,10 @@ def _apply_dataset_replacement(data: WizardJsonObject, update: WizardChartUpdate
         raise DataLensValidationError(
             f"replace_dataset(old={old_id!r}, new={new_id!r}) cannot proceed: the chart datasets are {dataset_ids!r}."
         )
-    replaced_ids: list[JsonValue] = [new_id if item == old_id else item for item in dataset_ids]
-    _sources(data)["datasetsIds"] = replaced_ids
     references = WizardFieldReferences(data)
     references.replace_dataset(old_id, new_id)
+    replaced_ids: list[JsonValue] = [new_id if item == old_id else item for item in dataset_ids]
+    _sources(data)["datasetsIds"] = replaced_ids
     references.assert_dataset_absent(old_id)
 
 
@@ -263,21 +283,57 @@ def _apply_filter_deletions(data: WizardJsonObject, update: WizardChartUpdate) -
     ]
 
 
-def _resolve_replacement(
+def _resolve_replacement_snapshot(
     data: WizardJsonObject,
     update: WizardChartUpdate,
     field: object,
 ) -> WizardJsonObject:
-    snapshot = resolve_field_snapshot(
-        field,  # type: ignore[arg-type]
-        fields=list(update.chart.fields),
-        local_fields=_local_fields_from_data(data),
+    return _json_object(
+        resolve_field_snapshot(
+            field,  # type: ignore[arg-type]
+            fields=list(update.chart.fields),
+            local_fields=_local_fields_from_data(data),
+        ),
+        context="Wizard replacement field",
     )
-    return _project_field(snapshot, dataset_id=_primary_dataset_id(data))
 
 
-def _apply_structural_field_mutations(data: WizardJsonObject, update: WizardChartUpdate) -> None:
+def _validate_link_mutations(
+    data: WizardJsonObject,
+    update: WizardChartUpdate,
+    *,
+    field_structure: WizardFieldStructure,
+) -> None:
     references = WizardFieldReferences(data)
+    deleted = update.deleted_field_guids
+    for guid in deleted:
+        references.validate_field_deletion(guid)
+
+    dataset_id = _primary_dataset_id(data)
+    normalizer = _normalizer(data, update, field_structure=field_structure)
+    for old_guid, staged in update.aggregation_field_replacements.items():
+        if old_guid not in deleted:
+            link_replacement = _project_field(staged, dataset_id=dataset_id, normalizer=normalizer)
+            link_replacement.update(_json_object(staged, context="Wizard aggregated field replacement"))
+            references.validate_field_replacement(old_guid, link_replacement)
+    for old_guid, field in update.field_replacements.items():
+        if old_guid not in deleted:
+            references.validate_field_replacement(
+                old_guid,
+                _resolve_replacement_snapshot(data, update, field),
+            )
+    if update.dataset_replacement is not None:
+        references.validate_dataset_replacement(*update.dataset_replacement)
+
+
+def _apply_structural_field_mutations(
+    data: WizardJsonObject,
+    update: WizardChartUpdate,
+    *,
+    field_structure: WizardFieldStructure,
+) -> None:
+    references = WizardFieldReferences(data)
+    normalizer = _normalizer(data, update, field_structure=field_structure)
     deleted = update.deleted_field_guids
     for guid in deleted:
         references.delete_field(guid)
@@ -294,15 +350,30 @@ def _apply_structural_field_mutations(data: WizardJsonObject, update: WizardChar
             )
         references.replace_field(
             old_guid,
-            _project_field(replacement, dataset_id=_primary_dataset_id(data)),
+            _project_field(replacement, dataset_id=_primary_dataset_id(data), normalizer=normalizer),
+            link_replacement=replacement,
         )
 
     for old_guid, field in update.field_replacements.items():
         if old_guid not in deleted:
-            references.replace_field(old_guid, _resolve_replacement(data, update, field))
+            resolved_replacement = _resolve_replacement_snapshot(data, update, field)
+            references.replace_field(
+                old_guid,
+                _project_field(
+                    resolved_replacement,
+                    dataset_id=_primary_dataset_id(data),
+                    normalizer=normalizer,
+                ),
+                link_replacement=resolved_replacement,
+            )
 
 
-def _apply_hierarchies(data: WizardJsonObject, update: WizardChartUpdate) -> None:
+def _apply_hierarchies(
+    data: WizardJsonObject,
+    update: WizardChartUpdate,
+    *,
+    field_structure: WizardFieldStructure,
+) -> None:
     if not update.new_hierarchies:
         return
     sources = _sources(data)
@@ -313,7 +384,7 @@ def _apply_hierarchies(data: WizardJsonObject, update: WizardChartUpdate) -> Non
         for index, item in enumerate(hierarchies)
         if isinstance(item, Mapping) and isinstance(item.get("guid"), str)
     }
-    normalizer = _normalizer(data, update).for_hierarchy_fields()
+    normalizer = _normalizer(data, update, field_structure=field_structure).for_hierarchy_fields()
     dataset_id = _primary_dataset_id(data)
     visualization = _known_visualization(data, mutation_requested=True)
     for spec in update.new_hierarchies:
@@ -352,8 +423,13 @@ def _apply_hierarchies(data: WizardJsonObject, update: WizardChartUpdate) -> Non
     sources["hierarchies"] = hierarchies
 
 
-def _apply_filters_and_sort(data: WizardJsonObject, update: WizardChartUpdate) -> None:
-    normalizer = _normalizer(data, update)
+def _apply_filters_and_sort(
+    data: WizardJsonObject,
+    update: WizardChartUpdate,
+    *,
+    field_structure: WizardFieldStructure,
+) -> None:
+    normalizer = _normalizer(data, update, field_structure=field_structure)
     dataset_id = _primary_dataset_id(data)
     if update.pending_filters:
         sources = _sources(data)
@@ -380,16 +456,24 @@ def _apply_filters_and_sort(data: WizardJsonObject, update: WizardChartUpdate) -
         if not isinstance(items, list):
             raise AssertionError("Wizard sort slot items were narrowed to a list")
         for ref, direction in update.sort_direction_items:
-            item = _without_field_decorations(_normalize_fields(normalizer, [ref], dataset_id=dataset_id)[0])
+            item = _without_field_decorations(
+                _normalize_fields(normalizer, [ref], dataset_id=dataset_id)[0],
+                normalizer=normalizer,
+            )
             item["direction"] = direction.upper()
             items.append(item)
 
 
-def _apply_encodings_and_decorations(data: WizardJsonObject, update: WizardChartUpdate) -> None:
+def _apply_encodings_and_decorations(
+    data: WizardJsonObject,
+    update: WizardChartUpdate,
+    *,
+    field_structure: WizardFieldStructure,
+) -> None:
     visualization = _known_visualization(data, mutation_requested=True)
-    normalizer = _normalizer(data, update)
+    normalizer = _normalizer(data, update, field_structure=field_structure)
     dataset_id = _primary_dataset_id(data)
-    if visualization.get("type") in {"combined-chart", "geolayer"} and any(
+    if _has_layers(visualization) and any(
         (update.color_encoding is not None, update.colors_palette is not None, update.shape_encoding is not None)
     ):
         raise DataLensConfigurationError("Layered Wizard V1 encodings must be configured by add_layer().")
@@ -445,7 +529,12 @@ def _apply_formula_replacements(data: WizardJsonObject, update: WizardChartUpdat
             field["formula"] = update.formula_replacements[guid]
 
 
-def _apply_visualization_transition(data: WizardJsonObject, update: WizardChartUpdate) -> None:
+def _apply_visualization_transition(
+    data: WizardJsonObject,
+    update: WizardChartUpdate,
+    *,
+    structure: WizardVisualizationRegistry,
+) -> None:
     target_type = update.target_visualization_type
     if target_type is None:
         return
@@ -458,11 +547,14 @@ def _apply_visualization_transition(data: WizardJsonObject, update: WizardChartU
         source_visualization_type=source_type,
         target_visualization_type=target_type,
     )
+    target_structure = structure.get(target_type)
+    if target_structure is None:
+        raise DataLensConfigurationError(f"Wizard V1 generated structure has no visualization {target_type!r}.")
     target_semantics = get_wizard_visualization_semantics(target_type)
-    if target_semantics is None or target_type in {"combined-chart", "geolayer"}:
+    if target_semantics is None or target_structure["layers"]:
         raise DataLensConfigurationError(f"change_visualization_to does not support target {target_type!r}.")
     target: WizardJsonObject = {"type": target_type}
-    for slot_name in target_semantics["slots"]:
+    for slot_name in target_structure["slots"]:
         slot: WizardJsonObject = {"items": []}
         settings = _default_slot_settings(target_type, slot_name)
         if settings is not None:
@@ -502,10 +594,8 @@ def _apply_scatter_size(data: WizardJsonObject, update: WizardChartUpdate) -> No
 def _validate_update_structure(
     data: WizardJsonObject,
     update: WizardChartUpdate,
-    structure: WizardVisualizationStructure | None,
+    structure: WizardVisualizationRegistry,
 ) -> None:
-    if not structure:
-        return
     visualization = _known_visualization(data, mutation_requested=True)
     visualization_type = visualization.get("type")
     if not isinstance(visualization_type, str) or visualization_type not in structure:
@@ -516,12 +606,35 @@ def _validate_update_structure(
         raise DataLensConfigurationError(
             f"Wizard V1 generated structure for visualization {visualization_type!r} has no slots registry."
         )
-    layered = visualization_type in {"combined-chart", "geolayer"}
-    selected = _selected_layer(visualization) if layered else None
-    selected_layer_type = selected.get("type") if selected is not None else None
     raw_layers = raw.get("layers")
     layer_structures = raw_layers if isinstance(raw_layers, Mapping) else {}
-    for slot_name in set(update.slot_edits) | set(update.slot_settings_edits):
+    layered = bool(layer_structures)
+    selected = _selected_layer(visualization) if layered else None
+    selected_layer_type = selected.get("type") if selected is not None else None
+    for method_name in update.requested_structure_methods:
+        method_spec = METHOD_SPECS[method_name]
+        resolution = resolve_method_carriers(
+            method_name,
+            method_spec,
+            raw,
+            scope="active_layer",
+            active_layer_type=selected_layer_type if isinstance(selected_layer_type, str) else None,
+        )
+        if resolution.failure is not None:
+            failure = resolution.failure
+            details = f"carrier resolution failed with {failure.code}"
+            if failure.carrier is not None:
+                details += f" for {failure.carrier!r}"
+            if failure.missing:
+                details += f"; missing {list(failure.missing)!r}"
+            raise DataLensConfigurationError(
+                f"Method {method_name!r} is not supported by generated structure for "
+                f"visualization {visualization_type!r}: {details}."
+            )
+    edited_slot_names = set(update.slot_edits) | set(update.slot_settings_edits)
+    if update.sort_direction_items:
+        edited_slot_names.add("sort")
+    for slot_name in edited_slot_names:
         canonical_name = (
             slot_name
             if layered
@@ -654,7 +767,8 @@ def _apply_update_operations(
     data: WizardJsonObject,
     update: WizardChartUpdate,
     *,
-    visualization_structure: WizardVisualizationStructure | None = None,
+    visualization_structure: WizardVisualizationRegistry,
+    field_structure: WizardFieldStructure,
 ) -> None:
     mutation_requested = _has_update_mutations(update)
     _sources(data)
@@ -662,24 +776,23 @@ def _apply_update_operations(
     if not mutation_requested:
         return
 
-    _apply_visualization_transition(data, update)
+    _apply_visualization_transition(data, update, structure=visualization_structure)
     _validate_update_structure(data, update, visualization_structure)
-    _apply_local_field_additions(data, update)
-    _apply_structural_field_mutations(data, update)
-    _apply_slot_edits(data, update)
+    _validate_link_mutations(data, update, field_structure=field_structure)
+    _apply_local_field_additions(data, update, field_structure=field_structure)
+    _apply_structural_field_mutations(data, update, field_structure=field_structure)
+    _apply_slot_edits(data, update, field_structure=field_structure)
     _apply_chart_settings(data, update)
     _apply_slot_settings(data, update)
     visualization = _known_visualization(data, mutation_requested=True)
-    decoration_target = (
-        _selected_layer(visualization) if visualization.get("type") in {"combined-chart", "geolayer"} else visualization
-    )
+    decoration_target = _selected_layer(visualization) if _has_layers(visualization) else visualization
     _apply_label_mode(decoration_target, update.label_mode_value)
     _apply_labels_position(decoration_target, update.labels_position_value)
     _apply_dataset_replacement(data, update)
     _apply_filter_deletions(data, update)
-    _apply_hierarchies(data, update)
-    _apply_filters_and_sort(data, update)
-    _apply_encodings_and_decorations(data, update)
+    _apply_hierarchies(data, update, field_structure=field_structure)
+    _apply_filters_and_sort(data, update, field_structure=field_structure)
+    _apply_encodings_and_decorations(data, update, field_structure=field_structure)
     _apply_scatter_size(data, update)
     _apply_formula_replacements(data, update)
 

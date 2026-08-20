@@ -1105,7 +1105,7 @@ def test_chart_create_get_delete_flow_uses_wizard_rpc() -> None:
     fetched = client.get.wizard_chart(by_id="chart-1")
     fetched.delete()
 
-    assert isinstance(chart, dl.Chart)
+    assert isinstance(chart, dl.WizardChart)
     assert chart.id == "chart-1"
     assert chart.visualization_id == "line"
     assert chart.wire_type == "d3_wizard_node"

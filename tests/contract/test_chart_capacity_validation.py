@@ -5,8 +5,9 @@ from typing import Any, cast
 import pytest
 
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk._runtime.viz_specs import factory_method_name
-from datalens_sdk._runtime.wizard_semantics import WIZARD_VISUALIZATION_SEMANTICS, resolve_slot_name
+from datalens_sdk._runtime.wizard_semantics import resolve_slot_name
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
@@ -127,7 +128,7 @@ _CAPACITY_ONE_VIZZES = [
 @pytest.mark.parametrize(("viz_id", "slot_alias"), _CAPACITY_ONE_VIZZES)
 def test_capacity_one_slot_accepts_single_field(viz_id: str, slot_alias: str) -> None:
     actual_slot = resolve_slot_name(viz_id, slot_alias)
-    assert actual_slot in WIZARD_VISUALIZATION_SEMANTICS[viz_id]["slots"]
+    assert actual_slot in WIZARD_VISUALIZATION_STRUCTURE[viz_id]["slots"]
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = getattr(factory, factory_method_name(viz_id))(name="T", location=EntryLocation.path("/F"))
     assert callable(getattr(builder, slot_alias))
@@ -176,7 +177,7 @@ def test_line_multiple_measures_on_y_accepted_no_exception() -> None:
 def test_all_viz_specs_have_factory_method() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     missing = []
-    for viz_id in WIZARD_VISUALIZATION_SEMANTICS:
+    for viz_id in WIZARD_VISUALIZATION_STRUCTURE:
         if not hasattr(factory, factory_method_name(viz_id)):
             missing.append(viz_id)
     assert not missing, f"WizardChartCreateFactory missing methods for viz: {missing}"

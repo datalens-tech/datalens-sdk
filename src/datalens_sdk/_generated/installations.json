@@ -24,25 +24,7 @@
           "scatter",
           "treemap"
         ],
-        "wizard": [
-          "area",
-          "area_100p",
-          "bar",
-          "bar_100p",
-          "column",
-          "column_100p",
-          "combined_chart",
-          "donut",
-          "flat_table",
-          "funnel",
-          "geolayer",
-          "indicator",
-          "line",
-          "pie",
-          "pivot_table",
-          "scatter",
-          "treemap"
-        ]
+        "wizard": []
       },
       "charts": {
         "editor_nodes": {
@@ -1828,25 +1810,7 @@
           "scatter",
           "treemap"
         ],
-        "wizard": [
-          "area",
-          "area_100p",
-          "bar",
-          "bar_100p",
-          "column",
-          "column_100p",
-          "combined_chart",
-          "donut",
-          "flat_table",
-          "funnel",
-          "geolayer",
-          "indicator",
-          "line",
-          "pie",
-          "pivot_table",
-          "scatter",
-          "treemap"
-        ]
+        "wizard": []
       },
       "charts": {
         "editor_nodes": {

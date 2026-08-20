@@ -8,7 +8,7 @@ from typing_extensions import Self
 from datalens_sdk._runtime.chart_constants import INDICATOR_FONT_SIZE_UI_TO_PAYLOAD
 from datalens_sdk._runtime.chart_mutations import _ChartMutationsMixin
 from datalens_sdk._runtime.chart_wire import build_date_interval, build_navigator_settings, build_relative_date_interval
-from datalens_sdk._runtime.method_specs import validate_method_applicability
+from datalens_sdk._runtime.method_specs import method_requires_generated_structure, validate_method_applicability
 from datalens_sdk._runtime.validators import HEX_COLOR_RE
 from datalens_sdk._runtime.wizard_semantics import (
     validate_label_mode,
@@ -60,10 +60,13 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self._new_hierarchies: list[dict[str, object]] = []
         self._local_field_additions: list[dict[str, object]] = []
         self._aggregation_field_replacements: dict[str, dict[str, object]] = {}
+        self._requested_structure_methods: set[str] = set()
         self._init_chart_mutations()
 
     def _check_viz_applicability(self, method_name: str) -> None:
         validate_method_applicability(method_name, self.visualization_id or "")
+        if method_requires_generated_structure(method_name):
+            self._requested_structure_methods.add(method_name)
 
     def _check_slot_applicability(self, *, method_name: str, slot_name: str) -> str:
         visualization_id = self.visualization_id or ""
@@ -86,6 +89,10 @@ class WizardChartUpdate(_ChartMutationsMixin):
     @property
     def target_visualization_type(self) -> str | None:
         return self._target_visualization_type
+
+    @property
+    def requested_structure_methods(self) -> frozenset[str]:
+        return frozenset(self._requested_structure_methods)
 
     @property
     def mode_value(self) -> EntryUpdateMode:
@@ -323,7 +330,6 @@ class WizardChartUpdate(_ChartMutationsMixin):
 
     def freeze_columns(self, *, count: int = 1) -> Self:
         self._check_viz_applicability("freeze_columns")
-        self._ensure_freeze_columns_supported(self.visualization_id or "")
         return self._set_chart_setting("pinnedColumns", count)
 
     def description(self, text: str) -> Self:

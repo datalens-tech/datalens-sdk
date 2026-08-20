@@ -11,11 +11,7 @@ from datalens_sdk._runtime.chart_mutations import _ChartMutationsMixin
 from datalens_sdk._runtime.chart_wire import build_date_interval, build_navigator_settings, build_relative_date_interval
 from datalens_sdk._runtime.validators import HEX_COLOR_RE
 from datalens_sdk._runtime.viz_specs import build_ql_item, get_ql_viz_spec
-from datalens_sdk._runtime.wizard_semantics import (
-    geo_layer_supports_input,
-    get_geo_layer_semantics,
-    validate_label_mode,
-)
+from datalens_sdk._runtime.wizard_semantics import validate_label_mode
 from datalens_sdk.domain.entry_location import EntryLocation, resolve_entry_location, validate_entry_name
 from datalens_sdk.domain.fields import DatasetField, WizardAggregatedMeasure, WizardHierarchy, WizardLocalField
 from datalens_sdk.domain.ports import ChartOperations
@@ -532,7 +528,6 @@ class _TableWizardChartCreate(_BaseWizardChartCreate):
         return self
 
     def _freeze_columns(self, *, count: int = 1) -> Self:
-        self._ensure_freeze_columns_supported(self._visualization_type)
         self._set_chart_setting("pinnedColumns", count)
         return self
 
@@ -631,31 +626,11 @@ class _GeolayerWizardChartCreate(_BaseWizardChartCreate):
         name: str | None = None,
         dataset: Dataset | None = None,
     ) -> Self:
-        layer_semantics = get_geo_layer_semantics(layer_type)
-        if layer_semantics is None:
-            raise DataLensConfigurationError(f"Unsupported geo layer type: {layer_type!r}.")
-        geometry_argument = layer_semantics["required_geometry"]
         field_values = {"geopoint": geopoint, "polygon": polygon, "polyline": polyline}
-        required_field = field_values[geometry_argument]
-        if required_field is None:
-            raise DataLensConfigurationError(f"add_layer({layer_type!r}) requires {geometry_argument}=.")
-        field_inputs = {
-            **field_values,
-            "grouping": grouping,
-            "size": size,
-            "color": color,
-            "sort_by": sort_by,
-        }
-        sequence_inputs = {"filters": filters, "tooltips": tooltips, "labels": labels}
-        for input_name, value in field_inputs.items():
-            if value is not None and not geo_layer_supports_input(layer_semantics, input_name):
-                raise DataLensConfigurationError(f"Geo layer type {layer_type!r} does not support {input_name}=.")
-        for input_name, sequence_value in sequence_inputs.items():
-            if sequence_value and not geo_layer_supports_input(layer_semantics, input_name):
-                raise DataLensConfigurationError(f"Geo layer type {layer_type!r} does not support {input_name}=.")
+        supplied_geometry = [name for name, value in field_values.items() if value is not None]
+        if len(supplied_geometry) != 1:
+            raise DataLensConfigurationError("add_layer() requires exactly one of geopoint=, polygon=, or polyline=.")
         if sort_direction != "asc" and sort_by is None:
-            if not geo_layer_supports_input(layer_semantics, "sort_by"):
-                raise DataLensConfigurationError(f"Geo layer type {layer_type!r} does not support sort_direction=.")
             raise DataLensConfigurationError("Geo layer sort_direction= requires sort_by=.")
         if color is None and any(value is not None for value in (color_mode, color_palette, color_reversed)):
             raise DataLensConfigurationError("Geo layer color settings require color=.")

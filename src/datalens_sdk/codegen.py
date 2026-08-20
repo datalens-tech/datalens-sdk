@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Iterable, Mapping
+from enum import Enum
 import hashlib
 import json
 import keyword
@@ -11,10 +12,22 @@ from typing import TypedDict
 
 from typing_extensions import NotRequired
 
-from datalens_sdk._runtime.method_specs import method_specs_for_visualization
+from datalens_sdk._runtime.method_specs import (
+    MethodSpec,
+    method_specs_for_visualization,
+    resolve_method_carriers,
+)
 from datalens_sdk._runtime.viz_specs import QL_VIZ_SPECS, factory_method_name, to_snake
 from datalens_sdk._runtime.wizard_semantics import (
     WIZARD_VISUALIZATION_SEMANTICS,
+)
+from datalens_sdk._runtime.wizard_structure import (
+    WizardFieldStructure,
+    WizardLayerStructure,
+    WizardSlotStructure,
+    WizardValueStructure,
+    WizardVisualizationRegistry,
+    WizardVisualizationStructure,
 )
 from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object
 
@@ -61,9 +74,37 @@ _WIZARD_ROUTES = (
     "/rpc/updateWizardChart",
 )
 _SCHEMA_REF_PREFIX = "#/components/schemas/"
-_SCHEMA_IGNORED_KEYS = frozenset({"default", "deprecated", "description", "example", "examples", "title"})
-_SCHEMA_NAMED_MAP_KEYS = frozenset({"$defs", "dependentSchemas", "patternProperties", "properties"})
-_SCHEMA_SET_LIKE_KEYS = frozenset({"allOf", "anyOf", "enum", "oneOf", "required", "type"})
+_SCHEMA_DOCUMENTATION_KEYS = frozenset({"$comment", "description", "example", "examples", "title"})
+_SCHEMA_NAMED_MAP_KEYS = frozenset({"properties"})
+_SCHEMA_SET_LIKE_KEYS = frozenset({"allOf", "anyOf", "enum", "required", "type"})
+_SCHEMA_MULTISET_KEYS = frozenset({"oneOf"})
+_SCHEMA_SUPPORTED_KEYS = frozenset(
+    {
+        "$ref",
+        "additionalProperties",
+        "allOf",
+        "anyOf",
+        "enum",
+        "items",
+        "oneOf",
+        "prefixItems",
+        "properties",
+        "required",
+        "type",
+    }
+)
+
+
+class _WizardSchemaFeatureState(Enum):
+    DOCUMENTATION_ONLY = "documentation-only"
+    SUPPORTED = "supported"
+    SEMANTIC_UNSUPPORTED = "semantic-unsupported"
+
+
+_WIZARD_SCHEMA_FEATURE_POLICY: dict[str, _WizardSchemaFeatureState] = {
+    **dict.fromkeys(_SCHEMA_DOCUMENTATION_KEYS, _WizardSchemaFeatureState.DOCUMENTATION_ONLY),
+    **dict.fromkeys(_SCHEMA_SUPPORTED_KEYS, _WizardSchemaFeatureState.SUPPORTED),
+}
 
 
 class FieldMeta(TypedDict):
@@ -144,35 +185,11 @@ class WizardSchemaMeta(TypedDict):
     inventory: WizardInventory
 
 
-class WizardValueStructure(TypedDict):
-    enum: NotRequired[list[str]]
-
-
-class WizardSlotStructure(TypedDict):
-    required: bool
-    items_required: bool
-    settings: dict[str, WizardValueStructure]
-
-
-class WizardVisualizationStructure(TypedDict):
-    properties: list[str]
-    required: list[str]
-    slots: dict[str, WizardSlotStructure]
-    chart_settings: dict[str, WizardValueStructure]
-    layers: dict[str, WizardLayerStructure]
-
-
-class WizardLayerStructure(TypedDict):
-    properties: list[str]
-    required: list[str]
-    slots: dict[str, WizardSlotStructure]
-    layer_settings: dict[str, WizardValueStructure]
-
-
 class WizardContractMeta(TypedDict):
     fingerprint: str
     manifest: WizardSchemaMeta
-    visualization_structure: dict[str, WizardVisualizationStructure]
+    visualization_structure: WizardVisualizationRegistry
+    field_structure: WizardFieldStructure
 
 
 class InstallationMetadata(TypedDict):
@@ -277,12 +294,177 @@ def _deduplicate_sorted_json(values: list[JsonValue]) -> list[JsonValue]:
     return [by_json[key] for key in sorted(by_json)]
 
 
+def _json_pointer_token(value: str) -> str:
+    return value.replace("~", "~0").replace("/", "~1")
+
+
+def _schema_pointer(pointer: str, key: str | int) -> str:
+    return f"{pointer}/{_json_pointer_token(str(key))}"
+
+
+def _wizard_schema_feature_state(key: str) -> _WizardSchemaFeatureState:
+    if key.startswith("x-datalens-"):
+        return _WizardSchemaFeatureState.SEMANTIC_UNSUPPORTED
+    if key.startswith("x-"):
+        return _WizardSchemaFeatureState.DOCUMENTATION_ONLY
+    return _WIZARD_SCHEMA_FEATURE_POLICY.get(key, _WizardSchemaFeatureState.SEMANTIC_UNSUPPORTED)
+
+
+def _singleton_schema_values(value: object) -> dict[str, str]:
+    if not isinstance(value, Mapping):
+        return {}
+    properties = value.get("properties")
+    required = value.get("required")
+    if not isinstance(properties, Mapping) or not isinstance(required, list):
+        return {}
+    result: dict[str, str] = {}
+    for property_name in required:
+        property_schema = properties.get(property_name) if isinstance(property_name, str) else None
+        if not isinstance(property_schema, Mapping):
+            continue
+        enum = property_schema.get("enum")
+        if isinstance(enum, list) and len(enum) == 1:
+            result[property_name] = _canonical_json(enum[0])
+    return result
+
+
+def _one_of_is_provably_disjoint(branches: list[object]) -> bool:
+    singleton_values = [_singleton_schema_values(branch) for branch in branches]
+    common_keys = set.intersection(*(set(values) for values in singleton_values)) if singleton_values else set()
+    if any(len({values[key] for values in singleton_values}) == len(branches) for key in common_keys):
+        return True
+    primitive_types: list[frozenset[str]] = []
+    for branch in branches:
+        if not isinstance(branch, Mapping):
+            return False
+        raw_type = branch.get("type")
+        values = frozenset(raw_type if isinstance(raw_type, list) else [raw_type])
+        if not values or not all(isinstance(item, str) for item in values):
+            return False
+        primitive_types.append(values)
+    return all(
+        left.isdisjoint(right) for index, left in enumerate(primitive_types) for right in primitive_types[index + 1 :]
+    )
+
+
+def _audit_wizard_schema_features(value: object, *, pointer: str) -> None:
+    if not isinstance(value, Mapping):
+        raise TypeError(f"Wizard schema node at {pointer} must be an object")
+
+    for key in value:
+        if not isinstance(key, str):
+            raise TypeError(f"Wizard schema node at {pointer} contains a non-string key")
+        state = _wizard_schema_feature_state(key)
+        if state is _WizardSchemaFeatureState.SEMANTIC_UNSUPPORTED:
+            raise ValueError(
+                f"Unsupported behavior-bearing Wizard schema feature at {_schema_pointer(pointer, key)}: {key}"
+            )
+
+    ref = value.get("$ref")
+    if "$ref" in value and not isinstance(ref, str):
+        raise ValueError(f"Wizard schema feature at {_schema_pointer(pointer, '$ref')} must be a string")
+    raw_type = value.get("type")
+    schema_types = raw_type if isinstance(raw_type, list) else [raw_type]
+    if "type" in value and (
+        not schema_types
+        or any(
+            not isinstance(schema_type, str)
+            or schema_type not in {"array", "boolean", "integer", "null", "number", "object", "string"}
+            for schema_type in schema_types
+        )
+    ):
+        raise ValueError(
+            f"Wizard schema feature at {_schema_pointer(pointer, 'type')} must contain supported JSON Schema types"
+        )
+    required = value.get("required")
+    if "required" in value and (not isinstance(required, list) or any(not isinstance(name, str) for name in required)):
+        raise ValueError(f"Wizard schema feature at {_schema_pointer(pointer, 'required')} must be a string list")
+
+    enum = value.get("enum")
+    if "enum" in value and (
+        not isinstance(enum, list)
+        or not enum
+        or any(item is not None and not isinstance(item, (str, bool, int, float)) for item in enum)
+    ):
+        raise ValueError(f"Wizard schema enum at {_schema_pointer(pointer, 'enum')} must contain JSON scalars")
+
+    additional = value.get("additionalProperties")
+    if "additionalProperties" in value and not isinstance(additional, (bool, Mapping)):
+        raise ValueError(
+            f"Wizard schema feature at {_schema_pointer(pointer, 'additionalProperties')} must be a boolean or schema"
+        )
+    properties = value.get("properties")
+    if isinstance(additional, Mapping) and isinstance(properties, Mapping) and properties:
+        raise ValueError(
+            "Unsupported behavior-bearing Wizard schema feature at "
+            f"{_schema_pointer(pointer, 'additionalProperties')}: typed extras on an object with named properties"
+        )
+
+    for map_key in ("properties",):
+        children = value.get(map_key)
+        if map_key not in value:
+            continue
+        if not isinstance(children, Mapping):
+            raise ValueError(f"Wizard schema feature at {_schema_pointer(pointer, map_key)} must be an object")
+        for name, child in children.items():
+            if not isinstance(name, str):
+                raise TypeError(f"Wizard schema map at {_schema_pointer(pointer, map_key)} contains a non-string key")
+            _audit_wizard_schema_features(child, pointer=_schema_pointer(_schema_pointer(pointer, map_key), name))
+
+    items = value.get("items")
+    if "items" not in value:
+        pass
+    elif isinstance(items, Mapping):
+        _audit_wizard_schema_features(items, pointer=_schema_pointer(pointer, "items"))
+    else:
+        raise ValueError(f"Wizard schema feature at {_schema_pointer(pointer, 'items')} must be a schema")
+
+    additional_schema = value.get("additionalProperties")
+    if isinstance(additional_schema, Mapping):
+        _audit_wizard_schema_features(
+            additional_schema,
+            pointer=_schema_pointer(pointer, "additionalProperties"),
+        )
+
+    for list_key in ("allOf", "anyOf", "oneOf", "prefixItems"):
+        children = value.get(list_key)
+        if list_key not in value:
+            continue
+        if not isinstance(children, list) or not children:
+            raise ValueError(f"Wizard schema feature at {_schema_pointer(pointer, list_key)} must be a non-empty list")
+        if list_key == "oneOf" and not _one_of_is_provably_disjoint(children):
+            raise ValueError(
+                "Unsupported behavior-bearing Wizard schema feature at "
+                f"{_schema_pointer(pointer, list_key)}: oneOf branches are not provably disjoint"
+            )
+        for index, child in enumerate(children):
+            child_pointer = _schema_pointer(_schema_pointer(pointer, list_key), index)
+            if list_key == "allOf" and isinstance(child, Mapping):
+                unsupported_merge_keys = {
+                    key
+                    for key in child
+                    if _wizard_schema_feature_state(str(key)) is _WizardSchemaFeatureState.SUPPORTED
+                    and key not in {"$ref", "properties", "required", "type"}
+                }
+                if unsupported_merge_keys:
+                    key = min(str(item) for item in unsupported_merge_keys)
+                    raise ValueError(
+                        "Unsupported behavior-bearing Wizard schema feature at "
+                        f"{_schema_pointer(child_pointer, key)}: allOf constraint merging"
+                    )
+            _audit_wizard_schema_features(child, pointer=child_pointer)
+
+
 def _normalize_wizard_schema(value: object, *, parent_key: str | None = None) -> JsonValue:
     if value is None or isinstance(value, (str, bool, int, float)):
         return value
     if isinstance(value, list):
         normalized = [_normalize_wizard_schema(item) for item in value]
-        return _deduplicate_sorted_json(normalized) if parent_key in _SCHEMA_SET_LIKE_KEYS else normalized
+        if parent_key in _SCHEMA_SET_LIKE_KEYS:
+            return _deduplicate_sorted_json(normalized)
+        if parent_key in _SCHEMA_MULTISET_KEYS:
+            return sorted(normalized, key=_canonical_json)
+        return normalized
     if not isinstance(value, Mapping):
         raise TypeError(f"Wizard schema contains unsupported value {type(value).__name__}")
 
@@ -290,7 +472,9 @@ def _normalize_wizard_schema(value: object, *, parent_key: str | None = None) ->
     for key, child in sorted(value.items()):
         if not isinstance(key, str):
             raise TypeError("Wizard schema contains a non-string object key")
-        if parent_key not in _SCHEMA_NAMED_MAP_KEYS and (key in _SCHEMA_IGNORED_KEYS or key.startswith("x-")):
+        if parent_key not in _SCHEMA_NAMED_MAP_KEYS and (
+            _wizard_schema_feature_state(key) is _WizardSchemaFeatureState.DOCUMENTATION_ONLY
+        ):
             continue
         normalized_object[key] = _normalize_wizard_schema(child, parent_key=key)
     return normalized_object
@@ -411,6 +595,7 @@ def build_wizard_schema_meta(spec: Mapping[str, object]) -> WizardSchemaMeta:
         if schema is None:
             raise ValueError(f"Wizard schema graph references missing component {name!r}")
         reached.add(name)
+        _audit_wizard_schema_features(schema, pointer=f"/schemas/{_json_pointer_token(name)}")
         normalized_schemas[name] = _normalize_wizard_schema(schema)
         queue.extend(sorted(_schema_refs(schema) - reached - set(queue)))
 
@@ -493,6 +678,141 @@ def _wizard_value_structure(value: object, *, context: str) -> WizardValueStruct
     if not isinstance(enum, list) or not all(isinstance(item, str) for item in enum):
         raise ValueError(f"{context}.enum must contain only strings")
     return {"enum": list(enum)}
+
+
+def _wizard_resolved_schema(
+    meta: WizardSchemaMeta,
+    value: object,
+    *,
+    context: str,
+) -> dict[str, object]:
+    schema = _string_object_dict(value, context=context)
+    ref = schema.get("$ref")
+    if ref is None:
+        return schema
+    if not isinstance(ref, str):
+        raise ValueError(f"{context}.$ref must be a string")
+    schema_name = _schema_ref_name(schema, context=context)
+    return _string_object_dict(meta["schemas"].get(schema_name), context=schema_name)
+
+
+def _wizard_schema_allows_null(
+    meta: WizardSchemaMeta,
+    value: object,
+    *,
+    context: str,
+) -> bool:
+    schema = _wizard_resolved_schema(meta, value, context=context)
+    schema_type = schema.get("type")
+    if schema_type == "null":
+        return True
+    if isinstance(schema_type, list) and "null" in schema_type:
+        return True
+    for union_key in ("anyOf", "oneOf"):
+        branches = schema.get(union_key)
+        if branches is None:
+            continue
+        if not isinstance(branches, list):
+            raise ValueError(f"{context}.{union_key} must be a list")
+        return any(
+            _wizard_schema_allows_null(
+                meta,
+                branch,
+                context=f"{context}.{union_key}[{index}]",
+            )
+            for index, branch in enumerate(branches)
+        )
+    return False
+
+
+def build_wizard_field_structure(meta: WizardSchemaMeta) -> WizardFieldStructure:
+    """Build focused property metadata used to project Wizard field snapshots."""
+
+    field_schema = _wizard_resolved_schema(
+        meta,
+        meta["schemas"].get("WizardFieldSchema"),
+        context="WizardFieldSchema",
+    )
+    branches = field_schema.get("anyOf")
+    if not isinstance(branches, list):
+        raise ValueError("WizardFieldSchema.anyOf must be a list")
+
+    direct_candidates: list[dict[str, object]] = []
+    for index, raw_branch in enumerate(branches):
+        branch = _wizard_resolved_schema(
+            meta,
+            raw_branch,
+            context=f"WizardFieldSchema.anyOf[{index}]",
+        )
+        properties = _string_object_dict(
+            branch.get("properties"),
+            context=f"WizardFieldSchema.anyOf[{index}].properties",
+        )
+        required_value = branch.get("required", [])
+        if not isinstance(required_value, list) or not all(isinstance(item, str) for item in required_value):
+            raise ValueError(f"WizardFieldSchema.anyOf[{index}].required must contain strings")
+        if {"guid", "datasetId"} <= properties.keys() and {"guid", "datasetId"} <= set(required_value):
+            direct_candidates.append(properties)
+    if len(direct_candidates) != 1:
+        raise ValueError(
+            "WizardFieldSchema.anyOf must contain exactly one direct-field branch requiring guid and datasetId"
+        )
+    direct_properties = sorted(direct_candidates[0].keys() - {"guid", "datasetId"})
+
+    config = _wizard_resolved_schema(
+        meta,
+        meta["schemas"].get("WizardV1ConfigSchema"),
+        context="WizardV1ConfigSchema",
+    )
+    config_properties = _string_object_dict(config.get("properties"), context="WizardV1ConfigSchema.properties")
+    sources = _wizard_resolved_schema(
+        meta,
+        config_properties.get("sources"),
+        context="WizardV1ConfigSchema.properties.sources",
+    )
+    source_properties = _string_object_dict(
+        sources.get("properties"),
+        context="WizardV1ConfigSchema.properties.sources.properties",
+    )
+    updates = _wizard_resolved_schema(
+        meta,
+        source_properties.get("updates"),
+        context="WizardV1ConfigSchema.properties.sources.properties.updates",
+    )
+    update_item = _wizard_resolved_schema(
+        meta,
+        updates.get("items"),
+        context="WizardV1ConfigSchema.properties.sources.properties.updates.items",
+    )
+    update_properties = _string_object_dict(
+        update_item.get("properties"),
+        context="WizardV1ConfigSchema.properties.sources.properties.updates.items.properties",
+    )
+    update_field = _wizard_resolved_schema(
+        meta,
+        update_properties.get("field"),
+        context="WizardV1ConfigSchema.properties.sources.properties.updates.items.properties.field",
+    )
+    field_properties = _string_object_dict(
+        update_field.get("properties"),
+        context="WizardV1ConfigSchema.properties.sources.properties.updates.items.properties.field.properties",
+    )
+    nullable_properties = [
+        name
+        for name, value in sorted(field_properties.items())
+        if _wizard_schema_allows_null(
+            meta,
+            value,
+            context=(
+                f"WizardV1ConfigSchema.properties.sources.properties.updates.items.properties.field.properties.{name}"
+            ),
+        )
+    ]
+    return {
+        "direct_properties": tuple(direct_properties),
+        "update_properties": tuple(sorted(field_properties)),
+        "nullable_update_properties": tuple(nullable_properties),
+    }
 
 
 def _wizard_slot_structures(
@@ -661,10 +981,6 @@ def build_wizard_visualization_structure(meta: WizardSchemaMeta) -> dict[str, Wi
             "layers": layers,
         }
     return dict(sorted(result.items()))
-
-
-def _json_pointer_token(value: str) -> str:
-    return value.replace("~", "~0").replace("/", "~1")
 
 
 def _display_json(value: object) -> str:
@@ -1026,11 +1342,11 @@ def build_metadata(
     if unknown_wizard_installations:
         joined = ", ".join(sorted(unknown_wizard_installations))
         raise ValueError(f"Wizard specs reference unknown installations: {joined}")
+    if wizard_specs and set(wizard_specs) != set(installations):
+        missing = ", ".join(sorted(set(installations) - set(wizard_specs)))
+        raise ValueError(f"Wizard specs must cover every generated installation; missing: {missing}")
 
     out: Metadata = {"installations": {}}
-    wizard_factory_methods = sorted(
-        _visualization_factory_methods(sorted(WIZARD_VISUALIZATION_SEMANTICS), family="Wizard").values()
-    )
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
@@ -1065,7 +1381,7 @@ def build_metadata(
             },
             "charts": chart_meta,
             "chart_factories": {
-                "wizard": wizard_factory_methods,
+                "wizard": [],
                 "ql": ql_factory_methods,
                 "editor": sorted(node["factory_method"] for node in chart_meta["editor_nodes"].values()),
             },
@@ -1073,11 +1389,16 @@ def build_metadata(
         wizard_spec_path = wizard_specs.get(installation)
         if wizard_spec_path is not None:
             wizard_manifest = build_wizard_schema_meta(_load_json(wizard_spec_path))
+            wizard_structure = build_wizard_visualization_structure(wizard_manifest)
             installation_metadata["wizard"] = {
                 "fingerprint": wizard_schema_fingerprint(wizard_manifest),
                 "manifest": wizard_manifest,
-                "visualization_structure": build_wizard_visualization_structure(wizard_manifest),
+                "visualization_structure": wizard_structure,
+                "field_structure": build_wizard_field_structure(wizard_manifest),
             }
+            installation_metadata["chart_factories"]["wizard"] = sorted(
+                _visualization_factory_methods(sorted(wizard_structure), family="Wizard").values()
+            )
         out["installations"][installation] = installation_metadata
     editor_methods_by_wire_type: dict[str, tuple[str, str]] = {}
     for installation, info in sorted(out["installations"].items()):
@@ -1254,7 +1575,7 @@ class _WizardPydanticEmitter:
                     )
                     for index, item in enumerate(prefix_items)
                 ]
-                return f"tuple[{', '.join(annotations)}]"
+                return f"Annotated[tuple[{', '.join(annotations)}], BeforeValidator(_json_array_to_tuple)]"
             items = schema.get("items")
             item_annotation = self._annotation(items, path=(*path, "item")) if isinstance(items, dict) else "JsonValue"
             return f"list[{item_annotation}]"
@@ -1264,6 +1585,8 @@ class _WizardPydanticEmitter:
             if isinstance(properties, dict) and properties:
                 return self._emit_object(schema, path=path, preferred_name=preferred_name)
             additional = schema.get("additionalProperties")
+            if additional is False:
+                return self._emit_object(schema, path=path, preferred_name=preferred_name)
             if isinstance(additional, dict) and additional:
                 value_annotation = self._annotation(additional, path=(*path, "value"))
             else:
@@ -1271,6 +1594,12 @@ class _WizardPydanticEmitter:
             return f"dict[str, {value_annotation}]"
 
         return "JsonValue"
+
+    def _object_extra(self, schema: Mapping[str, JsonValue]) -> str:
+        if self._read:
+            return "ignore"
+        additional = schema.get("additionalProperties")
+        return "allow" if additional is True or isinstance(additional, dict) else "forbid"
 
     def _emit_object(
         self,
@@ -1303,9 +1632,9 @@ class _WizardPydanticEmitter:
             annotation = self._annotation(raw_field_schema, path=(*path, wire_name))
             fields.append((python_name, wire_name, annotation, wire_name in required))
 
-        extra = "ignore" if self._read else "forbid"
+        extra = self._object_extra(schema)
         self._lines.append(f"class {name}(BaseModel):")
-        self._lines.append(f"    model_config = ConfigDict(extra={extra!r}, populate_by_name=True)")
+        self._lines.append(f"    model_config = ConfigDict(extra={extra!r}, populate_by_name=True, strict=True)")
         self._lines.append("")
         if not fields:
             self._lines.append("    pass")
@@ -1314,13 +1643,10 @@ class _WizardPydanticEmitter:
             if is_required:
                 self._lines.append(f"    {python_name}: {annotation}{alias}")
                 continue
-            optional_annotation = annotation if "None" in annotation.split(" | ") else f"{annotation} | None"
             if python_name != wire_name:
-                self._lines.append(
-                    f"    {python_name}: {optional_annotation} = Field(default=None, alias={wire_name!r})"
-                )
+                self._lines.append(f"    {python_name}: {annotation} = Field(default=None, alias={wire_name!r})")
             else:
-                self._lines.append(f"    {python_name}: {optional_annotation} = None")
+                self._lines.append(f"    {python_name}: {annotation} = None")
         self._lines.append("")
         self._emitted.add(name)
         return name
@@ -1408,6 +1734,13 @@ class _WizardPydanticEmitter:
             for value in sorted(required):
                 required_values.append(value)
             merged["required"] = required_values
+        additional_values = [
+            source["additionalProperties"] for source in (left, right) if "additionalProperties" in source
+        ]
+        if False in additional_values:
+            merged["additionalProperties"] = False
+        elif additional_values:
+            merged["additionalProperties"] = additional_values[-1]
         return merged
 
 
@@ -1415,7 +1748,15 @@ def _emit_wizard_dto(metadata: Metadata) -> str:
     contract = _wizard_contract(metadata)
     fingerprint = contract["fingerprint"] if contract is not None else None
     visualization_structure = contract["visualization_structure"] if contract is not None else {}
-    bindings: dict[str, dict[str, str | None]] = {}
+    field_structure: WizardFieldStructure = (
+        contract["field_structure"]
+        if contract is not None
+        else {
+            "direct_properties": (),
+            "update_properties": (),
+            "nullable_update_properties": (),
+        }
+    )
     strict_models = ""
     read_models = ""
     create_validation = "_validate_wizard_v1_config(self.data)"
@@ -1451,15 +1792,21 @@ def _emit_wizard_dto(metadata: Metadata) -> str:
             "        WizardV1ConfigSchemaReadDTO.model_validate(self.data)"
         )
         entry_model = f"WizardChartEntryReadDTO = {_wizard_schema_dto_name('WizardV1', read=True)}"
-        bindings = {
-            route: {"request": route_meta["request_dto"], "result": route_meta["result_dto"]}
-            for route, route_meta in sorted(manifest["routes"].items())
-        }
+    field_structure_lines = "\n".join(
+        f"    {name!r}: {values!r},"
+        for name, values in (
+            ("direct_properties", field_structure["direct_properties"]),
+            ("nullable_update_properties", field_structure["nullable_update_properties"]),
+            ("update_properties", field_structure["update_properties"]),
+        )
+    )
 
     return f"""
 WIZARD_SCHEMA_FINGERPRINT: str | None = {fingerprint!r}
-WIZARD_DTO_BINDINGS: dict[str, dict[str, str | None]] = {bindings!r}
-WIZARD_VISUALIZATION_STRUCTURE: dict[str, dict[str, JsonValue]] = {visualization_structure!r}
+WIZARD_VISUALIZATION_STRUCTURE: WizardVisualizationRegistry = {visualization_structure!r}
+WIZARD_FIELD_STRUCTURE: WizardFieldStructure = {{
+{field_structure_lines}
+}}
 
 {strict_models}
 {read_models}
@@ -1469,13 +1816,15 @@ def _validate_wizard_v1_config(data: Mapping[str, JsonValue]) -> None:
     visualization = data.get("visualization")
     if not isinstance(sources, Mapping) or not isinstance(sources.get("datasetsIds"), list):
         raise ValueError("Wizard V1 config sources.datasetsIds must be an array")
-    supported = {sorted(WIZARD_VISUALIZATION_SEMANTICS)!r}
+    supported = sorted(WIZARD_VISUALIZATION_STRUCTURE)
+    if not supported:
+        raise NotSupportedError("Wizard API v3 is unavailable for this installation")
     if not isinstance(visualization, Mapping) or visualization.get("type") not in supported:
         raise ValueError(f"Wizard V1 config visualization.type must be one of {{sorted(supported)}}")
 
 
 class WizardChartCreateDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
     data: dict[str, JsonValue]
     key: str | None = None
@@ -1488,8 +1837,8 @@ class WizardChartCreateDTO(BaseModel):
         {create_validation}
         return self
 
-    def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {{"data": dict(self.data)}}
+    def to_payload(self) -> dict[str, JsonValue]:
+        payload: dict[str, JsonValue] = {{"data": dict(self.data)}}
         if self.key is not None:
             payload["key"] = self.key
         if self.name is not None:
@@ -1502,7 +1851,7 @@ class WizardChartCreateDTO(BaseModel):
 
 
 class WizardChartUpdateDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
     chart_id: str = Field(serialization_alias="chartId")
     mode: Literal["save", "publish"]
@@ -1515,8 +1864,8 @@ class WizardChartUpdateDTO(BaseModel):
         {update_validation}
         return self
 
-    def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {{
+    def to_payload(self) -> dict[str, JsonValue]:
+        payload: dict[str, JsonValue] = {{
             "chartId": self.chart_id,
             "mode": self.mode,
             "data": dict(self.data),
@@ -2237,12 +2586,17 @@ def emit_dto(metadata: Metadata) -> str:
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Literal
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from typing import Annotated, Literal
+from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
+from datalens_sdk._runtime.wizard_structure import WizardFieldStructure, WizardVisualizationRegistry
 from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
 from datalens_sdk.errors import NotSupportedError
 from datalens_sdk.serialization.json_types import JsonValue
+
+
+def _json_array_to_tuple(value: object) -> object:
+    return tuple(value) if isinstance(value, list) else value
 
 INSTALLATION_CONNECTORS: dict[str, frozenset[str]] = {{
 {chr(10).join(f"    {name!r}: frozenset({items!r})," for name, items in connectors.items())}
@@ -2881,24 +3235,6 @@ def emit_dataset_sources(metadata: Metadata) -> str:
 
 _SLOT_NAME_HELPERS: frozenset[str] = frozenset({"axis_title", "axis_scale", "grid"})
 
-_HELPER_CHART_SETTINGS: dict[str, frozenset[str]] = {
-    "chart_title": frozenset({"title", "titleMode"}),
-    "navigator": frozenset({"navigatorSettings"}),
-    "pagination": frozenset({"limit", "pagination"}),
-    "table_size": frozenset({"size"}),
-    "shape": frozenset({"shape"}),
-    "font_size": frozenset({"metricFontSize"}),
-    "font_color": frozenset({"metricFontColor"}),
-    "measure_title_mode": frozenset({"titleMode"}),
-}
-
-_HELPER_SLOT_SETTINGS: dict[str, frozenset[str]] = {
-    "axis_title": frozenset({"title"}),
-    "axis_scale": frozenset({"scale"}),
-    "grid": frozenset({"grid"}),
-    "point_size_range": frozenset({"minRadius", "maxRadius"}),
-}
-
 
 def _wizard_builder_structure(metadata: Metadata) -> dict[str, WizardVisualizationStructure] | None:
     structures = [
@@ -2914,48 +3250,17 @@ def _wizard_builder_structure(metadata: Metadata) -> dict[str, WizardVisualizati
 
 def _method_is_supported_by_structure(
     method_name: str,
-    spec: Mapping[str, object],
+    spec: MethodSpec,
     visualization_structure: WizardVisualizationStructure | None,
 ) -> bool:
     if visualization_structure is None:
         return True
-
-    kind = spec.get("kind")
-    chart_settings = visualization_structure["chart_settings"]
-    slots = visualization_structure["slots"]
-    layers = visualization_structure.get("layers", {})
-    layer_slots = [slot for layer in layers.values() for slot in layer["slots"].values()]
-    layer_slot_names = {slot_name for layer in layers.values() for slot_name in layer["slots"]}
-    if kind == "chart_setting":
-        setting_key = spec.get("setting_key")
-        return isinstance(setting_key, str) and setting_key in chart_settings
-    if kind == "slot":
-        slot_name = spec.get("slot_name")
-        return isinstance(slot_name, str) and (slot_name in slots or slot_name in layer_slot_names)
-    if kind == "slot_setting":
-        setting_key = spec.get("setting_key")
-        return isinstance(setting_key, str) and any(
-            setting_key in slot["settings"] for slot in [*slots.values(), *layer_slots]
-        )
-
-    required_chart_settings = _HELPER_CHART_SETTINGS.get(method_name)
-    if required_chart_settings is not None:
-        return required_chart_settings <= chart_settings.keys()
-    required_slot_settings = _HELPER_SLOT_SETTINGS.get(method_name)
-    if required_slot_settings is not None:
-        return any(required_slot_settings <= slot["settings"].keys() for slot in [*slots.values(), *layer_slots])
-    if method_name == "labels_position":
-        labels_slots = [slot for slot_name, slot in slots.items() if slot_name == "labels"] + [
-            slot for layer in layers.values() for slot_name, slot in layer["slots"].items() if slot_name == "labels"
-        ]
-        return any({"labelsPosition", "position"} & labels["settings"].keys() for labels in labels_slots)
-    if method_name == "label_mode":
-        return "labels" in slots or "labels" in layer_slot_names
-    if method_name == "freeze_columns":
-        # Keep the typed method on pivotTable while its missing carrier is rejected explicitly
-        # by the runtime helper. flatTable has the chartSettings.pinnedColumns carrier.
-        return True
-    return True
+    return resolve_method_carriers(
+        method_name,
+        spec,
+        visualization_structure,
+        scope="builder_surface",
+    ).supported
 
 
 def _setting_enum(
@@ -2978,21 +3283,19 @@ def _setting_enum(
 
 
 def _axis_slot_names(
-    visualization_type: str,
-    visualization_structure: WizardVisualizationStructure | None = None,
-    *,
-    setting_key: str | None = None,
+    method_name: str,
+    spec: MethodSpec,
+    visualization_structure: WizardVisualizationStructure | None,
 ) -> list[str]:
-    if visualization_structure is not None:
-        return sorted(
-            slot_name
-            for slot_name, slot in visualization_structure["slots"].items()
-            if slot_name in {"x", "y", "y2"} and (setting_key is None or setting_key in slot["settings"])
-        )
-    semantics = WIZARD_VISUALIZATION_SEMANTICS.get(visualization_type)
-    if semantics is None:
+    if visualization_structure is None:
         return []
-    return sorted(slot_name for slot_name in semantics["slots"] if slot_name in {"x", "y", "y2"})
+    resolution = resolve_method_carriers(
+        method_name,
+        spec,
+        visualization_structure,
+        scope="builder_surface",
+    )
+    return [name for name in resolution.matched_slot_names if name in {"x", "y", "y2"}]
 
 
 _HELPER_WRAPPERS: dict[str, tuple[str, str]] = {
@@ -3133,9 +3436,9 @@ def _emit_wizard_methods(
 
         elif kind == "slot_setting":
             axis_slot_names = _axis_slot_names(
-                visualization_type,
+                method_name,
+                spec,
                 visualization_structure,
-                setting_key=setting_key,
             )
             axis_slot_literal = ", ".join(repr(slot_name) for slot_name in axis_slot_names)
             if not axis_slot_literal:
@@ -3179,9 +3482,9 @@ def _emit_wizard_methods(
 
         elif kind == "helper" and method_name in _SLOT_NAME_HELPERS:
             axis_slot_names = _axis_slot_names(
-                visualization_type,
+                method_name,
+                spec,
                 visualization_structure,
-                setting_key={"axis_title": "title", "axis_scale": "scale", "grid": "grid"}[method_name],
             )
             axis_slot_literal = ", ".join(repr(slot_name) for slot_name in axis_slot_names)
             if not axis_slot_literal:
@@ -3237,12 +3540,12 @@ def _emit_wizard_methods(
 
 def _wizard_slot_methods(
     visualization_type: str,
-    visualization_structure: WizardVisualizationStructure | None = None,
+    visualization_structure: WizardVisualizationStructure,
 ) -> dict[str, str]:
     semantics = WIZARD_VISUALIZATION_SEMANTICS.get(visualization_type)
     if semantics is None:
         return {}
-    slots = frozenset(visualization_structure["slots"]) if visualization_structure is not None else semantics["slots"]
+    slots = frozenset(visualization_structure["slots"])
     aliases = semantics["slot_aliases"]
     method_slots = {
         spec["slot_name"]
@@ -3299,8 +3602,9 @@ def _ql_data_section_methods(viz_id: str) -> list[str]:
 
 def emit_chart_builders(metadata: Metadata) -> str:
     wizard_structure = _wizard_builder_structure(metadata)
+    wizard_visualization_types = sorted(wizard_structure) if wizard_structure is not None else []
     wizard_factory_methods = _visualization_factory_methods(
-        sorted(WIZARD_VISUALIZATION_SEMANTICS),
+        wizard_visualization_types,
         family="Wizard",
     )
     ql_factory_methods = _visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL")
@@ -3319,7 +3623,7 @@ def emit_chart_builders(metadata: Metadata) -> str:
         "from __future__ import annotations",
         "",
         "from collections.abc import Mapping, Sequence",
-        "from typing import Literal",
+        f"from typing import {'Literal' if wizard_visualization_types else 'Any, Literal'}",
         "",
         "from typing_extensions import Self",
         "",
@@ -3346,6 +3650,7 @@ def emit_chart_builders(metadata: Metadata) -> str:
         "from datalens_sdk.domain.dataset import Dataset",
         "from datalens_sdk.domain.ports import ChartOperations",
         "from datalens_sdk.domain.ql_chart import QLColumn",
+        *([] if wizard_visualization_types else ["from datalens_sdk.errors import NotSupportedError"]),
         "",
     ]
 
@@ -3355,8 +3660,9 @@ def emit_chart_builders(metadata: Metadata) -> str:
     lines.append("}")
     lines.append("")
 
-    for visualization_type in sorted(WIZARD_VISUALIZATION_SEMANTICS):
-        visualization_structure = wizard_structure.get(visualization_type) if wizard_structure is not None else None
+    for visualization_type in wizard_visualization_types:
+        assert wizard_structure is not None
+        visualization_structure = wizard_structure[visualization_type]
         base_create = _WIZARD_VISUALIZATION_BASE_CREATE.get(visualization_type, "_BaseWizardChartCreate")
         create_cls = _class_name(visualization_type, "WizardChartCreate")
 
@@ -3419,13 +3725,23 @@ def emit_chart_builders(metadata: Metadata) -> str:
             "",
         ]
     )
-    for visualization_type in sorted(WIZARD_VISUALIZATION_SEMANTICS):
+    for visualization_type in wizard_visualization_types:
         create_cls = _class_name(visualization_type, "WizardChartCreate")
         method_name = wizard_factory_methods[visualization_type]
         lines.extend(
             [
                 f"    def {method_name}(self, *, name: str, location: EntryLocation) -> {create_cls}:",
                 f"        return {create_cls}(name=name, location=location, operations=self._operations)",
+                "",
+            ]
+        )
+    if not wizard_visualization_types:
+        lines.extend(
+            [
+                "    def __getattr__(self, name: str) -> Any:",
+                "        raise NotSupportedError(",
+                "            'Wizard API v3 is unavailable because this installation has no generated Wizard structure'",
+                "        )",
                 "",
             ]
         )

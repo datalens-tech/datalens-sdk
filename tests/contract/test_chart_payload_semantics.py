@@ -5,6 +5,7 @@ from typing import Any, cast
 import pytest
 
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk._runtime.viz_specs import (
     factory_method_name,
 )
@@ -12,7 +13,11 @@ from datalens_sdk._runtime.wizard_semantics import WIZARD_VISUALIZATION_SEMANTIC
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.entry_location import EntryLocation
 
-_NON_LAYERED_VIZ_IDS = frozenset(WIZARD_VISUALIZATION_SEMANTICS) - {"combined-chart", "geolayer"}
+_NON_LAYERED_VIZ_IDS = frozenset(
+    visualization_type
+    for visualization_type, structure in WIZARD_VISUALIZATION_STRUCTURE.items()
+    if not structure["layers"]
+)
 
 _ALIAS_TO_BUILDER: dict[str, dict[str, str]] = {
     "metric": {"measures": "y"},
@@ -31,10 +36,10 @@ def test_from_domain_create_emits_all_named_slots_from_semantics(viz_id: str) ->
     builder = getattr(factory, factory_method_name(viz_id))(name="T", location=EntryLocation.path("/F"))
     dto = WizardChartConverter.from_domain_create(builder.to_spec())
     produced_viz = cast(dict[str, Any], dto.to_payload()["data"])["visualization"]
-    semantics = WIZARD_VISUALIZATION_SEMANTICS[viz_id]
+    structure = WIZARD_VISUALIZATION_STRUCTURE[viz_id]
     assert produced_viz["type"] == viz_id
-    assert set(produced_viz) == {"type", *semantics["slots"]}
-    assert all(produced_viz[slot_name]["items"] == [] for slot_name in semantics["slots"])
+    assert set(produced_viz) == {"type", *structure["slots"]}
+    assert all(produced_viz[slot_name]["items"] == [] for slot_name in structure["slots"])
 
 
 @pytest.mark.parametrize("viz_id", sorted(_NON_LAYERED_VIZ_IDS))
@@ -43,7 +48,7 @@ def test_from_domain_create_named_slot_ids_exactly_match_semantics(viz_id: str) 
     builder = getattr(factory, factory_method_name(viz_id))(name="T", location=EntryLocation.path("/F"))
     dto = WizardChartConverter.from_domain_create(builder.to_spec())
     produced_viz = cast(dict[str, Any], dto.to_payload()["data"])["visualization"]
-    assert set(produced_viz) - {"type", "chartSettings"} == set(WIZARD_VISUALIZATION_SEMANTICS[viz_id]["slots"])
+    assert set(produced_viz) - {"type", "chartSettings"} == set(WIZARD_VISUALIZATION_STRUCTURE[viz_id]["slots"])
 
 
 @pytest.mark.parametrize("viz_id", sorted(_NON_LAYERED_VIZ_IDS))

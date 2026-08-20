@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Literal
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from typing import Annotated, Literal
+from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
+from datalens_sdk._runtime.wizard_structure import WizardFieldStructure, WizardVisualizationRegistry
 from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
 from datalens_sdk.errors import NotSupportedError
 from datalens_sdk.serialization.json_types import JsonValue
+
+
+def _json_array_to_tuple(value: object) -> object:
+    return tuple(value) if isinstance(value, list) else value
 
 INSTALLATION_CONNECTORS: dict[str, frozenset[str]] = {
     'enterprise': frozenset(['appmetrica_api', 'chyt', 'clickhouse', 'greenplum', 'json_api', 'metrika_api', 'mssql', 'mysql', 'oracle', 'postgres', 'promql', 'trino', 'ydb']),
@@ -841,8 +846,12 @@ INSTALLATION_EDITOR_NODE_TYPES: dict[str, frozenset[str]] = {
 
 
 WIZARD_SCHEMA_FINGERPRINT: str | None = None
-WIZARD_DTO_BINDINGS: dict[str, dict[str, str | None]] = {}
-WIZARD_VISUALIZATION_STRUCTURE: dict[str, dict[str, JsonValue]] = {}
+WIZARD_VISUALIZATION_STRUCTURE: WizardVisualizationRegistry = {}
+WIZARD_FIELD_STRUCTURE: WizardFieldStructure = {
+    'direct_properties': (),
+    'nullable_update_properties': (),
+    'update_properties': (),
+}
 
 
 
@@ -852,13 +861,15 @@ def _validate_wizard_v1_config(data: Mapping[str, JsonValue]) -> None:
     visualization = data.get("visualization")
     if not isinstance(sources, Mapping) or not isinstance(sources.get("datasetsIds"), list):
         raise ValueError("Wizard V1 config sources.datasetsIds must be an array")
-    supported = ['area', 'area100p', 'bar', 'bar100p', 'column', 'column100p', 'combined-chart', 'donut', 'flatTable', 'funnel', 'geolayer', 'line', 'metric', 'pie', 'pivotTable', 'scatter', 'treemap']
+    supported = sorted(WIZARD_VISUALIZATION_STRUCTURE)
+    if not supported:
+        raise NotSupportedError("Wizard API v3 is unavailable for this installation")
     if not isinstance(visualization, Mapping) or visualization.get("type") not in supported:
         raise ValueError(f"Wizard V1 config visualization.type must be one of {sorted(supported)}")
 
 
 class WizardChartCreateDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
     data: dict[str, JsonValue]
     key: str | None = None
@@ -871,8 +882,8 @@ class WizardChartCreateDTO(BaseModel):
         _validate_wizard_v1_config(self.data)
         return self
 
-    def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {"data": dict(self.data)}
+    def to_payload(self) -> dict[str, JsonValue]:
+        payload: dict[str, JsonValue] = {"data": dict(self.data)}
         if self.key is not None:
             payload["key"] = self.key
         if self.name is not None:
@@ -885,7 +896,7 @@ class WizardChartCreateDTO(BaseModel):
 
 
 class WizardChartUpdateDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
     chart_id: str = Field(serialization_alias="chartId")
     mode: Literal["save", "publish"]
@@ -898,8 +909,8 @@ class WizardChartUpdateDTO(BaseModel):
         _validate_wizard_v1_config(self.data)
         return self
 
-    def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {
+    def to_payload(self) -> dict[str, JsonValue]:
+        payload: dict[str, JsonValue] = {
             "chartId": self.chart_id,
             "mode": self.mode,
             "data": dict(self.data),

@@ -5,8 +5,9 @@ from typing import Any, cast
 import pytest
 
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk._runtime.viz_specs import factory_method_name
-from datalens_sdk._runtime.wizard_semantics import WIZARD_VISUALIZATION_SEMANTICS, resolve_slot_name
+from datalens_sdk._runtime.wizard_semantics import resolve_slot_name
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
@@ -97,7 +98,7 @@ def test_create_data_visualization_id_matches_spec(viz_id: str) -> None:
     data = _build_data(viz_id)
     viz = cast(dict[str, Any], data["visualization"])
     assert viz["type"] == viz_id
-    assert set(viz) == {"type", *WIZARD_VISUALIZATION_SEMANTICS[viz_id]["slots"]}
+    assert set(viz) == {"type", *WIZARD_VISUALIZATION_STRUCTURE[viz_id]["slots"]}
 
 
 @pytest.mark.parametrize("viz_id", sorted(_VIZ_BUILDER_SETUP.keys()))
@@ -106,7 +107,7 @@ def test_create_data_named_slot_items_reference_the_bound_dataset(viz_id: str) -
     visualization = cast(dict[str, Any], data["visualization"])
     items = [
         item
-        for slot_name in WIZARD_VISUALIZATION_SEMANTICS[viz_id]["slots"]
+        for slot_name in WIZARD_VISUALIZATION_STRUCTURE[viz_id]["slots"]
         for item in cast(list[dict[str, Any]], visualization[slot_name]["items"])
     ]
     assert items, f"{viz_id}: at least one named slot should contain a field"
@@ -359,7 +360,7 @@ def _set_chart_visualization(chart: WizardChart, visualization_id: str) -> None:
         "type": visualization_id,
         **{
             slot_name: {"items": list(cast(dict[str, Any], previous.get(slot_name, {})).get("items", []))}
-            for slot_name in WIZARD_VISUALIZATION_SEMANTICS[visualization_id]["slots"]
+            for slot_name in WIZARD_VISUALIZATION_STRUCTURE[visualization_id]["slots"]
         },
     }
 
@@ -423,12 +424,16 @@ def test_update_freeze_columns_lands_in_flat_table_chart_settings() -> None:
     assert data["visualization"]["chartSettings"]["pinnedColumns"] == 2
 
 
-def test_update_pivot_freeze_columns_fails_before_payload_construction() -> None:
+def test_update_freeze_columns_lands_in_pivot_table_chart_settings() -> None:
     chart = _chart_for_update()
     _set_chart_visualization(chart, "pivotTable")
 
-    with pytest.raises(NotImplementedError, match=r"pivotTable.*pinnedColumns"):
-        chart.update.freeze_columns(count=2)
+    data = cast(
+        dict[str, Any],
+        WizardChartConverter.from_domain_update(chart.update.freeze_columns(count=2)).to_payload()["data"],
+    )
+
+    assert data["visualization"]["chartSettings"]["pinnedColumns"] == 2
 
 
 def test_unrelated_update_does_not_mutate_colors_settings() -> None:

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import copy
 from typing import Any, Literal, cast
 
 import pytest
 
-from datalens_sdk._runtime.wizard_semantics import WIZARD_VISUALIZATION_SEMANTICS, resolve_slot_name
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
+from datalens_sdk._runtime.wizard_semantics import resolve_slot_name
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.fields import DatasetField
 from datalens_sdk.domain.wizard_chart import WizardChart
@@ -77,10 +79,10 @@ def _data_for_carrier(carrier: Carrier, *, visualization_id: str = "line") -> di
     if carrier == "sort":
         target["direction"] = "DESC"
     keep = _field("keep-guid", title="Keep field")
-    semantics = WIZARD_VISUALIZATION_SEMANTICS[visualization_id]
+    structure = WIZARD_VISUALIZATION_STRUCTURE[visualization_id]
     visualization: dict[str, Any] = {
         "type": visualization_id,
-        **{slot_name: {"items": []} for slot_name in semantics["slots"]},
+        **{slot_name: {"items": []} for slot_name in structure["slots"]},
     }
     data: dict[str, Any] = {
         "sources": {"datasetsIds": [_OLD_DATASET]},
@@ -103,6 +105,58 @@ def _chart(data: dict[str, Any]) -> WizardChart:
         id="chart-1",
         installation="yacloud",
         data=data,
+    )
+
+
+def _loaded_chart(data: dict[str, Any]) -> WizardChart:
+    return WizardChartConverter.to_domain(
+        {
+            "entry": {
+                "version": 1,
+                "entryId": "chart-1",
+                "type": "d3_wizard_node",
+                "data": data,
+            }
+        },
+        installation="yacloud",
+    )
+
+
+def _data_with_links() -> dict[str, Any]:
+    data = _data_for_carrier("slot")
+    sources = cast(dict[str, Any], data["sources"])
+    sources["datasetsIds"] = [_OLD_DATASET, "peer-dataset"]
+    sources["links"] = [
+        {
+            "id": "link-1",
+            "futureLink": {"keep": True},
+            "fields": {
+                _OLD_DATASET: {
+                    "futureEntry": {"keep": True},
+                    "dataset": {"id": _OLD_DATASET, "realName": "Old dataset", "future": True},
+                    "field": {"guid": _OLD_GUID, "title": "Old field", "future": True},
+                },
+                "peer-dataset": {
+                    "dataset": {"id": "peer-dataset", "realName": "Peer dataset"},
+                    "field": {"guid": "peer-guid", "title": "Peer field"},
+                },
+            },
+        }
+    ]
+    return data
+
+
+def _same_dataset_replacement_field() -> DatasetField:
+    return DatasetField(
+        guid=_NEW_GUID,
+        title="New linked field",
+        name="New linked field",
+        type="MEASURE",
+        data_type="float",
+        calc_mode="direct",
+        source="new-source",
+        aggregation="sum",
+        dataset_id=_OLD_DATASET,
     )
 
 
@@ -440,3 +494,53 @@ def test_funnel_uses_the_shared_structural_mutation_path() -> None:
 
     assert items[0]["guid"] == _NEW_GUID
     assert items[0] == {"guid": _NEW_GUID, "datasetId": _NEW_DATASET, "formatting": {"precision": 1}}
+
+
+def test_read_to_update_replace_field_updates_link_identity_and_preserves_open_fields() -> None:
+    chart = _loaded_chart(_data_with_links())
+
+    data = _payload(chart.update.replace_field(_OLD_GUID, _same_dataset_replacement_field()))
+
+    link = data["sources"]["links"][0]
+    assert link["futureLink"] == {"keep": True}
+    assert set(link["fields"]) == {_OLD_DATASET, "peer-dataset"}
+    linked = link["fields"][_OLD_DATASET]
+    assert linked["field"] == {"guid": _NEW_GUID, "title": "New linked field", "future": True}
+    assert linked["dataset"] == {"id": _OLD_DATASET, "realName": "Old dataset", "future": True}
+    assert linked["futureEntry"] == {"keep": True}
+
+
+@pytest.mark.parametrize("operation", ["delete_field", "replace_dataset", "replace_across_datasets"])
+def test_read_to_update_link_mutations_fail_before_owned_snapshot_changes(operation: str) -> None:
+    chart = _loaded_chart(_data_with_links())
+    before = copy.deepcopy(chart.data)
+    if operation == "delete_field":
+        update = chart.update.delete_field(_OLD_GUID)
+        message = "Deleting linked field"
+    elif operation == "replace_dataset":
+        update = chart.update.replace_dataset(old=_OLD_DATASET, new=_NEW_DATASET)
+        message = "explicit link mapping"
+    else:
+        update = chart.update.replace_field(_OLD_GUID, _replacement_field())
+        message = "explicit link mapping"
+
+    with pytest.raises(DataLensValidationError, match=message):
+        _payload(update)
+
+    assert chart.data == before
+
+
+def test_read_to_update_link_field_map_collision_fails_closed() -> None:
+    data = _data_with_links()
+    fields = data["sources"]["links"][0]["fields"]
+    fields[_NEW_DATASET] = {
+        "dataset": {"id": _NEW_DATASET, "realName": "New dataset"},
+        "field": {"guid": "occupied-guid", "title": "Occupied field"},
+    }
+    chart = _loaded_chart(data)
+    before = copy.deepcopy(chart.data)
+
+    with pytest.raises(DataLensValidationError, match="collide"):
+        _payload(chart.update.replace_field(_OLD_GUID, _replacement_field()))
+
+    assert chart.data == before

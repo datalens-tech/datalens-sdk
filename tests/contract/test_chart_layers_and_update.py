@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from typing import Any, Literal, cast
 
 import httpx
@@ -7,9 +8,10 @@ import pytest
 
 from datalens_sdk import GeoLayerFilter
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
-from datalens_sdk._runtime.wizard_semantics import WIZARD_GEO_LAYER_SEMANTICS
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk.api.chart import ChartAPI, ChartService
 from datalens_sdk.api.entries import EntriesAPI, EntriesService
+from datalens_sdk.converter.wizard._assemble import _GEO_INPUT_SLOT_ALIASES
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.chart_types import GradientPaletteId
 from datalens_sdk.domain.dataset import Dataset
@@ -172,6 +174,87 @@ def test_combined_update_targets_selected_layer_and_preserves_unknown_nested_dat
     assert layers[1]["labels"]["items"][0]["guid"] == "g_reg"
     assert layers[1]["labels"]["settings"] == {"labelsPosition": "inside"}
     assert layers[1]["sort"]["items"] == [{"guid": "g_date", "datasetId": "ds1", "direction": "ASC"}]
+
+
+def _layered_update_data(visualization_type: Literal["combined-chart", "geolayer"]) -> dict[str, Any]:
+    dataset = _dataset()
+    factory = WizardChartCreateFactory(cast(Any, None))
+    if visualization_type == "combined-chart":
+        return _payload_data(
+            factory.combined_chart(name="C", location=EntryLocation.path("/F"))
+            .dataset(dataset)
+            .x(["Order Date"])
+            .add_layer("line", y="Amount", name="First")
+            .add_layer("column", y="Amount", name="Last")
+        )
+    return _payload_data(
+        factory.geolayer(name="G", location=EntryLocation.path("/F"))
+        .dataset(dataset)
+        .add_layer("geopoint", geopoint="Point", name="First")
+        .add_layer("geopoint", geopoint="Point", name="Last")
+    )
+
+
+@pytest.mark.parametrize("visualization_type", ["combined-chart", "geolayer"])
+@pytest.mark.parametrize("selector_state", ["absent", "valid"])
+def test_layered_update_resolves_absent_or_valid_selector(
+    visualization_type: Literal["combined-chart", "geolayer"],
+    selector_state: Literal["absent", "valid"],
+) -> None:
+    data = _layered_update_data(visualization_type)
+    visualization = data["visualization"]
+    layers = visualization["layers"]
+    expected_index = 1
+    if selector_state == "absent":
+        visualization.pop("selectedLayerId")
+    else:
+        expected_index = 0
+        visualization["selectedLayerId"] = layers[expected_index]["layerSettings"]["id"]
+    chart = WizardChart(id="chart-1", installation="yacloud", data=data)
+
+    payload = WizardChartConverter.from_domain_update(
+        chart.update.labels([_dataset().fields.by_name("Region")])
+    ).to_payload()
+
+    updated = cast(dict[str, Any], payload["data"])["visualization"]["layers"]
+    assert updated[expected_index]["labels"]["items"][0]["guid"] == "g_reg"
+    assert updated[1 - expected_index]["labels"]["items"] == []
+
+
+@pytest.mark.parametrize("visualization_type", ["combined-chart", "geolayer"])
+@pytest.mark.parametrize("selector", ["", "stale-layer", None, 1])
+def test_layered_update_rejects_invalid_present_selector_before_mutation(
+    visualization_type: Literal["combined-chart", "geolayer"],
+    selector: object,
+) -> None:
+    data = _layered_update_data(visualization_type)
+    data["visualization"]["selectedLayerId"] = selector
+    before = copy.deepcopy(data)
+    chart = WizardChart(id="chart-1", installation="yacloud", data=data)
+
+    with pytest.raises(DataLensConfigurationError, match="selectedLayerId"):
+        WizardChartConverter.from_domain_update(chart.update.labels([_dataset().fields.by_name("Region")]))
+
+    assert chart.data == before
+
+
+@pytest.mark.parametrize("visualization_type", ["combined-chart", "geolayer"])
+def test_layered_update_rejects_duplicate_selected_layer_id_before_mutation(
+    visualization_type: Literal["combined-chart", "geolayer"],
+) -> None:
+    data = _layered_update_data(visualization_type)
+    visualization = data["visualization"]
+    layers = visualization["layers"]
+    selected_id = layers[0]["layerSettings"]["id"]
+    layers[1]["layerSettings"]["id"] = selected_id
+    visualization["selectedLayerId"] = selected_id
+    before = copy.deepcopy(data)
+    chart = WizardChart(id="chart-1", installation="yacloud", data=data)
+
+    with pytest.raises(DataLensConfigurationError, match="exactly one"):
+        WizardChartConverter.from_domain_update(chart.update.labels([_dataset().fields.by_name("Region")]))
+
+    assert chart.data == before
 
 
 def test_combined_add_layer_requires_measure() -> None:
@@ -419,8 +502,14 @@ def _unsupported_geo_layer_inputs() -> list[tuple[str, str, object]]:
         "sort_by": "Order Date",
     }
     cases: list[tuple[str, str, object]] = []
-    for layer_type in _GEO_LAYER_GEOMETRY:
-        supported_inputs = set(WIZARD_GEO_LAYER_SEMANTICS[layer_type]["supported_inputs"])
+    layer_structures = (
+        WIZARD_VISUALIZATION_STRUCTURE["geolayer"]["layers"] if "geolayer" in WIZARD_VISUALIZATION_STRUCTURE else {}
+    )
+    for layer_type, layer_structure in layer_structures.items():
+        supported_slots = set(layer_structure["slots"])
+        supported_inputs = {
+            input_name for input_name, slot_name in _GEO_INPUT_SLOT_ALIASES.items() if slot_name in supported_slots
+        }
         cases.extend(
             (layer_type, argument, value)
             for argument, value in input_values.items()
@@ -434,8 +523,9 @@ def test_geolayer_rejects_unsupported_layer_inputs(layer_type: str, argument: st
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
     kwargs: dict[str, object] = {**_GEO_LAYER_GEOMETRY[layer_type], argument: value}
+    cast(Any, builder).add_layer(layer_type, **kwargs)
     with pytest.raises(DataLensConfigurationError, match=argument):
-        cast(Any, builder).add_layer(layer_type, **kwargs)
+        _payload_data(builder)
 
 
 @pytest.mark.parametrize(("layer_type", "geometry"), _GEO_LAYER_GEOMETRY.items())

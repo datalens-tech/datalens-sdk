@@ -5,6 +5,7 @@ from typing import Any, Literal, cast, get_type_hints
 import pytest
 
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
+from datalens_sdk._runtime.chart_wire import build_date_interval
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.chart_types import MeasureFormat, PaletteId
 from datalens_sdk.domain.dataset import Dataset
@@ -357,7 +358,7 @@ class TestColumnBackgroundMutatesItem:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
         with pytest.raises(DataLensConfigurationError, match="gradient palette"):
-            builder.column_background("meas", palette="classic20")  # type: ignore[arg-type]
+            builder.column_background("meas", palette="classic20")
 
     def test_column_background_works_on_pivot(self) -> None:
         ds = _dataset("dim", "meas")
@@ -787,7 +788,7 @@ class TestColorByMeasureNameHelper:
             "measure_2": "1",
         }
 
-    def test_bar_measure_names_are_added_to_category_slot(self) -> None:
+    def test_bar_measure_name_encoding_uses_the_colors_slot(self) -> None:
         ds = _dataset("dim", "measure_1", "other_dim", "measure_2")
         data = _build(
             _factory.bar(name="Chart", location=_loc())
@@ -887,6 +888,47 @@ class TestAddDateFilterHelper:
         assert len(value) == 1
         assert value[0].startswith("__interval_")
         assert "2026-01-01" in value[0]
+
+    @pytest.mark.parametrize(
+        ("start", "end", "expected"),
+        [
+            (
+                "2026-01-01T03:00:00+03:00",
+                "2026-01-01T04:00:00+03:00",
+                "__interval_2026-01-01T00:00:00Z_2026-01-01T01:00:00Z",
+            ),
+            (
+                "2026-01-01T21:30:00-02:30",
+                "2026-01-01T22:30:00-02:30",
+                "__interval_2026-01-02T00:00:00Z_2026-01-02T01:00:00Z",
+            ),
+            (
+                "2026-01-01T03:00:00.123456789+03:00",
+                "2026-01-01T00:00:00.987Z",
+                "__interval_2026-01-01T00:00:00.123456789Z_2026-01-01T00:00:00.987Z",
+            ),
+        ],
+    )
+    def test_date_interval_converts_offsets_to_utc_without_losing_fractional_seconds(
+        self,
+        start: str,
+        end: str,
+        expected: str,
+    ) -> None:
+        assert build_date_interval(start, end) == expected
+
+    def test_date_interval_preserves_date_only_inclusive_end_policy(self) -> None:
+        assert build_date_interval("2026-01-01", "2026-01-31") == (
+            "__interval_2026-01-01T00:00:00.000Z_2026-01-31T23:59:59.999Z"
+        )
+        assert build_date_interval("2026-01-01", "2026-01-31", inclusive_end=False) == (
+            "__interval_2026-01-01T00:00:00.000Z_2026-01-31T00:00:00.000Z"
+        )
+
+    def test_date_interval_leaves_invalid_iso_values_unchanged(self) -> None:
+        assert build_date_interval("2026-02-30", "2026-01-01T25:00:00+03:00") == (
+            "__interval_2026-02-30_2026-01-01T25:00:00+03:00"
+        )
 
     @pytest.mark.parametrize(
         ("start_offset", "end_offset", "expected"),
@@ -1003,10 +1045,9 @@ class TestFreezeColumnsHelper:
         builder = _factory.flat_table(name="Chart", location=_loc()).freeze_columns(count=0)
         assert _extra(builder).get("pinnedColumns") == 0
 
-    def test_pivot_table_freeze_columns_fails_before_payload_construction(self) -> None:
-        builder = _factory.pivot_table(name="Chart", location=_loc())
-        with pytest.raises(NotImplementedError, match=r"pivotTable.*pinnedColumns"):
-            builder.freeze_columns()
+    def test_pivot_table_freezes_columns(self) -> None:
+        builder = _factory.pivot_table(name="Chart", location=_loc()).freeze_columns(count=3)
+        assert _extra(builder).get("pinnedColumns") == 3
 
 
 class TestIndicatorHelpers:
@@ -1497,7 +1538,7 @@ class TestColorByMeasureHelper:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
         with pytest.raises(DataLensConfigurationError, match="gradient palette"):
-            builder.color_by_measure("meas", palette="classic20")  # type: ignore[arg-type]
+            builder.color_by_measure("meas", palette="classic20")
 
     @pytest.mark.parametrize(
         ("mode", "palette"),

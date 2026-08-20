@@ -7,7 +7,7 @@ import httpx
 import pytest
 
 import datalens_sdk as dl
-from datalens_sdk._runtime.wizard_semantics import WIZARD_VISUALIZATION_SEMANTICS
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.editor_chart import EditorChart
 from datalens_sdk.domain.fields import DatasetField
@@ -55,7 +55,7 @@ def _dataset() -> dl.Dataset:
 def _wizard_response(*, entry_id: str = "chart-1", viz_id: str = "line") -> dict[str, object]:
     visualization: dict[str, object] = {
         "type": viz_id,
-        **{slot_name: {"items": []} for slot_name in WIZARD_VISUALIZATION_SEMANTICS[viz_id]["slots"]},
+        **{slot_name: {"items": []} for slot_name in WIZARD_VISUALIZATION_STRUCTURE[viz_id]["slots"]},
     }
     if viz_id == "line":
         visualization["x"] = {
@@ -89,7 +89,7 @@ def _sparse_wizard_response(*, entry_id: str) -> dict[str, object]:
                 "sources": {"datasetsIds": []},
                 "visualization": {
                     "type": "line",
-                    **{slot_name: {"items": []} for slot_name in WIZARD_VISUALIZATION_SEMANTICS["line"]["slots"]},
+                    **{slot_name: {"items": []} for slot_name in WIZARD_VISUALIZATION_STRUCTURE["line"]["slots"]},
                 },
             },
         }

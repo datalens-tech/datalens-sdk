@@ -241,7 +241,7 @@ def test_enterprise_service_account_provider_signs_exchanges_and_caches_jwt(
         assert exchange_requests == [
             (
                 "https://enterprise.example.test/rpc/exchangeServiceAccountToken",
-                {"x-dl-api-version": "2"},
+                {"x-dl-api-version": "3"},
                 {"saToken": "signed-jwt"},
             )
         ]

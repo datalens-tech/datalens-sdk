@@ -6,14 +6,20 @@
 
 - Add `EnterpriseServiceAccountCredentialsAuthProvider` for PS256 service-account
   JWT exchange and automatic Bearer access-token refresh in DataLens Enterprise.
+- Reject coercible wrong scalar types in Wizard writes, fail closed on invalid
+  selected-layer and linked-field mutations, and preserve instants when
+  normalizing timezone-offset date filters.
+- Keep omitted Wizard properties distinct from explicit JSON `null`, enforce
+  supported schema bounds and patterns, and reject unconsumed semantic schema
+  features before generating write validators.
 - Replace split Wizard local-field, aggregated-measure, and hierarchy builder
   arguments with immutable GUID-bearing handles that can be reused as field
   references on create and update.
 - Rename the pivot-table measure setter from `.y(...)` to the canonical
   `.measures(...)` spelling on create and update.
 - Keep Wizard field decorations off sort and filter reference carriers, serialize
-  manual gradient thresholds in their wire string form, and make table column
-  freezing fail explicitly where the upstream carrier is unavailable.
+  manual gradient thresholds in their wire string form, and support column
+  freezing for both flat and pivot tables through generated carrier metadata.
 - Extend target-only Wizard v1 assembly and updates to all 15 non-layered
   visualization branches, using generated slot and settings structure metadata.
 - Align Wizard measure-format units with OpenAPI: use `b` instead of the former
@@ -22,6 +28,8 @@
   preserve array-shaped API validation details in `DataLensAPIError.context`.
 - Keep ordinary Wizard updates one-phase and free of `revId`; use
   `WizardChart.publish_revision()` to publish an existing revision explicitly.
+- Require the generated Wizard V3 response `entryId` instead of recovering a
+  chart id from legacy aliases or the request.
 
 ## 0.8.0 - 2026-08-14
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import cast
 
 from pydantic import ValidationError
@@ -18,7 +18,11 @@ from datalens_sdk.converter.editor_chart import (
     editor_wire_types,
 )
 from datalens_sdk.converter.ql_chart import QLChartConverter, QLChartDtoModule
-from datalens_sdk.converter.wizard_chart import WizardChartConverter, WizardChartDtoModule
+from datalens_sdk.converter.wizard_chart import (
+    WizardChartConverter,
+    WizardChartDtoModule,
+    validate_wizard_generated_contract,
+)
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.editor_chart import EditorChart, EditorChartUpdate
 from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
@@ -54,8 +58,8 @@ class ChartAPI:
     ) -> dict[str, object]:
         return self._client.post_json_object(path, body, retry_policy=retry_policy)
 
-    def create_wizard(self, payload: dict[str, object]) -> dict[str, object]:
-        return self._post("/rpc/createWizardChart", payload)
+    def create_wizard(self, payload: Mapping[str, object]) -> dict[str, object]:
+        return self._post("/rpc/createWizardChart", dict(payload))
 
     def get_wizard(
         self,
@@ -73,8 +77,8 @@ class ChartAPI:
             body["branch"] = branch
         return self._post("/rpc/getWizardChart", body, retry_policy=TRANSIENT_RETRY_POLICY)
 
-    def update_wizard(self, payload: dict[str, object]) -> dict[str, object]:
-        return self._post("/rpc/updateWizardChart", payload)
+    def update_wizard(self, payload: Mapping[str, object]) -> dict[str, object]:
+        return self._post("/rpc/updateWizardChart", dict(payload))
 
     def delete_wizard(self, chart_id: str) -> None:
         self._post("/rpc/deleteWizardChart", {"chartId": chart_id})
@@ -145,6 +149,7 @@ class ChartService(ChartOperations):
         self._entries_service = entries_service
         self._navigation_operations = navigation_operations
         self._dto_module = dto_module
+        self._wizard_contract = validate_wizard_generated_contract(dto_module)
 
     @property
     def installation(self) -> str:
@@ -153,7 +158,7 @@ class ChartService(ChartOperations):
     def create_wizard_chart(self, builder: _BaseWizardChartCreate) -> WizardChart:
         spec = builder.to_spec()
         try:
-            dto_obj = WizardChartConverter.from_domain_create(spec, dto_module=self._dto_module)
+            dto_obj = WizardChartConverter.from_domain_create(spec, dto_module=self._wizard_contract)
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="createWizardChart", reason=str(exc)) from exc
         response = self._api.create_wizard(dto_obj.to_payload())
@@ -164,7 +169,7 @@ class ChartService(ChartOperations):
             location=spec.location,
             name=spec.name,
             visualization_id_fallback=spec.visualization_type,
-            dto_module=self._dto_module,
+            dto_module=self._wizard_contract,
         )
 
     def create_wizard_chart_from_raw(self, spec: RawCreateSpec) -> WizardChart:
@@ -178,7 +183,7 @@ class ChartService(ChartOperations):
             location=spec.location,
             name=spec.name,
             wire_type_fallback=source.wire_type,
-            dto_module=self._dto_module,
+            dto_module=self._wizard_contract,
         )
 
     def get_wizard_chart(
@@ -193,8 +198,7 @@ class ChartService(ChartOperations):
             response,
             installation=self._installation,
             operations=self,
-            id_fallback=chart_id,
-            dto_module=self._dto_module,
+            dto_module=self._wizard_contract,
         )
 
     def update_wizard_chart(self, builder: WizardChartUpdate) -> WizardChart:
@@ -202,7 +206,7 @@ class ChartService(ChartOperations):
         if not chart_id:
             raise ValueError("Cannot update chart without an id")
         try:
-            dto_obj = WizardChartConverter.from_domain_update(builder, dto_module=self._dto_module)
+            dto_obj = WizardChartConverter.from_domain_update(builder, dto_module=self._wizard_contract)
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="updateWizardChart", reason=str(exc)) from exc
         response = self._api.update_wizard(dto_obj.to_payload())
@@ -212,8 +216,7 @@ class ChartService(ChartOperations):
             operations=self,
             location=builder.chart.location,
             name=builder.chart.name,
-            id_fallback=chart_id,
-            dto_module=self._dto_module,
+            dto_module=self._wizard_contract,
         )
 
     def publish_wizard_chart(self, chart: WizardChart, rev_id: str) -> WizardChart:
@@ -224,7 +227,7 @@ class ChartService(ChartOperations):
             dto_obj = WizardChartConverter.from_domain_publish_revision(
                 chart,
                 rev_id=rev_id,
-                dto_module=self._dto_module,
+                dto_module=self._wizard_contract,
             )
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="updateWizardChart", reason=str(exc)) from exc
@@ -235,8 +238,7 @@ class ChartService(ChartOperations):
             operations=self,
             location=chart.location,
             name=chart.name,
-            id_fallback=chart_id,
-            dto_module=self._dto_module,
+            dto_module=self._wizard_contract,
         )
 
     def replace_wizard_chart_from_raw(
@@ -260,9 +262,8 @@ class ChartService(ChartOperations):
             operations=self,
             location=spec.target_location,
             name=spec.target_name,
-            id_fallback=spec.target_id,
             wire_type_fallback=target_wire_type,
-            dto_module=self._dto_module,
+            dto_module=self._wizard_contract,
         )
 
     def delete_wizard_chart(self, chart_id: str) -> None:

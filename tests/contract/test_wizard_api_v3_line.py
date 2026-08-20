@@ -7,8 +7,10 @@ import httpx
 import pytest
 
 from datalens_sdk import DataLensClientYC
-from datalens_sdk._generated.builders.charts import LineWizardChartCreate, WizardChartCreateFactory
+from datalens_sdk._generated.builders import charts as generated_charts
+from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
 from datalens_sdk._generated.dto import (
+    WIZARD_VISUALIZATION_STRUCTURE,
     WizardChartCreateDTO,
     WizardChartDeleteArgsDTO,
     WizardChartGetArgsDTO,
@@ -20,6 +22,13 @@ from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
+
+LineWizardChartCreate = cast(Any, getattr(generated_charts, "LineWizardChartCreate", None))
+
+pytestmark = pytest.mark.skipif(
+    not WIZARD_VISUALIZATION_STRUCTURE,
+    reason="The public installation has no generated Wizard v3 contract",
+)
 
 
 class _RecordedTransport:

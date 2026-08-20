@@ -104,14 +104,6 @@ class _ChartMutationsMixin:
     ) -> None:
         self._shape_encoding = WizardShapeEncoding(kind="measure_name", shapes_map=shapes_map)
 
-    @staticmethod
-    def _ensure_freeze_columns_supported(visualization_type: str) -> None:
-        if visualization_type == "pivotTable":
-            raise NotImplementedError(
-                "freeze_columns() for pivotTable is not implemented yet: the Wizard V1 OpenAPI/backend "
-                "contract does not support chartSettings.pinnedColumns."
-            )
-
     def _build_column_background_settings(
         self,
         *,

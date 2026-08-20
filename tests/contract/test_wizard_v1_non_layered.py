@@ -6,7 +6,7 @@ from typing import Any, cast
 import pytest
 
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
-from datalens_sdk._runtime.wizard_semantics import WIZARD_VISUALIZATION_SEMANTICS
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk.converter.wizard.converter import WizardChartConverter
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
@@ -122,10 +122,10 @@ def test_non_layered_create_uses_named_wizard_v1_slots(visualization_type: str) 
 
     data = cast(dict[str, Any], payload["data"])
     visualization = data["visualization"]
-    semantics = WIZARD_VISUALIZATION_SEMANTICS[visualization_type]
+    structure = WIZARD_VISUALIZATION_STRUCTURE[visualization_type]
     assert visualization["type"] == visualization_type
-    assert set(visualization) == {"type", *semantics["slots"]}
-    assert all(isinstance(visualization[slot]["items"], list) for slot in semantics["slots"])
+    assert set(visualization) == {"type", *structure["slots"]}
+    assert all(isinstance(visualization[slot]["items"], list) for slot in structure["slots"])
     assert data["sources"]["datasetsIds"] == ["dataset-1"]
 
 
@@ -198,6 +198,6 @@ def test_verified_cartesian_transition_rebuilds_target_named_slots(
     data = cast(dict[str, Any], update_payload["data"])
     visualization = data["visualization"]
     assert visualization["type"] == target_type
-    assert set(visualization) == {"type", *WIZARD_VISUALIZATION_SEMANTICS[target_type]["slots"]}
+    assert set(visualization) == {"type", *WIZARD_VISUALIZATION_STRUCTURE[target_type]["slots"]}
     for slot_name, expected_guid in expected_axes.items():
         assert visualization[slot_name]["items"] == [{"guid": expected_guid, "datasetId": "dataset-1"}]

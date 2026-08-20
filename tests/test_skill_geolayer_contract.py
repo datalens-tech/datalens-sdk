@@ -5,13 +5,21 @@ from pathlib import Path
 import re
 from typing import Any, cast, get_args
 
+import pytest
+
 from datalens_sdk import GeoLayerFilter
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
-from datalens_sdk._runtime.wizard_semantics import WIZARD_GEO_LAYER_SEMANTICS
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
+from datalens_sdk.converter.wizard._assemble import _GEO_INPUT_SLOT_ALIASES
 from datalens_sdk.domain.chart_types import GeoLayerType, GradientPaletteId
 from datalens_sdk.domain.entry_location import EntryLocation
 
 SKILL_DIR = Path(__file__).parents[1] / "skills" / "datalens-sdk"
+
+pytestmark = pytest.mark.skipif(
+    "geolayer" not in WIZARD_VISUALIZATION_STRUCTURE,
+    reason="The public installation has no generated Wizard v3 contract",
+)
 
 
 def _table(text: str, heading: str) -> tuple[list[str], list[list[str]]]:
@@ -137,15 +145,25 @@ def test_documented_geolayer_surface_matches_the_public_sdk() -> None:
     assert set(documented_capabilities) == set(get_args(GeoLayerType))
 
     for layer_type, documented in documented_capabilities.items():
-        semantics = WIZARD_GEO_LAYER_SEMANTICS[layer_type]
-        geometry_group = {"geopolygon": "geopolygon", "heatmap": "heatmap"}.get(
-            layer_type, semantics["required_geometry"]
-        )
+        layer_structure = WIZARD_VISUALIZATION_STRUCTURE["geolayer"]["layers"][layer_type]
+        required_slots = {slot_name for slot_name, slot in layer_structure["slots"].items() if slot["required"]}
+        geometry_arguments = [
+            argument
+            for argument in ("geopoint", "polygon", "polyline")
+            if _GEO_INPUT_SLOT_ALIASES[argument] in required_slots
+        ]
+        assert len(geometry_arguments) == 1
+        geometry_argument = geometry_arguments[0]
+        geometry_group = {"geopolygon": "geopolygon", "heatmap": "heatmap"}.get(layer_type, geometry_argument)
         public_optional_inputs = {"size", "grouping", "color", "filters", "tooltips", "labels", "sort_by"}
-        expected_optional_inputs = set(semantics["supported_inputs"]) & public_optional_inputs
+        expected_optional_inputs = {
+            argument
+            for argument, slot_name in _GEO_INPUT_SLOT_ALIASES.items()
+            if argument in public_optional_inputs and slot_name in layer_structure["slots"]
+        }
 
         assert documented == {
-            "geometry_argument": semantics["required_geometry"],
+            "geometry_argument": geometry_argument,
             "geometry_group": geometry_group,
             "optional_inputs": expected_optional_inputs,
         }

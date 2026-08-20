@@ -5,7 +5,7 @@ from typing import Any, cast
 import pytest
 
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
-from datalens_sdk._runtime.wizard_semantics import WIZARD_VISUALIZATION_SEMANTICS
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
@@ -67,7 +67,7 @@ def test_merge_chart_defaults_fills_all_collections() -> None:
     builder = factory.line(name="L", location=EntryLocation.path("/F"))
     data = cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()["data"])
     assert data["sources"] == {"datasetsIds": []}
-    assert set(data["visualization"]) == {"type", *WIZARD_VISUALIZATION_SEMANTICS["line"]["slots"]}
+    assert set(data["visualization"]) == {"type", *WIZARD_VISUALIZATION_STRUCTURE["line"]["slots"]}
 
 
 def test_wire_type_mapping_per_viz() -> None:
@@ -141,7 +141,7 @@ def test_fill_missing_named_slots_adds_empty_semantic_slots() -> None:
     builder = factory.line(name="L", location=EntryLocation.path("/F")).dataset(dataset).x(["Order Date"])
     data = cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()["data"])
     visualization = data["visualization"]
-    assert set(visualization) == {"type", *WIZARD_VISUALIZATION_SEMANTICS["line"]["slots"]}
+    assert set(visualization) == {"type", *WIZARD_VISUALIZATION_STRUCTURE["line"]["slots"]}
     assert visualization["y"]["items"] == []
     assert visualization["y2"]["items"] == []
 
