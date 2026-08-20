@@ -268,7 +268,7 @@ def test_generated_wizard_operations_expose_the_api_v3_surface() -> None:
     assert set(WizardChartDeleteArgsDTO.model_fields) == {"chart_id"}
 
 
-def test_phase3a_exposes_only_the_verified_tooltip_mode_surface() -> None:
+def test_wizard_v1_exposes_only_the_verified_tooltip_mode_surface() -> None:
     assert not hasattr(LineWizardChartCreate, "tooltips")
     assert hasattr(LineWizardChartCreate, "tooltip")
     assert hasattr(WizardChartUpdate, "change_visualization_to")

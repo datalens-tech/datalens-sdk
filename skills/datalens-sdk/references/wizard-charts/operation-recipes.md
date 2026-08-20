@@ -34,9 +34,9 @@ chart = chart.update.y([placed_revenue, new_profit]).mode("save").execute()
 ```
 
 Placeholder setters replace the complete field list. Include fields that must
-remain, and pass `[]` only when intentionally clearing an optional placeholder.
+remain, and pass `[]` only when intentionally clearing an optional slot.
 The public typed API lists active fields through `chart.fields` but does not
-report which placeholder each field occupies. This example assumes Revenue is
+report which slot each field occupies. This example assumes Revenue is
 the complete current `y` list; if the current layout is unknown, ask the user
 instead of guessing.
 
@@ -188,7 +188,7 @@ chart = (
 
 ## Configure Encodings, Axes, and Formatting
 
-Use measure-name encodings when one placeholder contains several measures. Map
+Use measure-name encodings when one slot contains several measures. Map
 measure fields to explicit colors or line shapes.
 
 ```python
@@ -220,7 +220,7 @@ chart = (
     .navigator(mode="show")
     .legend(mode="show")
     .tooltip_sum(enabled=False)
-    .tooltips([profit])
+    .tooltip(mode="show")
     .labels_position(mode="auto")
     .measure_format(
         revenue,
@@ -319,7 +319,7 @@ Do not mix arguments from different `color_type` modes:
 
 Structural operations use the loaded chart as their source of truth.
 `replace_field()` and `delete_field()` update every active reference to the
-target field, not only one placeholder.
+target field, not only one slot.
 
 ```python
 chart = client.get.wizard_chart(by_id="chart-id")
@@ -333,7 +333,7 @@ chart = chart.update.replace_field(old_date, new_date).delete_field(obsolete_pro
 ```
 
 Visualization changes are limited to `line ↔ column` and `line ↔ bar`.
-The SDK maps retained placeholders, including the axis swap between line and
+The SDK maps retained slots, including the axis swap between line and
 bar. Re-fetch and inspect the result before publishing.
 
 ```python
@@ -446,7 +446,6 @@ chart = (
         color=weight,
         sort_by=point_number,
     )
-    .map_type(mode="light")
     .map_center(lat=55.75, lon=37.62, zoom=8)
     .build()
 )

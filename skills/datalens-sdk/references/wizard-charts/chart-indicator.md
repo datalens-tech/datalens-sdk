@@ -30,7 +30,6 @@ Factory: `client.create.wizard_chart.indicator(name=..., location=...)`
 | `description()` | `text: str` | CU |
 | `legend()` | `*, mode: Literal['show', 'hide']` | CU |
 | `tooltip_sum()` | `*, enabled: bool` | CU |
-| `tooltips()` | `fields: Sequence[Field]` | CU |
 | `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
 | `measure_format()` | `field: Field, *, format: Literal['number', 'percent'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
 | `font_size()` | `*, size: Literal['xs', 's', 'm', 'l']` | CU |
@@ -95,7 +94,7 @@ chart = (
   `chart.visualization_id == "metric"`; do not use that value as a factory
   method name.
 - `y` sets the required measure field, which has capacity 1.
-- A generic `labels()` placeholder operation, sorting, palettes, color
+- A generic `labels()` slot operation, sorting, palettes, color
   encodings, and axes are not supported. `labels_position()` is supported for
   positioning the indicator value. `font_color()` requires `#RRGGBB`.
 - No visualization transition is supported from this visualization.

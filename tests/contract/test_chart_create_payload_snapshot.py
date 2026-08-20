@@ -63,12 +63,12 @@ _VIZ_BUILDER_SETUP: dict[str, dict[str, list[str]]] = {
 
 def _build_data(viz_id: str) -> dict[str, Any]:
     method_name = factory_method_name(viz_id)
-    placeholders = _VIZ_BUILDER_SETUP[viz_id]
+    slots = _VIZ_BUILDER_SETUP[viz_id]
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = getattr(factory, method_name)(name="snapshot", location=EntryLocation.path("/snap"))
     builder.dataset(_FIXED_DATASET)
-    for ph, fields in placeholders.items():
-        getattr(builder, ph)(fields)
+    for slot_name, fields in slots.items():
+        getattr(builder, slot_name)(fields)
     payload = cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload())
     return cast(dict[str, Any], payload["data"])
 
@@ -226,7 +226,7 @@ def test_update_payload_delete_filter_removes_exactly_one() -> None:
     assert filter_guids == ["f2"], "delete_filter('f1') must remove only f1, keep f2"
 
 
-def test_update_payload_replace_field_updates_all_placeholder_items() -> None:
+def test_update_payload_replace_field_updates_all_slot_items() -> None:
     chart = _chart_for_update()
     replacement = DatasetField(
         guid="g_new_date",
@@ -242,7 +242,7 @@ def test_update_payload_replace_field_updates_all_placeholder_items() -> None:
     data = cast(dict[str, Any], dto.to_payload()["data"])
     viz = cast(dict[str, Any], data["visualization"])
     x_items = cast(list[dict[str, Any]], viz["x"]["items"])
-    assert x_items[0]["guid"] == "g_new_date", "replace_field must update guid in all placeholder items"
+    assert x_items[0]["guid"] == "g_new_date", "replace_field must update guid in all slot items"
 
 
 def test_update_payload_delete_field_removes_items() -> None:
@@ -252,7 +252,7 @@ def test_update_payload_delete_field_removes_items() -> None:
     data = cast(dict[str, Any], dto.to_payload()["data"])
     viz = cast(dict[str, Any], data["visualization"])
     y_items = cast(list[dict[str, Any]], viz["y"]["items"])
-    assert y_items == [], "delete_field('g_meas1') must clear y-placeholder items"
+    assert y_items == [], "delete_field('g_meas1') must clear y-slot items"
 
 
 def test_update_payload_replace_dataset_updates_datasets_ids_and_items() -> None:
@@ -263,17 +263,17 @@ def test_update_payload_replace_dataset_updates_datasets_ids_and_items() -> None
     assert data["sources"]["datasetsIds"] == ["ds-new"], "replace_dataset must update sources.datasetsIds"
     viz = cast(dict[str, Any], data["visualization"])
     x_items = cast(list[dict[str, Any]], viz["x"]["items"])
-    assert x_items[0]["datasetId"] == "ds-new", "replace_dataset must update datasetId in placeholder items"
+    assert x_items[0]["datasetId"] == "ds-new", "replace_dataset must update datasetId in slot items"
 
 
-def test_update_placeholder_edit_sets_new_items_by_guid() -> None:
+def test_update_slot_edit_sets_new_items_by_guid() -> None:
     chart = _chart_for_update()
     update = chart.update.y(["g_meas1"])
     dto = WizardChartConverter.from_domain_update(update)
     data = cast(dict[str, Any], dto.to_payload()["data"])
     viz = cast(dict[str, Any], data["visualization"])
     y_items = cast(list[dict[str, Any]], viz["y"]["items"])
-    assert y_items[0]["guid"] == "g_meas1", "y() setter must set new items in y-placeholder"
+    assert y_items[0]["guid"] == "g_meas1", "y() setter must set new items in the y slot"
 
 
 def test_update_applies_mutations_to_loaded_chart_data() -> None:
@@ -385,7 +385,7 @@ def test_update_table_mutations_match_create_validation(method_name: str, kwargs
         getattr(chart.update, method_name)("g_meas1", **kwargs)
 
 
-def test_update_rejects_non_applicable_data_field_and_placeholder_mutations() -> None:
+def test_update_rejects_non_applicable_data_field_and_slot_mutations() -> None:
     chart = _chart_for_update()
     _set_chart_visualization(chart, "scatter")
     with pytest.raises(DataLensConfigurationError, match="segments"):

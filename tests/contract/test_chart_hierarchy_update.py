@@ -1,21 +1,13 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any, cast
 
 import pytest
 
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
-from datalens_sdk.domain.fields import WizardHierarchy, field_from_mapping
+from datalens_sdk.domain.fields import WizardHierarchy
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.errors import DataLensConfigurationError
-
-_REFERENCE_CHARTS_DIR = Path(__file__).parent / "fixtures" / "reference_charts" / "wizard"
-
-
-def _reference_chart(chart_id: str) -> dict[str, Any]:
-    return cast(dict[str, Any], json.loads((_REFERENCE_CHARTS_DIR / f"{chart_id}.json").read_text()))
 
 
 def _flat_table_chart_for_update() -> WizardChart:
@@ -66,12 +58,12 @@ def test_add_hierarchy_merges_into_data_hierarchies() -> None:
     assert set(hier) == {"guid", "title", "fields"}
     fields = cast(list[dict[str, Any]], hier["fields"])
     assert len(fields) == 2
-    # V3 sources keep hierarchy children as minimal field references.
+    # Wizard V1 sources keep hierarchy children as minimal field references.
     assert isinstance(fields[0], dict)
     assert fields[0]["guid"] == "g_reg"
 
 
-def test_add_hierarchy_fields_are_v3_minimal_references() -> None:
+def test_add_hierarchy_fields_are_wizard_v1_minimal_references() -> None:
     chart = _flat_table_chart_for_update()
     update = chart.update.add_hierarchy(WizardHierarchy(title="Loc", fields=["g_reg", "g_city"]))
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
@@ -179,63 +171,58 @@ def test_add_hierarchy_viz_applicability_gate_on_metric() -> None:
         chart.update.add_hierarchy(WizardHierarchy(title="X", fields=["f1"]))
 
 
-def test_round_trip_add_hierarchy_against_reference_fixture() -> None:
-    """Realistic round-trip: load a ground-truth hierarchy chart, add a new hierarchy,
-    ensure the existing one is preserved and the new one is appended with full
-    field snapshots.
-    """
-    raw = _reference_chart("snh83szp2up8k")
-    legacy_data = cast(dict[str, Any], raw["data"])
-    existing_hierarchies = cast(list[dict[str, Any]], legacy_data["hierarchies"])
+def test_add_hierarchy_preserves_unknown_wizard_v1_snapshot_fields() -> None:
+    existing_hierarchy = {
+        "guid": "existing-hierarchy",
+        "title": "Existing Grouping",
+        "futureHierarchy": {"kept": True},
+        "fields": [
+            {"guid": "g_reg", "datasetId": "ds1", "futureField": {"kept": True}},
+            {"guid": "g_city", "datasetId": "ds1"},
+        ],
+    }
     chart = WizardChart(
-        id=cast(str, raw["id"]),
+        id="chart-1",
         installation="yacloud",
         data={
             "sources": {
-                "datasetsIds": cast(list[str], legacy_data["datasetsIds"]),
-                "hierarchies": existing_hierarchies,
+                "datasetsIds": ["ds1"],
+                "hierarchies": [existing_hierarchy],
+                "futureSources": {"kept": True},
             },
             "visualization": {
                 "type": "flatTable",
                 "colors": {"items": []},
-                "columns": {"items": []},
+                "columns": {
+                    "items": [
+                        {"guid": "g_reg", "datasetId": "ds1"},
+                        {"guid": "g_city", "datasetId": "ds1"},
+                    ]
+                },
                 "sort": {"items": []},
+                "futureVisualization": {"kept": True},
             },
+            "futureRoot": {"kept": True},
         },
     )
-    assert chart.visualization_id == "flatTable"
-
-    sources = cast(dict[str, Any], chart.data["sources"])
-    hierarchies_in = cast(list[dict[str, Any]], sources["hierarchies"])
-    existing_hier = hierarchies_in[0]
-    existing_guid = cast(str, existing_hier["guid"])
-    # Reuse the existing hierarchy's full field snapshots as refs for the new one.
-    existing_fields = cast(list[dict[str, Any]], existing_hier["fields"])
-    new_field_refs = [field_from_mapping(f) for f in existing_fields[:2]]
 
     update = chart.update.add_hierarchy(
-        WizardHierarchy(title="New Grouping", fields=new_field_refs, guid="new-hier-roundtrip")
+        WizardHierarchy(title="New Grouping", fields=["g_reg", "g_city"], guid="new-hierarchy")
     )
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
     hierarchies = cast(list[dict[str, Any]], data["sources"]["hierarchies"])
 
-    # Existing hierarchy preserved.
-    guids = [h["guid"] for h in hierarchies]
-    assert existing_guid in guids
-    assert "new-hier-roundtrip" in guids
-    assert len(hierarchies) == 2
-
-    existing_after = next(h for h in hierarchies if h["guid"] == existing_guid)
-    new_after = next(h for h in hierarchies if h["guid"] == "new-hier-roundtrip")
-    # Existing hierarchy retains its full field snapshots (15+ keys per field).
-    existing_field0 = cast(dict[str, Any], existing_after["fields"][0])
-    assert len(existing_field0) >= 15
-    assert existing_field0.get("calc_mode") == "direct"
-    # New hierarchy is normalized to target v3 minimal references.
-    new_field0 = cast(dict[str, Any], new_after["fields"][0])
-    assert new_field0 == {
-        "guid": existing_fields[0]["guid"],
-        "datasetId": existing_fields[0]["datasetId"],
+    assert data["futureRoot"] == {"kept": True}
+    assert data["sources"]["futureSources"] == {"kept": True}
+    assert data["visualization"]["futureVisualization"] == {"kept": True}
+    assert hierarchies[0] == existing_hierarchy
+    assert hierarchies[1] == {
+        "guid": "new-hierarchy",
+        "title": "New Grouping",
+        "fields": [
+            {"guid": "g_reg", "datasetId": "ds1"},
+            {"guid": "g_city", "datasetId": "ds1"},
+        ],
     }
 
 
@@ -293,16 +280,15 @@ def test_add_hierarchy_mutual_ref_does_not_recurse() -> None:
     titles = {h.get("title") for h in hierarchies}
     assert "Region" in titles
     assert "City" in titles
-    # Both source hierarchy objects keep the exact v3 source shape.
+    # Both source hierarchy objects keep the exact Wizard V1 source shape.
     for hier in hierarchies:
         assert set(hier) == {"guid", "title", "fields"}
 
 
 def test_add_hierarchy_placement_does_not_inject_datasetid_into_mounted_object() -> None:
-    """Regression hierarchy mounted in a placeholder must stay exactly 7 keys.
+    """A hierarchy mounted in a named slot must remain a closed object.
 
-    _apply_placeholder_edits was injecting datasetId into every item that lacked
-    one, including hierarchy objects.  The fix skips items with data_type=="hierarchy".
+    Slot updates must not inject datasetId into hierarchy objects.
     """
     chart = _flat_table_chart_for_update()
     hierarchy = WizardHierarchy(title="Geo", fields=["g_reg", "g_city"])

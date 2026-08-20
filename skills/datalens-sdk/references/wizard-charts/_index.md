@@ -74,7 +74,6 @@ Every cell describes only the installed package's typed public API.
 | `points()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — |
 | `size()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — |
 | `add_layer()` | `combined_chart`: `layer_type: CombinedLayerType, *, y: Field \| None = None, y2: Field \| None = None, name: str \| None = None`<br>`geolayer`: `layer_type: GeoLayerType, *, ...` — [full signature and layer capabilities](chart-geolayer.md#fluent-operations) | — | — | — | — | — | — | C | — | — | — | C | — | — | — | — | — | — |
-| `map_type()` | `*, mode: MapType` | — | — | — | — | — | — | — | — | — | — | C | — | — | — | — | — | — |
 | `map_center()` | `*, lat: float, lon: float, zoom: int \| None = None` | — | — | — | — | — | — | — | — | — | — | C | — | — | — | — | — | — |
 | `add_aggregated_measure()` | `field: WizardAggregatedMeasure` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `add_local_field()` | `field: WizardLocalField` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
@@ -88,7 +87,7 @@ Every cell describes only the installed package's typed public API.
 | `description()` | `text: str` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `legend()` | `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `tooltip_sum()` | `*, enabled: bool` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
-| `tooltips()` | `fields: Sequence[Field]` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
+| `tooltip()` | `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | — | CU | CU |
 | `labels()` | `fields: Sequence[Field]` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | CU |
 | `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `label_mode()` | `*, mode: Literal['absolute', 'percent']` | — | CU | — | CU | — | CU | — | CU | — | CU | — | — | — | CU | — | — | — |
@@ -136,7 +135,7 @@ Every cell describes only the installed package's typed public API.
 
 `change_visualization_to()` retains only the mapped field groups, drops incompatible chart state, and validates target capacities before sending the update.
 
-| Source | Allowed target | Retained placeholder mapping |
+| Source | Allowed target | Retained slot mapping |
 | --- | --- | --- |
 | `line` | `column` | `x -> x`, `y -> y` |
 | `column` | `line` | `x -> x`, `y -> y` |

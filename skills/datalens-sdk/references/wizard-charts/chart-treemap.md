@@ -33,7 +33,7 @@ Factory: `client.create.wizard_chart.treemap(name=..., location=...)`
 | `description()` | `text: str` | CU |
 | `legend()` | `*, mode: Literal['show', 'hide']` | CU |
 | `tooltip_sum()` | `*, enabled: bool` | CU |
-| `tooltips()` | `fields: Sequence[Field]` | CU |
+| `tooltip()` | `*, mode: Literal['show', 'hide']` | CU |
 | `labels()` | `fields: Sequence[Field]` | CU |
 | `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
 | `palette()` | `*, id: PaletteId` | CU |
@@ -71,7 +71,7 @@ chart = (
     .x([category, subcategory])
     .y([value])
     .color_by_measure(color_value, mode="3-point", palette="red-orange-green")
-    .tooltips([value, color_value])
+    .tooltip(mode="show")
     .measure_format(value, format="number", unit="m", precision=1)
     .build()
 )

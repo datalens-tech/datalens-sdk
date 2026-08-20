@@ -328,7 +328,7 @@ def test_method_specs_are_derived_from_wizard_encoding_matrix() -> None:
         assert METHOD_SPECS[method_name]["visualization_types"] == expected_viz_ids
 
 
-def test_encoding_placeholder_references_are_valid() -> None:
+def test_encoding_slot_references_are_valid() -> None:
     for viz_id, spec in WIZARD_VISUALIZATION_SEMANTICS.items():
         slots = set(spec["slots"])
         for encoding, binding in _ENCODING_METHODS:
@@ -362,7 +362,7 @@ def test_generated_wizard_leaves_inherit_their_category_base() -> None:
     assert issubclass(ScatterWizardChartCreate, _ScatterWizardChartCreate)
 
 
-def test_generated_axis_helpers_use_leaf_axis_placeholder_literals() -> None:
+def test_generated_axis_helpers_use_leaf_axis_slot_literals() -> None:
     for method_name in ("axis_title", "axis_scale", "grid"):
         assert method_name in LineWizardChartCreate.__dict__
         annotation = get_type_hints(LineWizardChartCreate.__dict__[method_name])["slot_name"]
@@ -399,7 +399,7 @@ def test_create_leaf_capabilities_exactly_match_method_specs() -> None:
         assert actual == expected, f"{viz_id}: extra={sorted(actual - expected)}, missing={sorted(expected - actual)}"
 
 
-def test_raw_wizard_color_and_shape_placeholder_methods_are_not_generated() -> None:
+def test_raw_wizard_color_and_shape_slot_methods_are_not_generated() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     location = EntryLocation.path("/Reports")
     for viz_id in WIZARD_VISUALIZATION_SEMANTICS:

@@ -124,7 +124,6 @@ def test_non_layered_create_uses_named_wizard_v1_slots(visualization_type: str) 
     visualization = data["visualization"]
     semantics = WIZARD_VISUALIZATION_SEMANTICS[visualization_type]
     assert visualization["type"] == visualization_type
-    assert "placeholders" not in visualization
     assert set(visualization) == {"type", *semantics["slots"]}
     assert all(isinstance(visualization[slot]["items"], list) for slot in semantics["slots"])
     assert data["sources"]["datasetsIds"] == ["dataset-1"]

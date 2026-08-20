@@ -15,10 +15,6 @@ def _validate_wizard_v1_config(data: Mapping[str, JsonValue]) -> None:
         raise ValueError("Wizard V1 config requires sources.datasetsIds")
     if not isinstance(visualization, Mapping) or not isinstance(visualization.get("type"), str):
         raise ValueError("Wizard V1 config requires visualization.type")
-    forbidden_root_keys = frozenset({"datasetsIds", "extraSettings", "filters", "placeholders", "updates"})
-    legacy_root_keys = forbidden_root_keys.intersection(data)
-    if legacy_root_keys or "id" in visualization or "placeholders" in visualization:
-        raise ValueError("Wizard v2 snapshots are not supported")
 
 
 class RawWizardChartCreateEnvelope(BaseModel):

@@ -39,7 +39,6 @@ from datalens_sdk.domain.chart_types import (
     FunnelShape,
     GeoLayerType,
     GradientPaletteId,
-    MapType,
     MeasureFormat,
     PaletteId,
     ShapeStyle,
@@ -101,7 +100,7 @@ Every create builder inherits:
 
 The `Required` markers in the chart tables describe the server contract.
 Unlike QL builders, Wizard `.build()` does not validate that required
-placeholders are populated client-side. Re-fetch and validate the persisted
+slots are populated client-side. Re-fetch and validate the persisted
 chart instead of treating a successful build as proof of completeness.
 
 `geolayer` additionally has `.add_dataset(dataset)` for multiple layer
@@ -205,7 +204,7 @@ sales = dataset.fields.by_guid("sales-guid")
 ```
 
 For a Wizard-owned field, construct a handle first, pass it to the matching
-`add_*` method, and reuse the same object in placeholders and decorations. The
+`add_*` method, and reuse the same object in slots and decorations. The
 handle has its GUID before any I/O:
 
 ```python
@@ -264,7 +263,7 @@ GUID explicitly. A hierarchy normally replaces its standalone member columns
 at the placement where drill-down is wanted; do not also place the same
 members there unless that duplicate presentation is intentional and verified.
 
-For placeholder, decoration, filter, sort, hierarchy, and replacement-new
+For slot, decoration, filter, sort, hierarchy, and replacement-new
 arguments, string resolution is deterministic:
 
 1. Resolve a chart-local field or hierarchy by exact GUID/title where supported.
@@ -293,9 +292,9 @@ by GUID. Known persisted presentation properties are available in
 `chart.fields.by_guid(handle.guid).raw`, for example its `formatting` mapping;
 the returned object remains a `DatasetField`, not the original handle type.
 
-Placeholder setters replace that placeholder's complete field list; pass `[]`
-to clear an optional placeholder. `chart.fields` lists active fields but does
-not expose their placeholder membership. When updating an existing chart,
+Slot setters replace that slot's complete field list; pass `[]`
+to clear an optional slot. `chart.fields` lists active fields but does
+not expose their slot membership. When updating an existing chart,
 obtain the intended complete field list from the user or known chart design;
 do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 `sort(fields)` replaces the create-side sort list, while
@@ -336,8 +335,7 @@ do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 | `.add_sort(field, *, direction="asc")` | C/U | Append one directional sort; direction is `"asc"` or `"desc"`. |
 | `.labels(fields: Sequence[WizardFieldRef])` | C/U | Replace labels fields. |
 | `.segments(fields: Sequence[WizardFieldRef])` | C/U | Replace split/segment fields where supported. |
-| `.tooltips(fields: Sequence[WizardFieldRef])` | C/U | Replace tooltip fields. |
-| `.measure_format(field, *, format=None, precision=None, unit=None, prefix=None, postfix=None, show_rank_delimiter=None)` | C/U | Patch only supplied formatting keys; the field must already be placed in a visualization placeholder. |
+| `.measure_format(field, *, format=None, precision=None, unit=None, prefix=None, postfix=None, show_rank_delimiter=None)` | C/U | Patch only supplied formatting keys; the field must already be placed in a visualization slot. |
 
 `aggregation` for aggregated-measure operations is one of `"sum"`, `"avg"`,
 `"min"`, `"max"`, `"count"`, or `"countunique"`.
@@ -348,6 +346,7 @@ do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 |---|---|---|
 | `.chart_title(*, text="", mode="show")` | C/U | Mode is `"show"` or `"hide"`. |
 | `.legend(*, mode: Literal["show", "hide"])` | C/U | Set legend visibility. |
+| `.tooltip(*, mode: Literal["show", "hide"])` | C/U | Set chart-level tooltip visibility on supported visualizations. Geolayer tooltip fields belong to `add_layer(..., tooltips=...)`. |
 | `.tooltip_sum(*, enabled: bool)` | C/U | Toggle tooltip totals. |
 | `.labels_position(*, mode)` | C/U | `"inside"`, `"outside"`, or `"auto"`. |
 | `.label_mode(*, mode)` | C/U | `"absolute"` or `"percent"` on supported charts. |
@@ -394,7 +393,7 @@ non-negative palette-index string such as `"2"` for each override value.
 | `.table_size(*, size)` | C/U | `"s"`, `"m"`, or `"l"`. |
 | `.freeze_columns(*, count=1)` | C/U | Set pinned column count. |
 | `.totals(*, enabled: bool)` | C/U | Flat table only. |
-| `.column_title(field, *, title: str)` | C/U | Target a field already placed in a table placeholder. |
+| `.column_title(field, *, title: str)` | C/U | Target a field already placed in a table slot. |
 | `.column_background(field, *, mode="3-point", palette="red-orange-green", thresholds=None, reversed=False)` | C/U | Gradient cell background; thresholds count must match mode. |
 | `.column_bars(field, *, enabled=True, color_type="one-color", color=None, palette=None, color_index=None, color_positive=None, color_negative=None, positive_color_index=None, negative_color_index=None, gradient_palette=None, gradient_type="2-point", reversed=False, show_labels=True, show_in_totals=False, align="default")` | C/U | Configure in-cell bars; obey color-mode constraints below. |
 | `.subtotals(field, *, enabled: bool)` | C/U | Pivot table only; target a placed field. |
@@ -406,7 +405,6 @@ non-negative palette-index string such as `"2"` for each override value.
 | `.font_size(*, size)` | C/U | Indicator only: `"xs"`, `"s"`, `"m"`, or `"l"`. |
 | `.font_color(*, color: str)` | C/U | Indicator only; require `#RRGGBB`. |
 | `.measure_title_mode(*, mode)` | C/U | Indicator only: `"by-field"`, `"manual"`, or `"hide"`. |
-| `.map_type(*, mode: MapType)` | C | Geolayer only: `"light"`, `"dark"`, or `"satellite"`. |
 | `.map_center(*, lat: float, lon: float, zoom: int | None=None)` | C | Geolayer only; selects manual center. |
 
 ### Update-Only Structural Mutations
@@ -456,7 +454,7 @@ review the result before publishing.
   loaded chart. It accepts a placed dimension or manually aggregated measure
   and rejects automatically aggregated measures.
 - `measure_format` requires its field to be placed first. In one create/update
-  chain, call the applicable placeholder setter before `measure_format`.
+  chain, call the applicable slot setter before `measure_format`.
 - `color_by_dimension` and `shape_by_dimension` require dimension fields;
   `color_by_measure` requires a measure. Treemap dimension color additionally
   requires the same field in its `dimensions` section.
@@ -465,11 +463,11 @@ review the result before publishing.
   `orange-gray-blue`, `pink-gray-green`, and `red-orange-green` support only
   `"3-point"`.
 - `color_by_measure_name` and `shape_by_measure_name` require at least two
-  measures across the chart's supported measure placeholders. Override-map
+  measures across the chart's supported measure slots. Override-map
   keys must resolve to measures already placed there.
 - On `column` and `bar`, multi-measure coloring inserts the pseudo
-  `Measure Names` item into the category placeholder (`x` for column, `y` for
-  bar). It counts toward that placeholder's capacity of 2, so use at most one
+  `Measure Names` item into the category slot (`x` for column, `y` for
+  bar). It counts toward that slot's capacity of 2, so use at most one
   ordinary category field with multiple measures.
 - `palette` requires an existing Color field. Use a discrete palette with a
   dimension or Measure Names, and a gradient palette with a measure.
@@ -483,7 +481,7 @@ review the result before publishing.
   use `color`/`palette`/`color_index` for `"one-color"`;
   `color_positive`/`color_negative` and their indexes for `"two-color"`;
   `gradient_palette` for `"gradient"`.
-- Table item mutations must target a field already placed in a placeholder.
+- Table item mutations must target a field already placed in a slot.
 - Combined `.add_layer()` requires at least one of `y` or `y2`.
 - For geolayer field types, layer capabilities, filter scopes, gradients,
   polyline ordering, and lifecycle constraints, use the

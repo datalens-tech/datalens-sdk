@@ -35,7 +35,7 @@ Factory: `client.create.wizard_chart.area_100p(name=..., location=...)`
 | `description()` | `text: str` | CU |
 | `legend()` | `*, mode: Literal['show', 'hide']` | CU |
 | `tooltip_sum()` | `*, enabled: bool` | CU |
-| `tooltips()` | `fields: Sequence[Field]` | CU |
+| `tooltip()` | `*, mode: Literal['show', 'hide']` | CU |
 | `labels()` | `fields: Sequence[Field]` | CU |
 | `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
 | `label_mode()` | `*, mode: Literal['absolute', 'percent']` | CU |

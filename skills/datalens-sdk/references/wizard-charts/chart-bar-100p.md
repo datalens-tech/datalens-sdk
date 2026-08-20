@@ -35,7 +35,7 @@ Factory: `client.create.wizard_chart.bar_100p(name=..., location=...)`
 | `description()` | `text: str` | CU |
 | `legend()` | `*, mode: Literal['show', 'hide']` | CU |
 | `tooltip_sum()` | `*, enabled: bool` | CU |
-| `tooltips()` | `fields: Sequence[Field]` | CU |
+| `tooltip()` | `*, mode: Literal['show', 'hide']` | CU |
 | `labels()` | `fields: Sequence[Field]` | CU |
 | `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
 | `label_mode()` | `*, mode: Literal['absolute', 'percent']` | CU |
@@ -98,7 +98,7 @@ chart = chart.update.color_by_dimension(new_segment).mode("publish").execute()
 
 - Canonical viz id is `bar100p`; categories go to `y`, the single measure goes to `x`.
 - `segments()` is not supported on horizontal 100% bars.
-- Only dimension color is supported; the color placeholder has capacity 1.
+- Only dimension color is supported; the color slot has capacity 1.
 - No visualization transition is supported from this visualization.
 
 ## Related references

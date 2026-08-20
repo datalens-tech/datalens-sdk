@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any, Literal, cast
 
 import httpx
@@ -21,12 +19,6 @@ from datalens_sdk.domain.ports import NavigationOperations
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.errors import DataLensAPIError, DataLensConfigurationError
 from datalens_sdk.http import DataLensHTTPClient
-
-_REFERENCE_CHARTS_DIR = Path(__file__).parent / "fixtures" / "reference_charts" / "wizard"
-
-
-def _reference_chart(chart_id: str) -> dict[str, Any]:
-    return cast(dict[str, Any], json.loads((_REFERENCE_CHARTS_DIR / f"{chart_id}.json").read_text()))
 
 
 def _dataset() -> Dataset:
@@ -54,18 +46,13 @@ def _payload_data(builder: Any) -> dict[str, Any]:
     return cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()["data"])
 
 
-def test_combined_live_fixture_has_complete_per_layer_colors_config() -> None:
-    fixture = _reference_chart("zenewka5dvwij")
-    layers = cast(list[dict[str, Any]], fixture["data"]["visualization"]["layers"])
-    expected_keys = {"colorMode", "coloredByMeasure", "fieldGuid", "mountedColors", "palette", "polygonBorders"}
-    assert all(set(layer["commonPlaceholders"]["colorsConfig"]) == expected_keys for layer in layers)
-
-
 def test_combined_builds_layers_with_shared_x_and_measure_colors() -> None:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.combined_chart(name="C", location=EntryLocation.path("/F")).dataset(dataset)
-    builder.x(["Order Date"]).add_layer("column", y="Amount").add_layer("line", y2="Amount", name="Trend")
+    builder.x(["Order Date"]).add_layer("column", y="Amount").add_layer(
+        "line", y2="Amount", name="Trend"
+    ).add_date_filter("Order Date", start="2026-01-01", end="2026-05-11")
     data = _payload_data(builder)
     viz = data["visualization"]
     assert viz["type"] == "combined-chart"
@@ -84,6 +71,14 @@ def test_combined_builds_layers_with_shared_x_and_measure_colors() -> None:
         "palette": "datalens-classic-20",
         "polygonBorders": "show",
     }
+    assert all(
+        set(layer["colors"]["settings"])
+        == {"colorMode", "coloredByMeasure", "mountedColors", "palette", "polygonBorders"}
+        for layer in layers
+    )
+    assert data["sources"]["filters"][0]["filter"]["value"] == [
+        "__interval_2026-01-01T00:00:00.000Z_2026-05-11T23:59:59.999Z"
+    ]
 
 
 def test_combined_layers_get_distinct_palette_indices() -> None:
@@ -111,7 +106,7 @@ def test_combined_layers_get_distinct_palette_indices() -> None:
     assert layers[1]["colors"]["settings"]["mountedColors"] == {"g_qty": "1"}
 
 
-def test_combined_measure_format_reaches_layer_placeholders() -> None:
+def test_combined_measure_format_reaches_layer_slots() -> None:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
     amount = dataset.fields.by_name("Amount")
@@ -184,23 +179,6 @@ def test_combined_add_layer_requires_measure() -> None:
     builder = factory.combined_chart(name="C", location=EntryLocation.path("/F"))
     with pytest.raises(Exception, match="requires at least one"):
         builder.add_layer("line")
-
-
-def test_geolayer_live_heatmap_fixture_has_confirmed_common_placeholders() -> None:
-    fixture = _reference_chart("35prkj7b9xnun")
-    layer = fixture["data"]["visualization"]["layers"][0]
-    assert set(layer["commonPlaceholders"]) == {
-        "colors",
-        "colorsConfig",
-        "filters",
-        "geopointsConfig",
-        "labels",
-        "segments",
-        "shapes",
-        "shapesConfig",
-        "sort",
-        "tooltips",
-    }
 
 
 def test_geolayer_builds_layers_with_layer_local_fields() -> None:
@@ -328,7 +306,7 @@ def test_geolayer_generic_fields_reject_unsupported_selected_layer(
 
 
 @pytest.mark.parametrize(
-    ("layer_type", "field_argument", "field_name", "placeholder_id"),
+    ("layer_type", "field_argument", "field_name", "slot_name"),
     [
         ("geopoint", "geopoint", "Point", "points"),
         ("geopoint-with-cluster", "geopoint", "Point", "points"),
@@ -341,7 +319,7 @@ def test_geolayer_supports_each_layer_type(
     layer_type: str,
     field_argument: str,
     field_name: str,
-    placeholder_id: str,
+    slot_name: str,
 ) -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
@@ -349,9 +327,9 @@ def test_geolayer_supports_each_layer_type(
     data = _payload_data(builder)
     layer = data["visualization"]["layers"][0]
     assert layer["type"] == layer_type
-    placeholder = layer[placeholder_id]
+    slot = layer[slot_name]
     expected_guid = "g_point" if field_name == "Point" else "g_reg"
-    assert placeholder["items"][0]["guid"] == expected_guid
+    assert slot["items"][0]["guid"] == expected_guid
 
 
 def test_polyline_builds_live_reference_grouping_color_and_sort_contract() -> None:
@@ -399,7 +377,10 @@ def test_non_polyline_geo_layers_use_their_exact_v1_slot_contract(layer_type: st
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(dataset)
     argument = "polygon" if layer_type == "geopolygon" else "geopoint"
     field = "Region" if layer_type == "geopolygon" else "Point"
-    cast(Any, builder).add_layer(layer_type, **{argument: field})
+    kwargs = {argument: field}
+    if layer_type == "heatmap":
+        kwargs["color"] = "Amount"
+    cast(Any, builder).add_layer(layer_type, **kwargs)
 
     data = _payload_data(builder)
     layer = data["visualization"]["layers"][0]
@@ -410,6 +391,8 @@ def test_non_polyline_geo_layers_use_their_exact_v1_slot_contract(layer_type: st
         "geopolygon": {"colors", "filters", "polygons", "tooltip"},
     }
     assert set(layer) == {"type", "layerSettings", *expected_slots[layer_type]}
+    if layer_type == "heatmap":
+        assert layer["colors"]["items"][0]["guid"] == "g_amt"
     assert "segments" not in data["visualization"]
 
 
@@ -479,7 +462,7 @@ def test_geolayer_builds_confirmed_mixed_heatmap_and_cluster_topology() -> None:
     assert visualization["selectedLayerId"] == visualization["layers"][1]["layerSettings"]["id"]
 
 
-def test_geolayer_builds_chart_level_filters_from_confirmed_reference_shape() -> None:
+def test_geolayer_builds_chart_level_filters_in_wizard_v1_shape() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = (
         factory.geolayer(name="G", location=EntryLocation.path("/F"))
@@ -779,7 +762,7 @@ def test_update_delete_field_accepts_dataset_field() -> None:
     update = chart.update.delete_field(field)
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
     y_items = data["visualization"]["y"]["items"]
-    assert y_items == [], "delete_field(DatasetField) must clear y-placeholder items"
+    assert y_items == [], "delete_field(DatasetField) must clear y-slot items"
 
 
 def test_update_delete_filter_accepts_dataset_field() -> None:
@@ -867,7 +850,7 @@ def test_chart_fields_surfaces_color_only_field_from_colors_slot() -> None:
 
 
 def test_chart_fields_dedups_by_guid_across_named_slots() -> None:
-    """A field present both in a placeholder and in ``data.colors`` appears once."""
+    """A field present in a named slot and ``data.colors`` appears once."""
     chart = _chart_for_update()
     chart.data = dict(chart.data)
     visualization = dict(cast(dict[str, Any], chart.data["visualization"]))
@@ -877,7 +860,7 @@ def test_chart_fields_dedups_by_guid_across_named_slots() -> None:
     assert guids.count("g_amt") == 1
 
 
-def test_update_placeholder_edit() -> None:
+def test_update_named_slot_edit() -> None:
     chart = _chart_for_update()
     update = chart.update.y(["g_amt"]).x(["g_date"])
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])

@@ -119,8 +119,8 @@ def test_documented_geolayer_surface_matches_the_public_sdk() -> None:
         "red-orange-green",
     }
 
-    placeholders_header, placeholders_rows = _table(geolayer_text, "Placeholders")
-    assert placeholders_header == [
+    slots_header, slots_rows = _table(geolayer_text, "Layer slots")
+    assert slots_header == [
         "Layer type",
         "Required public argument",
         "Geometry field group",
@@ -132,7 +132,7 @@ def test_documented_geolayer_surface_matches_the_public_sdk() -> None:
             "geometry_group": row[2].strip("`"),
             "optional_inputs": set(re.findall(r"`([^`]+)`", row[3])),
         }
-        for row in placeholders_rows
+        for row in slots_rows
     }
     assert set(documented_capabilities) == set(get_args(GeoLayerType))
 

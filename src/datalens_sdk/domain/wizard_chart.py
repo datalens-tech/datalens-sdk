@@ -135,7 +135,7 @@ def resolve_field_snapshot(
         "fetch the dataset schema and pass a DatasetField:\n"
         "    dataset = client.get.dataset(by_id=chart.dataset_ids[0])\n"
         f"    field   = dataset.fields.by_name({ref!r})\n"
-        "    chart.update.<placeholder>([field]).execute()\n"
+        "    chart.update.<slot>([field]).execute()\n"
         f"Known field titles already placed in this chart: {known}.{hint}"
     )
 

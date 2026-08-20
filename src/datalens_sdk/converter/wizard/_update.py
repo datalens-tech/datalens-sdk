@@ -460,9 +460,7 @@ def _apply_visualization_transition(data: WizardJsonObject, update: WizardChartU
     )
     target_semantics = get_wizard_visualization_semantics(target_type)
     if target_semantics is None or target_type in {"combined-chart", "geolayer"}:
-        raise DataLensConfigurationError(
-            f"change_visualization_to target {target_type!r} is not supported by phase 3A."
-        )
+        raise DataLensConfigurationError(f"change_visualization_to does not support target {target_type!r}.")
     target: WizardJsonObject = {"type": target_type}
     for slot_name in target_semantics["slots"]:
         slot: WizardJsonObject = {"items": []}

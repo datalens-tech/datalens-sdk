@@ -27,7 +27,7 @@ def _dataset() -> Dataset:
 
 
 # ---------------------------------------------------------------------------
-# G3a: Leaf facades expose only applicable placeholder methods (no drift)
+# Leaf facades expose only applicable named-slot methods.
 # ---------------------------------------------------------------------------
 
 
@@ -111,7 +111,7 @@ def test_combined_has_x_and_add_layer_but_not_y() -> None:
 
 
 # ---------------------------------------------------------------------------
-# G3b: named single-value slots remain available on the generated leaves
+# Named single-value slots remain available on the generated leaves.
 # ---------------------------------------------------------------------------
 
 _CAPACITY_ONE_VIZZES = [
@@ -124,17 +124,17 @@ _CAPACITY_ONE_VIZZES = [
 ]
 
 
-@pytest.mark.parametrize(("viz_id", "ph_name"), _CAPACITY_ONE_VIZZES)
-def test_capacity_one_placeholder_accepts_single_field(viz_id: str, ph_name: str) -> None:
-    actual_slot = resolve_slot_name(viz_id, ph_name)
+@pytest.mark.parametrize(("viz_id", "slot_alias"), _CAPACITY_ONE_VIZZES)
+def test_capacity_one_slot_accepts_single_field(viz_id: str, slot_alias: str) -> None:
+    actual_slot = resolve_slot_name(viz_id, slot_alias)
     assert actual_slot in WIZARD_VISUALIZATION_SEMANTICS[viz_id]["slots"]
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = getattr(factory, factory_method_name(viz_id))(name="T", location=EntryLocation.path("/F"))
-    assert callable(getattr(builder, ph_name))
+    assert callable(getattr(builder, slot_alias))
 
 
 # ---------------------------------------------------------------------------
-# G3c: converter builds correct number of placeholder items (not limited in converter)
+# The converter preserves every item accepted by an unbounded named slot.
 # ---------------------------------------------------------------------------
 
 
