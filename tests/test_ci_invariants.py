@@ -385,11 +385,11 @@ def test_api_version_header_is_pinned_on_shared_client() -> None:
     header = "x-dl-api-version"
     header_users = sorted(path.relative_to(SRC).as_posix() for path in _python_files() if header in path.read_text())
     constant_owners = sorted(
-        path.relative_to(SRC).as_posix() for path in _python_files() if "_API_VERSION" in path.read_text()
+        path.relative_to(SRC).as_posix() for path in _python_files() if "API_VERSION =" in path.read_text()
     )
 
-    assert header_users == ["http.py"]
-    assert constant_owners == ["client.py"]
+    assert header_users == ["auth.py", "http.py"]
+    assert constant_owners == ["api_version.py"]
 
 
 def test_shared_entry_routes_are_owned_by_entries_api() -> None:

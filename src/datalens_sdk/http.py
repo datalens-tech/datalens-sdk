@@ -9,6 +9,7 @@ from typing import Protocol, cast
 
 import httpx
 
+from datalens_sdk.api_version import API_VERSION
 from datalens_sdk.error_transformers import (
     DATALENS_ERROR_TRANSFORMER,
     ErrorTransformerProtocol,
@@ -115,7 +116,7 @@ class DataLensHTTPClient:
         *,
         installation: str,
         sdk_version: str,
-        api_version: str,
+        api_version: str = API_VERSION,
         base_url: str,
         auth: httpx.Auth | None = None,
         transport: httpx.BaseTransport | None = None,

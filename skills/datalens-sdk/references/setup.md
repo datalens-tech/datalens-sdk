@@ -57,7 +57,7 @@ malformed output.
 | `INSTALLATION=unknown` | `needs_input` | Ask the user: yc or enterprise; rerun with the answer. |
 | yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Relay one line: install the `yc` CLI (https://yandex.cloud/docs/cli/quickstart), point `DATALENS_YC_BIN` at it, or provide `DATALENS_ORG_ID` + `DATALENS_IAM_TOKEN`. Do not work around it. |
 | enterprise, `BASE_URL=missing` | `blocked` | Ask the user for the API endpoint; they set `DATALENS_BASE_URL` (non-secret — with their consent you may write it to the file at `ENV_FILE`). |
-| enterprise, `TOKEN=absent` | (unchanged) | Informational, not a blocker. Proceed without auth; if the deployment then rejects calls with 401, ask the user to add `DATALENS_OAUTH_TOKEN=<their token>` to the file at `ENV_FILE` **themselves** and construct the client with `OAuthAuthProvider()`. |
+| enterprise, `TOKEN=absent` | (unchanged) | Informational, not a blocker. Proceed without auth; if the deployment then rejects calls with 401, use `OAuthAuthProvider()` when the user has an OAuth token or `EnterpriseServiceAccountCredentialsAuthProvider` when they have service-account credentials. |
 
 Two rules apply: never run `yc iam create-token` during diagnostics (the SDK
 mints IAM tokens lazily at request time), and never perform package management
@@ -165,6 +165,31 @@ client = DataLensClientEnterprise(
 ```
 
 ```python
+import os
+from pathlib import Path
+
+from datalens_sdk import DataLensClientEnterprise, EnterpriseServiceAccountCredentialsAuthProvider
+
+# Service-account auth: sign a PS256 client JWT, exchange it for a Bearer
+# access token, cache it, and refresh it automatically before expiry.
+base_url = os.environ["DATALENS_BASE_URL"]
+client = DataLensClientEnterprise(
+    base_url=base_url,
+    auth=EnterpriseServiceAccountCredentialsAuthProvider(
+        key_id="<private-key-id>",
+        service_account_id="<service-account-id>",
+        private_key=Path("/secure/path/private-key.pem").read_text(),
+    ),
+)
+```
+
+The client JWT defaults to a five-minute lifetime and may be configured up to
+the Enterprise maximum of 10 minutes. The provider reads no credentials from
+the environment itself; pass the identifiers and private-key contents
+explicitly from user-controlled secret storage. Never print the private key,
+signed JWT, or returned access token.
+
+```python
 from datalens_sdk import AuthorizationTokenAuthProvider
 
 # Any other Authorization scheme the deployment expects:
@@ -180,6 +205,7 @@ All providers are keyword-only and expose `get_headers()`; pass an instance as `
 | `NoAuthProvider` | — | nothing | also selected by `auth=None` |
 | `AuthorizationTokenAuthProvider` | `token=`, `token_type=` | `Authorization: <type> <token>` | generic scheme |
 | `OAuthAuthProvider` | `token=None` | `Authorization: OAuth ...` | falls back to `DATALENS_OAUTH_TOKEN`; raises `DataLensConfigurationError` if neither |
+| `EnterpriseServiceAccountCredentialsAuthProvider` | `key_id=`, `service_account_id=`, `private_key=`, `base_url=None` | `Authorization: Bearer ...` | PS256 JWT → Enterprise access-token exchange; uses the client's base URL by default, caches and auto-refreshes with a 60 s expiry margin |
 | `StaticYCIAMAuthProvider` | `org_id=`, `token=` | `Authorization: Bearer ...` + `x-dl-org-id` | no refresh |
 | `YCIAMAuthProvider` | `org_id=None`, `profile=None`, `command_timeout_seconds=30.0` | Bearer + org id | reads `DATALENS_ORG_ID`, `DATALENS_YC_PROFILE`, and `DATALENS_YC_BIN` as fallbacks; caches and auto-refreshes with a 60 s expiry margin |
 | `YCServiceAccountCredentialsAuthProvider` | `org_id=`, `key_id=`, `service_account_id=`, `private_key=` | Bearer + org id | JWT → IAM exchange, auto-refreshes |

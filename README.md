@@ -84,8 +84,28 @@ with DataLensClientYC(auth=auth) as client:
 ```
 
 Pass `auth=None` explicitly for access without authentication.
-For Enterprise installations that use OAuth, `OAuthAuthProvider()` reads
-`DATALENS_OAUTH_TOKEN` unless an explicit `token=` is supplied.
+For Enterprise service accounts, sign and exchange credentials automatically:
+
+```python
+import os
+from pathlib import Path
+
+from datalens_sdk import DataLensClientEnterprise, EnterpriseServiceAccountCredentialsAuthProvider
+
+base_url = os.environ["DATALENS_BASE_URL"]
+auth = EnterpriseServiceAccountCredentialsAuthProvider(
+    key_id="<private-key-id>",
+    service_account_id="<service-account-id>",
+    private_key=Path("/secure/path/private-key.pem").read_text(),
+)
+
+with DataLensClientEnterprise(base_url=base_url, auth=auth) as client:
+    dashboard = client.get.dashboard(by_id="<dashboard-id>")
+```
+
+The provider signs a five-minute PS256 JWT, exchanges it for an Enterprise
+access token, and refreshes the access token automatically before it expires.
+Client JWT lifetimes are configurable up to the Enterprise limit of 10 minutes.
 
 ## Core concepts
 

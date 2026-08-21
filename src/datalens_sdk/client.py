@@ -21,6 +21,7 @@ from datalens_sdk.api.navigation import NavigationService
 from datalens_sdk.api.workbook import WorkbookAPI, WorkbookService
 from datalens_sdk.auth import (
     AuthProviderProtocol,
+    EnterpriseServiceAccountCredentialsAuthProvider,
     NoAuthProvider,
     YCIAMAuthProvider,
     _AuthProviderHTTPXAuth,
@@ -102,7 +103,6 @@ if TYPE_CHECKING:
 ConnectionFactoryT_co = TypeVar("ConnectionFactoryT_co", covariant=True)
 SourceFactoryT_co = TypeVar("SourceFactoryT_co", bound=SourceBuilder, covariant=True)
 EditorChartFactoryT_co = TypeVar("EditorChartFactoryT_co", covariant=True)
-_API_VERSION = "2"
 _DEFAULT_AUTH_PROVIDER = cast(AuthProviderProtocol, object())
 
 
@@ -578,10 +578,13 @@ class DataLensClientBase:
                 auth_provider = NoAuthProvider()
             else:
                 auth_provider = auth
+            if self.INSTALLATION == "enterprise" and isinstance(
+                auth_provider, EnterpriseServiceAccountCredentialsAuthProvider
+            ):
+                auth_provider.set_base_url(resolved_base_url)
             self._http = DataLensHTTPClient(
                 installation=self.INSTALLATION,
                 sdk_version=_distribution_version(self.SDK_DISTRIBUTION),
-                api_version=_API_VERSION,
                 base_url=resolved_base_url,
                 auth=_AuthProviderHTTPXAuth(auth_provider),
                 transport=transport,
