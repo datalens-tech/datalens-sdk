@@ -1332,20 +1332,7 @@ def _chart_meta(schemas: dict[str, dict[str, object]]) -> ChartMeta:
     return {"editor_nodes": editor_nodes, "editor_update_nodes": update_editor_nodes}
 
 
-def build_metadata(
-    installations: dict[str, Path],
-    *,
-    wizard_specs: Mapping[str, Path] | None = None,
-) -> Metadata:
-    wizard_specs = wizard_specs or {}
-    unknown_wizard_installations = set(wizard_specs) - set(installations)
-    if unknown_wizard_installations:
-        joined = ", ".join(sorted(unknown_wizard_installations))
-        raise ValueError(f"Wizard specs reference unknown installations: {joined}")
-    if wizard_specs and set(wizard_specs) != set(installations):
-        missing = ", ".join(sorted(set(installations) - set(wizard_specs)))
-        raise ValueError(f"Wizard specs must cover every generated installation; missing: {missing}")
-
+def build_metadata(installations: dict[str, Path]) -> Metadata:
     out: Metadata = {"installations": {}}
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
@@ -1386,9 +1373,11 @@ def build_metadata(
                 "editor": sorted(node["factory_method"] for node in chart_meta["editor_nodes"].values()),
             },
         }
-        wizard_spec_path = wizard_specs.get(installation)
-        if wizard_spec_path is not None:
-            wizard_manifest = build_wizard_schema_meta(_load_json(wizard_spec_path))
+        spec_info = _string_object_dict(spec.get("info"), context="info")
+        paths = _string_object_dict(spec.get("paths"), context="paths")
+        has_wizard_contract = spec_info.get("version") == "3" and any("WizardChart" in path for path in paths)
+        if has_wizard_contract:
+            wizard_manifest = build_wizard_schema_meta(spec)
             wizard_structure = build_wizard_visualization_structure(wizard_manifest)
             installation_metadata["wizard"] = {
                 "fingerprint": wizard_schema_fingerprint(wizard_manifest),

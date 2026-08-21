@@ -49,11 +49,8 @@ class _PayloadDTO(Protocol):
     def to_payload(self) -> dict[str, object]: ...
 
 
-def _build_metadata(*, wizard_specs: dict[str, Path] | None = None) -> Metadata:
-    return build_metadata(
-        {"enterprise": ROOT / "spec" / "enterprise.json"},
-        wizard_specs=wizard_specs,
-    )
+def _build_metadata() -> Metadata:
+    return build_metadata({"enterprise": ROOT / "spec" / "enterprise.json"})
 
 
 def _ref(name: str) -> dict[str, object]:
@@ -401,14 +398,36 @@ def _raw_object(value: object, *, path: str) -> dict[str, object]:
     return cast(dict[str, object], value)
 
 
+def _build_metadata_from_api_v3_spec(
+    tmp_path: Path,
+    *,
+    wizard_spec_value: dict[str, object] | None = None,
+) -> Metadata:
+    installation_spec = _raw_object(
+        json.loads((ROOT / "spec" / "enterprise.json").read_text(encoding="utf-8")),
+        path="installation spec",
+    )
+    wizard_spec = wizard_spec_value or _wizard_spec()
+    installation_spec["info"] = wizard_spec["info"]
+    _raw_object(installation_spec["paths"], path="installation paths").update(
+        _raw_object(wizard_spec["paths"], path="Wizard paths")
+    )
+    installation_components = _raw_object(installation_spec["components"], path="installation components")
+    wizard_components = _raw_object(wizard_spec["components"], path="Wizard components")
+    _raw_object(installation_components["schemas"], path="installation schemas").update(
+        _raw_object(wizard_components["schemas"], path="Wizard schemas")
+    )
+    spec_path = tmp_path / "installation.json"
+    spec_path.write_text(json.dumps(installation_spec), encoding="utf-8")
+    return build_metadata({"enterprise": spec_path})
+
+
 def _generated_wizard_dto_module(
     tmp_path: Path,
     *,
     wizard_spec_value: dict[str, object] | None = None,
 ) -> ModuleType:
-    wizard_spec = tmp_path / "wizard.json"
-    wizard_spec.write_text(json.dumps(wizard_spec_value or _wizard_spec()), encoding="utf-8")
-    metadata = _build_metadata(wizard_specs={"enterprise": wizard_spec})
+    metadata = _build_metadata_from_api_v3_spec(tmp_path, wizard_spec_value=wizard_spec_value)
     module_path = tmp_path / "synthetic_wizard_dto.py"
     module_path.write_text(emit_dto(metadata), encoding="utf-8")
     module_name = "synthetic_wizard_dto"
@@ -541,11 +560,8 @@ def test_manifest_diff_reports_nested_structural_changes() -> None:
     assert diff_wizard_schema_meta(before, after) == "~ /schemas/WizardV1/properties/version/enum: [1] -> [2]"
 
 
-def test_build_metadata_accepts_an_explicit_wizard_spec(tmp_path: Path) -> None:
-    wizard_spec = tmp_path / "wizard.json"
-    wizard_spec.write_text(json.dumps(_wizard_spec()), encoding="utf-8")
-
-    metadata = _build_metadata(wizard_specs={"enterprise": wizard_spec})
+def test_build_metadata_uses_wizard_contract_from_api_v3_installation_spec(tmp_path: Path) -> None:
+    metadata = _build_metadata_from_api_v3_spec(tmp_path)
 
     wizard = metadata["installations"]["enterprise"]["wizard"]
     assert wizard["manifest"] == build_wizard_schema_meta(_wizard_spec())
@@ -598,9 +614,7 @@ def test_public_layer_type_aliases_match_generated_wizard_layer_tags() -> None:
 
 
 def test_chart_builder_generation_uses_only_generated_wizard_tags(tmp_path: Path) -> None:
-    wizard_spec = tmp_path / "wizard.json"
-    wizard_spec.write_text(json.dumps(_wizard_spec()), encoding="utf-8")
-    metadata = _build_metadata(wizard_specs={"enterprise": wizard_spec})
+    metadata = _build_metadata_from_api_v3_spec(tmp_path)
 
     generated = emit_chart_builders(metadata)
 
@@ -1096,22 +1110,3 @@ def test_wizard_schema_rejects_ambiguous_one_of_instead_of_deduplicating_it() ->
 
     with pytest.raises(ValueError, match=r"/schemas/WizardV1ConfigSchema/properties/visualization/oneOf"):
         build_wizard_schema_meta(spec)
-
-
-def test_build_metadata_rejects_wizard_specs_for_unknown_installations(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="unknown installations: yateam"):
-        build_metadata(
-            {"enterprise": ROOT / "spec" / "enterprise.json"},
-            wizard_specs={"yateam": tmp_path / "wizard.json"},
-        )
-
-
-def test_build_metadata_rejects_partial_multi_installation_wizard_specs(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="must cover every generated installation; missing: yacloud"):
-        build_metadata(
-            {
-                "enterprise": ROOT / "spec" / "enterprise.json",
-                "yacloud": ROOT / "spec" / "yacloud.json",
-            },
-            wizard_specs={"enterprise": tmp_path / "wizard.json"},
-        )
