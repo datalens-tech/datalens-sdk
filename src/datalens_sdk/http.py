@@ -9,6 +9,7 @@ from typing import Protocol, cast
 
 import httpx
 
+from datalens_sdk.api_version import API_VERSION
 from datalens_sdk.error_transformers import (
     DATALENS_ERROR_TRANSFORMER,
     ErrorTransformerProtocol,
@@ -26,7 +27,6 @@ HTTPEventHook = Callable[[httpx.Request | httpx.Response], object]
 HTTPEventHooks = Mapping[str, list[HTTPEventHook]]
 ResponseAcceptancePredicate = Callable[[int, object | None], bool]
 
-_API_VERSION = "2"
 _DEFAULT_RETRYABLE_STATUS_CODES: frozenset[int] = frozenset(
     {
         HTTPStatus.TOO_MANY_REQUESTS,
@@ -48,7 +48,7 @@ def _post_json_with_api_version(
 ) -> httpx.Response:
     return httpx.post(
         url,
-        headers={"x-dl-api-version": _API_VERSION},
+        headers={"x-dl-api-version": API_VERSION},
         json=json,
         timeout=timeout,
     )
@@ -130,7 +130,7 @@ class DataLensHTTPClient:
         *,
         installation: str,
         sdk_version: str,
-        api_version: str = _API_VERSION,
+        api_version: str = API_VERSION,
         base_url: str,
         auth: httpx.Auth | None = None,
         transport: httpx.BaseTransport | None = None,

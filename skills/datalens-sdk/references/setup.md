@@ -176,7 +176,6 @@ base_url = os.environ["DATALENS_BASE_URL"]
 client = DataLensClientEnterprise(
     base_url=base_url,
     auth=EnterpriseServiceAccountCredentialsAuthProvider(
-        base_url=base_url,
         key_id="<private-key-id>",
         service_account_id="<service-account-id>",
         private_key=Path("/secure/path/private-key.pem").read_text(),
@@ -206,7 +205,7 @@ All providers are keyword-only and expose `get_headers()`; pass an instance as `
 | `NoAuthProvider` | — | nothing | also selected by `auth=None` |
 | `AuthorizationTokenAuthProvider` | `token=`, `token_type=` | `Authorization: <type> <token>` | generic scheme |
 | `OAuthAuthProvider` | `token=None` | `Authorization: OAuth ...` | falls back to `DATALENS_OAUTH_TOKEN`; raises `DataLensConfigurationError` if neither |
-| `EnterpriseServiceAccountCredentialsAuthProvider` | `base_url=`, `key_id=`, `service_account_id=`, `private_key=` | `Authorization: Bearer ...` | PS256 JWT → Enterprise access-token exchange; caches and auto-refreshes with a 60 s expiry margin |
+| `EnterpriseServiceAccountCredentialsAuthProvider` | `key_id=`, `service_account_id=`, `private_key=`, `base_url=None` | `Authorization: Bearer ...` | PS256 JWT → Enterprise access-token exchange; uses the client's base URL by default, caches and auto-refreshes with a 60 s expiry margin |
 | `StaticYCIAMAuthProvider` | `org_id=`, `token=` | `Authorization: Bearer ...` + `x-dl-org-id` | no refresh |
 | `YCIAMAuthProvider` | `org_id=None`, `profile=None`, `command_timeout_seconds=30.0` | Bearer + org id | reads `DATALENS_ORG_ID`, `DATALENS_YC_PROFILE`, and `DATALENS_YC_BIN` as fallbacks; caches and auto-refreshes with a 60 s expiry margin |
 | `YCServiceAccountCredentialsAuthProvider` | `org_id=`, `key_id=`, `service_account_id=`, `private_key=` | Bearer + org id | JWT → IAM exchange, auto-refreshes |

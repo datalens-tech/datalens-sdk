@@ -21,6 +21,7 @@ from datalens_sdk.api.navigation import NavigationService
 from datalens_sdk.api.workbook import WorkbookAPI, WorkbookService
 from datalens_sdk.auth import (
     AuthProviderProtocol,
+    EnterpriseServiceAccountCredentialsAuthProvider,
     NoAuthProvider,
     YCIAMAuthProvider,
     _AuthProviderHTTPXAuth,
@@ -577,6 +578,10 @@ class DataLensClientBase:
                 auth_provider = NoAuthProvider()
             else:
                 auth_provider = auth
+            if self.INSTALLATION == "enterprise" and isinstance(
+                auth_provider, EnterpriseServiceAccountCredentialsAuthProvider
+            ):
+                auth_provider._set_base_url(resolved_base_url)
             self._http = DataLensHTTPClient(
                 installation=self.INSTALLATION,
                 sdk_version=_distribution_version(self.SDK_DISTRIBUTION),

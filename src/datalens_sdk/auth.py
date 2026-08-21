@@ -217,40 +217,53 @@ class EnterpriseServiceAccountCredentialsAuthProvider(_RefreshingTokenAuthProvid
     def __init__(
         self,
         *,
-        base_url: str,
         key_id: str,
         service_account_id: str,
         private_key: str,
+        base_url: str | None = None,
         token_expiry_margin_seconds: int = _IAM_TOKEN_EXPIRY_MARGIN_SECONDS,
         jwt_lifetime_seconds: int = _ENTERPRISE_JWT_LIFETIME_SECONDS,
     ) -> None:
-        resolved_base_url = base_url.strip()
-        if not resolved_base_url:
-            raise DataLensConfigurationError("Enterprise base URL is required: pass base_url=.")
         if token_expiry_margin_seconds < 0:
             raise DataLensConfigurationError("token_expiry_margin_seconds must not be negative.")
         if not 1 <= jwt_lifetime_seconds <= _ENTERPRISE_MAX_JWT_LIFETIME_SECONDS:
             raise DataLensConfigurationError(
                 f"jwt_lifetime_seconds must be between 1 and {_ENTERPRISE_MAX_JWT_LIFETIME_SECONDS}."
             )
+
+        super().__init__(
+            token_expiry_margin_seconds=token_expiry_margin_seconds,
+            token_description="Enterprise access token",
+        )
+        self._token_endpoint = self._resolve_token_endpoint(base_url) if base_url is not None else None
+        self._key_id = key_id
+        self._service_account_id = service_account_id
+        self._private_key = private_key
+        self._jwt_lifetime_seconds = jwt_lifetime_seconds
+
+    @staticmethod
+    def _resolve_token_endpoint(base_url: str) -> str:
+        resolved_base_url = base_url.strip()
+        if not resolved_base_url:
+            raise DataLensConfigurationError("Enterprise base URL must not be empty.")
         try:
             base_url_value = httpx.URL(resolved_base_url)
         except httpx.InvalidURL as exc:
             raise DataLensConfigurationError("Enterprise base URL is invalid.") from exc
         if not base_url_value.is_absolute_url:
             raise DataLensConfigurationError("Enterprise base URL must be absolute.")
+        return str(base_url_value.join(_ENTERPRISE_TOKEN_EXCHANGE_PATH))
 
-        super().__init__(
-            token_expiry_margin_seconds=token_expiry_margin_seconds,
-            token_description="Enterprise access token",
-        )
-        self._token_endpoint = str(base_url_value.join(_ENTERPRISE_TOKEN_EXCHANGE_PATH))
-        self._key_id = key_id
-        self._service_account_id = service_account_id
-        self._private_key = private_key
-        self._jwt_lifetime_seconds = jwt_lifetime_seconds
+    def _set_base_url(self, base_url: str) -> None:
+        if self._token_endpoint is None:
+            self._token_endpoint = self._resolve_token_endpoint(base_url)
 
     def _fetch_token(self) -> _ExpiringToken:
+        token_endpoint = self._token_endpoint
+        if token_endpoint is None:
+            raise DataLensConfigurationError(
+                "Enterprise base URL is required: pass base_url= or use the provider with DataLensClientEnterprise."
+            )
         now = int(time.time())
         encoded_jwt = jwt.encode(
             {
@@ -263,7 +276,7 @@ class EnterpriseServiceAccountCredentialsAuthProvider(_RefreshingTokenAuthProvid
             headers={"kid": self._key_id, "typ": "JWT"},
         )
         response = _post_json_with_api_version(
-            self._token_endpoint,
+            token_endpoint,
             json={"saToken": encoded_jwt},
             timeout=_TOKEN_EXCHANGE_TIMEOUT,
         )

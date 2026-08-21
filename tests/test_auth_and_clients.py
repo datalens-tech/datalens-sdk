@@ -221,26 +221,44 @@ def test_enterprise_service_account_provider_signs_exchanges_and_caches_jwt(
     monkeypatch.setattr("datalens_sdk.auth.jwt.encode", fake_encode)
     monkeypatch.setattr("datalens_sdk.auth.httpx.post", fake_post)
     provider = EnterpriseServiceAccountCredentialsAuthProvider(
+        key_id="key-id",
+        service_account_id="sa-id",
+        private_key="private-key",
+    )
+    client = DataLensClientEnterprise(
         base_url="https://enterprise.example.test/prefix",
+        auth=provider,
+        transport=httpx.MockTransport(lambda _: httpx.Response(200)),
+    )
+
+    try:
+        expected_headers = {"Authorization": f"Bearer {access_token}"}
+        assert provider.get_headers() == expected_headers
+        assert provider.get_headers() == expected_headers
+        assert encoded_payloads == [{"iss": "sa-id", "iat": 1000, "exp": 1300}]
+        assert encoded_headers == [{"kid": "key-id", "typ": "JWT"}]
+        assert exchange_requests == [
+            (
+                "https://enterprise.example.test/rpc/exchangeServiceAccountToken",
+                {"x-dl-api-version": "2"},
+                {"saToken": "signed-jwt"},
+            )
+        ]
+        assert "private-key" not in repr(provider)
+        assert access_token not in repr(provider)
+    finally:
+        client.close()
+
+
+def test_enterprise_service_account_provider_requires_base_url_when_used_standalone() -> None:
+    provider = EnterpriseServiceAccountCredentialsAuthProvider(
         key_id="key-id",
         service_account_id="sa-id",
         private_key="private-key",
     )
 
-    expected_headers = {"Authorization": f"Bearer {access_token}"}
-    assert provider.get_headers() == expected_headers
-    assert provider.get_headers() == expected_headers
-    assert encoded_payloads == [{"iss": "sa-id", "iat": 1000, "exp": 1300}]
-    assert encoded_headers == [{"kid": "key-id", "typ": "JWT"}]
-    assert exchange_requests == [
-        (
-            "https://enterprise.example.test/rpc/exchangeServiceAccountToken",
-            {"x-dl-api-version": "2"},
-            {"saToken": "signed-jwt"},
-        )
-    ]
-    assert "private-key" not in repr(provider)
-    assert access_token not in repr(provider)
+    with pytest.raises(DataLensConfigurationError, match="use the provider with DataLensClientEnterprise"):
+        provider.get_headers()
 
 
 def test_enterprise_service_account_provider_refreshes_before_access_token_expiry(
@@ -308,7 +326,7 @@ def test_enterprise_service_account_provider_supports_async_headers(monkeypatch:
 @pytest.mark.parametrize(
     ("base_url", "token_expiry_margin_seconds", "jwt_lifetime_seconds", "message"),
     [
-        ("", 60, 300, "base URL is required"),
+        ("", 60, 300, "base URL must not be empty"),
         ("relative", 60, 300, "base URL must be absolute"),
         ("https://enterprise.example.test", -1, 300, "must not be negative"),
         ("https://enterprise.example.test", 60, 0, "must be between 1 and 600"),

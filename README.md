@@ -84,8 +84,6 @@ with DataLensClientYC(auth=auth) as client:
 ```
 
 Pass `auth=None` explicitly for access without authentication.
-For Enterprise installations that use OAuth, `OAuthAuthProvider()` reads
-`DATALENS_OAUTH_TOKEN` unless an explicit `token=` is supplied.
 For Enterprise service accounts, sign and exchange credentials automatically:
 
 ```python
@@ -96,7 +94,6 @@ from datalens_sdk import DataLensClientEnterprise, EnterpriseServiceAccountCrede
 
 base_url = os.environ["DATALENS_BASE_URL"]
 auth = EnterpriseServiceAccountCredentialsAuthProvider(
-    base_url=base_url,
     key_id="<private-key-id>",
     service_account_id="<service-account-id>",
     private_key=Path("/secure/path/private-key.pem").read_text(),
