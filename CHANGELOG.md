@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.0 - 2026-08-21
+
 - Add `EnterpriseServiceAccountCredentialsAuthProvider` for PS256 service-account
   JWT exchange and automatic Bearer access-token refresh in DataLens Enterprise.
 
