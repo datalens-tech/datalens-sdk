@@ -81,9 +81,6 @@ class EditorChartUpdate:
     def shared(self, value: str) -> Self:
         return self._set_tab("shared", value)
 
-    def secrets(self, value: str | None) -> Self:
-        return self._set_tab("secrets", value)
-
     def ymap(self, value: str) -> Self:
         return self._set_tab("ymap", value)
 

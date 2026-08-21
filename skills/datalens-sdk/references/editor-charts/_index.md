@@ -89,8 +89,9 @@ chart.update.<tab>(value)
 .execute()
 ```
 
-`EditorChartUpdate` exposes setters for every tab, including some used by
-no renderer in the routing table.
+`EditorChartUpdate` exposes setters for writable tabs, including some used by
+no renderer in the routing table. It intentionally has no `secrets()` setter:
+API v3 treats Editor secrets as UI-managed, read-only state.
 Use only the tabs in the row for the chart's current renderer.
 `EditorChartUpdate.meta()` exists (as does `.meta()` on the create
 builders) but should not be called — its content format is not verified. To
