@@ -2,34 +2,47 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Replace legacy Wizard API v2 payloads with HTTP API v3 envelopes carrying
+  Wizard document schema V1. V2 raw snapshots and the former
+  `template`/`placeholders` representation are no longer supported.
+- Replace split chart-local field arguments with stable GUID-bearing
+  `WizardLocalField`, `WizardAggregatedMeasure`, and `WizardHierarchy` handles.
+  Reuse the same handle across create and update; after fetch, resolve direct
+  fields by GUID or against an explicitly loaded `Dataset`.
+- Rename the pivot-table measure setter from `.y(...)` to `.measures(...)` and
+  remove unsupported `map_type()`, `currency`, and `bln` values. Measure units
+  are now `auto`, `k`, `m`, `b`, and `t`.
+
+### Changed
+
+- Generate Wizard request/result DTOs, typed builders, fingerprints, and
+  structural metadata from OpenAPI. The generator covers 17 visualizations,
+  5 geo-layer variants, and 3 combined-layer variants when every installation
+  in a generated package provides the same complete contract.
+- Validate known Wizard write fields strictly, keep omitted properties distinct
+  from explicit JSON `null`, and preserve unknown server-owned fields during
+  read-modify-write operations.
+- Derive builder and mutation applicability from generated carriers, including
+  pivot-table `freeze_columns()`, while failing closed on stale layer selectors,
+  ambiguous linked fields, and unsupported schema semantics.
+- Keep ordinary updates one-phase and free of `revId`; use
+  `WizardChart.publish_revision()` only to publish an existing revision.
+
+### Pre-release limitation
+
+The checked-in production specifications do not yet expose the complete Wizard
+API v3 contract, so the public generated Wizard registry intentionally remains
+empty and fails closed. Do not release this migration until Phase 4 switches to
+official production specs, regenerates every installation, and validates their
+structural fingerprints. Structure-dependent public checks may fail until that
+switch; synthetic generator tests cover the new contract in the meantime.
+
 ## 0.9.0 - 2026-08-21
 
 - Add `EnterpriseServiceAccountCredentialsAuthProvider` for PS256 service-account
   JWT exchange and automatic Bearer access-token refresh in DataLens Enterprise.
-- Reject coercible wrong scalar types in Wizard writes, fail closed on invalid
-  selected-layer and linked-field mutations, and preserve instants when
-  normalizing timezone-offset date filters.
-- Keep omitted Wizard properties distinct from explicit JSON `null`, enforce
-  supported schema bounds and patterns, and reject unconsumed semantic schema
-  features before generating write validators.
-- Replace split Wizard local-field, aggregated-measure, and hierarchy builder
-  arguments with immutable GUID-bearing handles that can be reused as field
-  references on create and update.
-- Rename the pivot-table measure setter from `.y(...)` to the canonical
-  `.measures(...)` spelling on create and update.
-- Keep Wizard field decorations off sort and filter reference carriers, serialize
-  manual gradient thresholds in their wire string form, and support column
-  freezing for both flat and pivot tables through generated carrier metadata.
-- Extend target-only Wizard v1 assembly and updates to all 15 non-layered
-  visualization branches, using generated slot and settings structure metadata.
-- Align Wizard measure-format units with OpenAPI: use `b` instead of the former
-  SDK-only `bln` alias, and add the `t` unit.
-- Omit non-nullable Wizard field properties whose source value is `None`, and
-  preserve array-shaped API validation details in `DataLensAPIError.context`.
-- Keep ordinary Wizard updates one-phase and free of `revId`; use
-  `WizardChart.publish_revision()` to publish an existing revision explicitly.
-- Require the generated Wizard V3 response `entryId` instead of recovering a
-  chart id from legacy aliases or the request.
 
 ## 0.8.0 - 2026-08-14
 
