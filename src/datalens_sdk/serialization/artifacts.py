@@ -48,6 +48,9 @@ class ChartSnapshotView(Mapping[str, JsonValue]):
                 raise DataLensValidationError(
                     f"Chart category mismatch: expected {expected_category!r}, snapshot is {raw.category!r}"
                 )
+            entry_data = chart_entry_from_normalized_snapshot(raw.snapshot).get("data")
+            if expected_category == "editor" and isinstance(entry_data, dict) and "secrets" in entry_data:
+                return cls.capture(raw.snapshot, expected_category=expected_category)
             return raw
 
         return cls.capture(raw, expected_category=expected_category)
@@ -60,6 +63,8 @@ class ChartSnapshotView(Mapping[str, JsonValue]):
         expected_category: ChartArtifactCategory,
     ) -> ChartSnapshotView:
         snapshot = normalize_json_object(raw, context="Chart response snapshot")
+        if expected_category == "editor":
+            strip_editor_read_secrets(snapshot)
         entry = chart_entry_from_normalized_snapshot(snapshot)
         data = entry.get("data")
         if not isinstance(data, dict):
@@ -103,6 +108,15 @@ class ChartSnapshotView(Mapping[str, JsonValue]):
         if not isinstance(value, dict):
             raise DataLensValidationError(f"Chart response snapshot field {field!r} must be an object")
         return value
+
+
+def strip_editor_read_secrets(snapshot: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    """Remove the API v3 read-only Editor secrets block from an owned snapshot."""
+    entry = chart_entry_from_normalized_snapshot(snapshot)
+    data = entry.get("data")
+    if isinstance(data, dict):
+        data.pop("secrets", None)
+    return snapshot
 
 
 @dataclass(frozen=True, slots=True)

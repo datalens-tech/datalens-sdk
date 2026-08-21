@@ -24,7 +24,11 @@ from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.specs.editor_chart import EditorChartCreateSpec
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
 from datalens_sdk.errors import DataLensValidationError, NotSupportedError
-from datalens_sdk.serialization.artifacts import ChartSnapshotView, chart_entry_from_normalized_snapshot
+from datalens_sdk.serialization.artifacts import (
+    ChartSnapshotView,
+    chart_entry_from_normalized_snapshot,
+    strip_editor_read_secrets,
+)
 from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object
 
 
@@ -34,34 +38,6 @@ class EditorChartCreateDTOProtocol(Protocol):
 
 class EditorChartUpdateDTOProtocol(Protocol):
     def to_payload(self) -> dict[str, object]: ...
-
-
-class _EditorChartUpdatePayload:
-    """Preserve explicit secret clearing across generated DTO serialization."""
-
-    def __init__(
-        self,
-        delegate: EditorChartUpdateDTOProtocol,
-        *,
-        include_secrets: bool,
-        secrets: str | None,
-    ) -> None:
-        self._delegate = delegate
-        self._include_secrets = include_secrets
-        self._secrets = secrets
-
-    def to_payload(self) -> dict[str, object]:
-        payload = self._delegate.to_payload()
-        if not self._include_secrets:
-            return payload
-        entry = payload.get("entry")
-        if not isinstance(entry, dict):
-            raise ValueError("Editor update DTO payload has no entry mapping")
-        data = entry.get("data")
-        if not isinstance(data, dict):
-            raise ValueError("Editor update DTO payload has no entry.data mapping")
-        data["secrets"] = self._secrets
-        return payload
 
 
 class EditorChartReadDTOProtocol(Protocol):
@@ -241,6 +217,7 @@ class EditorChartConverter:
         response: Mapping[str, object]
         if isinstance(raw, Mapping):
             response_snapshot = normalize_json_object(raw, context="Editor chart API response")
+            strip_editor_read_secrets(response_snapshot)
             response = chart_entry_from_normalized_snapshot(response_snapshot)
             dto_validation_input = dict(response)
             dto_validation_input["raw"] = normalize_json_object(
@@ -254,12 +231,15 @@ class EditorChartConverter:
             )
         else:
             read_dto = raw
-            response = read_dto.raw or {}
+            response = strip_editor_read_secrets(
+                normalize_json_object(read_dto.raw or {}, context="Editor chart typed response state")
+            )
         wire_type = _optional_str(response.get("type")) or wire_type_fallback
         raw_data = read_dto.data
         if raw_data is None:
             raw_data = _dict_with_string_keys(response.get("data"))
         data = _dict_with_string_keys(raw_data) if raw_data is not None else {}
+        data.pop("secrets", None)
         key = _optional_str(response.get("key"))
         domain_location = resolve_entry_location_from_api_fields(
             dir_path=_optional_str(response.get("dir_path")),
@@ -362,7 +342,11 @@ class EditorChartConverter:
         if update_data_dto_cls is None:
             raise ValueError(f"DTO class {update_data_dto_name!r} not found in dto module")
 
-        current_data: dict[str, str | None] = {k: v for k, v in chart.data.items() if isinstance(v, str) or v is None}
+        current_data: dict[str, str | None] = {
+            key: value
+            for key, value in chart.data.items()
+            if key != "secrets" and (isinstance(value, str) or value is None)
+        }
         for tab, content in update.tab_edits.items():
             current_data[tab] = content
 
@@ -384,9 +368,4 @@ class EditorChartConverter:
             mode=update.mode_value,
             annotation=annotation,
         )
-        delegate = cast(EditorChartUpdateDTOProtocol, result)
-        return _EditorChartUpdatePayload(
-            delegate,
-            include_secrets="secrets" in update.tab_edits,
-            secrets=update.tab_edits.get("secrets"),
-        )
+        return cast(EditorChartUpdateDTOProtocol, result)

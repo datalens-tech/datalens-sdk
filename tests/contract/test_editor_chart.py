@@ -237,6 +237,36 @@ def test_to_domain_builds_editor_chart() -> None:
     assert chart.description == "Editor read description"
 
 
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_to_domain_redacts_read_only_secrets_from_all_domain_state(wrapped: bool) -> None:
+    sentinel = "must-not-leak-editor-token"
+    entry: dict[str, object] = {
+        "entryId": "chart-1",
+        "type": "advanced-chart_node",
+        "data": {
+            "sources": "s",
+            "params": "p",
+            "controls": "c",
+            "meta": "m",
+            "prepare": "pr",
+            "secrets": [{"token": sentinel}],
+        },
+    }
+    raw = {"entry": entry} if wrapped else entry
+
+    chart = EditorChartConverter.to_domain(raw, installation="yacloud")
+
+    assert "secrets" not in chart.data
+    assert "secrets" not in cast(dict[str, object], chart.raw["data"])
+    snapshot_entry = cast(
+        dict[str, object],
+        chart.response_snapshot["entry"] if wrapped else chart.response_snapshot,
+    )
+    assert "secrets" not in cast(dict[str, object], snapshot_entry["data"])
+    assert sentinel not in repr(chart)
+    assert sentinel not in json.dumps(chart.response_snapshot)
+
+
 # ---------------------------------------------------------------------------
 # 5. mode validation
 # ---------------------------------------------------------------------------
@@ -346,10 +376,11 @@ def test_nullable_update_tabs_preserve_explicit_none() -> None:
     ops = cast(ChartOperations, _FakeOps())
     update = EditorChart(id="e1", wire_type="advanced-chart_node", _operations=ops).update
 
-    assert update.activities(None).secrets(None).tab_edits == {
-        "activities": None,
-        "secrets": None,
-    }
+    assert update.activities(None).tab_edits == {"activities": None}
+
+
+def test_editor_update_has_no_writable_secrets_surface() -> None:
+    assert not hasattr(EditorChartUpdate, "secrets")
 
 
 # ---------------------------------------------------------------------------
@@ -368,10 +399,13 @@ def _editor_chart_response(entry_id: str = "e1", wire_type: str = "advanced-char
 
 
 def test_editor_chart_create_get_update_delete_flow() -> None:
+    read_response = _editor_chart_response()
+    read_data = cast(dict[str, object], read_response["data"])
+    read_data["secrets"] = [{"token": "must-not-leak-editor-token"}]
     recorder = RecordedTransport(
         {
             "/rpc/createEditorChart": httpx.Response(200, json=_editor_chart_response()),
-            "/rpc/getEditorChart": httpx.Response(200, json=_editor_chart_response()),
+            "/rpc/getEditorChart": httpx.Response(200, json=read_response),
             "/rpc/updateEditorChart": httpx.Response(200, json=_editor_chart_response()),
             "/rpc/deleteEditorChart": httpx.Response(200, json={}),
         }
@@ -399,6 +433,11 @@ def test_editor_chart_create_get_update_delete_flow() -> None:
     assert recorder.requests[1].url.path == "/rpc/getEditorChart"
     assert recorder.requests[2].url.path == "/rpc/updateEditorChart"
     assert recorder.requests[3].url.path == "/rpc/deleteEditorChart"
+    update_entry = cast(dict[str, object], recorder.request_json(2)["entry"])
+    update_data = cast(dict[str, object], update_entry["data"])
+    assert "secrets" not in update_data
+    assert update_data["sources"] == "new_src"
+    assert update_data["params"] == "p"
 
 
 def test_editor_chart_create_payload_wrapped() -> None:

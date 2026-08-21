@@ -14,6 +14,9 @@
 - Rename the pivot-table measure setter from `.y(...)` to `.measures(...)` and
   remove unsupported `map_type()`, `currency`, and `bln` values. Measure units
   are now `auto`, `k`, `m`, `b`, and `t`.
+- Remove `EditorChartUpdate.secrets()`. API v3 exposes this block as read-only,
+  UI-managed state; the SDK excludes it from domain state, artifacts, and
+  mutation payloads while ordinary updates preserve the server-side binding.
 
 ### Changed
 
