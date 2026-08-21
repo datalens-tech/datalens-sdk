@@ -34,6 +34,11 @@ class WizardVisualizationTransition(TypedDict):
     slot_mapping: tuple[tuple[str, str], ...]
 
 
+# OpenAPI owns the available visualization, layer, slot, and setting carriers.
+# This table keeps only SDK behavior that the schema cannot express: public slot
+# aliases, semantic encoding and label rules, deterministic autofix policy, and
+# capacities used while preserving fields across visualization transitions. Every
+# referenced carrier is validated against the generated structure before use.
 WIZARD_VISUALIZATION_SEMANTICS: dict[str, WizardVisualizationSemantics] = {
     "metric": {
         "slot_aliases": {"y": "measures"},
