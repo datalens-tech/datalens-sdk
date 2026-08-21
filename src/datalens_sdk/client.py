@@ -581,7 +581,7 @@ class DataLensClientBase:
             if self.INSTALLATION == "enterprise" and isinstance(
                 auth_provider, EnterpriseServiceAccountCredentialsAuthProvider
             ):
-                auth_provider._set_base_url(resolved_base_url)
+                auth_provider.set_base_url(resolved_base_url)
             self._http = DataLensHTTPClient(
                 installation=self.INSTALLATION,
                 sdk_version=_distribution_version(self.SDK_DISTRIBUTION),

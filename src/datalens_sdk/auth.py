@@ -18,8 +18,8 @@ import warnings
 import httpx
 import jwt
 
+from datalens_sdk.api_version import API_VERSION
 from datalens_sdk.errors import DataLensConfigurationError
-from datalens_sdk.http import _post_json_with_api_version
 
 _DATALENS_OAUTH_TOKEN_ENV = "DATALENS_OAUTH_TOKEN"
 _DATALENS_ORG_ID_ENV = "DATALENS_ORG_ID"
@@ -254,7 +254,7 @@ class EnterpriseServiceAccountCredentialsAuthProvider(_RefreshingTokenAuthProvid
             raise DataLensConfigurationError("Enterprise base URL must be absolute.")
         return str(base_url_value.join(_ENTERPRISE_TOKEN_EXCHANGE_PATH))
 
-    def _set_base_url(self, base_url: str) -> None:
+    def set_base_url(self, base_url: str) -> None:
         if self._token_endpoint is None:
             self._token_endpoint = self._resolve_token_endpoint(base_url)
 
@@ -275,8 +275,9 @@ class EnterpriseServiceAccountCredentialsAuthProvider(_RefreshingTokenAuthProvid
             algorithm="PS256",
             headers={"kid": self._key_id, "typ": "JWT"},
         )
-        response = _post_json_with_api_version(
+        response = httpx.post(
             token_endpoint,
+            headers={"x-dl-api-version": API_VERSION},
             json={"saToken": encoded_jwt},
             timeout=_TOKEN_EXCHANGE_TIMEOUT,
         )

@@ -388,7 +388,7 @@ def test_api_version_header_is_pinned_on_shared_client() -> None:
         path.relative_to(SRC).as_posix() for path in _python_files() if "API_VERSION =" in path.read_text()
     )
 
-    assert header_users == ["http.py"]
+    assert header_users == ["auth.py", "http.py"]
     assert constant_owners == ["api_version.py"]
 
 

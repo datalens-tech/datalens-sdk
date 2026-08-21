@@ -40,20 +40,6 @@ _DEFAULT_RETRYABLE_STATUS_CODES: frozenset[int] = frozenset(
 )
 
 
-def _post_json_with_api_version(
-    url: str,
-    *,
-    json: Mapping[str, object],
-    timeout: httpx.Timeout,
-) -> httpx.Response:
-    return httpx.post(
-        url,
-        headers={"x-dl-api-version": API_VERSION},
-        json=json,
-        timeout=timeout,
-    )
-
-
 def _dict_with_string_keys(value: object) -> dict[str, object]:
     if not isinstance(value, Mapping):
         return {}
