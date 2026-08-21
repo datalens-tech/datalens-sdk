@@ -255,8 +255,7 @@ class EnterpriseServiceAccountCredentialsAuthProvider(_RefreshingTokenAuthProvid
         return str(base_url_value.join(_ENTERPRISE_TOKEN_EXCHANGE_PATH))
 
     def set_base_url(self, base_url: str) -> None:
-        if self._token_endpoint is None:
-            self._token_endpoint = self._resolve_token_endpoint(base_url)
+        self._token_endpoint = self._resolve_token_endpoint(base_url)
 
     def _fetch_token(self) -> _ExpiringToken:
         token_endpoint = self._token_endpoint

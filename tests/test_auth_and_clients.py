@@ -221,6 +221,7 @@ def test_enterprise_service_account_provider_signs_exchanges_and_caches_jwt(
     monkeypatch.setattr("datalens_sdk.auth.jwt.encode", fake_encode)
     monkeypatch.setattr("datalens_sdk.auth.httpx.post", fake_post)
     provider = EnterpriseServiceAccountCredentialsAuthProvider(
+        base_url="https://provider.example.test",
         key_id="key-id",
         service_account_id="sa-id",
         private_key="private-key",
