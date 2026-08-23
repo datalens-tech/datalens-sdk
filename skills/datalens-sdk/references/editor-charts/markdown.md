@@ -50,3 +50,4 @@ Leave `meta` unset.
 - [_index.md](_index.md) — routing, exact tab matrix
 - [common-operations.md](common-operations.md) — read, update, publish, delete
 - [troubleshooting.md](troubleshooting.md) — chart persists but does not render
+- [Official Markdown documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/markdown)

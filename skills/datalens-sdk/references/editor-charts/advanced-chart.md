@@ -6,14 +6,17 @@ Factory: `client.create.editor_chart.advanced_chart`. `chart.wire_type`:
 Tabs: `controls`, `meta`, `params`, `prepare`, `sources`.
 
 `prepare` must export an object whose `render` member is an
-`Editor.wrapFn(...)` result.
+`Editor.wrapFn(...)` result. Any returned HTML or SVG must be passed through
+`Editor.generateHtml(...)`; a raw string is escaped instead of rendered.
+The renderer's built-in `options` argument comes first, followed by values
+from `args`.
 
 ```python
 from datalens_sdk import EntryLocation
 
 SOURCES = "module.exports = {};\n"
 CONTROLS = "module.exports = {};\n"
-PARAMS = "module.exports = {backgroundColor: 'var(--g-color-base-info-light)'};\n"
+PARAMS = "module.exports = {backgroundColor: ['var(--g-color-base-info-light)']};\n"
 PREPARE = """\
 const params = Editor.getParams();
 const background =
@@ -21,10 +24,12 @@ const background =
 
 module.exports = {
     render: Editor.wrapFn({
-        fn: function(config) {
-            return `<div style="padding:24px;background:${config.background};font-size:24px">`
-                + 'Advanced chart created with datalens_sdk'
-                + '</div>';
+        fn: function(options, config) {
+            return Editor.generateHtml(
+                `<div style="padding:24px;background:${config.background};font-size:24px">`
+                    + 'Advanced chart created with datalens_sdk'
+                    + '</div>',
+            );
         },
         args: [{background}],
     }),
@@ -54,3 +59,4 @@ Leave `meta` unset.
 - [_index.md](_index.md) — routing, exact tab matrix
 - [common-operations.md](common-operations.md) — read, update, publish, delete
 - [troubleshooting.md](troubleshooting.md) — chart persists but does not render
+- [Official Advanced chart documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced)
