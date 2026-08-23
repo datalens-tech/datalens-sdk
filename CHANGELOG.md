@@ -20,6 +20,9 @@
 
 ### Changed
 
+- Align the bundled Editor chart skill with the official Advanced HTML,
+  selector controls, runtime-method, tab, Gravity UI, Markdown, and table
+  contracts.
 - Generate Wizard request/result DTOs, typed builders, fingerprints, and
   structural metadata from OpenAPI. The generator covers 17 visualizations,
   5 geo-layer variants, and 3 combined-layer variants when every installation
