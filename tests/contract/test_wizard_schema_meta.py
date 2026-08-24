@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 import copy
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -43,6 +44,7 @@ from datalens_sdk.errors import DataLensConfigurationError
 from datalens_sdk.serialization.json_types import JsonValue
 
 ROOT = Path(__file__).resolve().parents[2]
+_PRE_DASHBOARD_EMITTER_WIZARD_BLOCK_SHA256 = "6cc64e2f4b2b4150e6548563d80b414929b8ab3c902e21e81a0c1ed5754c4561"
 
 
 class _PayloadDTO(Protocol):
@@ -452,6 +454,14 @@ def _generated_wizard_dto_module(
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def test_generated_wizard_block_matches_pre_dashboard_emitter(tmp_path: Path) -> None:
+    generated = emit_dto(_build_metadata_from_api_v3_spec(tmp_path))
+    start = generated.index("WIZARD_SCHEMA_FINGERPRINT:")
+    end = generated.index("\nclass QLChartCreateDTO", start)
+
+    assert hashlib.sha256(generated[start:end].encode()).hexdigest() == (_PRE_DASHBOARD_EMITTER_WIZARD_BLOCK_SHA256)
 
 
 def _strict_config() -> dict[str, object]:
