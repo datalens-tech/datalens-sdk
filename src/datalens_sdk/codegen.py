@@ -1657,17 +1657,69 @@ class _PydanticSchemaEmitter:
         for union_key in ("oneOf", "anyOf"):
             branches = schema.get(union_key)
             if isinstance(branches, list):
-                annotations = [
-                    self._annotation(
-                        self._schema_object(branch, context=f"{'.'.join(path)}.{union_key}[{index}]"),
-                        path=(*path, f"{union_key}{index}"),
-                    )
+                branch_schemas = [
+                    self._schema_object(branch, context=f"{'.'.join(path)}.{union_key}[{index}]")
                     for index, branch in enumerate(branches)
                 ]
+                constrained_nullable_index: int | None = None
+                if union_key == "anyOf":
+                    non_null_indices = [
+                        index
+                        for index, branch_schema in enumerate(branch_schemas)
+                        if branch_schema.get("type") != "null"
+                    ]
+                    if (
+                        len(non_null_indices) == 1
+                        and all(
+                            index == non_null_indices[0] or branch_schema.get("type") == "null"
+                            for index, branch_schema in enumerate(branch_schemas)
+                        )
+                        and any(
+                            key in branch_schemas[non_null_indices[0]] for key in ("minItems", "minLength", "minimum")
+                        )
+                    ):
+                        constrained_nullable_index = non_null_indices[0]
+
+                annotations: list[str] = []
+                constrained_nullable_schema: dict[str, JsonValue] | None = None
+                for index, branch_schema in enumerate(branch_schemas):
+                    emitted_schema = branch_schema
+                    if index == constrained_nullable_index:
+                        constrained_nullable_schema = branch_schema
+                        emitted_schema = {
+                            key: value
+                            for key, value in branch_schema.items()
+                            if key not in {"minItems", "minLength", "minimum"}
+                        }
+                    annotations.append(
+                        self._annotation(
+                            emitted_schema,
+                            path=(*path, f"{union_key}{index}"),
+                        )
+                    )
                 annotation = " | ".join(dict.fromkeys(annotations))
+                if constrained_nullable_schema is not None:
+                    constrained_type = constrained_nullable_schema.get("type")
+                    if constrained_type == "string":
+                        annotation = self._with_constraints(
+                            annotation,
+                            constrained_nullable_schema,
+                            length_key="minLength",
+                        )
+                    elif constrained_type == "array":
+                        annotation = self._with_constraints(
+                            annotation,
+                            constrained_nullable_schema,
+                            length_key="minItems",
+                        )
+                    elif constrained_type in {"integer", "number"}:
+                        annotation = self._with_constraints(annotation, constrained_nullable_schema, minimum=True)
                 discriminator = schema.get("discriminator")
                 discriminator_property = discriminator.get("propertyName") if isinstance(discriminator, dict) else None
-                if isinstance(discriminator_property, str):
+                # Pydantic 2.0 cannot reuse a discriminated type alias inside nested models.
+                # Dashboard variants already carry disjoint Literal tags, so their plain union
+                # preserves validation semantics across the supported Pydantic range.
+                if isinstance(discriminator_property, str) and self._contract != "Dashboard":
                     property_name = _wizard_python_field_name(discriminator_property)
                     return f"Annotated[{annotation}, Field(discriminator={property_name!r})]"
                 return annotation
@@ -1761,6 +1813,17 @@ class _PydanticSchemaEmitter:
         additional = schema.get("additionalProperties")
         return "allow" if additional is True or isinstance(additional, dict) else "forbid"
 
+    @staticmethod
+    def _embed_field_alias(annotation: str, alias: str) -> tuple[str, bool]:
+        if not annotation.startswith("Annotated["):
+            return annotation, False
+        head, marker, tail = annotation.rpartition(", Field(")
+        if not marker or not tail.endswith(")]"):
+            return annotation, False
+        field_args = tail[:-2]
+        separator = ", " if field_args else ""
+        return f"{head}{marker}{field_args}{separator}alias={alias!r})]", True
+
     def _emit_object(
         self,
         schema: dict[str, JsonValue],
@@ -1789,13 +1852,16 @@ class _PydanticSchemaEmitter:
             {value for value in required_value if isinstance(value, str)} if isinstance(required_value, list) else set()
         )
 
-        fields: list[tuple[str, str, str, bool]] = []
+        fields: list[tuple[str, str, str, bool, bool]] = []
         for wire_name, raw_field_schema in sorted(properties.items()):
             if not isinstance(raw_field_schema, dict):
                 raise TypeError(f"{self._contract} schema {'.'.join(path)}.{wire_name} must be an object")
             python_name = _wizard_python_field_name(wire_name)
             annotation = self._annotation(raw_field_schema, path=(*path, wire_name))
-            fields.append((python_name, wire_name, annotation, wire_name in required))
+            alias_in_annotation = False
+            if python_name != wire_name:
+                annotation, alias_in_annotation = self._embed_field_alias(annotation, wire_name)
+            fields.append((python_name, wire_name, annotation, wire_name in required, alias_in_annotation))
 
         extra = self._object_extra(schema)
         self._lines.append(f"class {name}(BaseModel):")
@@ -1803,8 +1869,12 @@ class _PydanticSchemaEmitter:
         self._lines.append("")
         if not fields:
             self._lines.append("    pass")
-        for python_name, wire_name, annotation, is_required in fields:
-            alias = f" = Field(alias={wire_name!r})" if python_name != wire_name and is_required else ""
+        for python_name, wire_name, annotation, is_required, alias_in_annotation in fields:
+            alias = (
+                f" = Field(alias={wire_name!r})"
+                if python_name != wire_name and is_required and not alias_in_annotation
+                else ""
+            )
             if is_required:
                 self._lines.append(f"    {python_name}: {annotation}{alias}")
                 continue
@@ -1812,9 +1882,13 @@ class _PydanticSchemaEmitter:
             # None is validated against the annotation. Its Any annotation preserves that runtime
             # distinction without making the generated field annotation nullable.
             if python_name != wire_name:
-                self._lines.append(
-                    f"    {python_name}: {annotation} = Field(default=_UNVALIDATED_NONE_DEFAULT, alias={wire_name!r})"
-                )
+                if alias_in_annotation:
+                    self._lines.append(f"    {python_name}: {annotation} = _UNVALIDATED_NONE_DEFAULT")
+                else:
+                    self._lines.append(
+                        f"    {python_name}: {annotation} = "
+                        f"Field(default=_UNVALIDATED_NONE_DEFAULT, alias={wire_name!r})"
+                    )
             else:
                 self._lines.append(f"    {python_name}: {annotation} = _UNVALIDATED_NONE_DEFAULT")
         self._lines.append("")
@@ -2634,6 +2708,7 @@ def _emit_dashboard_dto(metadata: Metadata) -> str:
         schemas,
         read=False,
         contract="Dashboard",
+        open_schema_refs={"EntryAnnotationArg": "EntryAnnotationArgDTO"},
     ).emit(("CreateDashboardV2Args",))
     update_models = _PydanticSchemaEmitter(
         schemas,
@@ -2643,12 +2718,14 @@ def _emit_dashboard_dto(metadata: Metadata) -> str:
             "DashDataV2": "dict[str, JsonValue]",
             "DashMetaV2": "dict[str, JsonValue] | None",
             "EntryAnnotationArg": "dict[str, JsonValue]",
+            "EntryUpdateMode": "EntryUpdateModeDTO",
         },
     ).emit(("UpdateDashboardV2Args",))
     args_models = _PydanticSchemaEmitter(
         schemas,
         read=False,
         contract="Dashboard",
+        open_schema_refs={"EntryBranch": "EntryBranchDTO"},
     ).emit(("DeleteDashboardArgs", "GetDashboardV2Args"))
     read_models = _PydanticSchemaEmitter(
         schemas,
@@ -2720,8 +2797,8 @@ class DashboardUpdateDTO(BaseModel):
         payload: dict[str, object] = {{"entry": entry, "mode": self.mode}}
         if self.lock_token is not None:
             payload["lockToken"] = self.lock_token
-        model = UpdateDashboardV2ArgsDTO.model_validate(payload)
-        return model.model_dump(mode="json", by_alias=True, exclude_unset=True)
+        UpdateDashboardV2ArgsDTO.model_validate(payload)
+        return payload
 
 
 class DashboardReadDTO(BaseModel):

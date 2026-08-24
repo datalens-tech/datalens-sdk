@@ -375,8 +375,9 @@ def _build_dashboard_metadata(tmp_path: Path) -> Metadata:
     return build_metadata({"enterprise": spec_path})
 
 
-@pytest.fixture
-def dashboard_dto_module(tmp_path: Path) -> ModuleType:
+@pytest.fixture(scope="module")
+def dashboard_dto_module(tmp_path_factory: pytest.TempPathFactory) -> ModuleType:
+    tmp_path = tmp_path_factory.mktemp("dashboard-dto")
     module_path = tmp_path / "synthetic_dashboard_dto.py"
     module_path.write_text(emit_dto(_build_dashboard_metadata(tmp_path)), encoding="utf-8")
     module_name = f"synthetic_dashboard_dto_{tmp_path.name.replace('-', '_')}"
@@ -479,6 +480,14 @@ def test_dashboard_v2_roots_carriers_and_stable_facades_are_emitted(
     }
 
     assert expected <= set(vars(dashboard_dto_module))
+
+
+def test_dashboard_reuses_shared_entry_dtos(tmp_path: Path) -> None:
+    generated = emit_dto(_build_dashboard_metadata(tmp_path))
+
+    assert generated.count("class EntryAnnotationArgDTO") == 1
+    assert generated.count("\nEntryBranchDTO = Literal") == 1
+    assert generated.count("\nEntryUpdateModeDTO = Literal") == 1
 
 
 def test_dashboard_v2_aliases_and_required_optional_fields_match_schema(
@@ -628,11 +637,12 @@ def test_dashboard_read_facade_is_shallow_tolerant_and_preserves_raw(
 
 def test_dashboard_contract_metadata_is_transient(tmp_path: Path) -> None:
     metadata = _build_dashboard_metadata(tmp_path)
+    expected_persisted = json.loads(json.dumps({"installations": metadata["installations"]}))
 
     write_outputs(tmp_path / "generated", metadata)
 
     persisted = json.loads(
         (tmp_path / "generated" / "src" / "datalens_sdk" / "_generated" / "installations.json").read_text()
     )
-    assert persisted == {"installations": metadata["installations"]}
+    assert persisted == expected_persisted
     assert "dashboard" not in persisted
