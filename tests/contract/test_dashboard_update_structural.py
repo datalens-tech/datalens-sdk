@@ -50,7 +50,7 @@ def _canonical(value: object) -> str:
 
 
 def _synthetic(tabs: list[dict[str, object]], *, counter: int = 1) -> Dashboard:
-    data: dict[str, object] = {"counter": counter, "salt": "s", "schemeVersion": 8, "settings": {}, "tabs": tabs}
+    data: dict[str, object] = {"counter": counter, "salt": "s", "settings": {}, "tabs": tabs}
     return Dashboard(id="dash-1", installation="yacloud", data=data, raw={"entryId": "dash-1", "data": data})
 
 

@@ -1,8 +1,9 @@
 """Golden round-trip contract tests for the dashboard read vertical (D1.5).
 
-Each fixture in fixtures/dashboards/ is a live /rpc/getDashboard v2 response
-(published branch, entry envelope removed, anonymized). These tests pin the
-lossless contract of the read path at both layers:
+Each fixture in fixtures/dashboards/ is an anonymized live inventory migrated
+in place to the API v3 Dashboard V2 document contract (published branch,
+entry envelope removed). These tests pin the lossless contract of the read
+path at both layers:
 
 * ``DashboardReadDTO.model_validate(entry).raw`` is the verbatim wire entry;
 * ``client.get.dashboard(...).raw`` is the verbatim wire entry;

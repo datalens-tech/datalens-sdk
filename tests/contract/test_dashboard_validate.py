@@ -59,7 +59,7 @@ def _tab(
 
 
 def _data(*tabs: dict[str, object]) -> dict[str, object]:
-    return {"schemeVersion": 8, "salt": "s", "counter": 1, "settings": {}, "tabs": list(tabs)}
+    return {"salt": "s", "counter": 1, "settings": {}, "tabs": list(tabs)}
 
 
 def _kinds(data: dict[str, object]) -> list[str]:

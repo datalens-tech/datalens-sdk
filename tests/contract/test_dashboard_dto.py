@@ -12,9 +12,27 @@ from datalens_sdk._generated.dto import (
 )
 
 
+def _minimal_data() -> dict[str, object]:
+    return {
+        "counter": 1,
+        "salt": "s",
+        "settings": {
+            "autoupdateInterval": None,
+            "maxConcurrentRequests": None,
+            "silentLoading": False,
+            "dependentSelectors": True,
+            "expandTOC": False,
+            "globalParams": {},
+            "hideDashTitle": False,
+            "hideTabs": False,
+        },
+        "tabs": [],
+    }
+
+
 def test_dashboard_create_payload_wraps_entry_and_skips_none_optionals() -> None:
     dto = DashboardCreateDTO(
-        data={"schemeVersion": 8, "tabs": []},
+        data=_minimal_data(),
         meta={},
         name="sales",
         workbook_id="wb-1",
@@ -24,7 +42,7 @@ def test_dashboard_create_payload_wraps_entry_and_skips_none_optionals() -> None
 
     assert payload == {
         "entry": {
-            "data": {"schemeVersion": 8, "tabs": []},
+            "data": _minimal_data(),
             "meta": {},
             "name": "sales",
             "workbookId": "wb-1",
@@ -34,7 +52,7 @@ def test_dashboard_create_payload_wraps_entry_and_skips_none_optionals() -> None
 
 def test_dashboard_create_payload_with_key_location() -> None:
     dto = DashboardCreateDTO(
-        data={"tabs": []},
+        data=_minimal_data(),
         meta={},
         key="Folder/sales",
         annotation={"description": "quarterly"},
@@ -58,12 +76,12 @@ def test_dashboard_create_dto_rejects_unknown_fields() -> None:
 def test_dashboard_write_dtos_meta_is_required_but_nullable() -> None:
     # DashboardMeta is type ["object", "null"] and required in create/update:
     # "meta": null must serialize, omitting meta must fail before HTTP.
-    create_payload = DashboardCreateDTO(data={"tabs": []}, meta=None).to_payload()
+    create_payload = DashboardCreateDTO(data=_minimal_data(), meta=None).to_payload()
     create_entry = create_payload["entry"]
     assert isinstance(create_entry, dict)
     assert create_entry["meta"] is None
 
-    update_payload = DashboardUpdateDTO(entry_id="dash-1", data={"tabs": []}, meta=None, mode="save").to_payload()
+    update_payload = DashboardUpdateDTO(entry_id="dash-1", data=_minimal_data(), meta=None, mode="save").to_payload()
     update_entry = update_payload["entry"]
     assert isinstance(update_entry, dict)
     assert update_entry["meta"] is None

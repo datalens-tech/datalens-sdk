@@ -7,7 +7,6 @@
   "data": {
     "counter": 1,
     "salt": "0.13371337",
-    "schemeVersion": 8,
     "settings": {
       "autoupdateInterval": null,
       "dependentSelectors": true,
@@ -482,6 +481,6 @@
   "type": "",
   "updatedAt": "2026-06-01T17:03:35.652Z",
   "updatedBy": "uid:0000000000000001",
-  "version": 1,
+  "version": 2,
   "workbookId": null
 }

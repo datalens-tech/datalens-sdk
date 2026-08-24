@@ -1,7 +1,9 @@
-# Golden-фикстуры дашбордов (D0.2)
+# Golden-фикстуры Dashboard V2 (D0.2)
 
-Анонимизированные ответы живого `/rpc/getDashboard` (published-ветка,
-`x-dl-api-version: 2`, конверт `{"entry": ...}` снят). Дата среза: **2026-07-18**.
+Фикстуры сохраняют инвентарь анонимизированных live-ответов `/rpc/getDashboard`
+от **2026-07-18** и мигрированы на канонический API v3 / Dashboard V2 contract **2026-08-24**.
+Конверт `{"entry": ...}` снят. Это executable regression inventory, а не заявление, что
+каждый файл повторно снят с live API после миграции.
 
 Анонимизация детерминированная: id/ключи/логины/свободные тексты заменены
 синтетическими, структура и формы полей не менялись (см. эпик D0 на доске
@@ -14,7 +16,7 @@
 | `selectors_manual_two_tabs.json` | селекторы sourceType=manual + две вкладки | manual-селекторы с acceptableValues, межвкладочная структура | sandbox (старый SDK) |
 | `group_control_manual.json` | group_control (manual) — прод-дашборд | группа селекторов: impactType/impactTabsIds/placementMode/width, buttonApply | прод (read-only) |
 | `group_control_dataset.json` | group_control (dataset) | группа dataset-селекторов, две вкладки | sandbox (старый SDK) |
-| `global_items_shared_selectors.json` | globalItems (shared-селекторы) + data.description | per-tab globalItems, оба канала описания (data.description + annotation) | sandbox (старый SDK) |
+| `global_items_shared_selectors.json` | globalItems (shared-селекторы) + annotation | per-tab globalItems, V2 `annotation.description` | sandbox (старый SDK) |
 | `items_features.json` | pinned + enableActionParams + neuro_widget + image + styling | __fixHead/__fixGCont parents, enableActionParams на widget tab, neuro_widget, image (src/preserveAspectRatio), textSettings/backgroundSettings/hint | live-проба D0 |
 
 Непокрытые классы (задокументированное отсутствие на 2026-07-18):

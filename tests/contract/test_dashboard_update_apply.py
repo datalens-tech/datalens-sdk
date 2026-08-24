@@ -60,8 +60,9 @@ def test_empty_update_applies_to_verbatim_data(path: Path) -> None:
     # named load-bearing keys survive untouched
     data = cast(dict[str, object], entry["data"])
     assert applied["salt"] == data["salt"]
-    assert applied["schemeVersion"] == data["schemeVersion"]
     assert applied["counter"] == data["counter"]
+    assert "schemeVersion" not in applied
+    assert "description" not in applied
 
 
 def test_applied_result_is_isolated_from_snapshot() -> None:
@@ -85,6 +86,22 @@ def test_settings_patch_preserves_unknown_keys_and_sets_values() -> None:
     assert applied_settings["hideTabs"] is True
     assert applied_settings["maxConcurrentRequests"] == 3
     assert applied_settings["someFutureFlag"] == "keep-me"
+
+
+def test_noop_and_targeted_update_preserve_unknown_sibling_fields() -> None:
+    entry = _load_entry(_FIXTURES_DIR / "simple.json")
+    data = cast(dict[str, object], entry["data"])
+    data["futureDashboardState"] = {"nested": [1, {"kept": True}]}
+    tabs = cast(list[dict[str, object]], data["tabs"])
+    tabs[0]["futureTabState"] = {"also": "kept"}
+
+    dashboard = _dashboard_from(entry)
+    assert _apply_update(dashboard.update.to_spec()) == data
+
+    updated = _apply_update(dashboard.update.hide_tab(cast(str, tabs[0]["id"])).to_spec())
+    assert updated["futureDashboardState"] == data["futureDashboardState"]
+    updated_tabs = cast(list[dict[str, object]], updated["tabs"])
+    assert updated_tabs[0]["futureTabState"] == tabs[0]["futureTabState"]
 
 
 def test_settings_clear_resets_to_canon() -> None:
@@ -229,7 +246,7 @@ def _alias_stand() -> Dashboard:
             "aliases": {"default": [["field_a", "field_b"], ["field_b", "field_x", "field_a"]]},
         }
     ]
-    data: dict[str, object] = {"counter": 1, "salt": "s", "schemeVersion": 8, "settings": {}, "tabs": tabs}
+    data: dict[str, object] = {"counter": 1, "salt": "s", "settings": {}, "tabs": tabs}
     return Dashboard(id="dash-1", installation="yacloud", data=data, raw={"entryId": "dash-1", "data": data})
 
 

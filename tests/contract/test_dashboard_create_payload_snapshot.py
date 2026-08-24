@@ -88,3 +88,14 @@ def test_golden_snapshot_pins_required_nullable_nulls() -> None:
     assert settings["autoupdateInterval"] is None
     assert "maxConcurrentRequests" in settings
     assert settings["maxConcurrentRequests"] is None
+    assert "schemeVersion" not in data
+    assert "description" not in data
+    assert entry["annotation"] == {"description": "Snapshot dashboard"}
+
+    tabs = cast(list[dict[str, object]], data["tabs"])
+    title_data = cast(dict[str, object], cast(list[dict[str, object]], tabs[0]["items"])[0]["data"])
+    title_text = cast(dict[str, object], title_data["textSettings"])
+    assert title_text["color"] == {"light": "#027bfeb3", "dark": "#027bfeb3"}
+    text_data = cast(dict[str, object], cast(list[dict[str, object]], tabs[0]["items"])[3]["data"])
+    text_background = cast(dict[str, object], text_data["backgroundSettings"])
+    assert text_background["color"] == {"light": "#E0F7FA", "dark": "#E0F7FA"}

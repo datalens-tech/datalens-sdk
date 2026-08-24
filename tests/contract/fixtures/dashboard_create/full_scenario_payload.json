@@ -1,7 +1,6 @@
 {
   "entry": {
     "data": {
-      "schemeVersion": 8,
       "salt": "0.13371337",
       "counter": 11,
       "settings": {
@@ -29,7 +28,10 @@
                 "showInTOC": true,
                 "autoHeight": true,
                 "textSettings": {
-                  "color": "#027bfeb3"
+                  "color": {
+                    "light": "#027bfeb3",
+                    "dark": "#027bfeb3"
+                  }
                 }
               }
             },
@@ -102,7 +104,10 @@
                 "text": "**Notes** for the overview",
                 "autoHeight": true,
                 "backgroundSettings": {
-                  "color": "#E0F7FA"
+                  "color": {
+                    "light": "#E0F7FA",
+                    "dark": "#E0F7FA"
+                  }
                 }
               }
             }
@@ -191,11 +196,13 @@
           }
         }
       ],
-      "description": "Snapshot dashboard",
       "accessDescription": "Ask BI team",
       "supportDescription": "Contact support"
     },
     "meta": null,
-    "key": "/Users/me/Snapshot Dash"
+    "key": "/Users/me/Snapshot Dash",
+    "annotation": {
+      "description": "Snapshot dashboard"
+    }
   }
 }

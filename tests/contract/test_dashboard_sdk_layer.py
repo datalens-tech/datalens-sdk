@@ -39,6 +39,7 @@ class _RecordedTransport:
 
 def _dashboard_entry(*, entry_id: str = "dash-1", key: str | None = "/Users/me/Sales dash") -> dict[str, object]:
     entry: dict[str, object] = {
+        "version": 2,
         "entryId": entry_id,
         "scope": "dash",
         "type": "",
@@ -395,7 +396,7 @@ def test_create_dashboard_wire_keeps_required_nullable_nulls() -> None:
     assert settings["maxConcurrentRequests"] is None
 
 
-def test_create_dashboard_description_goes_to_data_without_annotation() -> None:
+def test_create_dashboard_description_goes_to_annotation() -> None:
     recorder = _RecordedTransport({"/rpc/createDashboard": httpx.Response(200, json={"entry": _created_entry()})})
     client = _client(recorder)
 
@@ -404,8 +405,8 @@ def test_create_dashboard_description_goes_to_data_without_annotation() -> None:
     ).build()
 
     entry = cast(dict[str, object], recorder.request_json(0)["entry"])
-    assert "annotation" not in entry
-    assert cast(dict[str, object], entry["data"])["description"] == "Main channel"
+    assert entry["annotation"] == {"description": "Main channel"}
+    assert "description" not in cast(dict[str, object], entry["data"])
 
 
 def test_create_dashboard_workbook_location_sends_name_and_workbook_id() -> None:
