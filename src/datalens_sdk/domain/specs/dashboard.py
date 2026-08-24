@@ -535,10 +535,10 @@ class DashboardUpdateSpec:
     ``data``/``meta``/``annotation`` are verbatim snapshots of the loaded
     revision; ``ops`` apply on top of a deep copy of ``data``. The three
     ``*_description`` fields are tri-state: ``None`` = not called (verbatim),
-    ``""`` = clear (the converter removes the key — the live-verified true
-    clearing form, P0.1), any other value = set. ``settings`` carries only the
-    values the user set; ``settings_cleared`` lists the setting field names
-    reset back to the canon.
+    ``""`` = clear, any other value = set. The primary description maps to
+    ``annotation.description``; access/support descriptions remain in data.
+    ``settings`` carries only the values the user set; ``settings_cleared``
+    lists the setting field names reset back to the canon.
     """
 
     dashboard_id: str

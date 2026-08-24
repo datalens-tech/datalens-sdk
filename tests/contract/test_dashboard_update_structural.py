@@ -407,8 +407,7 @@ def test_update_add_tab_auto_flows_below_inherited_all_tabs() -> None:
 def _shared_singleton_wire(
     item_id: str, *, impact_type: str, impact_tabs: list[str] | None = None
 ) -> dict[str, object]:
-    """A raw single-member shared group whose ``data.group[0]`` carries an
-    impact scope — ambiguous slot (group display pin OR member influence)."""
+    """A raw V2 singleton whose member carries an explicit influence scope."""
     member: dict[str, object] = {
         "id": f"{item_id}_m",
         "title": "P",
@@ -425,6 +424,20 @@ def _shared_singleton_wire(
         "namespace": "default",
         "data": {"group": [member]},
     }
+
+
+def _shared_singleton_group_wire(
+    item_id: str, *, impact_type: str, impact_tabs: list[str] | None = None
+) -> dict[str, object]:
+    """A raw V2 singleton whose group carries its display scope."""
+    wire = _shared_singleton_wire(item_id, impact_type="allTabs")
+    data = cast("dict[str, object]", wire["data"])
+    member = cast("list[dict[str, object]]", data["group"])[0]
+    member.pop("impactType", None)
+    data["impactType"] = impact_type
+    if impact_tabs is not None:
+        data["impactTabsIds"] = impact_tabs
+    return wire
 
 
 def _raw_tab(
@@ -479,9 +492,9 @@ def test_update_add_tab_ignores_singleton_member_all_tabs_influence() -> None:
 
 
 def test_update_add_tab_display_pinned_singleton_stays_pinned() -> None:
-    # a singleton whose group[0] lists exactly the current tabs is this SDK's
-    # own show_on_tabs=(...) display pin — a new tab must NOT inherit it
-    flt = _shared_singleton_wire("flt", impact_type="selectedTabs", impact_tabs=["tab_1", "tab_2"])
+    # V2 keeps show_on_tabs=(...) on the group itself, so a new tab must not
+    # inherit an explicitly pinned selector.
+    flt = _shared_singleton_group_wire("flt", impact_type="selectedTabs", impact_tabs=["tab_1", "tab_2"])
     tabs = [
         _raw_tab(
             tab_id, global_items=[json.loads(json.dumps(flt))], layout=[{"i": "flt", "x": 0, "y": 0, "w": 36, "h": 2}]
@@ -500,7 +513,7 @@ def test_update_add_tab_display_pinned_singleton_survives_remove_tab() -> None:
     # ("tab_1","tab_2","tab_3") still lists tab_3 after it was removed. The
     # stale SUPERSET is the same display pin — a tab added in the same builder
     # must not inherit the selector
-    flt = _shared_singleton_wire("flt", impact_type="selectedTabs", impact_tabs=["tab_1", "tab_2", "tab_3"])
+    flt = _shared_singleton_group_wire("flt", impact_type="selectedTabs", impact_tabs=["tab_1", "tab_2", "tab_3"])
     tabs = [
         _raw_tab(
             tab_id,
@@ -1037,7 +1050,7 @@ def test_remove_tab_recomputes_all_tabs_inheritance() -> None:
 def test_remove_tab_keeps_display_pin_pinned() -> None:
     # the reverse: a singleton display-pinned to (tab_1, tab_2) stays pinned
     # after tab_2 is removed (superset pin) — a new tab must NOT inherit it
-    flt = _shared_singleton_wire("flt", impact_type="selectedTabs", impact_tabs=["tab_1", "tab_2"])
+    flt = _shared_singleton_group_wire("flt", impact_type="selectedTabs", impact_tabs=["tab_1", "tab_2"])
     tabs = [
         _raw_tab(
             tid, global_items=[json.loads(json.dumps(flt))], layout=[{"i": "flt", "x": 0, "y": 0, "w": 36, "h": 2}]

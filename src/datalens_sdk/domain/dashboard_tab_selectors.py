@@ -24,7 +24,6 @@ from datalens_sdk.domain.fields import FieldLike
 from datalens_sdk.domain.specs.dashboard import (
     DatasetSelectorSource,
     ManualSelectorSource,
-    SelectorMemberSpec,
     SelectorSourceSpec,
 )
 from datalens_sdk.domain.wizard_chart import resolve_field_snapshot
@@ -32,10 +31,11 @@ from datalens_sdk.errors import DataLensValidationError
 
 # -- selector input resolution (epic D4) -------------------------------------
 #
-# Date-typed data types pass through to the wire fieldType verbatim: interval
-# encoding needs to distinguish plain DATE (date-only edges) from datetime
-# types (full ISO+Z edges). Everything else is "string".
-_DATE_DATA_TYPES = frozenset({"date", "datetime", "genericdatetime"})
+# Date-typed data types remain semantic inputs to interval encoding: plain
+# DATE uses date-only edges, while datetime-like types use full ISO+Z edges.
+# The converter omits legacy ``datetime`` from Dashboard V2 wire but emits the
+# canonical ``genericdatetime``/``datetimetz`` values explicitly.
+_DATE_DATA_TYPES = frozenset({"date", "datetime", "genericdatetime", "datetimetz"})
 
 
 def _resolved_selector_source(
@@ -240,17 +240,6 @@ def _normalized_affects(affects: Affects) -> Affects:
             raise DataLensValidationError(f"affects tab ids must be unique, got {affects!r}")
         return tab_ids
     raise DataLensValidationError(f"affects must be 'as_group', 'all_tabs' or a sequence of tab ids, got {affects!r}")
-
-
-def _reject_conflicting_singleton_scope(members: Sequence[SelectorMemberSpec], group_show_on_tabs: ShowOnTabs) -> None:
-    """A single-member group serializes ONE impact slot (``data.group[0]``); it
-    cannot carry both a group-level display scope and a member influence scope
-    without silently dropping one axis, so reject the ambiguous combination."""
-    if len(members) == 1 and group_show_on_tabs != "current" and members[0].affects != "as_group":
-        raise DataLensValidationError(
-            "a single-member shared group cannot combine a group-level show_on_tabs with a member affects "
-            "(the wire has one impact slot); add a second member or use only one axis"
-        )
 
 
 def _validated_member_scope(

@@ -53,6 +53,10 @@
 
 ### Changed
 
+- Align typed Dashboard create and update payloads with the API v3 Dashboard V2
+  contract: descriptions use annotations, ordinary item colors use themed
+  values, selector display and influence scopes stay separate, and new update
+  fragments are validated by generated installation DTOs.
 - Align the bundled Editor chart skill with the official Advanced HTML,
   selector controls, runtime-method, tab, Gravity UI, Markdown, and table
   contracts.

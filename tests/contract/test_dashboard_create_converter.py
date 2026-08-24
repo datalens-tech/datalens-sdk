@@ -94,7 +94,7 @@ def _text_tab(tab_id: str = "tab_1", item_id: str = "el_1") -> TabSpec:
 def test_empty_builder_produces_full_canonical_document() -> None:
     data = _data(_builder())
 
-    assert data["schemeVersion"] == 8
+    assert "schemeVersion" not in data
     assert isinstance(data["salt"], str)
     assert data["salt"]
     assert data["counter"] == 1
@@ -161,14 +161,14 @@ def test_meta_is_passed_through_when_set() -> None:
     assert entry["meta"] == {"is_release": True}
 
 
-def test_description_channels_go_to_data_not_annotation() -> None:
+def test_description_channels_use_v2_annotation_and_data_fields() -> None:
     entry = _entry(_builder().description("Main").access_description("Access").support_description("Support"))
     data = cast(dict[str, object], entry["data"])
 
-    assert data["description"] == "Main"
+    assert "description" not in data
     assert data["accessDescription"] == "Access"
     assert data["supportDescription"] == "Support"
-    assert "annotation" not in entry
+    assert entry["annotation"] == {"description": "Main"}
 
 
 # -- location XOR ---------------------------------------------------------------
@@ -256,7 +256,7 @@ def test_title_styling_mapping() -> None:
     )
 
     data = cast(dict[str, object], item["data"])
-    assert data["textSettings"] == {"color": "#027bfeb3"}
+    assert data["textSettings"] == {"color": {"light": "#027bfeb3", "dark": "#027bfeb3"}}
     assert data["backgroundSettings"] == {"color": {"light": "#ffffff", "dark": "#000000"}}
     assert data["hint"] == {"enabled": True, "text": "Hover me"}
 
@@ -533,13 +533,13 @@ def test_shared_copies_are_independent_dicts() -> None:
     assert first is not second
 
 
-def test_shared_single_member_impact_lands_in_group_zero() -> None:
+def test_shared_single_member_impact_lands_on_group() -> None:
     tabs = _wire_tabs(_shared_builder("all"))
     item = cast("list[dict[str, object]]", tabs[0]["globalItems"])[0]
     data = cast("dict[str, object]", item["data"])
-    assert "impactType" not in data  # single-member quirk
+    assert data["impactType"] == "allTabs"
     member = cast("list[dict[str, object]]", data["group"])[0]
-    assert member["impactType"] == "allTabs"
+    assert "impactType" not in member
 
 
 def test_shared_multi_member_impact_lands_on_data() -> None:
@@ -555,9 +555,9 @@ def test_shared_tab_list_maps_to_selected_tabs_and_targets_only_those_tabs() -> 
     tabs = _wire_tabs(_shared_builder(("home",)))
     home, other = tabs
     home_globals = cast("list[dict[str, object]]", home["globalItems"])
-    member = cast("list[dict[str, object]]", cast("dict[str, object]", home_globals[0]["data"])["group"])[0]
-    assert member["impactType"] == "selectedTabs"
-    assert member["impactTabsIds"] == ["home"]
+    data = cast("dict[str, object]", home_globals[0]["data"])
+    assert data["impactType"] == "selectedTabs"
+    assert data["impactTabsIds"] == ["home"]
     assert "globalItems" not in other
 
 
@@ -610,8 +610,12 @@ def _affects_group(*affects_values: Affects) -> DashboardCreate:
 
 
 def _members_wire(builder: DashboardCreate) -> list[dict[str, object]]:
+    return cast("list[dict[str, object]]", _group_data(builder)["group"])
+
+
+def _group_data(builder: DashboardCreate) -> dict[str, object]:
     item = cast("list[dict[str, object]]", _wire_tabs(builder)[0]["globalItems"])[0]
-    return cast("list[dict[str, object]]", cast("dict[str, object]", item["data"])["group"])
+    return cast("dict[str, object]", item["data"])
 
 
 def test_affects_all_tabs_member_emits_all_tabs() -> None:
@@ -643,19 +647,20 @@ def test_affects_unknown_tab_id_fails_loud() -> None:
         _payload(_affects_group(("nope",), "as_group"))
 
 
-def test_affects_single_member_group_rejects_conflicting_axes() -> None:
-    # a single-member shared group serializes ONE impact slot (data.group[0]):
-    # setting both the group show_on_tabs and a member affects is rejected rather
-    # than silently dropping one axis
-    with pytest.raises(DataLensValidationError, match="single-member shared group"):
-        _affects_group(("other",))
+def test_affects_single_member_group_keeps_both_axes() -> None:
+    data = _group_data(_affects_group(("other",)))
+    member = cast("list[dict[str, object]]", data["group"])[0]
+
+    assert data["impactType"] == "allTabs"
+    assert member["impactType"] == "selectedTabs"
+    assert member["impactTabsIds"] == ["other"]
 
 
 def test_affects_single_member_as_group_inherits_group_scope_cleanly() -> None:
-    # as_group single member: the group scope fills group[0] with allTabs and no
-    # impactTabsIds (the preserved D4 single-member quirk)
-    member = _members_wire(_affects_group("as_group"))[0]
-    assert member["impactType"] == "allTabs"
+    data = _group_data(_affects_group("as_group"))
+    member = cast("list[dict[str, object]]", data["group"])[0]
+    assert data["impactType"] == "allTabs"
+    assert "impactType" not in member
     assert "impactTabsIds" not in member
 
 

@@ -477,7 +477,7 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
     # -- plumbing (scalar setters) -------------------------------------------
 
     def description(self, value: str) -> Self:
-        """Set ``data.description``; ``""`` clears the field (key removal)."""
+        """Set ``annotation.description``; ``""`` clears that annotation key."""
         if not isinstance(value, str):
             raise DataLensValidationError(f"description must be a string, got {value!r}")
         self._description = value
