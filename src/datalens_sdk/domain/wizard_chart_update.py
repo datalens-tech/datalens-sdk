@@ -242,7 +242,12 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self._check_viz_applicability("hide_labels")
         return self._set_slot_setting("hide_labels", slot_name, "hideLabels", "yes" if enabled else "no")
 
-    def nulls_mode(self, slot_name: str, *, mode: Literal["ignore", "connect", "as-0"]) -> Self:
+    def nulls_mode(
+        self,
+        slot_name: str,
+        *,
+        mode: Literal["ignore", "connect", "as-0", "use-previous"],
+    ) -> Self:
         self._check_viz_applicability("nulls_mode")
         return self._set_slot_setting("nulls_mode", slot_name, "nulls", mode)
 

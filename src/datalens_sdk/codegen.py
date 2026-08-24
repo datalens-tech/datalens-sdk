@@ -1332,20 +1332,7 @@ def _chart_meta(schemas: dict[str, dict[str, object]]) -> ChartMeta:
     return {"editor_nodes": editor_nodes, "editor_update_nodes": update_editor_nodes}
 
 
-def build_metadata(
-    installations: dict[str, Path],
-    *,
-    wizard_specs: Mapping[str, Path] | None = None,
-) -> Metadata:
-    wizard_specs = wizard_specs or {}
-    unknown_wizard_installations = set(wizard_specs) - set(installations)
-    if unknown_wizard_installations:
-        joined = ", ".join(sorted(unknown_wizard_installations))
-        raise ValueError(f"Wizard specs reference unknown installations: {joined}")
-    if wizard_specs and set(wizard_specs) != set(installations):
-        missing = ", ".join(sorted(set(installations) - set(wizard_specs)))
-        raise ValueError(f"Wizard specs must cover every generated installation; missing: {missing}")
-
+def build_metadata(installations: dict[str, Path]) -> Metadata:
     out: Metadata = {"installations": {}}
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
@@ -1386,19 +1373,17 @@ def build_metadata(
                 "editor": sorted(node["factory_method"] for node in chart_meta["editor_nodes"].values()),
             },
         }
-        wizard_spec_path = wizard_specs.get(installation)
-        if wizard_spec_path is not None:
-            wizard_manifest = build_wizard_schema_meta(_load_json(wizard_spec_path))
-            wizard_structure = build_wizard_visualization_structure(wizard_manifest)
-            installation_metadata["wizard"] = {
-                "fingerprint": wizard_schema_fingerprint(wizard_manifest),
-                "manifest": wizard_manifest,
-                "visualization_structure": wizard_structure,
-                "field_structure": build_wizard_field_structure(wizard_manifest),
-            }
-            installation_metadata["chart_factories"]["wizard"] = sorted(
-                _visualization_factory_methods(sorted(wizard_structure), family="Wizard").values()
-            )
+        wizard_manifest = build_wizard_schema_meta(spec)
+        wizard_structure = build_wizard_visualization_structure(wizard_manifest)
+        installation_metadata["wizard"] = {
+            "fingerprint": wizard_schema_fingerprint(wizard_manifest),
+            "manifest": wizard_manifest,
+            "visualization_structure": wizard_structure,
+            "field_structure": build_wizard_field_structure(wizard_manifest),
+        }
+        installation_metadata["chart_factories"]["wizard"] = sorted(
+            _visualization_factory_methods(sorted(wizard_structure), family="Wizard").values()
+        )
         out["installations"][installation] = installation_metadata
     editor_methods_by_wire_type: dict[str, tuple[str, str]] = {}
     for installation, info in sorted(out["installations"].items()):
@@ -1643,10 +1628,15 @@ class _WizardPydanticEmitter:
             if is_required:
                 self._lines.append(f"    {python_name}: {annotation}{alias}")
                 continue
+            # Pydantic keeps an omitted default unvalidated, while an explicitly supplied None is
+            # validated against the annotation. Casting only the default to Any preserves that
+            # runtime distinction and keeps complex emitted annotations out of the cast target.
             if python_name != wire_name:
-                self._lines.append(f"    {python_name}: {annotation} = Field(default=None, alias={wire_name!r})")
+                self._lines.append(
+                    f"    {python_name}: {annotation} = Field(default=_typing_cast(Any, None), alias={wire_name!r})"
+                )
             else:
-                self._lines.append(f"    {python_name}: {annotation} = None")
+                self._lines.append(f"    {python_name}: {annotation} = _typing_cast(Any, None)")
         self._lines.append("")
         self._emitted.add(name)
         return name
@@ -2586,7 +2576,7 @@ def emit_dto(metadata: Metadata) -> str:
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal, cast as _typing_cast
 from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
 from datalens_sdk._runtime.wizard_structure import WizardFieldStructure, WizardVisualizationRegistry

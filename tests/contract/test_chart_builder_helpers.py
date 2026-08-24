@@ -358,7 +358,7 @@ class TestColumnBackgroundMutatesItem:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
         with pytest.raises(DataLensConfigurationError, match="gradient palette"):
-            builder.column_background("meas", palette="classic20")
+            cast(Any, builder).column_background("meas", palette="classic20")
 
     def test_column_background_works_on_pivot(self) -> None:
         ds = _dataset("dim", "meas")
@@ -903,9 +903,9 @@ class TestAddDateFilterHelper:
                 "__interval_2026-01-02T00:00:00Z_2026-01-02T01:00:00Z",
             ),
             (
-                "2026-01-01T03:00:00.123456789+03:00",
+                "2026-01-01T03:00:00.123+03:00",
                 "2026-01-01T00:00:00.987Z",
-                "__interval_2026-01-01T00:00:00.123456789Z_2026-01-01T00:00:00.987Z",
+                "__interval_2026-01-01T00:00:00.123Z_2026-01-01T00:00:00.987Z",
             ),
         ],
     )
@@ -1464,20 +1464,20 @@ class TestUpdateVizApplicabilityGuard:
             data=_build(builder),
         )
 
-    def test_totals_on_line_chart_raises_configuration_error(self) -> None:
+    def test_totals_on_line_chart_is_rejected_by_generated_contract(self) -> None:
         chart = self._wizard_chart("line")
-        with pytest.raises(DataLensConfigurationError, match=r"totals.*line"):
-            chart.update.totals(enabled=True)
+        with pytest.raises(DataLensConfigurationError, match=r"line.*totals"):
+            WizardChartConverter.from_domain_update(chart.update.totals(enabled=True))
 
     def test_totals_on_flat_table_does_not_raise(self) -> None:
         chart = self._wizard_chart("flatTable")
         update = chart.update.totals(enabled=True)
         assert update is not None
 
-    def test_nulls_mode_on_pie_raises_configuration_error(self) -> None:
+    def test_nulls_mode_on_pie_is_rejected_by_generated_contract(self) -> None:
         chart = self._wizard_chart("pie")
-        with pytest.raises(DataLensConfigurationError, match=r"nulls_mode.*pie"):
-            chart.update.nulls_mode("x", mode="ignore")
+        with pytest.raises(DataLensConfigurationError, match=r"pie.*nulls"):
+            WizardChartConverter.from_domain_update(chart.update.nulls_mode("x", mode="ignore"))
 
     def test_axis_visibility_on_line_chart_does_not_raise(self) -> None:
         chart = self._wizard_chart("line")
@@ -1538,7 +1538,7 @@ class TestColorByMeasureHelper:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
         with pytest.raises(DataLensConfigurationError, match="gradient palette"):
-            builder.color_by_measure("meas", palette="classic20")
+            cast(Any, builder).color_by_measure("meas", palette="classic20")
 
     @pytest.mark.parametrize(
         ("mode", "palette"),

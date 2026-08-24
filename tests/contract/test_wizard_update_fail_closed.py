@@ -117,35 +117,32 @@ def test_update_labels_position_rejects_a_missing_schema_carrier() -> None:
         )
 
 
-def test_slot_typo_is_rejected_at_the_public_update_call() -> None:
-    with pytest.raises(
-        DataLensConfigurationError,
-        match=r"axis_visibility: slot 'typo'.*active visualization 'line'.*Allowed slots",
-    ):
-        _chart().update.axis_visibility("typo", mode="show")
+def test_slot_typo_is_rejected_by_the_generated_contract() -> None:
+    with pytest.raises(DataLensConfigurationError, match=r"line.*no generated slot 'typo'"):
+        _payload_data(_chart().update.axis_visibility("typo", mode="show"))
 
 
 def test_converter_rejects_an_invalid_staged_slot_as_defense_in_depth() -> None:
     update = _chart().update
     cast(dict[str, list[Any]], update.slot_edits)["typo"] = []
 
-    with pytest.raises(DataLensConfigurationError, match=r"typo.*Allowed slots"):
+    with pytest.raises(DataLensConfigurationError, match=r"line.*no generated slot 'typo'"):
         _payload_data(update)
 
 
 def test_pivot_rejects_legacy_y_and_accepts_canonical_measures() -> None:
     chart = _chart(visualization_id="pivotTable")
 
-    with pytest.raises(DataLensConfigurationError, match=r"slot 'y'.*visualization 'pivotTable'"):
-        chart.update.y([])
+    with pytest.raises(DataLensConfigurationError, match=r"pivotTable.*no generated slot 'y'"):
+        _payload_data(chart.update.y([]))
 
     assert chart.update.measures([]).slot_edits == {"measures": []}
 
 
-def test_change_visualization_to_rejects_unknown_target_locally() -> None:
+def test_change_visualization_to_rejects_unknown_target_as_an_unverified_transition() -> None:
     with pytest.raises(
         DataLensConfigurationError,
-        match=r"change_visualization_to: target visualization 'not-a-viz'.*Supported visualizations",
+        match=r"transition from active visualization 'line' to 'not-a-viz'.*Verified targets",
     ):
         _chart().update.change_visualization_to(visualization_id="not-a-viz")
 
@@ -153,7 +150,7 @@ def test_change_visualization_to_rejects_unknown_target_locally() -> None:
 def test_change_visualization_to_rejects_unknown_source_and_active_target_locally() -> None:
     with pytest.raises(
         DataLensConfigurationError,
-        match=r"active visualization 'not-a-viz' is unknown.*Supported visualizations",
+        match=r"transition from active visualization 'not-a-viz' to 'line'.*Verified targets",
     ):
         _chart(visualization_id="not-a-viz").update.change_visualization_to(visualization_id="line")
     with pytest.raises(

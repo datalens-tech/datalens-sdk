@@ -3,8 +3,6 @@ from __future__ import annotations
 import inspect
 from typing import Any, Literal, cast, get_args, get_origin, get_type_hints
 
-import pytest
-
 from datalens_sdk._generated.builders import charts as generated_charts
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
 from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
@@ -39,11 +37,6 @@ LineWizardChartCreate = cast(Any, getattr(generated_charts, "LineWizardChartCrea
 MetricWizardChartCreate = cast(Any, getattr(generated_charts, "MetricWizardChartCreate", None))
 PivotTableWizardChartCreate = cast(Any, getattr(generated_charts, "PivotTableWizardChartCreate", None))
 ScatterWizardChartCreate = cast(Any, getattr(generated_charts, "ScatterWizardChartCreate", None))
-
-pytestmark = pytest.mark.skipif(
-    not WIZARD_VISUALIZATION_STRUCTURE,
-    reason="The public installation has no generated Wizard v3 contract",
-)
 
 _KEY_FOR_KIND: dict[str, str] = {
     "slot": "slot_name",
@@ -407,7 +400,7 @@ def test_color_helpers_are_scoped_to_explicit_encoding_capabilities() -> None:
 
 
 def test_wizard_encoding_compatibility_matrix_is_exact() -> None:
-    assert set(_EXPECTED_ENCODING_METHODS_BY_VIZ) == set(WIZARD_VISUALIZATION_SEMANTICS)
+    assert set(_EXPECTED_ENCODING_METHODS_BY_VIZ) == set(WIZARD_VISUALIZATION_STRUCTURE)
     for viz_id, expected_methods in _EXPECTED_ENCODING_METHODS_BY_VIZ.items():
         actual_methods = {
             method_name
@@ -443,10 +436,15 @@ def test_generated_wizard_leaves_inherit_their_category_base() -> None:
 
 
 def test_generated_axis_helpers_use_leaf_axis_slot_literals() -> None:
-    for method_name in ("axis_title", "axis_scale", "grid"):
+    expected_slots = {
+        "axis_title": {"x", "y", "y2"},
+        "axis_scale": {"y", "y2"},
+        "grid": {"x", "y", "y2"},
+    }
+    for method_name, expected in expected_slots.items():
         assert method_name in LineWizardChartCreate.__dict__
         annotation = get_type_hints(LineWizardChartCreate.__dict__[method_name])["slot_name"]
-        assert set(get_args(annotation)) == {"x", "y", "y2"}
+        assert set(get_args(annotation)) == expected
 
 
 def _expected_create_capabilities(viz_id: str) -> set[str]:

@@ -61,6 +61,7 @@ from datalens_sdk import (
 from datalens_sdk._generated.builders.charts import (
     AdvancedChartNodeNodeCreate,
     EnterpriseEditorChartCreateFactory,
+    LineWizardChartCreate,
     WizardChartCreateFactory,
     YacloudEditorChartCreateFactory,
 )
@@ -164,14 +165,30 @@ def _check_entry_mutation_return_types(
 def _wizard_raw_snapshot() -> dict[str, JsonValue]:
     return {
         "entry": {
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "createdBy": "user-1",
             "version": 1,
             "entryId": "source",
+            "hidden": False,
+            "key": "/raw/source",
+            "meta": {},
+            "public": False,
+            "publishedId": "revision-1",
+            "revId": "revision-1",
+            "savedId": "revision-1",
+            "scope": "widget",
+            "tenantId": "tenant-1",
             "type": "d3_wizard_node",
+            "updatedAt": "2026-01-02T00:00:00.000Z",
+            "updatedBy": "user-1",
             "data": {
                 "sources": {"datasetsIds": []},
                 "visualization": {"type": "line", "x": {"items": []}},
             },
-        }
+            "workbookId": None,
+        },
+        "isFavorite": False,
+        "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
     }
 
 
@@ -539,10 +556,22 @@ def _object_transport() -> httpx.MockTransport:
                 200,
                 json={
                     "entry": {
+                        "createdAt": "2026-01-01T00:00:00.000Z",
+                        "createdBy": "user-1",
                         "version": 1,
                         "entryId": "chart-1",
+                        "hidden": False,
+                        "key": "/Users/me/Chart",
+                        "meta": {},
+                        "public": False,
+                        "publishedId": "rev-1",
                         "revId": "rev-1",
+                        "savedId": "rev-1",
+                        "scope": "widget",
+                        "tenantId": "tenant-1",
                         "type": "d3_wizard_node",
+                        "updatedAt": "2026-01-02T00:00:00.000Z",
+                        "updatedBy": "user-1",
                         "data": {
                             "sources": {"datasetsIds": [], "filters": []},
                             "visualization": {
@@ -551,7 +580,10 @@ def _object_transport() -> httpx.MockTransport:
                                 "y": {"items": []},
                             },
                         },
-                    }
+                        "workbookId": None,
+                    },
+                    "isFavorite": False,
+                    "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
                 },
             )
         if request.url.path == "/rpc/listDirectory":
@@ -750,7 +782,10 @@ def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> Non
 
     assert_type(client.create.dataset(location=workbook, name="Dataset"), DatasetCreate)
     assert_type(client.create.connection.postgres(location=workbook, name="PostgreSQL"), PostgresConnectionCreate)
-    assert "line" not in WizardChartCreateFactory.__dict__
+    assert_type(
+        client.create.wizard_chart.line(location=workbook, name="Wizard chart"),
+        LineWizardChartCreate,
+    )
     wizard_chart = client.get.wizard_chart(by_id="chart-1")
     assert_type(wizard_chart, WizardChart)
     assert_type(wizard_chart.rev_id, str | None)
@@ -859,6 +894,7 @@ def test_create_placement_signatures_use_one_entry_location_type() -> None:
     dashboard_hints = get_type_hints(DashboardCreateFactory.__call__)
     dataset_hints = get_type_hints(DatasetCreateFactory.__call__)
     connection_hints = get_type_hints(YacloudConnectionCreateFactory.postgres)
+    wizard_chart_hints = get_type_hints(WizardChartCreateFactory.line)
     editor_chart_hints = get_type_hints(YacloudEditorChartCreateFactory.advanced_chart)
 
     assert collection_hints["parent"] == EntryLocation | None
@@ -869,6 +905,8 @@ def test_create_placement_signatures_use_one_entry_location_type() -> None:
     assert dataset_hints["name"] is str
     assert connection_hints["location"] == EntryLocation
     assert connection_hints["name"] is str
-    assert "line" not in WizardChartCreateFactory.__dict__
+    assert wizard_chart_hints["location"] == EntryLocation
+    assert wizard_chart_hints["name"] is str
+    assert wizard_chart_hints["return"] is LineWizardChartCreate
     assert editor_chart_hints["location"] == EntryLocation
     assert editor_chart_hints["name"] is str

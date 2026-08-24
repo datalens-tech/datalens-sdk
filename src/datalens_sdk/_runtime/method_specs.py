@@ -147,7 +147,7 @@ METHOD_SPECS: dict[str, MethodSpec] = {
         "kind": "slot_setting",
         "setting_key": "nulls",
         "value_type": "literal",
-        "literal_values": ("ignore", "connect", "as-0"),
+        "literal_values": ("ignore", "connect", "as-0", "use-previous"),
     },
     "segments": {
         "kind": "slot",

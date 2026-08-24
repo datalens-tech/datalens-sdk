@@ -67,24 +67,52 @@ def _wizard_response(*, entry_id: str = "chart-1", viz_id: str = "line") -> dict
         visualization["y"] = {"items": [{"guid": "g_amt", "datasetId": "ds-1", "title": "Amount"}]}
     return {
         "entry": {
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "createdBy": "user-1",
             "version": 1,
             "entryId": entry_id,
+            "hidden": False,
             "key": "/Users/me/Sales",
+            "meta": {},
+            "public": False,
+            "publishedId": "revision-1",
+            "revId": "revision-1",
+            "savedId": "revision-1",
+            "scope": "widget",
+            "tenantId": "tenant-1",
             "type": "d3_wizard_node",
+            "updatedAt": "2026-01-02T00:00:00.000Z",
+            "updatedBy": "user-1",
             "data": {
                 "sources": {"datasetsIds": ["ds-1"], "filters": []},
                 "visualization": visualization,
             },
-        }
+            "workbookId": None,
+        },
+        "isFavorite": False,
+        "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
     }
 
 
 def _sparse_wizard_response(*, entry_id: str) -> dict[str, object]:
     return {
         "entry": {
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "createdBy": "user-1",
             "version": 1,
             "entryId": entry_id,
+            "hidden": False,
+            "key": None,
+            "meta": {},
+            "public": False,
+            "publishedId": "revision-1",
+            "revId": "revision-1",
+            "savedId": "revision-1",
+            "scope": "widget",
+            "tenantId": "tenant-1",
             "type": "d3_wizard_node",
+            "updatedAt": "2026-01-02T00:00:00.000Z",
+            "updatedBy": "user-1",
             "data": {
                 "sources": {"datasetsIds": []},
                 "visualization": {
@@ -92,7 +120,10 @@ def _sparse_wizard_response(*, entry_id: str) -> dict[str, object]:
                     **{slot_name: {"items": []} for slot_name in WIZARD_VISUALIZATION_STRUCTURE["line"]["slots"]},
                 },
             },
-        }
+            "workbookId": None,
+        },
+        "isFavorite": False,
+        "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
     }
 
 

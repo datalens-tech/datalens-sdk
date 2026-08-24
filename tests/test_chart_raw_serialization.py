@@ -56,11 +56,23 @@ def _wizard_snapshot(
 ) -> dict[str, object]:
     return {
         "entry": {
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "createdBy": "user-1",
             "version": 1,
             "entryId": chart_id,
+            "hidden": False,
             "type": wire_type,
             "key": key,
+            "meta": {},
+            "public": False,
+            "publishedId": revision_id,
             "revId": revision_id,
+            "savedId": revision_id,
+            "scope": "widget",
+            "tenantId": "tenant-1",
+            "updatedAt": "2026-01-02T00:00:00.000Z",
+            "updatedBy": "user-1",
+            "workbookId": None,
             "annotation": {"description": "Wizard source"},
             "data": {
                 "sources": {"datasetsIds": ["dataset-1"]},
@@ -73,7 +85,8 @@ def _wizard_snapshot(
             },
             "futureEntry": {"mustNotBeWritten": True},
         },
-        "permissions": {"edit": True},
+        "isFavorite": False,
+        "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
         "futureOuter": {"mustNotBeWritten": True},
     }
 

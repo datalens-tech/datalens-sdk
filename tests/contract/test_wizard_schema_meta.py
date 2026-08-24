@@ -49,11 +49,8 @@ class _PayloadDTO(Protocol):
     def to_payload(self) -> dict[str, object]: ...
 
 
-def _build_metadata(*, wizard_specs: dict[str, Path] | None = None) -> Metadata:
-    return build_metadata(
-        {"enterprise": ROOT / "spec" / "enterprise.json"},
-        wizard_specs=wizard_specs,
-    )
+def _build_metadata(*, installation_spec: Path | None = None) -> Metadata:
+    return build_metadata({"enterprise": installation_spec or ROOT / "spec" / "enterprise.json"})
 
 
 def _ref(name: str) -> dict[str, object]:
@@ -151,6 +148,15 @@ def _wizard_spec() -> dict[str, object]:
                         "nullable": {"anyOf": [{"type": "string"}, {"type": "null"}]},
                         "optionalLabel": {"type": "string"},
                         "optionalNullable": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                        "optionalScaleValue": {
+                            "anyOf": [
+                                {"enum": ["auto"], "type": "string"},
+                                {
+                                    "prefixItems": [{"type": "number"}, {"type": "number"}],
+                                    "type": "array",
+                                },
+                            ],
+                        },
                     },
                     "required": ["bounds", "count", "enabled", "label", "nested", "nullable"],
                     "type": "object",
@@ -162,6 +168,7 @@ def _wizard_spec() -> dict[str, object]:
                                 "properties": {
                                     "field": {
                                         "properties": {
+                                            "cast": {"type": "string"},
                                             "datasetId": {"type": "string"},
                                             "default_value": {
                                                 "anyOf": [{"type": "string"}, {"type": "null"}],
@@ -401,14 +408,40 @@ def _raw_object(value: object, *, path: str) -> dict[str, object]:
     return cast(dict[str, object], value)
 
 
+def _write_wizard_installation_spec(
+    path: Path,
+    *,
+    wizard_spec_value: dict[str, object] | None = None,
+) -> Path:
+    installation = _raw_object(
+        json.loads((ROOT / "spec" / "enterprise.json").read_text()),
+        path="installation",
+    )
+    wizard = wizard_spec_value or _wizard_spec()
+    installation["openapi"] = wizard["openapi"]
+    installation["info"] = wizard["info"]
+    installation_paths = _raw_object(installation["paths"], path="installation.paths")
+    wizard_paths = _raw_object(wizard["paths"], path="wizard.paths")
+    installation_paths.update(wizard_paths)
+    installation_components = _raw_object(installation["components"], path="installation.components")
+    installation_schemas = _raw_object(installation_components["schemas"], path="installation.components.schemas")
+    wizard_components = _raw_object(wizard["components"], path="wizard.components")
+    wizard_schemas = _raw_object(wizard_components["schemas"], path="wizard.components.schemas")
+    installation_schemas.update(wizard_schemas)
+    path.write_text(json.dumps(installation), encoding="utf-8")
+    return path
+
+
 def _generated_wizard_dto_module(
     tmp_path: Path,
     *,
     wizard_spec_value: dict[str, object] | None = None,
 ) -> ModuleType:
-    wizard_spec = tmp_path / "wizard.json"
-    wizard_spec.write_text(json.dumps(wizard_spec_value or _wizard_spec()), encoding="utf-8")
-    metadata = _build_metadata(wizard_specs={"enterprise": wizard_spec})
+    wizard_spec = _write_wizard_installation_spec(
+        tmp_path / "wizard.json",
+        wizard_spec_value=wizard_spec_value,
+    )
+    metadata = _build_metadata(installation_spec=wizard_spec)
     module_path = tmp_path / "synthetic_wizard_dto.py"
     module_path.write_text(emit_dto(metadata), encoding="utf-8")
     module_name = "synthetic_wizard_dto"
@@ -541,11 +574,10 @@ def test_manifest_diff_reports_nested_structural_changes() -> None:
     assert diff_wizard_schema_meta(before, after) == "~ /schemas/WizardV1/properties/version/enum: [1] -> [2]"
 
 
-def test_build_metadata_accepts_an_explicit_wizard_spec(tmp_path: Path) -> None:
-    wizard_spec = tmp_path / "wizard.json"
-    wizard_spec.write_text(json.dumps(_wizard_spec()), encoding="utf-8")
+def test_build_metadata_uses_the_installation_wizard_spec(tmp_path: Path) -> None:
+    wizard_spec = _write_wizard_installation_spec(tmp_path / "wizard.json")
 
-    metadata = _build_metadata(wizard_specs={"enterprise": wizard_spec})
+    metadata = _build_metadata(installation_spec=wizard_spec)
 
     wizard = metadata["installations"]["enterprise"]["wizard"]
     assert wizard["manifest"] == build_wizard_schema_meta(_wizard_spec())
@@ -555,7 +587,7 @@ def test_build_metadata_accepts_an_explicit_wizard_spec(tmp_path: Path) -> None:
     assert wizard["field_structure"] == {
         "direct_properties": ("backgroundSettings", "format"),
         "nullable_update_properties": ("default_value", "originalDateCast"),
-        "update_properties": ("datasetId", "default_value", "guid", "originalDateCast", "title"),
+        "update_properties": ("cast", "datasetId", "default_value", "guid", "originalDateCast", "title"),
     }
     assert wizard["visualization_structure"]["line"] == {
         "properties": ["chartSettings", "optionalTitle", "sort", "type", "x"],
@@ -598,9 +630,8 @@ def test_public_layer_type_aliases_match_generated_wizard_layer_tags() -> None:
 
 
 def test_chart_builder_generation_uses_only_generated_wizard_tags(tmp_path: Path) -> None:
-    wizard_spec = tmp_path / "wizard.json"
-    wizard_spec.write_text(json.dumps(_wizard_spec()), encoding="utf-8")
-    metadata = _build_metadata(wizard_specs={"enterprise": wizard_spec})
+    wizard_spec = _write_wizard_installation_spec(tmp_path / "wizard.json")
+    metadata = _build_metadata(installation_spec=wizard_spec)
 
     generated = emit_chart_builders(metadata)
 
@@ -784,18 +815,6 @@ def test_carrier_resolver_reports_unknown_active_layer_structurally() -> None:
     assert resolution.failure.layer_type == "missing"
 
 
-def test_chart_builder_generation_rejects_no_contract_instead_of_reconstructing_semantics() -> None:
-    metadata = _build_metadata()
-
-    generated = emit_chart_builders(metadata)
-
-    assert "class LineWizardChartCreate" not in generated
-    assert "class WizardChartCreateFactory" in generated
-    assert "from typing import Any, Literal" in generated
-    assert "from datalens_sdk.errors import NotSupportedError" in generated
-    assert "Wizard API v3 is unavailable because this installation has no generated Wizard structure" in generated
-
-
 def test_converter_rejects_invalid_nested_generated_wizard_structure() -> None:
     valid_registry: dict[str, object] = {
         "combined-chart": {
@@ -884,21 +903,12 @@ def test_generated_contract_boundary_validates_fingerprint_factories_and_unavail
         unavailable_contract.require_available()
 
 
-def test_no_contract_dto_emits_the_exact_empty_field_structure() -> None:
-    generated = emit_dto(_build_metadata())
-
-    assert "WIZARD_FIELD_STRUCTURE: WizardFieldStructure" in generated
-    assert "'direct_properties': ()," in generated
-    assert "'update_properties': ()," in generated
-    assert "'nullable_update_properties': ()," in generated
-
-
 def test_generated_wizard_create_and_update_validation_is_strict_and_preserves_open_data(tmp_path: Path) -> None:
     module = _generated_wizard_dto_module(tmp_path)
     assert module.WIZARD_FIELD_STRUCTURE == {
         "direct_properties": ("backgroundSettings", "format"),
         "nullable_update_properties": ("default_value", "originalDateCast"),
-        "update_properties": ("datasetId", "default_value", "guid", "originalDateCast", "title"),
+        "update_properties": ("cast", "datasetId", "default_value", "guid", "originalDateCast", "title"),
     }
     create_dto = module.WizardChartCreateDTO
     update_dto = module.WizardChartUpdateDTO
@@ -944,6 +954,21 @@ def test_generated_wizard_create_and_update_validation_is_strict_and_preserves_o
 
 def test_generated_optional_properties_keep_omission_distinct_from_null(tmp_path: Path) -> None:
     module = _generated_wizard_dto_module(tmp_path)
+    module_path = module.__file__
+    assert module_path is not None
+    generated = Path(module_path).read_text(encoding="utf-8")
+    assert "from typing import Annotated, Any, Literal, cast as _typing_cast" in generated
+    assert "optional_label: str = Field(default=_typing_cast(Any, None), alias='optionalLabel')" in generated
+    assert "optional_title: str = Field(default=_typing_cast(Any, None), alias='optionalTitle')" in generated
+    assert "sources: WizardV1ConfigSchemaSourcesDTO = _typing_cast(Any, None)" in generated
+    assert "cast: str = _typing_cast(Any, None)" in generated
+    assert "dataset_id: str = Field(default=_typing_cast(Any, None), alias='datasetId')" in generated
+    assert (
+        "optional_scale_value: Literal['auto'] | Annotated[tuple[float, float], "
+        "BeforeValidator(_json_array_to_tuple)] = Field(default=_typing_cast(Any, None), "
+        "alias='optionalScaleValue')" in generated
+    )
+
     create_dto = cast(Callable[..., _PayloadDTO], module.WizardChartCreateDTO)
     update_dto = cast(Callable[..., _PayloadDTO], module.WizardChartUpdateDTO)
     factories: tuple[Callable[[dict[str, object]], _PayloadDTO], ...] = (
@@ -963,6 +988,11 @@ def test_generated_optional_properties_keep_omission_distinct_from_null(tmp_path
         nullable_null = _strict_config()
         cast(dict[str, object], nullable_null["scalars"])["optionalNullable"] = None
         assert factory(nullable_null).to_payload()["data"] == nullable_null
+
+        annotated_null = _strict_config()
+        cast(dict[str, object], annotated_null["scalars"])["optionalScaleValue"] = None
+        with pytest.raises(ValidationError):
+            factory(annotated_null)
 
         visualization_null = _strict_config()
         cast(dict[str, object], visualization_null["visualization"])["optionalTitle"] = None
@@ -1096,22 +1126,3 @@ def test_wizard_schema_rejects_ambiguous_one_of_instead_of_deduplicating_it() ->
 
     with pytest.raises(ValueError, match=r"/schemas/WizardV1ConfigSchema/properties/visualization/oneOf"):
         build_wizard_schema_meta(spec)
-
-
-def test_build_metadata_rejects_wizard_specs_for_unknown_installations(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="unknown installations: yateam"):
-        build_metadata(
-            {"enterprise": ROOT / "spec" / "enterprise.json"},
-            wizard_specs={"yateam": tmp_path / "wizard.json"},
-        )
-
-
-def test_build_metadata_rejects_partial_multi_installation_wizard_specs(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="must cover every generated installation; missing: yacloud"):
-        build_metadata(
-            {
-                "enterprise": ROOT / "spec" / "enterprise.json",
-                "yacloud": ROOT / "spec" / "yacloud.json",
-            },
-            wizard_specs={"enterprise": tmp_path / "wizard.json"},
-        )

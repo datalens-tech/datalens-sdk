@@ -26,11 +26,27 @@ def _line_chart_with_data(data: dict[str, Any]) -> WizardChart:
     return WizardChartConverter.to_domain(
         {
             "entry": {
+                "createdAt": "2026-01-01T00:00:00.000Z",
+                "createdBy": "user-1",
+                "hidden": False,
+                "key": "Users/example/chart-1",
+                "meta": {},
+                "public": False,
+                "publishedId": "revision-1",
+                "revId": "revision-1",
+                "savedId": "revision-1",
+                "scope": "widget",
+                "tenantId": "tenant-1",
+                "updatedAt": "2026-01-02T00:00:00.000Z",
+                "updatedBy": "user-1",
                 "version": 1,
                 "entryId": "chart-1",
                 "type": "d3_wizard_node",
+                "workbookId": None,
                 "data": data,
-            }
+            },
+            "isFavorite": False,
+            "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
         },
         installation="yacloud",
     )

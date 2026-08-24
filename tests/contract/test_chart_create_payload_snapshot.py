@@ -162,13 +162,21 @@ def test_create_line_x_date_gets_axis_mode_map_continuous() -> None:
 
 
 def _chart_for_update() -> WizardChart:
+    filters = [
+        {
+            "guid": guid,
+            "datasetId": "ds-snap",
+            "filter": {"operation": {"code": "EQ"}},
+        }
+        for guid in ("f1", "f2")
+    ]
     return WizardChart(
         id="chart-snap",
         installation="yacloud",
         data={
             "sources": {
                 "datasetsIds": ["ds-snap"],
-                "filters": [{"guid": "f1"}, {"guid": "f2"}],
+                "filters": filters,
                 "updates": [],
             },
             "visualization": {
@@ -214,7 +222,14 @@ def test_update_payload_deep_merge_preserves_untouched_data_fields() -> None:
     payload = cast(dict[str, Any], dto.to_payload())
     data = cast(dict[str, Any], payload["data"])
     assert data["sources"]["datasetsIds"] == ["ds-snap"], "deep-merge must preserve sources.datasetsIds"
-    assert data["sources"]["filters"] == [{"guid": "f1"}, {"guid": "f2"}]
+    assert data["sources"]["filters"] == [
+        {
+            "guid": guid,
+            "datasetId": "ds-snap",
+            "filter": {"operation": {"code": "EQ"}},
+        }
+        for guid in ("f1", "f2")
+    ]
     assert data["visualization"]["type"] == "line"
 
 
@@ -390,7 +405,7 @@ def test_update_rejects_non_applicable_data_field_and_slot_mutations() -> None:
     chart = _chart_for_update()
     _set_chart_visualization(chart, "scatter")
     with pytest.raises(DataLensConfigurationError, match="segments"):
-        chart.update.segments(["g_date"])
+        WizardChartConverter.from_domain_update(chart.update.segments(["g_date"]))
 
     _set_chart_visualization(chart, "flatTable")
     with pytest.raises(DataLensConfigurationError, match="shape_by_measure_name"):

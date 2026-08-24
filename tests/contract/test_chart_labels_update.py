@@ -1,4 +1,4 @@
-"""Wizard v3 label updates use the named labels slot and explicit settings."""
+"""Wizard API v3 label updates use the named Wizard V1 slot and explicit settings."""
 
 from __future__ import annotations
 
@@ -29,14 +29,30 @@ def _chart_with_viz(viz_id: str, *, fields: list[dict[str, Any]] | None = None) 
     return WizardChartConverter.to_domain(
         {
             "entry": {
+                "createdAt": "2026-01-01T00:00:00.000Z",
+                "createdBy": "user-1",
+                "hidden": False,
+                "key": "Users/example/chart-1",
+                "meta": {},
+                "public": False,
+                "publishedId": "revision-1",
+                "revId": "revision-1",
+                "savedId": "revision-1",
+                "scope": "widget",
+                "tenantId": "tenant-1",
+                "updatedAt": "2026-01-02T00:00:00.000Z",
+                "updatedBy": "user-1",
                 "version": 1,
                 "entryId": "chart-1",
                 "type": "d3_wizard_node",
+                "workbookId": None,
                 "data": {
                     "sources": {"datasetsIds": ["ds1"]},
                     "visualization": {"type": viz_id, **slots},
                 },
-            }
+            },
+            "isFavorite": False,
+            "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
         },
         installation="yacloud",
     )
@@ -130,4 +146,4 @@ def test_labels_applicability_gate_on_metric() -> None:
         },
     )
     with pytest.raises(DataLensConfigurationError, match="labels"):
-        chart.update.labels(["Amount"])
+        _update_data(chart.update.labels(["Amount"]))

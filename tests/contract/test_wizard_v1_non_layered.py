@@ -116,6 +116,33 @@ def _builder(visualization_type: str) -> Any:
     return configure(builder)
 
 
+def _read_response(*, entry_id: str, data: object) -> dict[str, object]:
+    return {
+        "entry": {
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "createdBy": "user-1",
+            "data": data,
+            "entryId": entry_id,
+            "hidden": False,
+            "key": f"Users/example/{entry_id}",
+            "meta": {},
+            "public": False,
+            "publishedId": "revision-1",
+            "revId": "revision-1",
+            "savedId": "revision-1",
+            "scope": "widget",
+            "tenantId": "tenant-1",
+            "type": "d3_wizard_node",
+            "updatedAt": "2026-01-02T00:00:00.000Z",
+            "updatedBy": "user-1",
+            "version": 1,
+            "workbookId": None,
+        },
+        "isFavorite": False,
+        "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
+    }
+
+
 @pytest.mark.parametrize("visualization_type", sorted(_CASE_BUILDERS))
 def test_non_layered_create_uses_named_wizard_v1_slots(visualization_type: str) -> None:
     payload = WizardChartConverter.from_domain_create(_builder(visualization_type).to_spec()).to_payload()
@@ -133,14 +160,7 @@ def test_non_layered_create_uses_named_wizard_v1_slots(visualization_type: str) 
 def test_non_layered_noop_update_preserves_target_shape(visualization_type: str) -> None:
     create_payload = WizardChartConverter.from_domain_create(_builder(visualization_type).to_spec()).to_payload()
     chart = WizardChartConverter.to_domain(
-        {
-            "entry": {
-                "version": 1,
-                "entryId": f"{visualization_type}-chart",
-                "type": "d3_wizard_node",
-                "data": create_payload["data"],
-            }
-        },
+        _read_response(entry_id=f"{visualization_type}-chart", data=create_payload["data"]),
         installation="yacloud",
     )
 
@@ -153,14 +173,7 @@ def test_non_layered_noop_update_preserves_target_shape(visualization_type: str)
 def test_non_layered_slot_update_mutates_the_named_slot(visualization_type: str) -> None:
     create_payload = WizardChartConverter.from_domain_create(_builder(visualization_type).to_spec()).to_payload()
     chart = WizardChartConverter.to_domain(
-        {
-            "entry": {
-                "version": 1,
-                "entryId": f"{visualization_type}-chart",
-                "type": "d3_wizard_node",
-                "data": create_payload["data"],
-            }
-        },
+        _read_response(entry_id=f"{visualization_type}-chart", data=create_payload["data"]),
         installation="yacloud",
     )
     method_name, field_name, slot_name, expected_guid = _CASE_UPDATES[visualization_type]
@@ -180,14 +193,7 @@ def test_verified_cartesian_transition_rebuilds_target_named_slots(
 ) -> None:
     create_payload = WizardChartConverter.from_domain_create(_builder(source_type).to_spec()).to_payload()
     chart = WizardChartConverter.to_domain(
-        {
-            "entry": {
-                "version": 1,
-                "entryId": f"{source_type}-chart",
-                "type": "d3_wizard_node",
-                "data": create_payload["data"],
-            }
-        },
+        _read_response(entry_id=f"{source_type}-chart", data=create_payload["data"]),
         installation="yacloud",
     )
 

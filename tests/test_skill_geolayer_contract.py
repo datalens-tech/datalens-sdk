@@ -5,8 +5,6 @@ from pathlib import Path
 import re
 from typing import Any, cast, get_args
 
-import pytest
-
 from datalens_sdk import GeoLayerFilter
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
 from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
@@ -15,11 +13,6 @@ from datalens_sdk.domain.chart_types import GeoLayerType, GradientPaletteId
 from datalens_sdk.domain.entry_location import EntryLocation
 
 SKILL_DIR = Path(__file__).parents[1] / "skills" / "datalens-sdk"
-
-pytestmark = pytest.mark.skipif(
-    "geolayer" not in WIZARD_VISUALIZATION_STRUCTURE,
-    reason="The public installation has no generated Wizard v3 contract",
-)
 
 
 def _table(text: str, heading: str) -> tuple[list[str], list[list[str]]]:

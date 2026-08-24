@@ -126,16 +126,31 @@ def test_dashboard_dependency_export_uses_relation_types_and_workbook_ids_withou
     dashboard_entry["workbookId"] = "dashboard-workbook"
     wizard_snapshot: dict[str, object] = {
         "entry": {
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "createdBy": "user-1",
             "version": 1,
             "entryId": "chart-wizard",
+            "hidden": False,
+            "key": None,
+            "meta": {},
+            "public": False,
+            "publishedId": "revision-1",
+            "revId": "revision-1",
+            "savedId": "revision-1",
+            "scope": "widget",
+            "tenantId": "tenant-1",
             "type": "d3_wizard_node",
             "name": "Named Wizard",
+            "updatedAt": "2026-01-02T00:00:00.000Z",
+            "updatedBy": "user-1",
             "workbookId": "wizard-workbook",
             "data": {
                 "sources": {"datasetsIds": ["dataset-1"]},
                 "visualization": {"type": "line", "x": {"items": []}},
             },
-        }
+        },
+        "isFavorite": False,
+        "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
     }
     editor_snapshot: dict[str, object] = {
         "entry": {

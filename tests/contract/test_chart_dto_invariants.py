@@ -51,8 +51,23 @@ def test_yacloud_editor_node_types_match_discriminator() -> None:
 def test_wizard_chart_read_dto_captures_raw() -> None:
     raw_data = {
         "entry": {
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "createdBy": "user-1",
             "version": 1,
             "entryId": "abc123",
+            "hidden": False,
+            "key": "/Charts/abc123",
+            "meta": {},
+            "public": False,
+            "publishedId": "revision-1",
+            "revId": "revision-1",
+            "savedId": "revision-1",
+            "scope": "widget",
+            "tenantId": "tenant-1",
+            "type": "d3_wizard_node",
+            "updatedAt": "2026-01-02T00:00:00.000Z",
+            "updatedBy": "user-1",
+            "workbookId": None,
             "data": {
                 "sources": {"datasetsIds": ["dataset-1"]},
                 "visualization": {"type": "line", "x": {"items": []}},
@@ -71,8 +86,23 @@ def test_wizard_chart_read_dto_extra_ignore() -> None:
     dto = WizardChartReadDTO.model_validate(
         {
             "entry": {
+                "createdAt": "2026-01-01T00:00:00.000Z",
+                "createdBy": "user-1",
                 "version": 1,
                 "entryId": "id1",
+                "hidden": False,
+                "key": "/Charts/id1",
+                "meta": {},
+                "public": False,
+                "publishedId": "revision-1",
+                "revId": "revision-1",
+                "savedId": "revision-1",
+                "scope": "widget",
+                "tenantId": "tenant-1",
+                "type": "d3_wizard_node",
+                "updatedAt": "2026-01-02T00:00:00.000Z",
+                "updatedBy": "user-1",
+                "workbookId": None,
                 "data": {
                     "sources": {"datasetsIds": []},
                     "visualization": {"type": "future-visualization"},

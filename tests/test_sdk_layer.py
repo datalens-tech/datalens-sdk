@@ -56,6 +56,36 @@ def _empty_dataset_response(*, dataset_id: str = "ds-1") -> dict[str, object]:
     }
 
 
+def _wizard_response(*, entry_id: str = "chart-1") -> dict[str, object]:
+    return {
+        "entry": {
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "createdBy": "user-1",
+            "data": {
+                "sources": {"datasetsIds": ["ds-1"]},
+                "visualization": {"type": "line", "x": {"items": []}},
+            },
+            "entryId": entry_id,
+            "hidden": False,
+            "key": "/Users/me/Sales",
+            "meta": {},
+            "public": False,
+            "publishedId": "revision-1",
+            "revId": "revision-1",
+            "savedId": "revision-1",
+            "scope": "widget",
+            "tenantId": "tenant-1",
+            "type": "d3_wizard_node",
+            "updatedAt": "2026-01-02T00:00:00.000Z",
+            "updatedBy": "user-1",
+            "version": 1,
+            "workbookId": None,
+        },
+        "isFavorite": False,
+        "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
+    }
+
+
 def _connection_metadata_response(
     *,
     connection_id: str,
@@ -1052,30 +1082,8 @@ def test_http_errors_and_invalid_responses_are_typed() -> None:
 
 
 def test_chart_create_get_delete_flow_uses_wizard_rpc() -> None:
-    created_response = {
-        "entry": {
-            "version": 1,
-            "entryId": "chart-1",
-            "key": "/Users/me/Sales",
-            "type": "d3_wizard_node",
-            "data": {
-                "sources": {"datasetsIds": ["ds-1"]},
-                "visualization": {"type": "line", "x": {"items": []}},
-            },
-        }
-    }
-    get_response = {
-        "entry": {
-            "version": 1,
-            "entryId": "chart-1",
-            "key": "/Users/me/Sales",
-            "type": "d3_wizard_node",
-            "data": {
-                "sources": {"datasetsIds": ["ds-1"]},
-                "visualization": {"type": "line", "x": {"items": []}},
-            },
-        }
-    }
+    created_response = _wizard_response()
+    get_response = _wizard_response()
     recorder = RecordedTransport(
         {
             "/rpc/createWizardChart": httpx.Response(200, json=created_response),

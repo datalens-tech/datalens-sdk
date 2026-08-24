@@ -27,14 +27,30 @@ def test_api_v3_read_uses_document_v1_visualization_type() -> None:
     chart = WizardChartConverter.to_domain(
         {
             "entry": {
+                "createdAt": "2026-01-01T00:00:00.000Z",
+                "createdBy": "user-1",
                 "version": 1,
                 "entryId": "chart-1",
+                "hidden": False,
+                "key": "/Charts/chart-1",
+                "meta": {},
+                "public": False,
+                "publishedId": "revision-1",
+                "revId": "revision-1",
+                "savedId": "revision-1",
+                "scope": "widget",
+                "tenantId": "tenant-1",
                 "type": "d3_wizard_node",
+                "updatedAt": "2026-01-02T00:00:00.000Z",
+                "updatedBy": "user-1",
                 "data": {
                     "sources": {"datasetsIds": []},
                     "visualization": {"type": "line", "x": {"items": []}},
                 },
-            }
+                "workbookId": None,
+            },
+            "isFavorite": False,
+            "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
         },
         installation="yacloud",
     )

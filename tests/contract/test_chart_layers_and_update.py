@@ -385,7 +385,7 @@ def test_geolayer_generic_fields_reject_unsupported_selected_layer(
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
     with pytest.raises(DataLensConfigurationError, match=rf"does not support {method_name}"):
-        cast(Any, builder).add_layer(layer_type, **geometry, **{method_name: ["Amount"]})
+        _payload_data(cast(Any, builder).add_layer(layer_type, **geometry, **{method_name: ["Amount"]}))
 
 
 @pytest.mark.parametrize(
@@ -523,9 +523,8 @@ def test_geolayer_rejects_unsupported_layer_inputs(layer_type: str, argument: st
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
     kwargs: dict[str, object] = {**_GEO_LAYER_GEOMETRY[layer_type], argument: value}
-    cast(Any, builder).add_layer(layer_type, **kwargs)
     with pytest.raises(DataLensConfigurationError, match=argument):
-        _payload_data(builder)
+        _payload_data(cast(Any, builder).add_layer(layer_type, **kwargs))
 
 
 @pytest.mark.parametrize(("layer_type", "geometry"), _GEO_LAYER_GEOMETRY.items())
@@ -789,11 +788,19 @@ def test_geolayer_add_layer_requires_its_geo_field(layer_type: str, kwargs: dict
 
 
 def _chart_for_update() -> WizardChart:
+    filters = [
+        {
+            "guid": guid,
+            "datasetId": "ds1",
+            "filter": {"operation": {"code": "EQ"}},
+        }
+        for guid in ("f1", "f2")
+    ]
     return WizardChart(
         id="chart-1",
         installation="yacloud",
         data={
-            "sources": {"datasetsIds": ["ds1"], "filters": [{"guid": "f1"}, {"guid": "f2"}]},
+            "sources": {"datasetsIds": ["ds1"], "filters": filters},
             "visualization": {
                 "type": "line",
                 "colors": {"items": []},

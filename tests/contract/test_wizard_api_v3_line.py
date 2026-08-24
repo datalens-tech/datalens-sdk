@@ -10,7 +10,6 @@ from datalens_sdk import DataLensClientYC
 from datalens_sdk._generated.builders import charts as generated_charts
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
 from datalens_sdk._generated.dto import (
-    WIZARD_VISUALIZATION_STRUCTURE,
     WizardChartCreateDTO,
     WizardChartDeleteArgsDTO,
     WizardChartGetArgsDTO,
@@ -24,11 +23,6 @@ from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 LineWizardChartCreate = cast(Any, getattr(generated_charts, "LineWizardChartCreate", None))
-
-pytestmark = pytest.mark.skipif(
-    not WIZARD_VISUALIZATION_STRUCTURE,
-    reason="The public installation has no generated Wizard v3 contract",
-)
 
 
 class _RecordedTransport:
@@ -85,8 +79,20 @@ def _response() -> dict[str, object]:
             "version": 1,
             "entryId": "chart-1",
             "revId": "revision-1",
+            "savedId": "revision-1",
+            "publishedId": None,
             "type": "d3_wizard_node",
             "key": "/Charts/Line",
+            "createdAt": "2026-08-24T00:00:00.000Z",
+            "createdBy": "user-1",
+            "updatedAt": "2026-08-24T00:00:00.000Z",
+            "updatedBy": "user-1",
+            "tenantId": "tenant-1",
+            "hidden": False,
+            "public": False,
+            "workbookId": "workbook-1",
+            "scope": "widget",
+            "meta": None,
             "futureEntry": {"kept": True},
             "data": {
                 "futureRoot": {"kept": True},

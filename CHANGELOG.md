@@ -30,15 +30,6 @@
 - Keep ordinary updates one-phase and free of `revId`; use
   `WizardChart.publish_revision()` only to publish an existing revision.
 
-### Pre-release limitation
-
-The checked-in production specifications do not yet expose the complete Wizard
-API v3 contract, so the public generated Wizard registry intentionally remains
-empty and fails closed. Do not release this migration until Phase 4 switches to
-official production specs, regenerates every installation, and validates their
-structural fingerprints. Structure-dependent public checks may fail until that
-switch; synthetic generator tests cover the new contract in the meantime.
-
 ## 0.9.0 - 2026-08-21
 
 - Add `EnterpriseServiceAccountCredentialsAuthProvider` for PS256 service-account

@@ -74,11 +74,13 @@ def _replacement_field() -> DatasetField:
 
 def _data_for_carrier(carrier: Carrier, *, visualization_id: str = "line") -> dict[str, Any]:
     target = _field()
+    keep = _field("keep-guid", title="Keep field")
     if carrier == "filter":
         target["filter"] = {"operation": {"code": "EQ"}, "value": ["old"]}
+        keep["filter"] = {"operation": {"code": "EQ"}, "value": ["keep"]}
     if carrier == "sort":
         target["direction"] = "DESC"
-    keep = _field("keep-guid", title="Keep field")
+        keep["direction"] = "ASC"
     structure = WIZARD_VISUALIZATION_STRUCTURE[visualization_id]
     visualization: dict[str, Any] = {
         "type": visualization_id,
@@ -112,11 +114,27 @@ def _loaded_chart(data: dict[str, Any]) -> WizardChart:
     return WizardChartConverter.to_domain(
         {
             "entry": {
+                "createdAt": "2026-01-01T00:00:00.000Z",
+                "createdBy": "user-1",
+                "hidden": False,
+                "key": "Users/example/chart-1",
+                "meta": {},
+                "public": False,
+                "publishedId": "revision-1",
+                "revId": "revision-1",
+                "savedId": "revision-1",
+                "scope": "widget",
+                "tenantId": "tenant-1",
+                "updatedAt": "2026-01-02T00:00:00.000Z",
+                "updatedBy": "user-1",
                 "version": 1,
                 "entryId": "chart-1",
                 "type": "d3_wizard_node",
+                "workbookId": None,
                 "data": data,
-            }
+            },
+            "isFavorite": False,
+            "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
         },
         installation="yacloud",
     )
