@@ -30,6 +30,33 @@ def _serialize(
     return cast("dict[str, object]", result)
 
 
+def _restore_integral_layout_coordinates(value: dict[str, object]) -> dict[str, object]:
+    """Keep validated DTO fragments usable by the integer-grid RMW engine.
+
+    Some generated installation contracts model dashboard coordinates as
+    JSON ``number`` and therefore dump SDK integers as integral floats.  The
+    update applier feeds serialized fragments back into later operations in
+    the same builder, while layout geometry deliberately accepts integers
+    only.  Restore the domain representation after generated validation; the
+    final endpoint DTO remains free to serialize these integers as numbers.
+    """
+    for key in ("x", "y", "w", "h"):
+        coordinate = value.get(key)
+        if isinstance(coordinate, float) and coordinate.is_integer():
+            value[key] = int(coordinate)
+    return value
+
+
+def _restore_tab_layout_coordinates(value: dict[str, object]) -> dict[str, object]:
+    layout = value.get("layout")
+    if not isinstance(layout, list):
+        return value
+    for entry in layout:
+        if isinstance(entry, dict):
+            _restore_integral_layout_coordinates(entry)
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class DashboardGeneratedContract:
     tab: TypeAdapter[object]
@@ -49,13 +76,15 @@ class DashboardGeneratedContract:
         )
 
     def serialize_tab(self, value: dict[str, object]) -> dict[str, object]:
-        return _serialize(self.tab, value, context="Dashboard tab")
+        serialized = _serialize(self.tab, value, context="Dashboard tab")
+        return _restore_tab_layout_coordinates(serialized)
 
     def serialize_item(self, value: dict[str, object]) -> dict[str, object]:
         return _serialize(self.item, value, context="Dashboard item")
 
     def serialize_layout(self, value: dict[str, object]) -> dict[str, object]:
-        return _serialize(self.layout, value, context="Dashboard layout")
+        serialized = _serialize(self.layout, value, context="Dashboard layout")
+        return _restore_integral_layout_coordinates(serialized)
 
     def serialize_connection(self, value: dict[str, object]) -> dict[str, object]:
         return _serialize(self.connection, value, context="Dashboard connection")
