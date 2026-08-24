@@ -433,21 +433,86 @@ def _spec_schemas(spec_name: str) -> tuple[dict[str, object], dict[str, dict[str
     return paths, schemas
 
 
+def _resolved_schema(
+    schemas: dict[str, dict[str, object]],
+    schema: dict[str, object],
+) -> dict[str, object]:
+    reference = schema.get("$ref")
+    if not isinstance(reference, str):
+        return schema
+    return schemas[reference.rsplit("/", 1)[-1]]
+
+
 def _dashboard_item_variants(schemas: dict[str, dict[str, object]]) -> list[dict[str, object]]:
-    data_props = cast(dict[str, dict[str, object]], schemas["DashboardData"]["properties"])
-    tab_schema = cast(dict[str, object], data_props["tabs"]["items"])
+    data_props = cast(dict[str, dict[str, object]], schemas["DashDataV2"]["properties"])
+    tab_schema = _resolved_schema(schemas, cast(dict[str, object], data_props["tabs"]["items"]))
     tab_props = cast(dict[str, dict[str, object]], tab_schema["properties"])
-    items_schema = cast(dict[str, object], tab_props["items"]["items"])
+    items_schema = _resolved_schema(schemas, cast(dict[str, object], tab_props["items"]["items"]))
     return cast(list[dict[str, object]], items_schema["oneOf"])
 
 
-def test_dashboard_routes_and_scheme_version_match_spec() -> None:
+def test_dashboard_routes_use_v2_roots() -> None:
+    request_roots = {
+        "/rpc/getDashboard": "GetDashboardV2Args",
+        "/rpc/createDashboard": "CreateDashboardV2Args",
+        "/rpc/updateDashboard": "UpdateDashboardV2Args",
+        "/rpc/deleteDashboard": "DeleteDashboardArgs",
+    }
+    expected_schemas = {
+        "CreateDashboardV2Args",
+        "UpdateDashboardV2Args",
+        "GetDashboardV2Args",
+        "GetDashboardV2Result",
+        "DeleteDashboardArgs",
+        "DashDataV2",
+        "DashboardV2",
+    }
     for spec_name in SPEC_NAMES:
         paths, schemas = _spec_schemas(spec_name)
         for route in DASHBOARD_ROUTES:
             assert route in paths, (spec_name, route)
-        data_props = cast(dict[str, dict[str, object]], schemas["DashboardData"]["properties"])
-        assert data_props["schemeVersion"].get("enum") == [8], spec_name
+        missing_schemas = expected_schemas.difference(schemas)
+        assert not missing_schemas, (spec_name, sorted(missing_schemas))
+        for route, expected_root in request_roots.items():
+            route_item = cast(dict[str, object], paths[route])
+            operation = cast(dict[str, object], route_item["post"])
+            request_body = cast(dict[str, object], operation["requestBody"])
+            content = cast(dict[str, object], request_body["content"])
+            media = cast(dict[str, object], content["application/json"])
+            request_schema = cast(dict[str, object], media["schema"])
+            assert request_schema["$ref"] == f"#/components/schemas/{expected_root}", (spec_name, route)
+
+        get_route = cast(dict[str, object], paths["/rpc/getDashboard"])
+        get_operation = cast(dict[str, object], get_route["post"])
+        responses = cast(dict[str, object], get_operation["responses"])
+        response = cast(dict[str, object], responses["200"])
+        response_content = cast(dict[str, object], response["content"])
+        response_media = cast(dict[str, object], response_content["application/json"])
+        response_schema = cast(dict[str, object], response_media["schema"])
+        assert response_schema["$ref"] == "#/components/schemas/GetDashboardV2Result", spec_name
+
+        create_props = cast(dict[str, dict[str, object]], schemas["CreateDashboardV2Args"]["properties"])
+        create_entry_branches = cast(list[dict[str, object]], create_props["entry"]["allOf"])
+        create_entry_objects = [branch for branch in create_entry_branches if "properties" in branch]
+        assert len(create_entry_objects) == 1, (spec_name, create_entry_branches)
+        create_entry_props = cast(dict[str, dict[str, object]], create_entry_objects[0]["properties"])
+        assert create_entry_props["data"]["$ref"] == "#/components/schemas/DashDataV2", spec_name
+
+        update_props = cast(dict[str, dict[str, object]], schemas["UpdateDashboardV2Args"]["properties"])
+        update_entry_props = cast(dict[str, dict[str, object]], update_props["entry"]["properties"])
+        assert update_entry_props["data"]["$ref"] == "#/components/schemas/DashDataV2", spec_name
+
+        result_props = cast(dict[str, dict[str, object]], schemas["GetDashboardV2Result"]["properties"])
+        assert result_props["entry"]["$ref"] == "#/components/schemas/DashboardV2", spec_name
+
+        dashboard_props = cast(dict[str, dict[str, object]], schemas["DashboardV2"]["properties"])
+        assert dashboard_props["version"].get("enum") == [2], spec_name
+        data_props = cast(dict[str, dict[str, object]], schemas["DashDataV2"]["properties"])
+        assert "schemeVersion" not in data_props, spec_name
+        assert "description" not in data_props, spec_name
+        dashboard_data = dashboard_props["data"]
+        dashboard_data_contract = {key: value for key, value in dashboard_data.items() if key != "description"}
+        assert dashboard_data_contract == schemas["DashDataV2"], spec_name
 
 
 def test_dashboard_domain_literals_match_spec_enums() -> None:
@@ -459,7 +524,8 @@ def test_dashboard_domain_literals_match_spec_enums() -> None:
             spec_name
         )
 
-        data_props = cast(dict[str, dict[str, object]], schemas["DashboardData"]["properties"])
+        assert "DashDataV2" in schemas, spec_name
+        data_props = cast(dict[str, dict[str, object]], schemas["DashDataV2"]["properties"])
         settings_props = cast(dict[str, dict[str, object]], data_props["settings"]["properties"])
         assert set(get_args(dashboard_types.DashboardLoadPriority)) == set(
             cast(list[str], settings_props["loadPriority"]["enum"])
@@ -468,6 +534,7 @@ def test_dashboard_domain_literals_match_spec_enums() -> None:
         item_types: set[str] = set()
         title_sizes: set[str] = set()
         for variant in _dashboard_item_variants(schemas):
+            variant = _resolved_schema(schemas, variant)
             variant_props = cast(dict[str, dict[str, object]], variant["properties"])
             enum = cast(list[str], variant_props["type"]["enum"])
             assert len(enum) == 1, (spec_name, enum)
