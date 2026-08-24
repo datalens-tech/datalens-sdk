@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import cast
 
 import httpx
@@ -16,6 +17,78 @@ from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.specs.editor_chart import EditorChartCreateSpec
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
 from datalens_sdk.errors import DataLensValidationError
+
+ROOT = Path(__file__).resolve().parents[2]
+
+_PUBLIC_EDITOR_CONTRACTS = {
+    "advanced-chart_node": (
+        "EditorAdvancedChartNode",
+        "CreateEditorAdvancedChartNodeEntry",
+        "UpdateEditorAdvancedChartNodeEntry",
+    ),
+    "control_node": (
+        "EditorSelectorNode",
+        "CreateEditorSelectorNodeEntry",
+        "UpdateEditorSelectorNodeEntry",
+    ),
+    "d3_node": (
+        "EditorGravityChartsNode",
+        "CreateEditorGravityChartsNodeEntry",
+        "UpdateEditorGravityChartsNodeEntry",
+    ),
+    "markdown_node": (
+        "EditorMarkdownNode",
+        "CreateEditorMarkdownNodeEntry",
+        "UpdateEditorMarkdownNodeEntry",
+    ),
+    "table_node": (
+        "EditorTableNode",
+        "CreateEditorTableNodeEntry",
+        "UpdateEditorTableNodeEntry",
+    ),
+}
+_EDITOR_SECRET_FIELDS = {
+    "addedBy",
+    "alias",
+    "entryId",
+    "key",
+    "name",
+    "secretId",
+    "token",
+    "tokenId",
+}
+
+
+def _object(value: object) -> dict[str, object]:
+    assert isinstance(value, dict)
+    return cast(dict[str, object], value)
+
+
+def _editor_data_properties(schemas: dict[str, object], schema_name: str) -> dict[str, object]:
+    schema = _object(schemas[schema_name])
+    properties = _object(schema["properties"])
+    data = _object(properties["data"])
+    return _object(data["properties"])
+
+
+@pytest.mark.parametrize("installation", ["enterprise", "yacloud"])
+def test_public_editor_specs_expose_secrets_only_on_existing_read_nodes(installation: str) -> None:
+    spec = _object(json.loads((ROOT / "spec" / f"{installation}.json").read_text(encoding="utf-8")))
+    schemas = _object(_object(spec["components"])["schemas"])
+
+    assert generated_dto.INSTALLATION_EDITOR_NODE_TYPES[installation] == frozenset(_PUBLIC_EDITOR_CONTRACTS)
+    for read_schema, create_schema, update_schema in _PUBLIC_EDITOR_CONTRACTS.values():
+        read_properties = _editor_data_properties(schemas, read_schema)
+        secrets = _object(read_properties["secrets"])
+        secret_item = _object(secrets["items"])
+
+        assert secrets["type"] == "array"
+        assert set(_object(secret_item["properties"])) == _EDITOR_SECRET_FIELDS
+        assert set(cast(list[str], secret_item["required"])) == _EDITOR_SECRET_FIELDS
+        assert "Read-only" in cast(str, secrets["description"])
+        assert "secrets" not in _editor_data_properties(schemas, create_schema)
+        assert "secrets" not in _editor_data_properties(schemas, update_schema)
+
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
