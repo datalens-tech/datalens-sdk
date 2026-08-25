@@ -1452,6 +1452,7 @@ class _WizardPydanticEmitter:
         self._emitted: set[str] = set()
         self._emitting: set[str] = set()
         self._definitions: dict[str, str] = {}
+        self._definitions_by_schema: dict[str, str] = {}
 
     def emit(self, schema_names: Iterable[str]) -> str:
         for schema_name in sorted(schema_names):
@@ -1593,8 +1594,13 @@ class _WizardPydanticEmitter:
         path: tuple[str, ...],
         preferred_name: str | None,
     ) -> str:
-        name = preferred_name or self._model_name(path)
         canonical = _canonical_json(schema)
+        if preferred_name is None:
+            existing_name = self._definitions_by_schema.get(canonical)
+            if existing_name is not None:
+                return existing_name
+
+        name = preferred_name or self._model_name(path)
         previous = self._definitions.get(name)
         if previous is not None:
             if previous != canonical:
@@ -1628,17 +1634,18 @@ class _WizardPydanticEmitter:
             if is_required:
                 self._lines.append(f"    {python_name}: {annotation}{alias}")
                 continue
-            # Pydantic keeps an omitted default unvalidated, while an explicitly supplied None is
-            # validated against the annotation. Casting only the default to Any preserves that
-            # runtime distinction and keeps complex emitted annotations out of the cast target.
+            # Pydantic keeps the shared omitted default unvalidated, while an explicitly supplied
+            # None is validated against the annotation. Its Any annotation preserves that runtime
+            # distinction without making the generated field annotation nullable.
             if python_name != wire_name:
                 self._lines.append(
-                    f"    {python_name}: {annotation} = Field(default=_typing_cast(Any, None), alias={wire_name!r})"
+                    f"    {python_name}: {annotation} = Field(default=_UNVALIDATED_NONE_DEFAULT, alias={wire_name!r})"
                 )
             else:
-                self._lines.append(f"    {python_name}: {annotation} = _typing_cast(Any, None)")
+                self._lines.append(f"    {python_name}: {annotation} = _UNVALIDATED_NONE_DEFAULT")
         self._lines.append("")
         self._emitted.add(name)
+        self._definitions_by_schema.setdefault(canonical, name)
         return name
 
     def _object_variants(
@@ -2576,13 +2583,16 @@ def emit_dto(metadata: Metadata) -> str:
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Annotated, Any, Literal, cast as _typing_cast
+from typing import Annotated, Any, Literal
 from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
 from datalens_sdk._runtime.wizard_structure import WizardFieldStructure, WizardVisualizationRegistry
 from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
 from datalens_sdk.errors import NotSupportedError
 from datalens_sdk.serialization.json_types import JsonValue
+
+
+_UNVALIDATED_NONE_DEFAULT: Any = None
 
 
 def _json_array_to_tuple(value: object) -> object:

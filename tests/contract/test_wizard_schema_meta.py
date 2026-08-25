@@ -957,15 +957,17 @@ def test_generated_optional_properties_keep_omission_distinct_from_null(tmp_path
     module_path = module.__file__
     assert module_path is not None
     generated = Path(module_path).read_text(encoding="utf-8")
-    assert "from typing import Annotated, Any, Literal, cast as _typing_cast" in generated
-    assert "optional_label: str = Field(default=_typing_cast(Any, None), alias='optionalLabel')" in generated
-    assert "optional_title: str = Field(default=_typing_cast(Any, None), alias='optionalTitle')" in generated
-    assert "sources: WizardV1ConfigSchemaSourcesDTO = _typing_cast(Any, None)" in generated
-    assert "cast: str = _typing_cast(Any, None)" in generated
-    assert "dataset_id: str = Field(default=_typing_cast(Any, None), alias='datasetId')" in generated
+    assert "from typing import Annotated, Any, Literal" in generated
+    assert "cast as _typing_cast" not in generated
+    assert "_UNVALIDATED_NONE_DEFAULT: Any = None" in generated
+    assert "optional_label: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='optionalLabel')" in generated
+    assert "optional_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='optionalTitle')" in generated
+    assert "sources: WizardV1ConfigSchemaSourcesDTO = _UNVALIDATED_NONE_DEFAULT" in generated
+    assert "cast: str = _UNVALIDATED_NONE_DEFAULT" in generated
+    assert "dataset_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='datasetId')" in generated
     assert (
         "optional_scale_value: Literal['auto'] | Annotated[tuple[float, float], "
-        "BeforeValidator(_json_array_to_tuple)] = Field(default=_typing_cast(Any, None), "
+        "BeforeValidator(_json_array_to_tuple)] = Field(default=_UNVALIDATED_NONE_DEFAULT, "
         "alias='optionalScaleValue')" in generated
     )
 
@@ -1013,6 +1015,34 @@ def test_generated_optional_properties_keep_omission_distinct_from_null(tmp_path
         }
         with pytest.raises(ValidationError):
             factory(layered)
+
+
+def test_generated_wizard_models_reuse_equivalent_anonymous_object_schemas(tmp_path: Path) -> None:
+    spec = _wizard_spec()
+    schemas = _raw_object(_raw_object(spec["components"], path="components")["schemas"], path="schemas")
+    config = _raw_object(schemas["WizardV1ConfigSchema"], path="WizardV1ConfigSchema")
+    config_properties = _raw_object(config["properties"], path="config.properties")
+    scalars = _raw_object(config_properties["scalars"], path="scalars")
+    scalar_properties = _raw_object(scalars["properties"], path="scalars.properties")
+    repeated = {
+        "properties": {"marker": {"enum": ["shared"], "type": "string"}},
+        "required": ["marker"],
+        "type": "object",
+    }
+    scalar_properties["duplicateAlpha"] = repeated
+    scalar_properties["duplicateBeta"] = copy.deepcopy(repeated)
+
+    installation_spec = _write_wizard_installation_spec(tmp_path / "wizard.json", wizard_spec_value=spec)
+    generated = emit_dto(_build_metadata(installation_spec=installation_spec))
+
+    assert generated.count("class WizardV1ConfigSchemaScalarsDuplicateAlphaDTO(BaseModel):") == 1
+    assert "class WizardV1ConfigSchemaScalarsDuplicateBetaDTO(BaseModel):" not in generated
+    assert "duplicate_alpha: WizardV1ConfigSchemaScalarsDuplicateAlphaDTO" in generated
+    assert "duplicate_beta: WizardV1ConfigSchemaScalarsDuplicateAlphaDTO" in generated
+    assert generated.count("class WizardV1ConfigSchemaScalarsDuplicateAlphaReadDTO(BaseModel):") == 1
+    assert "class WizardV1ConfigSchemaScalarsDuplicateBetaReadDTO(BaseModel):" not in generated
+    assert "duplicate_alpha: WizardV1ConfigSchemaScalarsDuplicateAlphaReadDTO" in generated
+    assert "duplicate_beta: WizardV1ConfigSchemaScalarsDuplicateAlphaReadDTO" in generated
 
 
 def test_generated_wizard_models_consume_current_object_openness(tmp_path: Path) -> None:
