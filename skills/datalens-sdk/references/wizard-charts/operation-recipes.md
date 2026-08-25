@@ -221,7 +221,6 @@ chart = (
     .legend(mode="show")
     .tooltip_sum(enabled=False)
     .tooltip(mode="show")
-    .labels_position(mode="auto")
     .measure_format(
         revenue,
         format="number",

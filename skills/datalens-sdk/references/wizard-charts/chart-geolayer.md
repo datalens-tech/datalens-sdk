@@ -43,9 +43,7 @@ Non-empty field inputs outside the selected layer's row are rejected.
 | `chart_title()` | `*, text: str = '', mode: Literal['show', 'hide'] = 'show'` | CU |
 | `description()` | `text: str` | CU |
 | `legend()` | `*, mode: Literal['show', 'hide']` | CU |
-| `tooltip_sum()` | `*, enabled: bool` | CU |
 | `labels()` | `fields: Sequence[Field]` | CU |
-| `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
 | `measure_format()` | `field: Field, *, format: Literal['number', 'percent'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
 | `replace_formula()` | `field: Field, *, formula: str` | U |
 | `change_aggregation()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str, guid: str \| None = None` | U |

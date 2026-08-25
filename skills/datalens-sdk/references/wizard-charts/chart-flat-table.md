@@ -30,10 +30,6 @@ Factory: `client.create.wizard_chart.flat_table(name=..., location=...)`
 | `sort()` | `fields: Sequence[Field]` | C |
 | `chart_title()` | `*, text: str = '', mode: Literal['show', 'hide'] = 'show'` | CU |
 | `description()` | `text: str` | CU |
-| `legend()` | `*, mode: Literal['show', 'hide']` | CU |
-| `tooltip_sum()` | `*, enabled: bool` | CU |
-| `labels()` | `fields: Sequence[Field]` | CU |
-| `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
 | `palette()` | `*, id: PaletteId` | CU |
 | `color_by_measure()` | `field: Field, *, mode: Literal['2-point', '3-point'] \| None = None, palette: GradientPaletteId \| None = None, reversed: bool \| None = None` | CU |
 | `measure_format()` | `field: Field, *, format: Literal['number', 'percent'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
@@ -122,7 +118,7 @@ chart = (
   already placed by `columns()`.
 - `column_bars()` has mutually exclusive one-color, two-color, and gradient
   argument sets; use the complete patterns in [operation recipes](operation-recipes.md).
-- `totals()` is flat-table-only. Pivot totals use `subtotals()`.
+- `totals()` is supported by flat tables and donut charts. Pivot totals use `subtotals()`.
 - No visualization transition is supported from this visualization.
 
 ## Related references
