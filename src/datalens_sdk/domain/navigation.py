@@ -71,7 +71,7 @@ class WorkbookSummary:
 @dataclass(frozen=True, slots=True)
 class EntryRelation:
     id: str
-    scope: EntryScope
+    scope: str
     type: str
     key: str | None = None
     created_at: str | None = None

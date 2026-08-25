@@ -6,10 +6,12 @@ import httpx
 import pytest
 
 import datalens_sdk as dl
+from datalens_sdk._generated.dto import EntryRelationsResultDTO
+from datalens_sdk.converter.navigation import NavigationConverter
 from datalens_sdk.domain.collection import Collection
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.folder import Folder
-from datalens_sdk.domain.navigation import CollectionSummary, EntrySummary, WorkbookSummary
+from datalens_sdk.domain.navigation import CollectionSummary, EntryScope, EntrySummary, WorkbookSummary
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.domain.workbook import Workbook
 from datalens_sdk.errors import DataLensConfigurationError
@@ -51,6 +53,36 @@ def _entry(entry_id: str, *, name: str = "Entry", type: str = "chart_node") -> d
         "name": name,
         "key": f"folder/{name}",
     }
+
+
+@pytest.mark.parametrize(
+    "scope",
+    [
+        "dash",
+        "report",
+        "widget",
+        "dataset",
+        "folder",
+        "connection",
+        "compute",
+        "artifact",
+        "sql_query",
+        "future_scope",
+    ],
+)
+def test_entry_relation_reads_preserve_open_scope(scope: str) -> None:
+    raw = {
+        "relations": [{"entryId": f"{scope}-1", "scope": scope, "type": "relation"}],
+        "nextPageToken": "relations-2",
+    }
+
+    dto = EntryRelationsResultDTO.model_validate(raw)
+    relations, next_page_token = NavigationConverter.relations_result(raw)
+
+    assert dto.relations[0].scope == scope
+    assert relations[0].scope == scope
+    assert relations[0].raw["scope"] == scope
+    assert next_page_token == "relations-2"
 
 
 def test_get_entries_is_lazy_typed_and_reiterable() -> None:
@@ -270,6 +302,7 @@ def test_collection_and_workbook_list_entries_return_canonical_summaries() -> No
 
 
 def test_entry_objects_get_paginated_relations() -> None:
+    first_page_scopes = ("dataset", "sql_query", "future_scope")
     recorder = RecordedTransport(
         {
             "/rpc/getEntriesRelations": [
@@ -278,11 +311,12 @@ def test_entry_objects_get_paginated_relations() -> None:
                     json={
                         "relations": [
                             {
-                                "entryId": "dataset-1",
-                                "scope": "dataset",
-                                "type": "dataset",
-                                "key": "folder/Dataset",
+                                "entryId": f"{scope}-1",
+                                "scope": scope,
+                                "type": "relation",
+                                "key": f"folder/{scope}",
                             }
+                            for scope in first_page_scopes
                         ],
                         "nextPageToken": "relations-2",
                     },
@@ -293,16 +327,18 @@ def test_entry_objects_get_paginated_relations() -> None:
     )
     connection = _client(recorder).domain_connection(id="connection-1", type="postgres")
 
-    relations = list(
+    pages = list(
         connection.get_relations(
             include_permissions_info=True,
             link_direction="from",
             page_size=20,
             scope="dataset",
-        )
+        ).pages()
     )
 
-    assert [relation.id for relation in relations] == ["dataset-1"]
+    assert [[relation.scope for relation in page.items] for page in pages] == [list(first_page_scopes), []]
+    assert [page.next_page_token for page in pages] == ["relations-2", None]
+    assert [relation.raw["scope"] for relation in pages[0].items] == list(first_page_scopes)
     assert recorder.bodies("/rpc/getEntriesRelations") == [
         {
             "entryIds": ["connection-1"],
@@ -320,6 +356,25 @@ def test_entry_objects_get_paginated_relations() -> None:
             "scope": "dataset",
         },
     ]
+
+
+@pytest.mark.parametrize("scope", ["dataset", "widget"])
+def test_entry_relation_filters_preserve_supported_scope_payload(scope: EntryScope) -> None:
+    recorder = RecordedTransport({"/rpc/getEntriesRelations": httpx.Response(200, json={"relations": []})})
+    connection = _client(recorder).domain_connection(id="connection-1", type="postgres")
+
+    assert list(connection.get_relations(scope=scope)) == []
+    assert recorder.bodies("/rpc/getEntriesRelations") == [{"entryIds": ["connection-1"], "limit": 100, "scope": scope}]
+
+
+def test_entry_relation_filter_rejects_unknown_scope() -> None:
+    recorder = RecordedTransport({"/rpc/getEntriesRelations": httpx.Response(200, json={"relations": []})})
+    connection = _client(recorder).domain_connection(id="connection-1", type="postgres")
+
+    with pytest.raises(dl.DTOValidationError, match="getEntriesRelations"):
+        list(connection.get_relations(scope="future_scope"))  # type: ignore[arg-type]
+
+    assert recorder.requests == []
 
 
 def test_supported_entry_objects_bind_relations_to_navigation() -> None:

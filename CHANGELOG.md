@@ -58,6 +58,8 @@
 
 ### Changed
 
+- Preserve unknown backend scopes when reading entry relations instead of
+  rejecting the entire relation page.
 - Align typed Dashboard create and update payloads with the API v3 Dashboard V2
   contract: descriptions use annotations, ordinary item colors use themed
   values, selector display and influence scopes stay separate, and new update
