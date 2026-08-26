@@ -26,6 +26,7 @@ from datalens_sdk.converter.wizard._normalizer import (
     _local_fields_map,
     _Normalizer,
 )
+from datalens_sdk.converter.wizard._semantic_guids import _SemanticGuidRegistry
 from datalens_sdk.converter.wizard._types import (
     CombinedLayerSettingsV1,
     GeoLayerSettingsV1,
@@ -36,7 +37,7 @@ from datalens_sdk.converter.wizard._types import (
 from datalens_sdk.domain.chart_types import MeasureFormat
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.specs.wizard_chart import WizardChartCreateSpec
-from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
+from datalens_sdk.errors import DataLensConfigurationError
 from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object, normalize_json_value
 
 # Encoding changes clear only the settings owned by the SDK operation. The
@@ -298,27 +299,24 @@ def _validate_create_semantic_guids(
     local_fields: Sequence[Mapping[str, object]],
     hierarchies: Sequence[Mapping[str, object]],
 ) -> None:
-    registrations: dict[str, str] = {}
-
-    def register(guid: object, owner: str) -> None:
-        if not isinstance(guid, str) or not guid:
-            raise DataLensValidationError(f"{owner} requires a non-empty semantic GUID.")
-        previous = registrations.get(guid)
-        if previous is not None:
-            raise DataLensValidationError(
-                f"Wizard semantic GUID {guid!r} is registered by both {previous} and {owner}. "
-                "Use a distinct stable GUID for every dataset parameter, chart-local field, and hierarchy."
-            )
-        registrations[guid] = owner
+    registry = _SemanticGuidRegistry()
 
     if dataset is not None:
         for dataset_field in dataset.fields:
             kind = "dataset parameter" if dataset_field.calc_mode == "parameter" else "dataset field"
-            register(dataset_field.guid, f"{kind} {dataset_field.title!r}")
+            registry.register(dataset_field.guid, kind="field", owner=f"{kind} {dataset_field.title!r}")
     for local_field in local_fields:
-        register(local_field.get("guid"), f"chart-local field {local_field.get('title')!r}")
+        registry.register(
+            local_field.get("guid"),
+            kind="field",
+            owner=f"chart-local field {local_field.get('title')!r}",
+        )
     for hierarchy in hierarchies:
-        register(hierarchy.get("guid"), f"hierarchy {hierarchy.get('title')!r}")
+        registry.register(
+            hierarchy.get("guid"),
+            kind="hierarchy",
+            owner=f"hierarchy {hierarchy.get('title')!r}",
+        )
 
 
 def _project_field(

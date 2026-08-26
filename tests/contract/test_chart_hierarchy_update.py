@@ -5,9 +5,9 @@ from typing import Any, cast
 import pytest
 
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
-from datalens_sdk.domain.fields import WizardHierarchy
+from datalens_sdk.domain.fields import WizardHierarchy, WizardLocalField
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DataLensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 
 def _flat_table_chart_for_update() -> WizardChart:
@@ -177,7 +177,17 @@ def test_add_hierarchy_preserves_unknown_wizard_v1_snapshot_fields() -> None:
         "title": "Existing Grouping",
         "futureHierarchy": {"kept": True},
         "fields": [
-            {"guid": "g_reg", "datasetId": "ds1", "futureField": {"kept": True}},
+            {"guid": "g_reg", "datasetId": "ds1", "futureSourceField": {"kept": True}},
+            {"guid": "g_city", "datasetId": "ds1"},
+        ],
+    }
+    mounted_hierarchy = {
+        "guid": "existing-hierarchy",
+        "title": "Existing Grouping",
+        "data_type": "hierarchy",
+        "futureMounted": {"kept": True},
+        "fields": [
+            {"guid": "g_reg", "datasetId": "ds1", "futureMountedField": {"kept": True}},
             {"guid": "g_city", "datasetId": "ds1"},
         ],
     }
@@ -197,6 +207,7 @@ def test_add_hierarchy_preserves_unknown_wizard_v1_snapshot_fields() -> None:
                     "items": [
                         {"guid": "g_reg", "datasetId": "ds1"},
                         {"guid": "g_city", "datasetId": "ds1"},
+                        mounted_hierarchy,
                     ]
                 },
                 "sort": {"items": []},
@@ -207,7 +218,7 @@ def test_add_hierarchy_preserves_unknown_wizard_v1_snapshot_fields() -> None:
     )
 
     update = chart.update.add_hierarchy(
-        WizardHierarchy(title="New Grouping", fields=["g_reg", "g_city"], guid="new-hierarchy")
+        WizardHierarchy(title="New Grouping", fields=["g_city", "g_reg"], guid="existing-hierarchy")
     )
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
     hierarchies = cast(list[dict[str, Any]], data["sources"]["hierarchies"])
@@ -215,15 +226,20 @@ def test_add_hierarchy_preserves_unknown_wizard_v1_snapshot_fields() -> None:
     assert data["futureRoot"] == {"kept": True}
     assert data["sources"]["futureSources"] == {"kept": True}
     assert data["visualization"]["futureVisualization"] == {"kept": True}
-    assert hierarchies[0] == existing_hierarchy
-    assert hierarchies[1] == {
-        "guid": "new-hierarchy",
-        "title": "New Grouping",
-        "fields": [
-            {"guid": "g_reg", "datasetId": "ds1"},
-            {"guid": "g_city", "datasetId": "ds1"},
-        ],
-    }
+    assert len(hierarchies) == 1
+    source = hierarchies[0]
+    assert source["title"] == "New Grouping"
+    assert source["futureHierarchy"] == {"kept": True}
+    assert [field["guid"] for field in source["fields"]] == ["g_city", "g_reg"]
+    assert source["fields"][1]["futureSourceField"] == {"kept": True}
+    assert "futureMounted" not in source
+
+    mounted = next(item for item in data["visualization"]["columns"]["items"] if item.get("data_type") == "hierarchy")
+    assert mounted["title"] == "New Grouping"
+    assert mounted["futureMounted"] == {"kept": True}
+    assert [field["guid"] for field in mounted["fields"]] == ["g_city", "g_reg"]
+    assert mounted["fields"][1]["futureMountedField"] == {"kept": True}
+    assert "futureHierarchy" not in mounted
 
 
 # ---------------------------------------------------------------------------
@@ -246,20 +262,34 @@ def test_add_hierarchy_self_ref_by_title_does_not_recurse() -> None:
     assert hier["fields"][0].get("guid") == "g_reg"
 
 
-def test_add_hierarchy_self_ref_by_guid_does_not_recurse() -> None:
-    """Regression child ref matching hierarchy guid must not recurse."""
+def test_add_hierarchy_rejects_active_field_guid_collision() -> None:
     chart = _flat_table_chart_for_update()
-    # guid of the hierarchy matches the child ref guid string.
     update = chart.update.add_hierarchy(WizardHierarchy(title="Loc", fields=["g_reg"], guid="g_reg"))
-    data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
-    hierarchies = cast(list[dict[str, Any]], data["sources"].get("hierarchies", []))
-    assert any(h.get("title") == "Loc" for h in hierarchies)
-    hier = next(h for h in hierarchies if h.get("title") == "Loc")
-    assert set(hier) == {"guid", "title", "fields"}
-    # Inner field should resolve to the actual field, not be another hierarchy.
-    field0 = hier["fields"][0]
-    assert isinstance(field0, dict)
-    assert field0 == {"guid": "g_reg", "datasetId": "ds1"}
+
+    with pytest.raises(DataLensValidationError, match="semantic GUID 'g_reg'"):
+        WizardChartConverter.from_domain_update(update).to_payload()
+
+
+def test_add_hierarchy_rejects_existing_local_field_guid_collision() -> None:
+    chart = _flat_table_chart_for_update()
+    data = cast(dict[str, Any], chart.data)
+    data["sources"]["updates"] = [
+        {"action": "add_field", "field": {"guid": "local-guid", "title": "Local", "local": True}}
+    ]
+    update = chart.update.add_hierarchy(WizardHierarchy(title="Conflicting", fields=["g_reg"], guid="local-guid"))
+
+    with pytest.raises(DataLensValidationError, match="semantic GUID 'local-guid'"):
+        WizardChartConverter.from_domain_update(update).to_payload()
+
+
+def test_add_hierarchy_rejects_staged_local_field_guid_collision() -> None:
+    chart = _flat_table_chart_for_update()
+    local = WizardLocalField.dimension(title="Local", formula="[g_reg]", guid="shared-guid")
+    hierarchy = WizardHierarchy(title="Hierarchy", fields=["g_reg"], guid="shared-guid")
+    update = chart.update.add_local_field(local).add_hierarchy(hierarchy)
+
+    with pytest.raises(DataLensValidationError, match="semantic GUID 'shared-guid'"):
+        WizardChartConverter.from_domain_update(update).to_payload()
 
 
 def test_add_hierarchy_mutual_ref_does_not_recurse() -> None:
