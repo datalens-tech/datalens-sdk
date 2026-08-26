@@ -3,6 +3,13 @@ files:
   - datalens-sdk/SKILL.md
   - datalens-sdk/examples/*
   - datalens-sdk/references/connections.md
+  - datalens-sdk/references/editor-charts/advanced-chart.md
+  - datalens-sdk/references/editor-charts/common-operations.md
+  - datalens-sdk/references/editor-charts/gravity-charts.md
+  - datalens-sdk/references/editor-charts/markdown.md
+  - datalens-sdk/references/editor-charts/selector.md
+  - datalens-sdk/references/editor-charts/table.md
+  - datalens-sdk/references/editor-charts/troubleshooting.md
   - datalens-sdk/references/setup.md
   - datalens-sdk/references/*/_index.md
   - datalens-sdk/scripts/preflight.sh

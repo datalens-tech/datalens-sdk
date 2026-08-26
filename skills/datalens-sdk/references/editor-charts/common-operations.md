@@ -1,11 +1,10 @@
 # Editor Chart Common Operations
 
-The lifecycle shared by every Editor renderer. Examples import public domain
-types only from `datalens_sdk` and work with any configured client. For client
-construction and installation choice, see [../setup.md](../setup.md). Check
-[the routing index](_index.md) for the renderer factories before
-creating. Treat every tab value as the complete replacement source for that
-tab.
+The lifecycle shared by public Editor renderers on Yandex Cloud and Enterprise.
+Examples use clients and domain types from `datalens-sdk`. For client
+construction, see [../setup.md](../setup.md). Check
+[the public Editor index](_index.md) before creating. Treat every tab value as
+the complete replacement source for that tab.
 
 ## Create
 
@@ -78,7 +77,7 @@ Useful public state:
 - `chart.id`, `chart.name`, `chart.location`, and `chart.description`;
 - `chart.category == "editor"`;
 - `chart.wire_type`, which identifies the renderer; map it to the factory in
-  [the routing index](_index.md). Editor charts do not expose a
+  [the public Editor index](_index.md). Editor charts do not expose a
   Wizard/QL-style `visualization_id`;
 - `chart.data`, a `Mapping[str, object]` whose tab values are usually source
   strings; nullable, redacted, or omitted tabs may be `None` or absent;
@@ -105,26 +104,10 @@ updated = (
 ```
 
 Update defaults to `.mode("save")`. Use `.mode("publish")` only when the
-result must be published. The generic `EditorChartUpdate` exposes setters
-for writable tabs — use only the tabs listed for the
-chart's renderer in [the routing index](_index.md), and do not
-call `.meta()` (the setter exists, but its content format is not verified).
-A successful `.execute()` confirms persistence, not JavaScript execution.
-Re-fetch the desired branch after `.execute()` before checking persisted tab
-content.
-
-## Nullable Tabs
-
-The create builders accept only `str`, but the generic `EditorChartUpdate`
-exposes nullable setters (`activities`, `documentation_en`,
-`documentation_ru`) that accept `str | None`. These tabs belong to no
-renderer in [the routing index](_index.md) — leave them unset.
-
-- `None` clears a nullable tab.
-- `""` stores an empty string and is distinct from `None`.
-- Leave a tab untouched on update when its exact renderer format is unknown.
-  In particular, do not invent `activities` or `statface_graph` content from
-  the fact that a setter exists.
+result must be published. Use only the tab methods listed for the current
+renderer in [the public Editor index](_index.md). A successful `.execute()`
+confirms persistence, not JavaScript execution. Re-fetch the desired branch
+after `.execute()` before checking persisted tab content.
 
 Editor secrets are UI-managed, read-only API v3 state. The SDK does not expose
 a create or update setter for them and removes the returned block before it can
@@ -157,7 +140,7 @@ deleting an existing user chart.
 
 ## Related references
 
-- [_index.md](_index.md) — renderer routing, exact tab matrix
+- [_index.md](_index.md) — public renderer routing and tab methods
 - [troubleshooting.md](troubleshooting.md) — a chart persists but does not render
 - [../core-concepts.md](../core-concepts.md) — namespaces, terminal calls, retries
 - [../serialization.md](../serialization.md) — export/clone via `to_file` and `client.raw`

@@ -1,15 +1,16 @@
-# Advanced Chart
+# Public Advanced chart
 
-Factory: `client.create.editor_chart.advanced_chart`. `chart.wire_type`:
-`advanced-chart_node`.
+This reference applies only to public Yandex Cloud and Enterprise clients from
+`datalens-sdk`.
 
-Tabs: `controls`, `meta`, `params`, `prepare`, `sources`.
+Factory: `client.create.editor_chart.advanced_chart`.
+`chart.wire_type`: `advanced-chart_node`.
+Supported create/update tab methods: `controls(str)`, `meta(str)`,
+`params(str)`, `prepare(str)`, `sources(str)`.
 
-`prepare` must export an object whose `render` member is an
-`Editor.wrapFn(...)` result. Any returned HTML or SVG must be passed through
-`Editor.generateHtml(...)`; a raw string is escaped instead of rendered.
-The renderer's built-in `options` argument comes first, followed by values
-from `args`.
+`prepare` exports an object whose `render` member is an `Editor.wrapFn(...)`
+result. Return HTML or SVG through `Editor.generateHtml(...)`; a raw string is
+escaped. The built-in `options` argument comes first, followed by `args`.
 
 ```python
 from datalens_sdk import EntryLocation
@@ -19,8 +20,7 @@ CONTROLS = "module.exports = {};\n"
 PARAMS = "module.exports = {backgroundColor: ['var(--g-color-base-info-light)']};\n"
 PREPARE = """\
 const params = Editor.getParams();
-const background =
-    params.backgroundColor?.[0] ?? 'var(--g-color-base-info-light)';
+const background = params.backgroundColor?.[0] ?? 'var(--g-color-base-info-light)';
 
 module.exports = {
     render: Editor.wrapFn({
@@ -52,11 +52,12 @@ def build_chart(client, *, location: EntryLocation):
     )
 ```
 
-Leave `meta` unset.
+Leave `meta` unset. Re-fetch the intended branch and verify the stored
+`sources`, `params`, `controls`, and `prepare` strings.
 
 ## Related references
 
-- [_index.md](_index.md) — routing, exact tab matrix
-- [common-operations.md](common-operations.md) — read, update, publish, delete
-- [troubleshooting.md](troubleshooting.md) — chart persists but does not render
-- [Official Advanced chart documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced)
+- [_index.md](_index.md) — public renderer routing and supported tab methods
+- [common-operations.md](common-operations.md) — lifecycle operations
+- [troubleshooting.md](troubleshooting.md) — persistence and render failures
+- [Advanced chart documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced)

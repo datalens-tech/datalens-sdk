@@ -1,130 +1,66 @@
-# Editor Charts
+# Public Editor charts
 
-Routing for hand-written JavaScript (Editor) charts. Read
-this index first, then exactly the one renderer file the task needs. The
-lifecycle shared by every renderer (create, read, update, publish, rename,
-relations, delete) lives in [common-operations.md](common-operations.md).
+This index applies only to the Yandex Cloud and Enterprise clients provided by
+the public `datalens-sdk` package. Read it first, then open exactly one renderer
+reference. Confirm the factory in
+`client.capabilities["chart_factories"]["editor"]` before using it.
 
-## Classify the task before loading renderer details
+## Route the task
 
 | Task | Read |
 |---|---|
-| Inspect, rename, relate, or delete an editor chart | [common-operations.md](common-operations.md) only |
-| Create a new editor chart | the renderer file chosen below, plus the tab matrix in this index |
-| Update tabs or publish | fetch the chart, map `chart.wire_type` to its factory in the routing table, then read that renderer file |
-| Chart persists but fails to render | that renderer file plus [troubleshooting.md](troubleshooting.md) |
+| Inspect, rename, relate, or delete an Editor chart | [common-operations.md](common-operations.md) |
+| Create an Editor chart | the selected renderer reference below |
+| Update or publish an Editor chart | fetch it, select the renderer by `chart.wire_type`, then read that renderer reference |
+| The chart persists but does not render | the renderer reference and [troubleshooting.md](troubleshooting.md) |
 
-For create, copy the renderer file's complete
-`build_chart(client, location=...)` example and adapt the tab contents. A
-successful `.build()` or `.execute()` confirms persistence, not JavaScript
-execution — re-fetch the intended branch and verify the stored tabs before
-reporting done.
+Use the renderer requested by the user or already identified by
+`chart.wire_type`. Do not silently translate a payload between renderers. A
+successful `.build()` or `.execute()` proves persistence, not JavaScript
+execution; re-fetch the intended branch and verify the stored tabs.
 
-## Official Editor runtime contract
+## Public runtime documentation
 
-Use the current DataLens documentation as the source of truth for JavaScript
-tab formats, sandbox methods, and renderer-specific configuration:
+These pages define JavaScript formats and runtime behavior. They do not add a
+factory or tab method to the installed SDK.
 
 | Contract | Official documentation |
 |---|---|
-| Tab execution order and export formats | [Editor tabs](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs) |
+| Tab execution and exports | [Editor tabs](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs) |
 | `Editor.*` methods and `Editor.wrapFn` | [Available Editor methods](https://yandex.cloud/ru/docs/datalens/charts/editor/methods) |
-| Advanced HTML/SVG renderer | [Advanced chart](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced) |
-| Gravity UI Charts configuration | [Gravity UI Charts](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/gravity-ui) |
-| Selector controls | [Controls](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/controls) |
-| Markdown output | [Markdown](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/markdown) |
-| Table output | [Table](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/table) |
+| Advanced chart | [Advanced chart](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced) |
+| Gravity UI Charts | [Gravity UI Charts](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/gravity-ui) |
+| Selector | [Controls](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/controls) |
+| Markdown | [Markdown](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/markdown) |
+| Table | [Table](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/table) |
 
 Tab code runs on the server. Functions wrapped with `Editor.wrapFn` run in a
-restricted client-side sandbox. Built-in renderer arguments are passed to
-`fn` first; values listed in `args` follow them. A wrapped function cannot
-close over surrounding variables, so pass only the minimal serializable data
-it needs through `args`.
+restricted client-side sandbox. Wrapped functions cannot close over surrounding
+variables; pass the smallest serializable values they need through `args`.
 
-## Available renderers
+## Renderer routing and supported tab methods
 
-The public SDK exposes **five** renderer factories on
-`client.create.editor_chart`:
+The same tab row applies to create and update for that `wire_type`. Every tab
+method below accepts `str`.
 
-`advanced_chart`, `gravity_charts`, `markdown`, `selector`, `table`
+| Factory | `chart.wire_type` | Use for | Supported tab methods | Reference |
+|---|---|---|---|---|
+| `advanced_chart` | `advanced-chart_node` | custom HTML or wrapped rendering | `controls`, `meta`, `params`, `prepare`, `sources` | [advanced-chart.md](advanced-chart.md) |
+| `gravity_charts` | `d3_node` | general Gravity Charts configuration | `config`, `controls`, `meta`, `params`, `prepare`, `sources` | [gravity-charts.md](gravity-charts.md) |
+| `markdown` | `markdown_node` | Markdown text and tables | `controls`, `meta`, `params`, `prepare`, `sources` | [markdown.md](markdown.md) |
+| `selector` | `control_node` | parameter controls | `controls`, `meta`, `params`, `sources` | [selector.md](selector.md) |
+| `table` | `table_node` | explicit table output | `config`, `controls`, `meta`, `params`, `prepare`, `sources` | [table.md](table.md) |
 
-Before routing, read
-`client.capabilities["chart_factories"]["editor"]` and confirm the requested
-renderer is present. That generated list is authoritative for the configured
-client; if a renderer is absent, report it as unavailable rather than inventing
-a factory. For general charting, `gravity_charts` covers most needs.
+The recipes leave `meta` unset because no non-empty public payload is verified;
+the converter supplies the required empty value. Do not call tab methods
+outside the selected row. Editor `secrets` is read-only server state and has no
+create or update method.
 
-## Renderer routing
+## Shared operations
 
-| Factory | `chart.wire_type` | Use when the requested output is | Reference |
-|---|---|---|---|
-| `advanced_chart` | `advanced-chart_node` | custom HTML or arbitrary wrapped rendering logic | [advanced-chart.md](advanced-chart.md) |
-| `gravity_charts` | `d3_node` | a general chart using Gravity Charts configuration | [gravity-charts.md](gravity-charts.md) |
-| `markdown` | `markdown_node` | Markdown-formatted text and tables | [markdown.md](markdown.md) |
-| `selector` | `control_node` | an interactive parameter control | [selector.md](selector.md) |
-| `table` | `table_node` | explicit table headers, rows, and footer | [table.md](table.md) |
-
-When several general chart renderers could work, follow the renderer named
-by the user or the existing chart's `wire_type`. Do not silently translate
-one renderer's JavaScript contract into another. Editor charts identify
-their renderer through `chart.wire_type`; they do not expose a
-Wizard/QL-style `visualization_id`.
-
-## Exact tab matrix
-
-Every listed tab is available on the corresponding create factory.
-Every tab setter accepts `str`.
-
-| Factory | `chart.wire_type` | Create tabs |
-|---|---|---|
-| `advanced_chart` | `advanced-chart_node` | `controls`, `meta`, `params`, `prepare`, `sources` |
-| `gravity_charts` | `d3_node` | `config`, `controls`, `meta`, `params`, `prepare`, `sources` |
-| `markdown` | `markdown_node` | `controls`, `meta`, `params`, `prepare`, `sources` |
-| `selector` | `control_node` | `controls`, `meta`, `params`, `sources` |
-| `table` | `table_node` | `config`, `controls`, `meta`, `params`, `prepare`, `sources` |
-
-There is no `shared`, `activities`, or `secrets` tab. Leave
-`meta` unset: the setter exists, but its content format is not verified.
-
-Code tabs contain JavaScript with
-`module.exports`; the exact export shape is renderer-specific and shown in
-each reference. Treat the renderer references as minimum working examples,
-not complete documentation for every optional tab.
-
-## Shared builder signatures
-
-All create factories expose:
-
-```text
-client.create.editor_chart.<factory>(*, name: str, location: EntryLocation)
-.description(text: str)
-.build()
-```
-
-All Editor updates go through the generic `EditorChartUpdate`:
-
-```text
-chart.update.<tab>(value)
-.description(text: str)
-.mode("save" | "publish")   # default "save"
-.execute()
-```
-
-`EditorChartUpdate` exposes setters for writable tabs, including some used by
-no renderer in the routing table. It intentionally has no `secrets()` setter:
-API v3 treats Editor secrets as UI-managed, read-only state.
-Use only the tabs in the row for the chart's current renderer.
-`EditorChartUpdate.meta()` exists (as does `.meta()` on the create
-builders) but should not be called — its content format is not verified. To
-change a chart's renderer, create a separate chart; the renderer is fixed at
-create time.
-
-## Related references
-
-- [common-operations.md](common-operations.md) — the full editor chart lifecycle
-- [troubleshooting.md](troubleshooting.md) — `ERR.CHARTS.INVALID_SOURCE_FORMAT` and render failures
-- [Editor tabs](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs) — official tab formats and execution model
-- [Available Editor methods](https://yandex.cloud/ru/docs/datalens/charts/editor/methods) — official `Editor.*` runtime API
-- [../setup.md](../setup.md) — clients, installations, auth
-- [../core-concepts.md](../core-concepts.md) — namespaces, builders, terminal calls
-- [../serialization.md](../serialization.md) — export/import via `to_file` and `client.raw`
+Create factories use keyword-only `name` and `location`, and support
+`.description(text: str)` followed by `.build()`. Fetch with
+`client.get.editor_chart(by_id=..., workbook_id=..., branch="saved" | "published",
+rev_id=...)`. Update through `chart.update`, optionally set
+`.description(text: str)` and `.mode("save" | "publish")`, then call
+`.execute()`. The renderer cannot be changed by an update.
