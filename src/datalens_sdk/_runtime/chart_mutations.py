@@ -20,37 +20,39 @@ if TYPE_CHECKING:
         PaletteId,
         ShapeStyle,
     )
-    from datalens_sdk.domain.fields import FieldLike
+    from datalens_sdk.domain.fields import WizardFieldRef
 
 
 class _ChartMutationsMixin:
     def _init_chart_mutations(self) -> None:
-        self._extra_settings: dict[str, object] = {}
-        self._ph_settings: dict[str, dict[str, object]] = {}
-        self._data_fields: dict[str, list[FieldLike | str]] = {}
-        self._item_mutations: list[tuple[FieldLike | str, str, object]] = []
-        self._pending_filters: list[tuple[FieldLike | str, str, list[str]]] = []
-        self._sort_direction_items: list[tuple[FieldLike | str, str]] = []
+        self._chart_settings: dict[str, object] = {}
+        self._slot_settings: dict[str, dict[str, object]] = {}
+        self._slot_fields: dict[str, list[WizardFieldRef]] = {}
+        self._item_mutations: list[tuple[WizardFieldRef, str, object]] = []
+        self._pending_filters: list[tuple[WizardFieldRef, str, list[str]]] = []
+        self._sort_direction_items: list[tuple[WizardFieldRef, str]] = []
         self._colors_palette: str | None = None
         self._colors_config_patch: dict[str, object] = {}
         self._color_encoding: WizardColorEncoding | None = None
         self._description: str | None = None
         self._hierarchies: list[dict[str, object]] = []
-        self._pending_measure_formats: list[tuple[FieldLike | str, MeasureFormat]] = []
+        self._pending_measure_formats: list[tuple[WizardFieldRef, MeasureFormat]] = []
         self._shape_encoding: WizardShapeEncoding | None = None
         self._geopoints_config: dict[str, object] = {}
+        self._label_mode_value: str | None = None
+        self._labels_position_value: str | None = None
 
     def _set_palette(self, *, id: PaletteId) -> None:
         if id not in VALID_PALETTES:
             raise DataLensConfigurationError(f"Unknown palette {id!r}. Valid palettes: {sorted(VALID_PALETTES)}")
         self._colors_palette = id
 
-    def _set_color_by_dimension(self, field: FieldLike | str) -> None:
+    def _set_color_by_dimension(self, field: WizardFieldRef) -> None:
         self._color_encoding = WizardColorEncoding(kind="dimension", field=field)
 
     def _set_color_by_measure(
         self,
-        field: FieldLike | str,
+        field: WizardFieldRef,
         *,
         mode: Literal["2-point", "3-point"] | None,
         palette: GradientPaletteId | None,
@@ -78,7 +80,7 @@ class _ChartMutationsMixin:
 
     def _set_color_by_measure_name(
         self,
-        colors_map: Mapping[FieldLike | str, str] | None,
+        colors_map: Mapping[WizardFieldRef, str] | None,
     ) -> None:
         self._color_encoding = WizardColorEncoding(
             kind="measure_name",
@@ -87,18 +89,18 @@ class _ChartMutationsMixin:
 
     def _set_shape_by_dimension(
         self,
-        field: FieldLike | str,
+        field: WizardFieldRef,
         shapes_map: Mapping[str, ShapeStyle] | None,
     ) -> None:
         self._shape_encoding = WizardShapeEncoding(
             kind="dimension",
             field=field,
-            shapes_map=cast("Mapping[FieldLike | str, ShapeStyle] | None", shapes_map),
+            shapes_map=cast("Mapping[WizardFieldRef, ShapeStyle] | None", shapes_map),
         )
 
     def _set_shape_by_measure_name(
         self,
-        shapes_map: Mapping[FieldLike | str, ShapeStyle] | None,
+        shapes_map: Mapping[WizardFieldRef, ShapeStyle] | None,
     ) -> None:
         self._shape_encoding = WizardShapeEncoding(kind="measure_name", shapes_map=shapes_map)
 

@@ -3,7 +3,7 @@
 Factory: `client.create.wizard_chart.indicator(name=..., location=...)`
 `chart.visualization_id`: `metric`
 
-`Field` below means a `DatasetField` or an exact string reference. Prefer `DatasetField`; strings on create require a bound `.dataset(dataset)`, while updates can resolve strings only from fields already placed in the fetched chart.
+`Field` below means `DatasetField`, `WizardLocalField`, `WizardAggregatedMeasure`, `WizardHierarchy`, or an exact string reference. Prefer identity objects: save Dataset fields from the dataset schema and reuse GUID-bearing Wizard handles. After fetching a chart, resolve direct snapshots by exact GUID with `chart.fields.by_guid(...)`, never by title.
 
 ## Placeholders
 
@@ -21,18 +21,13 @@ Factory: `client.create.wizard_chart.indicator(name=..., location=...)`
 | `dataset()` | `dataset: Dataset` | C |
 | `y()` | `fields: Sequence[Field]` | CU |
 | `measures()` | `fields: Sequence[Field]` | U |
-| `add_aggregated_measure()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str \| None = None, guid: str \| None = None` | CU |
-| `add_local_field()` | `*, title: str, formula: str, guid: str \| None = None, cast: str = 'float', measure: bool = False, aggregation: str \| None = None, formatting: MeasureFormat \| None = None` | CU |
+| `add_aggregated_measure()` | `field: WizardAggregatedMeasure` | CU |
+| `add_local_field()` | `field: WizardLocalField` | CU |
 | `add_filter()` | `field: Field, *, operation: FilterOperation, values: Sequence[str] = ()` | CU |
 | `add_date_filter()` | `field: Field, *, start: str, end: str, inclusive_end: bool = True` | CU |
 | `add_relative_date_filter()` | `field: Field, *, start_offset: str, end_offset: str` | CU |
-| `chart_title()` | `*, text: str = '', mode: Literal['show', 'hide'] = 'show'` | CU |
 | `description()` | `text: str` | CU |
-| `legend()` | `*, mode: Literal['show', 'hide']` | CU |
-| `tooltip_sum()` | `*, enabled: bool` | CU |
-| `tooltips()` | `fields: Sequence[Field]` | CU |
-| `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
-| `measure_format()` | `field: Field, *, format: Literal['number', 'percent', 'currency'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'bln'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
+| `measure_format()` | `field: Field, *, format: Literal['number', 'percent'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
 | `font_size()` | `*, size: Literal['xs', 's', 'm', 'l']` | CU |
 | `font_color()` | `*, color: str` | CU |
 | `measure_title_mode()` | `*, mode: Literal['by-field', 'manual', 'hide']` | CU |
@@ -67,7 +62,7 @@ chart = (
     .font_size(size="l")
     .font_color(color="#0FA08D")
     .measure_title_mode(mode="by-field")
-    .measure_format(value, format="currency", unit="m", precision=1)
+    .measure_format(value, format="number", unit="m", precision=1)
     .build()
 )
 ```
@@ -82,7 +77,7 @@ dataset = client.get.dataset(by_id=chart.dataset_ids[0])
 profit = dataset.fields.by_name("Profit")
 chart = (
     chart.update.measures([profit])
-    .measure_format(profit, format="currency", unit="m", precision=1)
+    .measure_format(profit, format="number", unit="m", precision=1)
     .measure_title_mode(mode="hide")
     .mode("publish")
     .execute()
@@ -95,7 +90,7 @@ chart = (
   `chart.visualization_id == "metric"`; do not use that value as a factory
   method name.
 - `y` sets the required measure field, which has capacity 1.
-- A generic `labels()` placeholder operation, sorting, palettes, color
+- A generic `labels()` slot operation, sorting, palettes, color
   encodings, and axes are not supported. `labels_position()` is supported for
   positioning the indicator value. `font_color()` requires `#RRGGBB`.
 - No visualization transition is supported from this visualization.

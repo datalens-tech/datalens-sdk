@@ -89,13 +89,14 @@ def _entity_issue(
 
 
 def _chart_dataset_ids(chart: object) -> tuple[str, ...]:
-    """Dataset ids statically derivable from a chart: wizard charts carry
-    ``data.datasetsIds``; editor charts source data from code (not
-    enumerable), QL charts have no datasets."""
+    """Dataset ids statically derivable from a chart.
+
+    Wizard V1 charts expose ids from ``data.sources.datasetsIds`` through
+    :attr:`WizardChart.dataset_ids`. Editor charts source data from code and
+    QL charts have no datasets.
+    """
     if isinstance(chart, WizardChart):
-        dataset_ids = chart.data.get("datasetsIds")
-        if isinstance(dataset_ids, list):
-            return tuple(entry for entry in dataset_ids if isinstance(entry, str))
+        return chart.dataset_ids
     return ()
 
 

@@ -18,7 +18,8 @@ communicates.
   one formula instead of hunting it down in every chart.
 - **Chart-local fields are for one-off, chart-specific needs only** — a
   presentation-only ratio, a label tweak for a single visualization
-  (`.add_local_field(title=..., formula=...)` on a chart builder). The
+  (`WizardLocalField.measure(...)` or `.dimension(...)`, followed by
+  `.add_local_field(handle)` on a chart builder). The
   moment a second chart needs the field, move it into the dataset.
 - **Comment complex formulas.** Six months later nobody remembers why the
   denominator excludes weekends.
@@ -95,10 +96,8 @@ Hide what carries no information; label what does.
   as `0.3729` instead of `37.3%` is a bug, and default float precision is
   visual noise. Set format, precision, and units (`unit=`, `prefix=`,
   `postfix=`) for every displayed measure.
-  Wizard `measure_format()` uses `format="number" | "percent" | "currency"`
-  and `unit="auto" | "k" | "m" | "bln"`. Do not reuse dataset-field
-  formatting literals here: dataset units include `"b"` and `"t"` instead
-  of chart-side `"bln"`.
+  Wizard `measure_format()` uses `format="number" | "percent"` and the
+  OpenAPI units `unit="auto" | "k" | "m" | "b" | "t"`.
 - **Do not mix measures of different scale on one axis.** Sales in the
   hundreds of thousands next to profit in the tens of thousands flattens
   the smaller series into an unreadable line at zero, and a second axis

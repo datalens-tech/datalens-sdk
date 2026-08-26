@@ -1,25 +1,18 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast, get_type_hints
 
 import pytest
 
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
+from datalens_sdk._runtime.chart_wire import build_date_interval
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
-from datalens_sdk.domain.chart_types import PaletteId
+from datalens_sdk.domain.chart_types import MeasureFormat, PaletteId
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
-from datalens_sdk.domain.fields import DatasetField
+from datalens_sdk.domain.fields import DatasetField, WizardAggregatedMeasure, WizardHierarchy, WizardLocalField
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DataLensConfigurationError
-
-_REFERENCE_CHARTS_DIR = Path(__file__).parent / "fixtures" / "reference_charts" / "wizard"
-
-
-def _reference_chart(chart_id: str) -> dict[str, Any]:
-    return cast(dict[str, Any], json.loads((_REFERENCE_CHARTS_DIR / f"{chart_id}.json").read_text()))
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 
 def _loc() -> EntryLocation:
@@ -54,24 +47,42 @@ def _build(builder: Any) -> dict[str, Any]:
 
 def _extra(builder: Any) -> dict[str, Any]:
     data = _build(builder)
-    return cast(dict[str, Any], data.get("extraSettings", {}))
+    visualization = cast(dict[str, Any], data["visualization"])
+    return cast(dict[str, Any], visualization.get("chartSettings", {}))
 
 
 def _ph_settings(builder: Any, ph_id: str) -> dict[str, Any]:
     data = _build(builder)
     viz = cast(dict[str, Any], data["visualization"])
-    for ph in cast(list[dict[str, Any]], viz.get("placeholders", [])):
-        if ph.get("id") == ph_id:
-            return cast(dict[str, Any], ph.get("settings", {}))
-    return {}
+    slot = viz.get(ph_id)
+    if not isinstance(slot, dict):
+        return {}
+    return cast(dict[str, Any], slot.get("settings", {}))
 
 
 def _items_in_ph(data: dict[str, Any], ph_id: str) -> list[dict[str, Any]]:
     viz = cast(dict[str, Any], data["visualization"])
-    for ph in cast(list[dict[str, Any]], viz.get("placeholders", [])):
-        if ph.get("id") == ph_id:
-            return cast(list[dict[str, Any]], ph.get("items", []))
-    return []
+    slot_name = {
+        "flat-table-columns": "columns",
+        "pivot-table-columns": "columns",
+    }.get(ph_id, ph_id)
+    slot = viz.get(slot_name)
+    if not isinstance(slot, dict):
+        return []
+    return cast(list[dict[str, Any]], slot.get("items", []))
+
+
+def _slot_settings(data: dict[str, Any], slot_name: str) -> dict[str, Any]:
+    visualization = cast(dict[str, Any], data["visualization"])
+    slot = visualization.get(slot_name)
+    if not isinstance(slot, dict):
+        return {}
+    return cast(dict[str, Any], slot.get("settings", {}))
+
+
+def _source_items(data: dict[str, Any], key: str) -> list[dict[str, Any]]:
+    sources = cast(dict[str, Any], data["sources"])
+    return cast(list[dict[str, Any]], sources.get(key, []))
 
 
 _factory = WizardChartCreateFactory(cast(Any, None))
@@ -101,13 +112,23 @@ class TestNavigatorHelper:
         builder = _factory.line(name="Chart", location=_loc()).navigator(mode="show")
         extra = _extra(builder)
         nav = cast(dict[str, Any], extra["navigatorSettings"])
-        assert nav["navigatorMode"] == "show"
+        assert nav == {
+            "linesMode": "all",
+            "navigatorMode": "show",
+            "periodSettings": {"period": "year", "type": "genericdatetime", "value": "1"},
+            "selectedLines": [],
+        }
 
     def test_navigator_hide_writes_navigatorMode_hide(self) -> None:
         builder = _factory.line(name="Chart", location=_loc()).navigator(mode="hide")
         extra = _extra(builder)
         nav = cast(dict[str, Any], extra["navigatorSettings"])
-        assert nav["navigatorMode"] == "hide"
+        assert nav == {
+            "linesMode": "all",
+            "navigatorMode": "hide",
+            "periodSettings": {"period": "year", "type": "genericdatetime", "value": "1"},
+            "selectedLines": [],
+        }
 
 
 class TestAxisTitleHelper:
@@ -154,14 +175,12 @@ class TestAxisScaleHelper:
         assert settings.get("scale") == "manual"
         assert settings.get("scaleValue") == ["0", "100"]
 
-    def test_axis_scale_manual_with_only_min_writes_scaleValue_with_none_max(self) -> None:
-        builder = _factory.line(name="Chart", location=_loc()).axis_scale("y", mode="manual", min="0")
-        settings = _ph_settings(builder, "y")
-        assert settings.get("scale") == "manual"
-        assert settings.get("scaleValue") == ["0", None]
+    def test_axis_scale_manual_with_only_min_is_rejected(self) -> None:
+        with pytest.raises(DataLensConfigurationError, match="requires both"):
+            _factory.line(name="Chart", location=_loc()).axis_scale("y", mode="manual", min="0")
 
     def test_axis_scale_manual_without_bounds_raises_error(self) -> None:
-        with pytest.raises(DataLensConfigurationError, match="requires at least one of min= or max="):
+        with pytest.raises(DataLensConfigurationError, match="requires both"):
             _factory.line(name="Chart", location=_loc()).axis_scale("y", mode="manual")
 
 
@@ -203,8 +222,7 @@ class TestPaginationHelper:
     def test_pagination_enabled_with_limit_writes_limit(self) -> None:
         builder = _factory.flat_table(name="Chart", location=_loc()).pagination(enabled=True, limit=50)
         extra = _extra(builder)
-        assert extra.get("pagination") == "on"
-        assert extra.get("limit") == 50
+        assert extra == {"pagination": "on", "limit": 50}
 
     def test_pagination_disabled_does_not_write_limit(self) -> None:
         builder = _factory.flat_table(name="Chart", location=_loc()).pagination(enabled=False)
@@ -219,7 +237,7 @@ class TestPaginationHelper:
 
 
 class TestColumnBackgroundMutatesItem:
-    def test_column_background_writes_backgroundSettings_to_item_not_colors_placeholder(self) -> None:
+    def test_column_background_writes_background_settings_to_item_not_colors_slot(self) -> None:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
         builder.column_background("meas")
@@ -227,7 +245,7 @@ class TestColumnBackgroundMutatesItem:
         items = _items_in_ph(data, "flat-table-columns")
         meas_item = next(it for it in items if it.get("guid") == "meas")
         assert "backgroundSettings" in meas_item
-        colors = data.get("colors", [])
+        colors = _items_in_ph(data, "colors")
         assert not any(isinstance(c, dict) and c.get("guid") == "meas" for c in cast(list[Any], colors)), (
             "column_background must not write to colors list"
         )
@@ -240,6 +258,7 @@ class TestColumnBackgroundMutatesItem:
         items = _items_in_ph(data, "flat-table-columns")
         meas_item = next(it for it in items if it.get("guid") == "meas")
         bg = cast(dict[str, Any], meas_item.get("backgroundSettings", {}))
+        assert set(bg) == {"colorFieldGuid", "enabled", "settings", "settingsId"}
         assert bg.get("enabled") is True
         assert bg.get("colorFieldGuid") == "meas"
         settings = cast(dict[str, Any], bg.get("settings", {}))
@@ -263,8 +282,8 @@ class TestColumnBackgroundMutatesItem:
         assert grad.get("gradientPalette") == "blue"
         assert grad.get("reversed") is True
         assert grad.get("thresholdsMode") == "manual"
-        assert grad.get("leftThreshold") == 0.0
-        assert grad.get("rightThreshold") == 100.0
+        assert grad.get("leftThreshold") == "0.0"
+        assert grad.get("rightThreshold") == "100.0"
 
     def test_column_background_3_point_with_manual_thresholds(self) -> None:
         ds = _dataset("dim", "meas")
@@ -277,9 +296,57 @@ class TestColumnBackgroundMutatesItem:
         settings = cast(dict[str, Any], bg.get("settings", {}))
         grad = cast(dict[str, Any], settings.get("gradientState", {}))
         assert grad.get("thresholdsMode") == "manual"
-        assert grad.get("leftThreshold") == 10.0
-        assert grad.get("middleThreshold") == 50.0
-        assert grad.get("rightThreshold") == 90.0
+        assert grad.get("leftThreshold") == "10.0"
+        assert grad.get("middleThreshold") == "50.0"
+        assert grad.get("rightThreshold") == "90.0"
+
+    def test_pivot_background_and_format_serialize_manual_thresholds_for_create(self) -> None:
+        ds = _dataset("dim", "meas")
+        data = _build(
+            _factory.pivot_table(name="Chart", location=_loc())
+            .dataset(ds)
+            .columns(["dim"])
+            .measures(["meas"])
+            .column_background("meas", mode="3-point", thresholds=(0.0, 0.1, 0.3))
+            .measure_format("meas", format="percent", precision=1)
+        )
+
+        item = _items_in_ph(data, "measures")[0]
+        background = cast(dict[str, Any], item["backgroundSettings"])
+        settings = cast(dict[str, Any], background["settings"])
+        gradient = cast(dict[str, Any], settings["gradientState"])
+        assert gradient["leftThreshold"] == "0.0"
+        assert gradient["middleThreshold"] == "0.1"
+        assert gradient["rightThreshold"] == "0.3"
+        assert item["formatting"] == {"format": "percent", "precision": 1}
+
+    def test_pivot_background_and_format_serialize_manual_thresholds_for_update(self) -> None:
+        ds = _dataset("dim", "meas")
+        original = _build(
+            _factory.pivot_table(name="Chart", location=_loc()).dataset(ds).columns(["dim"]).measures(["meas"])
+        )
+        chart = WizardChart(id="chart-1", installation="yacloud", data=original)
+        measure = ds.fields.by_name("field_meas")
+
+        data = cast(
+            dict[str, Any],
+            WizardChartConverter.from_domain_update(
+                chart.update.column_background(
+                    measure,
+                    mode="3-point",
+                    thresholds=(0.0, 0.1, 0.3),
+                ).measure_format(measure, format="percent", precision=1)
+            ).to_payload()["data"],
+        )
+
+        item = _items_in_ph(data, "measures")[0]
+        background = cast(dict[str, Any], item["backgroundSettings"])
+        settings = cast(dict[str, Any], background["settings"])
+        gradient = cast(dict[str, Any], settings["gradientState"])
+        assert gradient["leftThreshold"] == "0.0"
+        assert gradient["middleThreshold"] == "0.1"
+        assert gradient["rightThreshold"] == "0.3"
+        assert item["formatting"] == {"format": "percent", "precision": 1}
 
     def test_column_background_wrong_threshold_count_raises(self) -> None:
         ds = _dataset("dim", "meas")
@@ -291,11 +358,11 @@ class TestColumnBackgroundMutatesItem:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
         with pytest.raises(DataLensConfigurationError, match="gradient palette"):
-            builder.column_background("meas", palette="classic20")  # type: ignore[arg-type]
+            cast(Any, builder).column_background("meas", palette="classic20")
 
     def test_column_background_works_on_pivot(self) -> None:
         ds = _dataset("dim", "meas")
-        builder = _factory.pivot_table(name="Chart", location=_loc()).dataset(ds).columns(["dim"]).y(["meas"])
+        builder = _factory.pivot_table(name="Chart", location=_loc()).dataset(ds).columns(["dim"]).measures(["meas"])
         builder.column_background("meas", mode="2-point", palette="yellow")
         data = _build(builder)
         items = _items_in_ph(data, "measures")
@@ -306,59 +373,8 @@ class TestColumnBackgroundMutatesItem:
         assert grad.get("gradientMode") == "2-point"
         assert grad.get("gradientPalette") == "yellow"
 
-    def test_live_background_fixture_links_color_field_guid(self) -> None:
-        fixture = _reference_chart("lz47d8gnsa4q5")
-        placeholders = cast(list[dict[str, Any]], fixture["data"]["visualization"]["placeholders"])
-        background = next(
-            item["backgroundSettings"]
-            for placeholder in placeholders
-            for item in cast(list[dict[str, Any]], placeholder.get("items", []))
-            if "backgroundSettings" in item
-        )
-        assert set(background) == {"colorFieldGuid", "enabled", "settings", "settingsId"}
-
 
 class TestColumnBarsHelper:
-    def test_live_one_color_bars_fixture_has_nested_color_settings_and_scale(self) -> None:
-        fixture = _reference_chart("guz2i7a315cg0")
-        placeholders = cast(list[dict[str, Any]], fixture["data"]["visualization"]["placeholders"])
-        bars = next(
-            item["barsSettings"]
-            for placeholder in placeholders
-            for item in cast(list[dict[str, Any]], placeholder.get("items", []))
-            if "barsSettings" in item and item["barsSettings"]["colorSettings"]["colorType"] == "one-color"
-        )
-        assert bars["colorSettings"] == {"colorType": "one-color", "settings": {"color": "#D3D3D3"}}
-        assert bars["scale"] == {"mode": "auto"}
-
-    def test_live_two_color_bars_fixture_has_nested_palette_indexes_and_scale(self) -> None:
-        fixture = _reference_chart("lz47d8gnsa4q5")
-        placeholders = cast(list[dict[str, Any]], fixture["data"]["visualization"]["placeholders"])
-        bars = next(
-            item["barsSettings"]
-            for placeholder in placeholders
-            for item in cast(list[dict[str, Any]], placeholder.get("items", []))
-            if "barsSettings" in item and item["barsSettings"]["colorSettings"]["colorType"] == "two-color"
-        )
-        assert bars["colorSettings"] == {
-            "colorType": "two-color",
-            "settings": {"positiveColorIndex": 2, "negativeColorIndex": 1},
-        }
-        assert bars["scale"] == {"mode": "auto"}
-        assert bars["showBarsInTotals"] is False
-
-    def test_live_gradient_bars_fixture_has_nested_color_settings_and_scale(self) -> None:
-        fixture = _reference_chart("lz47d8gnsa4q5")
-        placeholders = cast(list[dict[str, Any]], fixture["data"]["visualization"]["placeholders"])
-        bars = next(
-            item["barsSettings"]
-            for placeholder in placeholders
-            for item in cast(list[dict[str, Any]], placeholder.get("items", []))
-            if "barsSettings" in item and item["barsSettings"]["colorSettings"]["colorType"] == "gradient"
-        )
-        assert set(bars) == {"align", "colorSettings", "enabled", "scale", "showBarsInTotals", "showLabels"}
-        assert bars["scale"] == {"mode": "auto"}
-
     def test_column_bars_enabled_writes_barsSettings_to_item(self) -> None:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
@@ -367,6 +383,7 @@ class TestColumnBarsHelper:
         items = _items_in_ph(data, "flat-table-columns")
         meas_item = next(it for it in items if it.get("guid") == "meas")
         bars = cast(dict[str, Any], meas_item.get("barsSettings", {}))
+        assert set(bars) == {"align", "colorSettings", "enabled", "scale", "showBarsInTotals", "showLabels"}
         assert bars.get("enabled") is True
         assert bars.get("showLabels") is True
         assert bars.get("showBarsInTotals") is False
@@ -461,7 +478,7 @@ class TestColumnBarsHelper:
         with pytest.raises(DataLensConfigurationError, match="does not accept"):
             builder.column_bars("meas", color_type="one-color", color_positive="#FF0000")
 
-    def test_column_bars_one_color_no_color_arg_produces_no_colorSettings(self) -> None:
+    def test_column_bars_one_color_no_color_arg_produces_empty_one_color_settings(self) -> None:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
         builder.column_bars("meas", color_type="one-color")
@@ -469,7 +486,7 @@ class TestColumnBarsHelper:
         items = _items_in_ph(data, "flat-table-columns")
         meas_item = next(it for it in items if it.get("guid") == "meas")
         bars = cast(dict[str, Any], meas_item.get("barsSettings", {}))
-        assert "colorSettings" not in bars
+        assert bars["colorSettings"] == {"colorType": "one-color", "settings": {}}
 
     def test_column_bars_show_labels_and_align(self) -> None:
         ds = _dataset("dim", "meas")
@@ -487,17 +504,17 @@ class TestColumnBarsHelper:
 class TestSubtotalsHelper:
     def test_subtotals_enabled_writes_subTotalsSettings_to_pivot_item(self) -> None:
         ds = _dataset("dim", "meas")
-        builder = _factory.pivot_table(name="Chart", location=_loc()).dataset(ds).columns(["dim"]).y(["meas"])
+        builder = _factory.pivot_table(name="Chart", location=_loc()).dataset(ds).columns(["dim"]).measures(["meas"])
         builder.subtotals("dim", enabled=True)
         data = _build(builder)
         items = _items_in_ph(data, "pivot-table-columns")
         dim_item = next(it for it in items if it.get("guid") == "dim")
         subtotals = cast(dict[str, Any], dim_item.get("subTotalsSettings", {}))
-        assert subtotals.get("enabled") is True
+        assert subtotals == {"enabled": True}
 
     def test_subtotals_uses_capital_T_wire_key(self) -> None:
         ds = _dataset("dim", "meas")
-        builder = _factory.pivot_table(name="Chart", location=_loc()).dataset(ds).columns(["dim"]).y(["meas"])
+        builder = _factory.pivot_table(name="Chart", location=_loc()).dataset(ds).columns(["dim"]).measures(["meas"])
         builder.subtotals("dim", enabled=False)
         data = _build(builder)
         items = _items_in_ph(data, "pivot-table-columns")
@@ -509,27 +526,27 @@ class TestSubtotalsHelper:
 class TestMutateItemByGuidErrors:
     def test_column_background_without_columns_raises_configuration_error(self) -> None:
         builder = _factory.flat_table(name="Chart", location=_loc())
-        with pytest.raises(DataLensConfigurationError, match="not found in any placeholder"):
+        with pytest.raises(DataLensConfigurationError, match="not found in any slot"):
             builder.column_background("nonexistent")
 
     def test_column_bars_without_columns_raises_configuration_error(self) -> None:
         builder = _factory.flat_table(name="Chart", location=_loc())
-        with pytest.raises(DataLensConfigurationError, match="not found in any placeholder"):
+        with pytest.raises(DataLensConfigurationError, match="not found in any slot"):
             builder.column_bars("nonexistent", enabled=True)
 
     def test_subtotals_without_columns_raises_configuration_error(self) -> None:
         builder = _factory.pivot_table(name="Chart", location=_loc())
-        with pytest.raises(DataLensConfigurationError, match="not found in any placeholder"):
+        with pytest.raises(DataLensConfigurationError, match="not found in any slot"):
             builder.subtotals("nonexistent", enabled=True)
 
     def test_column_title_without_placed_field_raises_configuration_error(self) -> None:
         builder = _factory.flat_table(name="Chart", location=_loc())
-        with pytest.raises(DataLensConfigurationError, match=r"Call \.columns\(\)/\.measures\(\)/\.rows\(\) before"):
+        with pytest.raises(DataLensConfigurationError, match="not found in any slot"):
             builder.column_title("nonexistent", title="Revenue")
 
     def test_measure_format_without_placed_field_raises_configuration_error(self) -> None:
         builder = _factory.flat_table(name="Chart", location=_loc()).measure_format("nonexistent", format="number")
-        with pytest.raises(DataLensConfigurationError, match=r"Call \.columns\(\)/\.measures\(\)/\.rows\(\) before"):
+        with pytest.raises(DataLensValidationError, match="no dataset schema is available"):
             _build(builder)
 
 
@@ -541,7 +558,7 @@ class TestPaletteHelper:
         )
         builder.palette(id="classic20")
         data = _build(builder)
-        cfg = cast(dict[str, Any], data.get("colorsConfig", {}))
+        cfg = _slot_settings(data, "colors")
         assert cfg.get("palette") == "classic20"
         assert "paletteId" not in cfg
 
@@ -552,7 +569,7 @@ class TestPaletteHelper:
         )
         builder.palette(id="blue")
         data = _build(builder)
-        cfg = cast(dict[str, Any], data.get("colorsConfig", {}))
+        cfg = _slot_settings(data, "colors")
         assert cfg.get("palette") == "blue"
         assert cfg.get("gradientPalette") == "blue"
         assert "gradientMode" in cfg
@@ -587,37 +604,45 @@ class TestPaletteHelper:
             .palette(id="blue")
         )
         data = _build(builder)
-        assert cast(list[dict[str, Any]], data["colors"])[0]["guid"] == "meas"
+        assert _items_in_ph(data, "colors")[0]["guid"] == "meas"
 
     def test_palette_rejects_missing_colors(self) -> None:
         builder = _factory.line(name="Chart", location=_loc()).palette(id="classic20")
-        with pytest.raises(DataLensConfigurationError, match="requires a field in Color"):
+        with pytest.raises(DataLensConfigurationError, match="requires a field in the colors slot"):
             _build(builder)
 
     def test_update_palette_validates_existing_colors(self) -> None:
+        ds = _dataset("dim", "meas")
         chart = WizardChart(
             id="chart-1",
             installation="yacloud",
-            data={
-                "colors": [{"guid": "dim", "title": "Dimension", "type": "DIMENSION"}],
-                "visualization": {"id": "line", "placeholders": []},
-            },
+            data=_build(
+                _factory.line(name="Chart", location=_loc())
+                .dataset(ds)
+                .x(["dim"])
+                .y(["meas"])
+                .color_by_dimension("dim")
+            ),
         )
         with pytest.raises(DataLensConfigurationError, match="requires a MEASURE"):
             WizardChartConverter.from_domain_update(chart.update.palette(id="blue"))
 
     def test_update_gradient_palette_writes_gradient_config_for_measure_colors(self) -> None:
+        ds = _dataset("dim", "meas")
         chart = WizardChart(
             id="chart-1",
             installation="yacloud",
-            data={
-                "colors": [{"guid": "meas", "title": "Measure", "type": "MEASURE"}],
-                "visualization": {"id": "scatter", "placeholders": []},
-            },
+            data=_build(
+                _factory.treemap(name="Chart", location=_loc())
+                .dataset(ds)
+                .x(["dim"])
+                .y(["meas"])
+                .color_by_measure("meas")
+            ),
         )
         payload = WizardChartConverter.from_domain_update(chart.update.palette(id="blue")).to_payload()
         data = cast(dict[str, Any], payload["data"])
-        cfg = cast(dict[str, Any], data["colorsConfig"])
+        cfg = _slot_settings(data, "colors")
         assert cfg["palette"] == "blue"
         assert cfg["gradientPalette"] == "blue"
 
@@ -627,7 +652,7 @@ class TestPaletteHelper:
             _factory.pie(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"]).color_by_dimension("dim")
         )
         data = _build(builder)
-        cfg = cast(dict[str, Any], data.get("colorsConfig", {}))
+        cfg = _slot_settings(data, "colors")
         assert cfg.get("palette") == "datalens-classic-20"
         assert _items_in_ph(data, "colors")[0]["guid"] == "dim"
 
@@ -638,7 +663,7 @@ class TestPaletteHelper:
 
 class TestSemanticColorRouting:
     @pytest.mark.parametrize("viz_method", ["line", "area", "column", "bar"])
-    def test_dimension_color_routes_to_top_level_without_placeholder_leak(self, viz_method: str) -> None:
+    def test_dimension_color_routes_to_top_level_without_slot_leak(self, viz_method: str) -> None:
         ds = _dataset("dim", "meas")
         builder = (
             getattr(_factory, viz_method)(name="Chart", location=_loc())
@@ -648,14 +673,13 @@ class TestSemanticColorRouting:
             .color_by_dimension("dim")
         )
         data = _build(builder)
-        top_level_colors = cast(list[dict[str, Any]], data.get("colors", []))
-        assert any(c.get("guid") == "dim" and c.get("type") == "DIMENSION" for c in top_level_colors)
-        cfg = cast(dict[str, Any], data.get("colorsConfig", {}))
+        top_level_colors = _items_in_ph(data, "colors")
+        assert any(c.get("guid") == "dim" for c in top_level_colors)
+        cfg = _slot_settings(data, "colors")
         assert cfg.get("palette") == "datalens-classic-20"
-        ph_ids = [p.get("id") for p in cast(list[dict[str, Any]], data["visualization"]["placeholders"])]
-        assert "colors" not in ph_ids, f"{viz_method} must route colors to data.colors only, not a placeholder"
+        assert "colors" in data["visualization"], f"{viz_method} must expose the named colors slot"
 
-    def test_treemap_dimension_color_requires_same_field_in_dimensions(self) -> None:
+    def test_treemap_dimension_color_accepts_an_independent_dimension(self) -> None:
         ds = _dataset("dim", "meas", "other_dim")
         builder = (
             _factory.treemap(name="Chart", location=_loc())
@@ -664,8 +688,7 @@ class TestSemanticColorRouting:
             .y(["meas"])
             .color_by_dimension("other_dim")
         )
-        with pytest.raises(DataLensConfigurationError, match=r"placed in the 'dimensions' section"):
-            _build(builder)
+        assert _items_in_ph(_build(builder), "colors")[0]["guid"] == "other_dim"
 
     def test_color_by_dimension_rejects_measure(self) -> None:
         ds = _dataset("dim", "meas")
@@ -675,16 +698,16 @@ class TestSemanticColorRouting:
         with pytest.raises(DataLensConfigurationError, match="requires a DIMENSION"):
             _build(builder)
 
-    def test_treemap_dimension_color_writes_placeholder_and_data(self) -> None:
+    def test_treemap_dimension_color_writes_slot_and_data(self) -> None:
         ds = _dataset("dim", "meas")
         data = _build(
             _factory.treemap(name="Chart", location=_loc()).dataset(ds).color_by_dimension("dim").y(["meas"]).x(["dim"])
         )
         assert _items_in_ph(data, "colors")[0]["guid"] == "dim"
-        assert cast(list[dict[str, Any]], data["colors"])[0]["guid"] == "dim"
+        assert _items_in_ph(data, "colors")[0]["guid"] == "dim"
 
     @pytest.mark.parametrize("viz_method", ["pie", "donut"])
-    def test_pie_family_explicit_dimension_color_keeps_dedicated_placeholder(self, viz_method: str) -> None:
+    def test_pie_family_explicit_dimension_color_keeps_dedicated_slot(self, viz_method: str) -> None:
         ds = _dataset("dim", "meas", "other_dim")
         builder = (
             getattr(_factory, viz_method)(name="Chart", location=_loc())
@@ -695,28 +718,18 @@ class TestSemanticColorRouting:
         )
         data = _build(builder)
         assert _items_in_ph(data, "colors")[0]["guid"] == "other_dim"
-        assert data["colors"] == []
-        assert data["colorsConfig"]["palette"] == "datalens-classic-20"
+        assert _slot_settings(data, "colors")["palette"] == "datalens-classic-20"
 
     @pytest.mark.parametrize("viz_method", ["pie", "donut"])
-    def test_pie_family_implicit_color_preserves_defaults(self, viz_method: str) -> None:
+    def test_pie_family_implicit_color_uses_dimension_autofix(self, viz_method: str) -> None:
         ds = _dataset("dim", "meas")
         builder = getattr(_factory, viz_method)(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"])
         data = _build(builder)
-        assert _items_in_ph(data, "colors")[0]["guid"] == "dim"
-        assert cast(list[dict[str, Any]], data["colors"])[0]["guid"] == "dim"
-        assert data["colorsConfig"]["fieldGuid"] == "dim"
-        assert data["colorsConfig"]["palette"] == "datalens-classic-20"
-        for default_key in ("filters", "labels", "shapes", "sort", "tooltips", "updates"):
-            assert data[default_key] == []
+        assert _items_in_ph(data, "colors") == [{"guid": "dim", "datasetId": "ds1"}]
+        assert _slot_settings(data, "colors") == {}
 
 
 class TestColorByMeasureNameHelper:
-    def test_live_rgba_override_fixture_is_preserved_in_mounted_colors(self) -> None:
-        fixture = _reference_chart("n1zb75lpkoq27")
-        mounted_colors = fixture["data"]["colorsConfig"]["mountedColors"]
-        assert "#4DA256FF" in mounted_colors.values()
-
     def test_multi_measure_colors_write_palette_configuration_and_pseudo_fields(self) -> None:
         ds = _dataset("dim", "measure_1", "other_dim", "measure_2")
         builder = (
@@ -724,19 +737,19 @@ class TestColorByMeasureNameHelper:
             .dataset(ds)
             .x(["dim"])
             .y(["measure_1", "measure_2"])
-            .color_by_measure_name(colors_map={"measure_2": "#001122"})
+            .color_by_measure_name(colors_map={"measure_2": "#4DA256FF"})
             .palette(id="classic20")
         )
         data = _build(builder)
-        cfg = cast(dict[str, Any], data.get("colorsConfig", {}))
+        cfg = _slot_settings(data, "colors")
         assert cfg["palette"] == "classic20"
         assert cfg["coloredByMeasure"] is True
         assert cfg["colorMode"] == "palette"
         assert cfg["polygonBorders"] == "show"
-        assert cfg["mountedColors"] == {"field_measure_1": "0", "field_measure_2": "#001122"}
+        assert cfg["mountedColors"] == {"measure_1": "0", "measure_2": "#4DA256FF"}
         assert "fieldGuid" not in cfg
-        assert cast(list[dict[str, Any]], data["colors"])[0]["type"] == "PSEUDO"
-        assert _items_in_ph(data, "x")[-1]["type"] == "PSEUDO"
+        assert _items_in_ph(data, "colors")[0]["type"] == "PSEUDO"
+        assert _items_in_ph(data, "x")[-1]["guid"] == "dim"
 
     def test_color_by_measure_name_accepts_rgba_override(self) -> None:
         ds = _dataset("dim", "measure_1", "other_dim", "measure_2")
@@ -748,8 +761,8 @@ class TestColorByMeasureNameHelper:
             .color_by_measure_name(colors_map={"measure_1": "#4DA256FF"})
         )
         data = _build(builder)
-        cfg = cast(dict[str, Any], data["colorsConfig"])
-        assert cfg["mountedColors"] == {"field_measure_1": "#4DA256FF", "field_measure_2": "1"}
+        cfg = _slot_settings(data, "colors")
+        assert cfg["mountedColors"] == {"measure_1": "#4DA256FF", "measure_2": "1"}
 
     def test_color_by_measure_name_requires_two_measures(self) -> None:
         ds = _dataset("dim", "measure")
@@ -769,10 +782,13 @@ class TestColorByMeasureNameHelper:
             .y2(["measure_2"])
             .color_by_measure_name()
         )
-        assert data["colors"][0]["type"] == "PSEUDO"
-        assert data["colorsConfig"]["mountedColors"] == {"field_measure_1": "0", "field_measure_2": "1"}
+        assert _items_in_ph(data, "colors")[0]["type"] == "PSEUDO"
+        assert _slot_settings(data, "colors")["mountedColors"] == {
+            "measure_1": "0",
+            "measure_2": "1",
+        }
 
-    def test_bar_measure_names_are_added_to_category_placeholder(self) -> None:
+    def test_bar_measure_name_encoding_uses_the_colors_slot(self) -> None:
         ds = _dataset("dim", "measure_1", "other_dim", "measure_2")
         data = _build(
             _factory.bar(name="Chart", location=_loc())
@@ -781,16 +797,19 @@ class TestColorByMeasureNameHelper:
             .y(["dim"])
             .color_by_measure_name()
         )
-        assert _items_in_ph(data, "y")[-1]["type"] == "PSEUDO"
+        assert _items_in_ph(data, "colors")[-1]["type"] == "PSEUDO"
 
     def test_pivot_measure_names_remain_layout_only(self) -> None:
         ds = _dataset("dim", "measure_1", "other_dim", "measure_2")
         data = _build(
-            _factory.pivot_table(name="Chart", location=_loc()).dataset(ds).rows(["dim"]).y(["measure_1", "measure_2"])
+            _factory.pivot_table(name="Chart", location=_loc())
+            .dataset(ds)
+            .rows(["dim"])
+            .measures(["measure_1", "measure_2"])
         )
-        assert _items_in_ph(data, "pivot-table-columns")[-1]["type"] == "PSEUDO"
-        assert data["colors"] == []
-        assert data["colorsConfig"] == {}
+        assert _items_in_ph(data, "measures")[-1]["guid"] == "measure_2"
+        assert _items_in_ph(data, "colors") == []
+        assert _slot_settings(data, "colors") == {}
 
     def test_color_by_measure_name_rejects_invalid_color(self) -> None:
         ds = _dataset("dim", "measure_1", "other_dim", "measure_2")
@@ -816,7 +835,7 @@ class TestAddFilterHelper:
             .add_filter("dim", operation="EQ", values=["Moscow"])
         )
         data = _build(builder)
-        filters = cast(list[dict[str, Any]], data.get("filters", []))
+        filters = _source_items(data, "filters")
         assert len(filters) == 1
         assert filters[0]["guid"] == "dim"
         assert filters[0]["filter"]["operation"]["code"] == "EQ"
@@ -833,7 +852,7 @@ class TestAddFilterHelper:
             .add_filter("meas", operation="GT", values=["1000"])
         )
         data = _build(builder)
-        filters = cast(list[dict[str, Any]], data.get("filters", []))
+        filters = _source_items(data, "filters")
         assert len(filters) == 2
 
     def test_add_filter_default_values_is_empty(self) -> None:
@@ -846,9 +865,9 @@ class TestAddFilterHelper:
             .add_filter("dim", operation="ISNULL")
         )
         data = _build(builder)
-        filters = cast(list[dict[str, Any]], data.get("filters", []))
+        filters = _source_items(data, "filters")
         assert len(filters) == 1
-        assert filters[0]["filter"]["value"] == []
+        assert "value" not in filters[0]["filter"]
 
 
 class TestAddDateFilterHelper:
@@ -862,7 +881,7 @@ class TestAddDateFilterHelper:
             .add_date_filter("date_dim", start="2026-01-01", end="2026-01-31")
         )
         data = _build(builder)
-        filters = cast(list[dict[str, Any]], data.get("filters", []))
+        filters = _source_items(data, "filters")
         assert len(filters) == 1
         assert filters[0]["filter"]["operation"]["code"] == "BETWEEN"
         value = filters[0]["filter"]["value"]
@@ -870,23 +889,74 @@ class TestAddDateFilterHelper:
         assert value[0].startswith("__interval_")
         assert "2026-01-01" in value[0]
 
-    def test_add_relative_date_filter_produces_between_with_relative_interval(self) -> None:
+    @pytest.mark.parametrize(
+        ("start", "end", "expected"),
+        [
+            (
+                "2026-01-01T03:00:00+03:00",
+                "2026-01-01T04:00:00+03:00",
+                "__interval_2026-01-01T00:00:00Z_2026-01-01T01:00:00Z",
+            ),
+            (
+                "2026-01-01T21:30:00-02:30",
+                "2026-01-01T22:30:00-02:30",
+                "__interval_2026-01-02T00:00:00Z_2026-01-02T01:00:00Z",
+            ),
+            (
+                "2026-01-01T03:00:00.123+03:00",
+                "2026-01-01T00:00:00.987Z",
+                "__interval_2026-01-01T00:00:00.123Z_2026-01-01T00:00:00.987Z",
+            ),
+        ],
+    )
+    def test_date_interval_converts_offsets_to_utc_without_losing_fractional_seconds(
+        self,
+        start: str,
+        end: str,
+        expected: str,
+    ) -> None:
+        assert build_date_interval(start, end) == expected
+
+    def test_date_interval_preserves_date_only_inclusive_end_policy(self) -> None:
+        assert build_date_interval("2026-01-01", "2026-01-31") == (
+            "__interval_2026-01-01T00:00:00.000Z_2026-01-31T23:59:59.999Z"
+        )
+        assert build_date_interval("2026-01-01", "2026-01-31", inclusive_end=False) == (
+            "__interval_2026-01-01T00:00:00.000Z_2026-01-31T00:00:00.000Z"
+        )
+
+    def test_date_interval_leaves_invalid_iso_values_unchanged(self) -> None:
+        assert build_date_interval("2026-02-30", "2026-01-01T25:00:00+03:00") == (
+            "__interval_2026-02-30_2026-01-01T25:00:00+03:00"
+        )
+
+    @pytest.mark.parametrize(
+        ("start_offset", "end_offset", "expected"),
+        [
+            ("-30d", "+0d", "__interval___relative_-30d___relative_+0d"),
+            ("-1M", "-0d", "__interval___relative_-1M___relative_-0d"),
+        ],
+    )
+    def test_add_relative_date_filter_produces_between_with_relative_interval(
+        self,
+        start_offset: str,
+        end_offset: str,
+        expected: str,
+    ) -> None:
         ds = _dataset("date_dim", "meas")
         builder = (
             _factory.column(name="Chart", location=_loc())
             .dataset(ds)
             .x(["date_dim"])
             .y(["meas"])
-            .add_relative_date_filter("date_dim", start_offset="-30d", end_offset="+0d")
+            .add_relative_date_filter("date_dim", start_offset=start_offset, end_offset=end_offset)
         )
         data = _build(builder)
-        filters = cast(list[dict[str, Any]], data.get("filters", []))
+        filters = _source_items(data, "filters")
         assert len(filters) == 1
         assert filters[0]["filter"]["operation"]["code"] == "BETWEEN"
         value = filters[0]["filter"]["value"]
-        assert len(value) == 1
-        assert "__relative_-30d" in value[0]
-        assert "__relative_+0d" in value[0]
+        assert value == [expected]
 
 
 class TestAddSortHelper:
@@ -900,7 +970,7 @@ class TestAddSortHelper:
             .add_sort("meas", direction="desc")
         )
         data = _build(builder)
-        sort = cast(list[dict[str, Any]], data.get("sort", []))
+        sort = _items_in_ph(data, "sort")
         assert len(sort) == 1
         assert sort[0].get("direction") == "DESC"
         assert sort[0].get("guid") == "meas"
@@ -909,13 +979,13 @@ class TestAddSortHelper:
         ds = _dataset("dim", "meas")
         builder = _factory.column(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"]).add_sort("dim")
         data = _build(builder)
-        sort = cast(list[dict[str, Any]], data.get("sort", []))
+        sort = _items_in_ph(data, "sort")
         assert sort[0].get("direction") == "ASC"
 
     def test_add_sort_writes_minimal_reference_not_full_snapshot(self) -> None:
         # DataLens matches a sort entry to a placed field by guid and ignores the
         # rest. A full field snapshot (formula / aggregation / calc_mode /
-        # placeholder ``id`` / ...) is rejected on create (400) and silently not
+        # legacy slot ``id`` / ...) is rejected on create (400) and silently not
         # applied on update, so the sort item must carry only identity keys.
         ds = _dataset("dim", "meas")
         builder = (
@@ -926,7 +996,7 @@ class TestAddSortHelper:
             .add_sort("meas", direction="desc")
         )
         data = _build(builder)
-        sort = cast(list[dict[str, Any]], data.get("sort", []))
+        sort = _items_in_ph(data, "sort")
         allowed = {"guid", "datasetId", "data_type", "title", "source", "type", "direction"}
         assert set(sort[0]) <= allowed, f"unexpected sort keys: {set(sort[0]) - allowed}"
         for forbidden in ("formula", "calc_mode", "aggregation", "autoaggregated", "id", "guid_formula"):
@@ -967,29 +1037,32 @@ class TestTableSizeHelper:
 
 
 class TestFreezeColumnsHelper:
-    def test_flat_table_freezes_requested_columns(self) -> None:
+    def test_flat_table_freezes_columns(self) -> None:
         builder = _factory.flat_table(name="Chart", location=_loc()).freeze_columns(count=2)
         assert _extra(builder).get("pinnedColumns") == 2
 
-    def test_pivot_table_freezes_one_column_by_default(self) -> None:
-        builder = _factory.pivot_table(name="Chart", location=_loc()).freeze_columns()
-        assert _extra(builder).get("pinnedColumns") == 1
-
-    def test_zero_unfreezes_columns(self) -> None:
+    def test_flat_table_zero_unfreezes_columns(self) -> None:
         builder = _factory.flat_table(name="Chart", location=_loc()).freeze_columns(count=0)
         assert _extra(builder).get("pinnedColumns") == 0
 
+    def test_pivot_table_freezes_columns(self) -> None:
+        builder = _factory.pivot_table(name="Chart", location=_loc()).freeze_columns(count=3)
+        assert _extra(builder).get("pinnedColumns") == 3
+
 
 class TestIndicatorHelpers:
-    def test_font_size_maps_ui_to_payload(self) -> None:
-        builder = _factory.indicator(name="Chart", location=_loc()).font_size(size="xs")
+    @pytest.mark.parametrize(
+        ("size", "wire_size"),
+        [("xs", "s"), ("m", "l"), ("l", "xl")],
+    )
+    def test_font_size_maps_ui_to_payload(
+        self,
+        size: Literal["xs", "m", "l"],
+        wire_size: str,
+    ) -> None:
+        builder = _factory.indicator(name="Chart", location=_loc()).font_size(size=size)
         extra = _extra(builder)
-        assert extra.get("metricFontSize") == "s"
-
-    def test_font_size_m_maps_to_l(self) -> None:
-        builder = _factory.indicator(name="Chart", location=_loc()).font_size(size="m")
-        extra = _extra(builder)
-        assert extra.get("metricFontSize") == "l"
+        assert extra.get("metricFontSize") == wire_size
 
     def test_font_color_valid_hex_writes_to_extra(self) -> None:
         builder = _factory.indicator(name="Chart", location=_loc()).font_color(color="#FF0000")
@@ -999,7 +1072,7 @@ class TestIndicatorHelpers:
     def test_measure_title_mode_manual(self) -> None:
         builder = _factory.indicator(name="Chart", location=_loc()).measure_title_mode(mode="manual")
         extra = _extra(builder)
-        assert extra.get("indicatorTitleMode") == "manual"
+        assert extra.get("titleMode") == "manual"
 
     def test_font_color_invalid_hex_raises_error(self) -> None:
         with pytest.raises(DataLensConfigurationError, match="hex string like #RRGGBB"):
@@ -1008,24 +1081,137 @@ class TestIndicatorHelpers:
     def test_measure_title_mode_by_field(self) -> None:
         builder = _factory.indicator(name="Chart", location=_loc()).measure_title_mode(mode="by-field")
         extra = _extra(builder)
-        assert extra.get("indicatorTitleMode") == "by-field"
+        assert extra.get("titleMode") == "by-field"
 
     def test_measure_title_mode_hide(self) -> None:
         builder = _factory.indicator(name="Chart", location=_loc()).measure_title_mode(mode="hide")
         extra = _extra(builder)
-        assert extra.get("indicatorTitleMode") == "hide"
+        assert extra.get("titleMode") == "hide"
 
 
 class TestAddLocalFieldHelper:
+    def test_local_field_factories_create_stable_hashable_handles(self) -> None:
+        dimension = WizardLocalField.dimension(title="Bucket", formula="[Value] > 0", guid="dim-guid", cast="boolean")
+        measure = WizardLocalField.measure(
+            title="Revenue",
+            formula="SUM([Sales])",
+            guid="measure-guid",
+            cast="integer",
+            formatting={"precision": 0},
+        )
+
+        assert dimension.guid == "dim-guid"
+        assert dimension.type == "DIMENSION"
+        assert dimension.data_type == "boolean"
+        assert dimension.autoaggregated is False
+        assert measure.guid == "measure-guid"
+        assert measure.type == "MEASURE"
+        assert measure.data_type == "integer"
+        assert measure.aggregation == "none"
+        assert measure.autoaggregated is True
+        assert {measure: "color"}[measure] == "color"
+        with pytest.raises(TypeError):
+            measure.formatting["precision"] = 2
+
+        hints = get_type_hints(WizardLocalField.measure)
+        assert hints["formatting"] == MeasureFormat | None
+
+    def test_local_field_formatting_lives_on_carrier_not_source_update(self) -> None:
+        ds = _dataset("dim")
+        local = WizardLocalField.measure(
+            title="Revenue",
+            formula="SUM([Sales])",
+            guid="formatted-local",
+            formatting={"format": "number", "precision": 2, "prefix": "$"},
+        )
+        data = _build(
+            _factory.flat_table(name="Chart", location=_loc())
+            .dataset(ds)
+            .add_local_field(local)
+            .columns([local])
+            .add_sort(local, direction="desc")
+        )
+
+        source_field = cast(dict[str, Any], _source_items(data, "updates")[0]["field"])
+        assert "formatting" not in source_field
+        assert _items_in_ph(data, "flat-table-columns")[0]["formatting"] == {
+            "format": "number",
+            "precision": 2,
+            "prefix": "$",
+        }
+        assert _items_in_ph(data, "sort") == [{"guid": local.guid, "datasetId": ds.id, "direction": "DESC"}]
+
+    def test_create_rejects_local_and_aggregated_measure_guid_collision(self) -> None:
+        ds = _dataset("dim")
+        first = WizardLocalField.dimension(title="First", formula="[a]", guid="duplicate-guid")
+        second = WizardAggregatedMeasure(
+            field=ds.fields.by_guid("dim"),
+            aggregation="countunique",
+            title="Second",
+            guid="duplicate-guid",
+        )
+        builder = (
+            _factory.flat_table(name="Chart", location=_loc())
+            .dataset(ds)
+            .add_local_field(first)
+            .add_aggregated_measure(second)
+        )
+
+        with pytest.raises(DataLensValidationError, match=r"duplicate-guid.*First.*Second"):
+            _build(builder)
+
+    def test_create_rejects_local_field_and_hierarchy_guid_collision(self) -> None:
+        ds = _dataset("dim")
+        local = WizardLocalField.dimension(title="Local", formula="[dim]", guid="shared-guid")
+        hierarchy = WizardHierarchy(title="Hierarchy", fields=[ds.fields.by_guid("dim")], guid="shared-guid")
+        builder = (
+            _factory.flat_table(name="Chart", location=_loc())
+            .dataset(ds)
+            .add_local_field(local)
+            .add_hierarchy(hierarchy)
+        )
+
+        with pytest.raises(DataLensValidationError, match=r"shared-guid.*Local.*Hierarchy"):
+            _build(builder)
+
+    def test_create_rejects_dataset_parameter_and_local_field_guid_collision(self) -> None:
+        ds = Dataset(
+            id="ds1",
+            name="ds",
+            location=EntryLocation.path("/"),
+            result_schema=(
+                {
+                    "guid": "parameter-guid",
+                    "title": "Threshold",
+                    "calc_mode": "parameter",
+                    "data_type": "float",
+                    "default_value": 1,
+                },
+            ),
+        )
+        local = WizardLocalField.measure(title="Local", formula="SUM([x])", guid="parameter-guid")
+        builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).add_local_field(local)
+
+        with pytest.raises(DataLensValidationError, match=r"parameter-guid.*Threshold.*Local"):
+            _build(builder)
+
+    def test_create_rejects_dataset_field_and_local_field_guid_collision(self) -> None:
+        ds = _dataset("direct-guid")
+        local = WizardLocalField.dimension(title="Local", formula="[x]", guid="direct-guid")
+        builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).add_local_field(local)
+
+        with pytest.raises(DataLensValidationError, match=r"direct-guid.*field_direct-guid.*Local"):
+            _build(builder)
+
     def test_add_local_field_with_explicit_guid(self) -> None:
-        builder = _factory.line(name="Chart", location=_loc()).add_local_field(
+        local = WizardLocalField.measure(
             title="Revenue",
             formula="SUM([Sales])",
             guid="my-guid",
-            measure=True,
         )
+        builder = _factory.line(name="Chart", location=_loc()).add_local_field(local)
         data = _build(builder)
-        updates = cast(list[dict[str, Any]], data.get("updates", []))
+        updates = _source_items(data, "updates")
         assert len(updates) == 1
         field = cast(dict[str, Any], updates[0]["field"])
         assert field["guid"] == "my-guid"
@@ -1033,30 +1219,48 @@ class TestAddLocalFieldHelper:
         assert field["formula"] == "SUM([Sales])"
 
     def test_add_local_field_without_guid_auto_generates_guid(self) -> None:
-        builder = _factory.line(name="Chart", location=_loc()).add_local_field(
+        local = WizardLocalField.dimension(
             title="MyField",
             formula="[X] + 1",
         )
+        builder = _factory.line(name="Chart", location=_loc()).add_local_field(local)
         data = _build(builder)
-        updates = cast(list[dict[str, Any]], data.get("updates", []))
+        updates = _source_items(data, "updates")
         assert len(updates) == 1
         field = cast(dict[str, Any], updates[0]["field"])
         assert field.get("guid")
 
+    def test_local_field_handle_requires_registration(self) -> None:
+        ds = _dataset("dim", "meas")
+        local = WizardLocalField.measure(title="Revenue", formula="SUM([Sales])", guid="lf-unregistered")
+        builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", local])
+
+        with pytest.raises(DataLensValidationError, match=r"Call add_local_field\(field\)"):
+            _build(builder)
+
     def test_add_aggregated_measure_creates_local_direct_field(self) -> None:
         ds = _dataset("dim", "meas")
+        unique_dimension = WizardAggregatedMeasure(
+            field=ds.fields.by_name("field_dim"),
+            aggregation="countunique",
+            title="Unique dimensions",
+            guid="unique-dimensions",
+        )
         builder = (
             _factory.line(name="Chart", location=_loc())
             .dataset(ds)
-            .add_aggregated_measure(ds.fields.by_name("field_dim"), aggregation="countunique")
+            .add_aggregated_measure(unique_dimension)
+            .y([unique_dimension])
         )
         data = _build(builder)
-        updates = cast(list[dict[str, Any]], data.get("updates", []))
+        updates = _source_items(data, "updates")
         assert len(updates) == 1
         field = cast(dict[str, Any], updates[0]["field"])
         assert field["calc_mode"] == "direct"
         assert field["aggregation"] == "countunique"
         assert field["type"] == "MEASURE"
+        assert field["guid"] == unique_dimension.guid
+        assert _items_in_ph(data, "y")[0]["guid"] == unique_dimension.guid
 
     def test_add_aggregated_measure_copies_formula_dimension(self) -> None:
         formula_dimension = DatasetField(
@@ -1068,14 +1272,15 @@ class TestAddLocalFieldHelper:
             type="DIMENSION",
             formula="IF([flag], [gmv], [gmv] * [rate])",
         )
-        builder = _factory.line(name="Chart", location=_loc()).add_aggregated_measure(
-            formula_dimension,
+        measure = WizardAggregatedMeasure(
+            field=formula_dimension,
             aggregation="sum",
-            name="GMV",
+            title="GMV",
             guid="gmv_sum",
         )
+        builder = _factory.line(name="Chart", location=_loc()).add_aggregated_measure(measure)
         data = _build(builder)
-        field = cast(dict[str, Any], data["updates"][0]["field"])
+        field = cast(dict[str, Any], _source_items(data, "updates")[0]["field"])
         assert field["title"] == "GMV"
         assert field["calc_mode"] == "formula"
         assert field["formula"] == "IF([flag], [gmv], [gmv] * [rate])"
@@ -1087,59 +1292,65 @@ class TestAddLocalFieldHelper:
 class TestHierarchyHelper:
     def test_hierarchy_adds_to_hierarchies_in_data(self) -> None:
         ds = _dataset("region", "city", "meas")
+        hierarchy = WizardHierarchy(
+            title="Location",
+            fields=[ds.fields.by_guid("region"), ds.fields.by_guid("city")],
+            guid="location",
+        )
+        assert hierarchy.fields == (ds.fields.by_guid("region"), ds.fields.by_guid("city"))
         builder = (
             _factory.flat_table(name="Chart", location=_loc())
             .dataset(ds)
             .columns(["region", "city", "meas"])
-            .add_hierarchy("Location", ["region", "city"])
+            .add_hierarchy(hierarchy)
         )
         data = _build(builder)
-        hierarchies = cast(list[dict[str, Any]], data.get("hierarchies", []))
+        hierarchies = _source_items(data, "hierarchies")
         assert len(hierarchies) == 1
         hier = hierarchies[0]
         assert hier["title"] == "Location"
-        assert hier["type"] == "PSEUDO"
-        assert hier["className"] == "item dimension-item"
-        assert hier["data_type"] == "hierarchy"
-        assert hier["valid"] is True
-        assert set(hier.keys()) == {"guid", "title", "className", "type", "data_type", "valid", "fields"}
+        assert set(hier.keys()) == {"guid", "title", "fields"}
         assert isinstance(hier["fields"], list)
         assert len(hier["fields"]) == 2
-        # Fields must be full snapshots, not guid strings.
+        # Wizard V1 source hierarchies carry minimal field references.
         field0 = cast(dict[str, Any], hier["fields"][0])
         assert isinstance(field0, dict)
         assert field0["guid"] in {"region", "city"}
-        assert field0["calc_mode"] == "direct"
         assert field0.get("datasetId") == "ds1"
-        assert {"guid", "title", "type", "data_type", "calc_mode"}.issubset(field0.keys())
+        assert set(field0) == {"guid", "datasetId"}
 
-    def test_hierarchy_placed_via_placeholder_setter_mounts_seven_key_object(self) -> None:
+    def test_hierarchy_placed_via_slot_setter_mounts_closed_object(self) -> None:
         ds = _dataset("region", "city", "meas")
+        hierarchy = WizardHierarchy(
+            title="Location",
+            fields=[ds.fields.by_guid("region"), ds.fields.by_guid("city")],
+            guid="location",
+        )
         builder = (
             _factory.flat_table(name="Chart", location=_loc())
             .dataset(ds)
-            .columns(["Location", "meas"])
-            .add_hierarchy("Location", ["region", "city"])
+            .add_hierarchy(hierarchy)
+            .columns([hierarchy, "meas"])
         )
         data = _build(builder)
-        hierarchies = cast(list[dict[str, Any]], data.get("hierarchies", []))
+        hierarchies = _source_items(data, "hierarchies")
         assert len(hierarchies) == 1
         hier = hierarchies[0]
 
         columns_items = _items_in_ph(data, "flat-table-columns")
-        assert columns_items, "flat-table-columns placeholder must contain items"
+        assert columns_items, "flat-table columns slot must contain items"
         first = columns_items[0]
-        # Mounted object is the hierarchy itself (7 keys, no datasetId at top level).
+        # Mounted hierarchy uses the closed Wizard V1 item projection.
         assert first["data_type"] == "hierarchy"
         assert first["guid"] == hier["guid"]
-        assert set(first.keys()) == {"guid", "title", "className", "type", "data_type", "valid", "fields"}
+        assert set(first.keys()) == {"guid", "title", "data_type", "fields"}
 
 
 class TestPointSizeRangeHelper:
     def test_point_size_range_writes_geopointsConfig(self) -> None:
         builder = _factory.scatter(name="Chart", location=_loc()).point_size_range(min_radius=3.0, max_radius=12.0)
         data = _build(builder)
-        config = cast(dict[str, Any], data.get("geopointsConfig", {}))
+        config = _slot_settings(data, "size")
         assert config.get("minRadius") == 3.0
         assert config.get("maxRadius") == 12.0
         assert config.get("radius") == 7.5
@@ -1156,7 +1367,7 @@ class TestShapeByDimensionHelper:
             .shape_by_dimension("dim", shapes_map={"Category A": "Solid", "Category B": "Dash"})
         )
         data = _build(builder)
-        config = cast(dict[str, Any], data.get("shapesConfig", {}))
+        config = _slot_settings(data, "shapes")
         assert config.get("fieldGuid") == "dim"
         mounted = cast(dict[str, Any], config.get("mountedShapes", {}))
         assert mounted.get("Category A") == "Solid"
@@ -1168,7 +1379,7 @@ class TestShapeByDimensionHelper:
             _factory.line(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"]).shape_by_dimension("dim")
         )
         data = _build(builder)
-        config = cast(dict[str, Any], data.get("shapesConfig", {}))
+        config = _slot_settings(data, "shapes")
         assert config.get("fieldGuid") == "dim"
         assert "mountedShapes" not in config
 
@@ -1182,10 +1393,10 @@ class TestShapeByDimensionHelper:
             .shape_by_measure_name(shapes_map={"measure_1": "Solid", "measure_2": "Dash"})
         )
         data = _build(builder)
-        assert cast(list[dict[str, Any]], data["shapes"])[0]["type"] == "PSEUDO"
-        assert cast(dict[str, Any], data["shapesConfig"])["mountedShapes"] == {
-            "field_measure_1": "Solid",
-            "field_measure_2": "Dash",
+        assert _items_in_ph(data, "shapes")[0]["type"] == "PSEUDO"
+        assert _slot_settings(data, "shapes")["mountedShapes"] == {
+            "measure_1": "Solid",
+            "measure_2": "Dash",
         }
 
     def test_shape_by_measure_name_requires_two_measures(self) -> None:
@@ -1206,10 +1417,10 @@ class TestShapeByDimensionHelper:
             .y2(["measure_2"])
             .shape_by_measure_name(shapes_map={"measure_1": "Solid", "measure_2": "Dash"})
         )
-        assert data["shapes"][0]["type"] == "PSEUDO"
-        assert data["shapesConfig"]["mountedShapes"] == {
-            "field_measure_1": "Solid",
-            "field_measure_2": "Dash",
+        assert _items_in_ph(data, "shapes")[0]["type"] == "PSEUDO"
+        assert _slot_settings(data, "shapes")["mountedShapes"] == {
+            "measure_1": "Solid",
+            "measure_2": "Dash",
         }
 
     def test_shape_by_measure_name_rejects_unplaced_measure(self) -> None:
@@ -1239,34 +1450,34 @@ class TestShapeByDimensionHelper:
 
 class TestUpdateVizApplicabilityGuard:
     def _wizard_chart(self, viz_id: str = "line") -> WizardChart:
+        ds = _dataset("dim", "meas")
+        builder: Any
+        if viz_id == "flatTable":
+            builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
+        elif viz_id == "pie":
+            builder = _factory.pie(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"])
+        else:
+            builder = _factory.line(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"])
         return WizardChart(
             id="chart-1",
             installation="yacloud",
-            data={
-                "visualization": {
-                    "id": viz_id,
-                    "placeholders": [
-                        {"id": "x", "items": [{"guid": "g1", "type": "DIMENSION"}]},
-                        {"id": "y", "items": [{"guid": "g2", "type": "MEASURE"}]},
-                    ],
-                }
-            },
+            data=_build(builder),
         )
 
-    def test_totals_on_line_chart_raises_configuration_error(self) -> None:
+    def test_totals_on_line_chart_is_rejected_by_generated_contract(self) -> None:
         chart = self._wizard_chart("line")
-        with pytest.raises(DataLensConfigurationError, match=r"totals.*line"):
-            chart.update.totals(enabled=True)
+        with pytest.raises(DataLensConfigurationError, match=r"line.*totals"):
+            WizardChartConverter.from_domain_update(chart.update.totals(enabled=True))
 
     def test_totals_on_flat_table_does_not_raise(self) -> None:
         chart = self._wizard_chart("flatTable")
         update = chart.update.totals(enabled=True)
         assert update is not None
 
-    def test_nulls_mode_on_pie_raises_configuration_error(self) -> None:
+    def test_nulls_mode_on_pie_is_rejected_by_generated_contract(self) -> None:
         chart = self._wizard_chart("pie")
-        with pytest.raises(DataLensConfigurationError, match=r"nulls_mode.*pie"):
-            chart.update.nulls_mode("x", mode="ignore")
+        with pytest.raises(DataLensConfigurationError, match=r"pie.*nulls"):
+            WizardChartConverter.from_domain_update(chart.update.nulls_mode("x", mode="ignore"))
 
     def test_axis_visibility_on_line_chart_does_not_raise(self) -> None:
         chart = self._wizard_chart("line")
@@ -1280,8 +1491,8 @@ class TestColorByMeasureHelper:
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
         builder.color_by_measure("meas")
         data = _build(builder)
-        cfg = cast(dict[str, Any], data.get("colorsConfig", {}))
-        assert "fieldGuid" not in cfg
+        cfg = _slot_settings(data, "colors")
+        assert cfg["fieldGuid"] == "meas"
         assert "gradientMode" not in cfg
         assert "gradientPalette" not in cfg
 
@@ -1290,14 +1501,14 @@ class TestColorByMeasureHelper:
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
         builder.color_by_measure("meas", mode="2-point", palette="blue")
         data = _build(builder)
-        cfg = cast(dict[str, Any], data.get("colorsConfig", {}))
+        cfg = _slot_settings(data, "colors")
         assert cfg.get("fieldGuid") == "meas"
         assert cfg.get("gradientMode") == "2-point"
         assert cfg.get("gradientPalette") == "blue"
         assert cfg.get("reversed") is False
         assert cfg.get("thresholdsMode") == "auto"
 
-    def test_measure_format_applies_to_semantic_color_placeholder_on_create(self) -> None:
+    def test_measure_format_applies_to_semantic_color_slot_on_create(self) -> None:
         ds = _dataset("dim", "meas", "other_dim", "color_meas")
         data = _build(
             _factory.treemap(name="Chart", location=_loc())
@@ -1318,7 +1529,7 @@ class TestColorByMeasureHelper:
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
         builder.color_by_measure("meas", mode="3-point", palette="red-orange-green", reversed=True)
         data = _build(builder)
-        cfg = cast(dict[str, Any], data.get("colorsConfig", {}))
+        cfg = _slot_settings(data, "colors")
         assert cfg.get("gradientMode") == "3-point"
         assert cfg.get("gradientPalette") == "red-orange-green"
         assert cfg.get("reversed") is True
@@ -1327,7 +1538,7 @@ class TestColorByMeasureHelper:
         ds = _dataset("dim", "meas")
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
         with pytest.raises(DataLensConfigurationError, match="gradient palette"):
-            builder.color_by_measure("meas", palette="classic20")  # type: ignore[arg-type]
+            cast(Any, builder).color_by_measure("meas", palette="classic20")
 
     @pytest.mark.parametrize(
         ("mode", "palette"),
@@ -1359,9 +1570,10 @@ class TestColorByMeasureHelper:
         mode: Any,
         palette: Any,
     ) -> None:
+        ds = _dataset("dim", "meas")
         chart = WizardChart(
             id="chart-1",
-            data={"visualization": {"id": "flatTable", "placeholders": []}},
+            data=_build(_factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])),
         )
 
         with pytest.raises(DataLensConfigurationError, match=r"does not support mode"):
@@ -1372,8 +1584,8 @@ class TestColorByMeasureHelper:
         builder = _factory.flat_table(name="Chart", location=_loc()).dataset(ds).columns(["dim", "meas"])
         builder.color_by_measure("meas")
         data = _build(builder)
-        colors = cast(list[dict[str, Any]], data.get("colors", []))
-        assert any(c.get("guid") == "meas" and c.get("type") == "MEASURE" for c in colors)
+        colors = _items_in_ph(data, "colors")
+        assert any(c.get("guid") == "meas" for c in colors)
 
     def test_color_by_measure_rejects_dimension(self) -> None:
         ds = _dataset("dim", "meas")
@@ -1424,11 +1636,7 @@ class TestSemanticEncodingUpdates:
     @staticmethod
     def _encoding_fragment(data: dict[str, Any]) -> dict[str, Any]:
         visualization = cast(dict[str, Any], data["visualization"])
-        x_placeholder = next(
-            placeholder
-            for placeholder in cast(list[dict[str, Any]], visualization["placeholders"])
-            if placeholder["id"] == "x"
-        )
+        x_slot = cast(dict[str, Any], visualization["x"])
 
         def normalize_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
             # ``id`` and ``datasetName`` are renderer/provenance details that
@@ -1440,9 +1648,9 @@ class TestSemanticEncodingUpdates:
             ]
 
         return {
-            "colors": normalize_items(cast(list[dict[str, Any]], data["colors"])),
-            "colorsConfig": data["colorsConfig"],
-            "categoryItems": normalize_items(cast(list[dict[str, Any]], x_placeholder["items"])),
+            "colors": normalize_items(_items_in_ph(data, "colors")),
+            "colorsConfig": _slot_settings(data, "colors"),
+            "categoryItems": normalize_items(cast(list[dict[str, Any]], x_slot["items"])),
         }
 
     @pytest.mark.parametrize(
@@ -1489,9 +1697,9 @@ class TestSemanticEncodingUpdates:
             self._chart(source).update.shape_by_measure_name(shapes_map={"measure_1": "Solid", "measure_2": "Dash"})
         )
 
-        assert actual["shapes"] == baseline["shapes"]
-        assert actual["shapesConfig"] == baseline["shapesConfig"]
-        assert "fieldGuid" not in actual["shapesConfig"]
+        assert _items_in_ph(actual, "shapes") == _items_in_ph(baseline, "shapes")
+        assert _slot_settings(actual, "shapes") == _slot_settings(baseline, "shapes")
+        assert "fieldGuid" not in _slot_settings(actual, "shapes")
 
     def test_shape_dimension_replacement_clears_previous_mounted_shapes(self) -> None:
         ds = _dataset("dim", "measure_1", "other_dim", "measure_2")
@@ -1505,7 +1713,7 @@ class TestSemanticEncodingUpdates:
 
         actual = self._update_data(self._chart(source).update.shape_by_dimension(ds.fields.by_name("field_other_dim")))
 
-        assert actual["shapesConfig"] == {"fieldGuid": "other_dim"}
+        assert _slot_settings(actual, "shapes") == {"fieldGuid": "other_dim"}
 
     def test_funnel_dimension_color_writes_a_data_encoding(self) -> None:
         ds = _dataset("dim", "meas")
@@ -1513,20 +1721,23 @@ class TestSemanticEncodingUpdates:
             _factory.funnel(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"]).color_by_dimension("dim")
         )
 
-        assert data["colors"][0]["guid"] == "dim"
-        assert data["colors"][0]["type"] == "DIMENSION"
-        assert data["colorsConfig"] == {"palette": "datalens-classic-20"}
+        assert _items_in_ph(data, "colors")[0]["guid"] == "dim"
+        assert set(_items_in_ph(data, "colors")[0]) == {"guid", "datasetId"}
+        assert _slot_settings(data, "colors") == {"palette": "datalens-classic-20"}
 
     def test_last_color_call_wins_on_update(self) -> None:
         ds = _dataset("dim", "meas")
         original = _build(
             _factory.column(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"]).color_by_dimension("dim")
         )
-        data = self._update_data(self._chart(original).update.color_by_dimension("dim").color_by_measure("meas"))
-        assert cast(list[dict[str, Any]], data["colors"])[0]["guid"] == "meas"
-        assert cast(list[dict[str, Any]], data["colors"])[0]["type"] == "MEASURE"
+        data = self._update_data(
+            self._chart(original)
+            .update.color_by_dimension(ds.fields.by_name("field_dim"))
+            .color_by_measure(ds.fields.by_name("field_meas"))
+        )
+        assert _items_in_ph(data, "colors")[0]["guid"] == "meas"
 
-    def test_measure_format_applies_to_semantic_color_placeholder_on_update(self) -> None:
+    def test_measure_format_applies_to_semantic_color_slot_on_update(self) -> None:
         ds = _dataset("dim", "meas", "other_dim", "color_meas")
         original = _build(
             _factory.treemap(name="Chart", location=_loc())
@@ -1561,27 +1772,27 @@ class TestSemanticEncodingUpdates:
             .update.shape_by_dimension("dim")
             .shape_by_measure_name(shapes_map={"measure_1": "Solid", "measure_2": "Dash"})
         )
-        assert cast(list[dict[str, Any]], data["shapes"])[0]["type"] == "PSEUDO"
-        assert data["shapesConfig"]["mountedShapes"] == {
-            "field_measure_1": "Solid",
-            "field_measure_2": "Dash",
+        assert _items_in_ph(data, "shapes")[0]["type"] == "PSEUDO"
+        assert _slot_settings(data, "shapes")["mountedShapes"] == {
+            "measure_1": "Solid",
+            "measure_2": "Dash",
         }
 
     @pytest.mark.parametrize("viz_method", ["pie", "donut"])
-    def test_pie_family_update_replaces_dedicated_color_placeholder(self, viz_method: str) -> None:
+    def test_pie_family_update_replaces_dedicated_color_slot(self, viz_method: str) -> None:
         ds = _dataset("dim", "meas", "other_dim")
         original = _build(
             getattr(_factory, viz_method)(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"])
         )
         data = self._update_data(self._chart(original).update.color_by_dimension(ds.fields.by_name("field_other_dim")))
         assert _items_in_ph(data, "colors")[0]["guid"] == "other_dim"
-        assert data["colorsConfig"]["palette"] == "datalens-classic-20"
+        assert _slot_settings(data, "colors")["palette"] == "datalens-classic-20"
 
-    def test_treemap_membership_is_validated_on_update(self) -> None:
+    def test_treemap_accepts_an_independent_dimension_on_update(self) -> None:
         ds = _dataset("dim", "meas", "other_dim")
         original = _build(_factory.treemap(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"]))
-        with pytest.raises(DataLensConfigurationError, match=r"placed in the 'dimensions' section"):
-            self._update_data(self._chart(original).update.color_by_dimension(ds.fields.by_name("field_other_dim")))
+        data = self._update_data(self._chart(original).update.color_by_dimension(ds.fields.by_name("field_other_dim")))
+        assert _items_in_ph(data, "colors")[0]["guid"] == "other_dim"
 
     def test_metric_rejects_color_encoding_on_update(self) -> None:
         ds = _dataset("dim", "meas")
@@ -1591,6 +1802,21 @@ class TestSemanticEncodingUpdates:
 
 
 class TestMeasureFormatHelper:
+    @pytest.mark.parametrize("unit", ["b", "t"])
+    def test_measure_format_preserves_openapi_unit(self, unit: Literal["b", "t"]) -> None:
+        ds = _dataset("dim", "meas")
+        builder = (
+            _factory.flat_table(name="Chart", location=_loc())
+            .dataset(ds)
+            .columns(["dim", "meas"])
+            .measure_format("meas", unit=unit)
+        )
+
+        data = _build(builder)
+        items = _items_in_ph(data, "flat-table-columns")
+        meas_item = next(it for it in items if it.get("guid") == "meas")
+        assert cast(dict[str, Any], meas_item["formatting"])["unit"] == unit
+
     def test_measure_format_patches_item_formatting(self) -> None:
         ds = _dataset("dim", "meas")
         builder = (
@@ -1636,74 +1862,148 @@ class TestMeasureFormatHelper:
         assert fmt.get("precision") == 1
 
     def test_measure_format_patches_local_field_in_updates(self) -> None:
+        ds = _dataset("dim", "meas")
+        revenue = WizardLocalField.measure(title="Revenue", formula="SUM([Sales])", guid="lf1")
         builder = (
             _factory.flat_table(name="Chart", location=_loc())
-            .add_local_field(title="Revenue", formula="SUM([Sales])", guid="lf1", measure=True)
-            .columns(["lf1"])
-            .measure_format("lf1", format="currency", prefix="$")
+            .dataset(ds)
+            .add_local_field(revenue)
+            .columns([revenue])
+            .measure_format(revenue, format="number", prefix="$")
         )
         data = _build(builder)
-        updates = cast(list[dict[str, Any]], data.get("updates", []))
-        found = False
-        for upd in updates:
-            field = cast(dict[str, Any], upd.get("field", {}))
-            if field.get("guid") == "lf1":
-                fmt = cast(dict[str, Any], field.get("formatting", {}))
-                assert fmt.get("format") == "currency"
-                assert fmt.get("prefix") == "$"
-                found = True
-        assert found, "measure_format must patch local field formatting in updates"
+        updates = _source_items(data, "updates")
+        assert any(upd.get("field", {}).get("guid") == "lf1" for upd in updates)
+        item = _items_in_ph(data, "flat-table-columns")[0]
+        assert item["formatting"] == {"format": "number", "prefix": "$"}
 
     def test_measure_format_mirrors_to_labels(self) -> None:
         ds = _dataset("dim", "meas")
         builder = (
-            _factory.flat_table(name="Chart", location=_loc())
+            _factory.column(name="Chart", location=_loc())
             .dataset(ds)
-            .columns(["dim", "meas"])
+            .x(["dim"])
+            .y(["meas"])
             .labels(["meas"])
-            .measure_format("meas", format="currency", prefix="$")
+            .measure_format("meas", format="number", prefix="$")
         )
         data = _build(builder)
-        labels = cast(list[dict[str, Any]], data.get("labels", []))
+        labels = _items_in_ph(data, "labels")
         label_item = next(it for it in labels if it.get("guid") == "meas")
         fmt = cast(dict[str, Any], label_item.get("formatting", {}))
-        assert fmt.get("format") == "currency"
+        assert fmt.get("format") == "number"
+
+    @staticmethod
+    def _assert_format_stays_off_sort_reference(data: dict[str, Any], *, guid: str) -> None:
+        expected = {"format": "number", "precision": 2}
+        assert _items_in_ph(data, "x")[0]["formatting"] == expected
+        assert _items_in_ph(data, "labels")[0]["formatting"] == expected
+        sort_items = _items_in_ph(data, "sort")
+        target = next(item for item in sort_items if item.get("guid") == guid)
+        assert target == {"guid": guid, "datasetId": "ds1", "direction": "DESC"}
+        assert all("formatting" not in item for item in sort_items)
+
+    def test_direct_measure_format_and_sort_compose_on_create(self) -> None:
+        ds = _dataset("dim", "meas")
+        measure = ds.fields.by_name("field_meas")
+        data = _build(
+            _factory.bar(name="Chart", location=_loc())
+            .dataset(ds)
+            .x([measure])
+            .y(["dim"])
+            .labels([measure])
+            .add_sort(measure, direction="desc")
+            .measure_format(measure, format="number", precision=2)
+        )
+
+        self._assert_format_stays_off_sort_reference(data, guid="meas")
+
+    def test_direct_measure_format_and_sort_compose_on_update(self) -> None:
+        ds = _dataset("dim", "meas")
+        measure = ds.fields.by_name("field_meas")
+        original = _build(_factory.bar(name="Chart", location=_loc()).dataset(ds).x([measure]).y(["dim"]))
+        chart = WizardChart(id="chart-1", installation="yacloud", data=original)
+        update = (
+            chart.update.labels([measure])
+            .add_sort(measure, direction="desc")
+            .measure_format(measure, format="number", precision=2)
+        )
+        data = cast(
+            dict[str, Any],
+            WizardChartConverter.from_domain_update(update).to_payload()["data"],
+        )
+
+        self._assert_format_stays_off_sort_reference(data, guid="meas")
+
+    def test_local_measure_format_and_sort_compose_on_create(self) -> None:
+        ds = _dataset("dim", "meas")
+        local = WizardLocalField.measure(guid="lf1", title="Revenue", formula="SUM([field_meas])")
+        data = _build(
+            _factory.bar(name="Chart", location=_loc())
+            .dataset(ds)
+            .add_local_field(local)
+            .x([local])
+            .y(["dim"])
+            .labels([local])
+            .add_sort(local, direction="desc")
+            .measure_format(local, format="number", precision=2)
+        )
+
+        self._assert_format_stays_off_sort_reference(data, guid="lf1")
+
+    def test_local_measure_format_and_sort_compose_on_update(self) -> None:
+        ds = _dataset("dim", "meas")
+        local = WizardLocalField.measure(guid="lf1", title="Revenue", formula="SUM([field_meas])")
+        original = _build(
+            _factory.bar(name="Chart", location=_loc()).dataset(ds).add_local_field(local).x([local]).y(["dim"])
+        )
+        chart = WizardChart(id="chart-1", installation="yacloud", data=original)
+        update = (
+            chart.update.labels([local])
+            .add_sort(local, direction="desc")
+            .measure_format(local, format="number", precision=2)
+        )
+        data = cast(
+            dict[str, Any],
+            WizardChartConverter.from_domain_update(update).to_payload()["data"],
+        )
+
+        self._assert_format_stays_off_sort_reference(data, guid="lf1")
 
 
 class TestLocalFieldDatasetIdRegression:
     def test_add_local_field_update_carries_dataset_id(self) -> None:
         ds = _dataset("dim", "meas")
-        builder = (
-            _factory.line(name="Chart", location=_loc())
-            .dataset(ds)
-            .add_local_field(title="Revenue", formula="SUM([Sales])", guid="lf1", measure=True)
-        )
+        revenue = WizardLocalField.measure(title="Revenue", formula="SUM([Sales])", guid="lf1")
+        builder = _factory.line(name="Chart", location=_loc()).dataset(ds).add_local_field(revenue)
         data = _build(builder)
-        updates = cast(list[dict[str, Any]], data.get("updates", []))
+        updates = _source_items(data, "updates")
         assert len(updates) == 1
         field = cast(dict[str, Any], updates[0]["field"])
         assert field.get("datasetId") == "ds1"
 
     def test_add_aggregated_measure_carries_dataset_id(self) -> None:
         ds = _dataset("dim", "meas")
-        builder = (
-            _factory.line(name="Chart", location=_loc())
-            .dataset(ds)
-            .add_aggregated_measure(ds.fields.by_name("field_dim"), aggregation="countunique")
+        unique_dimension = WizardAggregatedMeasure(
+            field=ds.fields.by_name("field_dim"),
+            aggregation="countunique",
+            title="Unique dimensions",
         )
+        builder = _factory.line(name="Chart", location=_loc()).dataset(ds).add_aggregated_measure(unique_dimension)
         data = _build(builder)
-        updates = cast(list[dict[str, Any]], data.get("updates", []))
+        updates = _source_items(data, "updates")
         assert len(updates) == 1
         field = cast(dict[str, Any], updates[0]["field"])
         assert field.get("datasetId") == "ds1"
 
-    def test_local_field_placeholder_item_carries_dataset_id(self) -> None:
+    def test_local_field_slot_item_carries_dataset_id(self) -> None:
         ds = _dataset("dim", "meas")
+        revenue = WizardLocalField.measure(title="Revenue", formula="SUM([Sales])", guid="lf1")
         builder = (
             _factory.flat_table(name="Chart", location=_loc())
             .dataset(ds)
-            .add_local_field(title="Revenue", formula="SUM([Sales])", guid="lf1", measure=True)
-            .columns(["dim", "lf1"])
+            .add_local_field(revenue)
+            .columns(["dim", revenue])
         )
         data = _build(builder)
         items = _items_in_ph(data, "flat-table-columns")
@@ -1744,10 +2044,16 @@ class TestLocalFieldDatasetIdRegression:
         builder = (
             _factory.line(name="Chart", location=_loc())
             .dataset(ds)
-            .add_aggregated_measure(avatar_field, aggregation="countunique")
+            .add_aggregated_measure(
+                WizardAggregatedMeasure(
+                    field=avatar_field,
+                    aggregation="countunique",
+                    title="Unique dimensions",
+                )
+            )
         )
         data = _build(builder)
-        updates = cast(list[dict[str, Any]], data.get("updates", []))
+        updates = _source_items(data, "updates")
         assert len(updates) == 1
         field = cast(dict[str, Any], updates[0]["field"])
         assert field.get("avatar_id") == "avatar-42"

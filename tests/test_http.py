@@ -467,6 +467,38 @@ def test_unique_violation_http_400_raises_conflict_with_original_context() -> No
     assert exc_info.value.context.attempts == 1
 
 
+def test_validation_error_preserves_array_details() -> None:
+    details: list[object] = [
+        {
+            "code": "invalid_type",
+            "expected": "string",
+            "path": ["data", "sources", "updates", 0, "field", "avatar_id"],
+        }
+    ]
+    with (
+        DataLensHTTPClient(
+            installation="yacloud",
+            sdk_version="1.2.3",
+            api_version="3",
+            base_url="https://example.test",
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(
+                    400,
+                    json={
+                        "code": "VALIDATION_ERROR",
+                        "message": "Invalid params",
+                        "details": details,
+                    },
+                )
+            ),
+        ) as http_client,
+        pytest.raises(BadRequestError) as exc_info,
+    ):
+        ConnectionAPI(http_client).get("connection-1")
+
+    assert exc_info.value.context.details == details
+
+
 def test_non_dataset_http_400_still_raises() -> None:
     with (
         DataLensHTTPClient(

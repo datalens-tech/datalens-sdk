@@ -183,6 +183,12 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
     `"widget"`. Treat this id as the chart's layout primary key: use it in
     `Layout.*`, `apply_layout`, move/resize/swap/pin operations, connections,
     replacements, and removals.
+12. **Wizard-owned fields use stable handles.** Construct formula locals,
+    aggregated measures, and hierarchies as `WizardLocalField`,
+    `WizardAggregatedMeasure`, and `WizardHierarchy`; pass the handle to the
+    matching `add_*` method and reuse that same object in placeholders and
+    decorations. After a fetch, resolve direct fields by saved `DatasetField`
+    or exact GUID, never by a chart-field title.
 
 ## Top mistakes
 
@@ -195,6 +201,8 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 | Read fields from the dataset create response | Re-fetch with `client.get.dataset(by_id=...)` |
 | Treat successful formula persistence as semantic validation | Validate or render the formula-dependent result |
 | Add a dashboard chart without an id, or use `main`/`chart_1` | Pass a stable semantic `item_id=`, such as `orders_trend` |
+| Refer to a new Wizard-local field by its title | Create a GUID-bearing Wizard handle, add it, and reuse the same object |
+| Resolve a fetched chart field by title | Keep its `DatasetField` or resolve the exact GUID with `chart.fields.by_guid(...)` |
 | Guess a factory, setter, field, or enum | Use the matching `client.capabilities` inventory, builder introspection, and the relevant matrix |
 | Debug by printing credentials or only the exception text | Keep tokens opaque and report `e.context.request_id` |
 | Fall back to raw HTTP or private imports | Stay on the documented public SDK surface |

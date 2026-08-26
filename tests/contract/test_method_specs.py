@@ -3,16 +3,9 @@ from __future__ import annotations
 import inspect
 from typing import Any, Literal, cast, get_args, get_origin, get_type_hints
 
-from datalens_sdk._generated.builders.charts import (
-    CombinedChartWizardChartCreate,
-    FlatTableWizardChartCreate,
-    GeolayerWizardChartCreate,
-    LineWizardChartCreate,
-    MetricWizardChartCreate,
-    PivotTableWizardChartCreate,
-    ScatterWizardChartCreate,
-    WizardChartCreateFactory,
-)
+from datalens_sdk._generated.builders import charts as generated_charts
+from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk._runtime.chart_builder_base import (
     _CombinedWizardChartCreate,
     _GeolayerWizardChartCreate,
@@ -24,23 +17,31 @@ from datalens_sdk._runtime.chart_builder_base import (
 from datalens_sdk._runtime.method_specs import (
     METHOD_SPECS,
     MethodSpec,
-    method_specs_for_viz,
+    method_requires_generated_structure,
+    method_specs_for_visualization,
 )
-from datalens_sdk._runtime.viz_specs import (
-    VIZ_SPECS,
-    factory_method_name,
+from datalens_sdk._runtime.viz_specs import factory_method_name
+from datalens_sdk._runtime.wizard_semantics import (
+    WIZARD_VISUALIZATION_SEMANTICS,
     get_wizard_encoding,
-    viz_ids_for_wizard_encoding,
+    visualization_types_for_wizard_encoding,
 )
-from datalens_sdk.codegen import _HELPER_WRAPPERS, _viz_methods
+from datalens_sdk.codegen import _HELPER_WRAPPERS, _method_is_supported_by_structure, _wizard_slot_methods
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.wizard_chart import WizardChartUpdate
 
+CombinedChartWizardChartCreate = cast(Any, getattr(generated_charts, "CombinedChartWizardChartCreate", None))
+FlatTableWizardChartCreate = cast(Any, getattr(generated_charts, "FlatTableWizardChartCreate", None))
+GeolayerWizardChartCreate = cast(Any, getattr(generated_charts, "GeolayerWizardChartCreate", None))
+LineWizardChartCreate = cast(Any, getattr(generated_charts, "LineWizardChartCreate", None))
+MetricWizardChartCreate = cast(Any, getattr(generated_charts, "MetricWizardChartCreate", None))
+PivotTableWizardChartCreate = cast(Any, getattr(generated_charts, "PivotTableWizardChartCreate", None))
+ScatterWizardChartCreate = cast(Any, getattr(generated_charts, "ScatterWizardChartCreate", None))
+
 _KEY_FOR_KIND: dict[str, str] = {
-    "placeholder": "wire_key",
-    "data_field": "wire_key",
-    "extra_setting": "wire_key",
-    "ph_setting": "setting_key",
+    "slot": "slot_name",
+    "chart_setting": "setting_key",
+    "slot_setting": "setting_key",
 }
 
 _ALL_KINDS = frozenset(_KEY_FOR_KIND) | {"helper"}
@@ -48,6 +49,8 @@ _CREATE_INFRASTRUCTURE_METHODS = frozenset({"dataset", "build", "execute", "viz_
 _UPDATE_PARITY_HELPERS = frozenset(
     {
         "chart_title",
+        "label_mode",
+        "labels_position",
         "navigator",
         "axis_title",
         "axis_scale",
@@ -91,6 +94,16 @@ _UPDATE_HELPER_EXCEPTIONS: frozenset[str] = frozenset()
 #     lifted it from this set; the data_field parity check now covers it.
 _UPDATE_PARITY_GROUP_A_EXCEPTIONS = frozenset({"sort"})
 
+_STRUCTURE_REQUIREMENT_FIELDS = frozenset(
+    {
+        "required_chart_settings",
+        "required_chart_setting_enum",
+        "required_slot_carrier",
+        "required_slot_settings",
+        "required_slot_settings_any",
+    }
+)
+
 _ENCODING_METHODS = {
     ("color", "dimension"): "color_by_dimension",
     ("color", "measure"): "color_by_measure",
@@ -127,6 +140,14 @@ _EXPECTED_ENCODING_METHODS_BY_VIZ: dict[str, frozenset[str]] = {
 }
 
 
+def _supported_method_specs(viz_id: str) -> dict[str, MethodSpec]:
+    return {
+        name: spec
+        for name, spec in method_specs_for_visualization(viz_id).items()
+        if _method_is_supported_by_structure(name, spec, WIZARD_VISUALIZATION_STRUCTURE[viz_id])
+    }
+
+
 def test_every_spec_has_known_kind() -> None:
     for name, spec in METHOD_SPECS.items():
         assert spec["kind"] in _ALL_KINDS, f"{name} has unknown kind {spec['kind']!r}"
@@ -149,6 +170,53 @@ def test_every_helper_spec_declares_helper_field() -> None:
         assert isinstance(helper, str), f"helper spec {name!r}.helper must be a str"
 
 
+def test_schema_derived_helper_carriers_live_in_method_specs() -> None:
+    assert {
+        name: spec["required_chart_settings"]
+        for name, spec in METHOD_SPECS.items()
+        if "required_chart_settings" in spec
+    } == {
+        "chart_title": frozenset({"title", "titleMode"}),
+        "font_color": frozenset({"metricFontColor"}),
+        "font_size": frozenset({"metricFontSize"}),
+        "freeze_columns": frozenset({"pinnedColumns"}),
+        "navigator": frozenset({"navigatorSettings"}),
+        "pagination": frozenset({"limit", "pagination"}),
+        "shape": frozenset({"shape"}),
+        "table_size": frozenset({"size"}),
+    }
+    assert {
+        name: spec["required_slot_settings"] for name, spec in METHOD_SPECS.items() if "required_slot_settings" in spec
+    } == {
+        "axis_scale": frozenset({"scale", "scaleValue", "type"}),
+        "axis_title": frozenset({"title", "titleValue"}),
+        "grid": frozenset({"grid", "gridStep", "gridStepValue"}),
+        "point_size_range": frozenset({"maxRadius", "minRadius", "radius"}),
+    }
+    assert {
+        name: spec["required_slot_settings_any"]
+        for name, spec in METHOD_SPECS.items()
+        if "required_slot_settings_any" in spec
+    } == {"labels_position": frozenset({"labelsPosition", "position"})}
+    assert {
+        name: spec["required_slot_carrier"] for name, spec in METHOD_SPECS.items() if "required_slot_carrier" in spec
+    } == {
+        "add_sort": "sort",
+        "label_mode": "labels",
+        "labels_position": "labels",
+        "point_size_range": "size",
+    }
+
+
+def test_method_requires_generated_structure_covers_every_carrier_descriptor() -> None:
+    expected = {name for name, spec in METHOD_SPECS.items() if _STRUCTURE_REQUIREMENT_FIELDS & spec.keys()}
+    actual = {name for name in METHOD_SPECS if method_requires_generated_structure(name)}
+
+    assert actual == expected
+    assert method_requires_generated_structure("freeze_columns")
+    assert not method_requires_generated_structure("unknown")
+
+
 def test_literal_specs_declare_literal_values() -> None:
     for name, spec in METHOD_SPECS.items():
         if spec.get("value_type") == "literal":
@@ -167,47 +235,45 @@ def test_bool_specs_declare_value_map() -> None:
 
 def test_viz_ids_reference_existing_viz() -> None:
     for name, spec in METHOD_SPECS.items():
-        viz_ids = spec.get("viz_ids")
-        if viz_ids:
-            unknown = viz_ids - set(VIZ_SPECS)
+        visualization_types = spec.get("visualization_types")
+        if visualization_types:
+            unknown = visualization_types - set(WIZARD_VISUALIZATION_SEMANTICS)
             assert not unknown, f"{name} references unknown viz: {sorted(unknown)}"
 
 
-def test_method_specs_for_viz_returns_universal_methods() -> None:
-    universal = {name for name, spec in METHOD_SPECS.items() if not spec.get("viz_ids")}
-    for viz_id in VIZ_SPECS:
-        applicable = method_specs_for_viz(viz_id)
+def test_method_specs_for_visualization_returns_universal_methods() -> None:
+    universal = {
+        name
+        for name, spec in METHOD_SPECS.items()
+        if not spec.get("visualization_types") and not spec.get("excluded_visualization_types")
+    }
+    for viz_id in WIZARD_VISUALIZATION_SEMANTICS:
+        applicable = method_specs_for_visualization(viz_id)
         assert universal <= set(applicable)
 
 
-def test_method_specs_for_viz_filters_by_membership() -> None:
-    assert "segments" in method_specs_for_viz("line")
-    assert "segments" not in method_specs_for_viz("bar")
-    assert "totals" in method_specs_for_viz("flatTable")
-    assert "totals" not in method_specs_for_viz("line")
-
-
-def test_method_specs_for_viz_returns_only_declared_methods() -> None:
-    for viz_id in VIZ_SPECS:
-        applicable = method_specs_for_viz(viz_id)
-        assert set(applicable) <= set(METHOD_SPECS)
+def test_method_specs_for_visualization_filters_by_sdk_policy() -> None:
+    assert "add_hierarchy" in method_specs_for_visualization("line")
+    assert "add_hierarchy" not in method_specs_for_visualization("geolayer")
+    assert "chart_title" in method_specs_for_visualization("line")
+    assert "chart_title" not in method_specs_for_visualization("metric")
 
 
 def test_methodspec_typeddict_import() -> None:
-    spec: MethodSpec = {"kind": "extra_setting", "wire_key": "legendMode"}
-    assert spec["kind"] == "extra_setting"
+    spec: MethodSpec = {"kind": "chart_setting", "setting_key": "legendMode"}
+    assert spec["kind"] == "chart_setting"
 
 
 def test_sort_excluded_from_no_sort_viz() -> None:
-    assert "sort" not in method_specs_for_viz("metric")
-    assert "sort" not in method_specs_for_viz("treemap")
+    assert "sort" not in _supported_method_specs("metric")
+    assert "sort" not in _supported_method_specs("treemap")
 
 
 def test_sort_included_for_sortable_viz() -> None:
-    assert "sort" in method_specs_for_viz("column")
-    assert "sort" in method_specs_for_viz("bar")
-    assert "sort" in method_specs_for_viz("flatTable")
-    assert "sort" in method_specs_for_viz("scatter")
+    assert "sort" in _supported_method_specs("column")
+    assert "sort" in _supported_method_specs("bar")
+    assert "sort" in _supported_method_specs("flatTable")
+    assert "sort" in _supported_method_specs("scatter")
 
 
 def test_sort_included_for_line_area_area100p() -> None:
@@ -215,103 +281,126 @@ def test_sort_included_for_line_area_area100p() -> None:
     must accept sort/add_sort. A prior SDK-only ``supports_sort=False`` flag wrongly
     excluded them; that flag is gone, so sortability follows ``allowSort`` alone."""
     for viz in ("line", "area", "area100p"):
-        assert "sort" in method_specs_for_viz(viz)
-        assert "add_sort" in method_specs_for_viz(viz)
+        assert "sort" in _supported_method_specs(viz)
+        assert "add_sort" in _supported_method_specs(viz)
 
 
 def test_labels_excluded_from_metric() -> None:
-    assert "labels" not in method_specs_for_viz("metric")
+    assert "labels" not in _supported_method_specs("metric")
 
 
 def test_labels_included_for_viz_with_allow_labels() -> None:
-    assert "labels" in method_specs_for_viz("line")
-    assert "labels" in method_specs_for_viz("column")
-    assert "labels" in method_specs_for_viz("pie")
-    assert "labels" in method_specs_for_viz("donut")
+    assert "labels" in _supported_method_specs("line")
+    assert "labels" in _supported_method_specs("column")
+    assert "labels" in _supported_method_specs("pie")
+    assert "labels" in _supported_method_specs("donut")
 
 
 def test_add_sort_excluded_from_no_sort_viz() -> None:
-    assert "add_sort" not in method_specs_for_viz("metric")
-    assert "add_sort" not in method_specs_for_viz("treemap")
+    assert "add_sort" not in _supported_method_specs("metric")
+    assert "add_sort" not in _supported_method_specs("treemap")
 
 
 def test_add_filter_included_for_geolayer() -> None:
-    assert "add_filter" in method_specs_for_viz("geolayer")
-    assert "add_date_filter" in method_specs_for_viz("geolayer")
-    assert "add_relative_date_filter" in method_specs_for_viz("geolayer")
+    assert "add_filter" in _supported_method_specs("geolayer")
+    assert "add_date_filter" in _supported_method_specs("geolayer")
+    assert "add_relative_date_filter" in _supported_method_specs("geolayer")
 
 
 def test_add_filter_included_for_combined() -> None:
-    assert "add_filter" in method_specs_for_viz("combined-chart")
-    assert "add_date_filter" in method_specs_for_viz("combined-chart")
+    assert "add_filter" in _supported_method_specs("combined-chart")
+    assert "add_date_filter" in _supported_method_specs("combined-chart")
 
 
 def test_helper_methods_returned_for_applicable_viz() -> None:
-    assert "chart_title" in method_specs_for_viz("line")
-    assert "chart_title" in method_specs_for_viz("flatTable")
-    assert "chart_title" in method_specs_for_viz("metric")
-    assert "description" in method_specs_for_viz("column")
-    assert "measure_format" in method_specs_for_viz("scatter")
+    assert "chart_title" in _supported_method_specs("line")
+    assert "chart_title" in _supported_method_specs("flatTable")
+    assert "chart_title" not in _supported_method_specs("metric")
+    assert "description" in _supported_method_specs("column")
+    assert "measure_format" in _supported_method_specs("scatter")
 
 
 def test_table_helpers_scoped_to_table_viz() -> None:
-    assert "pagination" in method_specs_for_viz("flatTable")
-    assert "pagination" in method_specs_for_viz("pivotTable")
-    assert "pagination" not in method_specs_for_viz("line")
-    assert "freeze_columns" in method_specs_for_viz("flatTable")
-    assert "freeze_columns" in method_specs_for_viz("pivotTable")
-    assert "freeze_columns" not in method_specs_for_viz("line")
-    assert "column_background" in method_specs_for_viz("pivotTable")
-    assert "column_background" not in method_specs_for_viz("scatter")
-    assert "color_by_measure" in method_specs_for_viz("flatTable")
-    assert "subtotals" in method_specs_for_viz("pivotTable")
-    assert "subtotals" not in method_specs_for_viz("flatTable")
+    assert "pagination" in _supported_method_specs("flatTable")
+    assert "pagination" in _supported_method_specs("pivotTable")
+    assert "pagination" not in _supported_method_specs("line")
+    assert "column_background" in _supported_method_specs("pivotTable")
+    assert "column_background" not in _supported_method_specs("scatter")
+    assert "color_by_measure" in _supported_method_specs("flatTable")
+    assert "subtotals" in _supported_method_specs("pivotTable")
+    assert "subtotals" not in _supported_method_specs("flatTable")
+
+
+def test_freeze_columns_generated_owners_match_pinned_columns_carriers() -> None:
+    factory = WizardChartCreateFactory(cast(Any, None))
+    location = EntryLocation.path("/Reports")
+    generated_owners = {
+        viz_id
+        for viz_id in WIZARD_VISUALIZATION_STRUCTURE
+        if callable(
+            getattr(
+                getattr(factory, factory_method_name(viz_id))(name="Chart", location=location),
+                "freeze_columns",
+                None,
+            )
+        )
+    }
+    descriptor_owners = {
+        viz_id for viz_id in WIZARD_VISUALIZATION_STRUCTURE if "freeze_columns" in _supported_method_specs(viz_id)
+    }
+    carrier_owners = {
+        viz_id
+        for viz_id, structure in WIZARD_VISUALIZATION_STRUCTURE.items()
+        if "pinnedColumns" in structure["chart_settings"]
+    }
+
+    assert generated_owners == descriptor_owners == carrier_owners == {"flatTable", "pivotTable"}
 
 
 def test_metric_helpers_scoped_to_metric() -> None:
-    assert "font_size" in method_specs_for_viz("metric")
-    assert "font_color" in method_specs_for_viz("metric")
-    assert "measure_title_mode" in method_specs_for_viz("metric")
-    assert "font_size" not in method_specs_for_viz("line")
-    assert "font_color" not in method_specs_for_viz("column")
+    assert "font_size" in _supported_method_specs("metric")
+    assert "font_color" in _supported_method_specs("metric")
+    assert "measure_title_mode" in _supported_method_specs("metric")
+    assert "font_size" not in _supported_method_specs("line")
+    assert "font_color" not in _supported_method_specs("column")
 
 
 def test_navigator_scoped_to_cartesian_linear() -> None:
-    assert "navigator" in method_specs_for_viz("line")
-    assert "navigator" in method_specs_for_viz("column")
-    assert "navigator" not in method_specs_for_viz("scatter")
-    assert "navigator" not in method_specs_for_viz("metric")
+    assert "navigator" in _supported_method_specs("line")
+    assert "navigator" in _supported_method_specs("column")
+    assert "navigator" not in _supported_method_specs("scatter")
+    assert "navigator" not in _supported_method_specs("metric")
 
 
 def test_shape_helpers_have_explicit_dimension_and_measure_scopes() -> None:
-    assert "shapes" not in _viz_methods("line")
-    assert "shapes" not in _viz_methods("scatter")
-    assert "shape_by_dimension" in method_specs_for_viz("line")
-    assert "shape_by_dimension" in method_specs_for_viz("scatter")
-    assert "shape_by_dimension" not in method_specs_for_viz("bar")
-    assert "shape_by_measure_name" in method_specs_for_viz("line")
-    assert "shape_by_measure_name" not in method_specs_for_viz("scatter")
+    assert "shapes" not in _wizard_slot_methods("line", WIZARD_VISUALIZATION_STRUCTURE["line"])
+    assert "shapes" not in _wizard_slot_methods("scatter", WIZARD_VISUALIZATION_STRUCTURE["scatter"])
+    assert "shape_by_dimension" in _supported_method_specs("line")
+    assert "shape_by_dimension" in _supported_method_specs("scatter")
+    assert "shape_by_dimension" not in _supported_method_specs("bar")
+    assert "shape_by_measure_name" in _supported_method_specs("line")
+    assert "shape_by_measure_name" not in _supported_method_specs("scatter")
 
 
 def test_point_size_range_scoped_to_scatter() -> None:
-    assert "point_size_range" in method_specs_for_viz("scatter")
-    assert "point_size_range" not in method_specs_for_viz("line")
+    assert "point_size_range" in _supported_method_specs("scatter")
+    assert "point_size_range" not in _supported_method_specs("line")
 
 
 def test_color_helpers_are_scoped_to_explicit_encoding_capabilities() -> None:
-    assert "palette" in method_specs_for_viz("line")
-    assert "palette" in method_specs_for_viz("column")
-    assert "palette" in method_specs_for_viz("scatter")
-    assert "palette" in method_specs_for_viz("pie")
-    assert "palette" in method_specs_for_viz("donut")
-    assert "palette" not in method_specs_for_viz("metric")
-    assert "color_by_dimension" in method_specs_for_viz("treemap")
-    assert "color_by_measure" in method_specs_for_viz("treemap")
-    assert "color_by_measure_name" not in method_specs_for_viz("treemap")
+    assert "palette" in _supported_method_specs("line")
+    assert "palette" in _supported_method_specs("column")
+    assert "palette" in _supported_method_specs("scatter")
+    assert "palette" in _supported_method_specs("pie")
+    assert "palette" in _supported_method_specs("donut")
+    assert "palette" not in _supported_method_specs("metric")
+    assert "color_by_dimension" in _supported_method_specs("treemap")
+    assert "color_by_measure" in _supported_method_specs("treemap")
+    assert "color_by_measure_name" not in _supported_method_specs("treemap")
 
 
 def test_wizard_encoding_compatibility_matrix_is_exact() -> None:
-    assert set(_EXPECTED_ENCODING_METHODS_BY_VIZ) == set(VIZ_SPECS)
+    assert set(_EXPECTED_ENCODING_METHODS_BY_VIZ) == set(WIZARD_VISUALIZATION_STRUCTURE)
     for viz_id, expected_methods in _EXPECTED_ENCODING_METHODS_BY_VIZ.items():
         actual_methods = {
             method_name
@@ -323,33 +412,18 @@ def test_wizard_encoding_compatibility_matrix_is_exact() -> None:
 
 def test_method_specs_are_derived_from_wizard_encoding_matrix() -> None:
     for (encoding, binding), method_name in _ENCODING_METHODS.items():
-        expected_viz_ids = viz_ids_for_wizard_encoding(cast(Any, encoding), cast(Any, binding))
-        assert METHOD_SPECS[method_name]["viz_ids"] == expected_viz_ids
-
-
-def test_encoding_placeholder_references_are_valid() -> None:
-    for viz_id, spec in VIZ_SPECS.items():
-        placeholders = cast(dict[str, object], spec.get("placeholders", {}))
-        for encoding, binding in _ENCODING_METHODS:
-            rule = get_wizard_encoding(viz_id, cast(Any, encoding), cast(Any, binding))
-            if rule is None:
-                continue
-            for key in ("placeholder", "requires_field_in", "implicit_from", "category_placeholder"):
-                placeholder_id = rule.get(key)
-                if placeholder_id is not None:
-                    assert placeholder_id in placeholders, f"{viz_id}.{encoding}.{binding}.{key}"
-            for placeholder_id in rule.get("measure_placeholders", ()):
-                assert placeholder_id in placeholders, f"{viz_id}.{encoding}.{binding}.measure_placeholders"
+        expected_viz_ids = visualization_types_for_wizard_encoding(cast(Any, encoding), cast(Any, binding))
+        assert METHOD_SPECS[method_name]["visualization_types"] == expected_viz_ids
 
 
 def test_add_hierarchy_scoped_to_table_and_cartesian() -> None:
-    assert "add_hierarchy" in method_specs_for_viz("flatTable")
-    assert "add_hierarchy" in method_specs_for_viz("pivotTable")
-    assert "add_hierarchy" in method_specs_for_viz("line")
-    assert "add_hierarchy" in method_specs_for_viz("column")
-    assert "add_hierarchy" not in method_specs_for_viz("metric")
-    assert "add_hierarchy" not in method_specs_for_viz("combined-chart")
-    assert "add_hierarchy" not in method_specs_for_viz("geolayer")
+    assert "add_hierarchy" in _supported_method_specs("flatTable")
+    assert "add_hierarchy" in _supported_method_specs("pivotTable")
+    assert "add_hierarchy" in _supported_method_specs("line")
+    assert "add_hierarchy" in _supported_method_specs("column")
+    assert "add_hierarchy" not in _supported_method_specs("metric")
+    assert "add_hierarchy" not in _supported_method_specs("combined-chart")
+    assert "add_hierarchy" not in _supported_method_specs("geolayer")
 
 
 def test_generated_wizard_leaves_inherit_their_category_base() -> None:
@@ -361,21 +435,26 @@ def test_generated_wizard_leaves_inherit_their_category_base() -> None:
     assert issubclass(ScatterWizardChartCreate, _ScatterWizardChartCreate)
 
 
-def test_generated_axis_helpers_use_leaf_axis_placeholder_literals() -> None:
-    for method_name in ("axis_title", "axis_scale", "grid"):
+def test_generated_axis_helpers_use_leaf_axis_slot_literals() -> None:
+    expected_slots = {
+        "axis_title": {"x", "y", "y2"},
+        "axis_scale": {"y", "y2"},
+        "grid": {"x", "y", "y2"},
+    }
+    for method_name, expected in expected_slots.items():
         assert method_name in LineWizardChartCreate.__dict__
-        annotation = get_type_hints(LineWizardChartCreate.__dict__[method_name])["ph_id"]
-        assert set(get_args(annotation)) == {"x", "y", "y2"}
+        annotation = get_type_hints(LineWizardChartCreate.__dict__[method_name])["slot_name"]
+        assert set(get_args(annotation)) == expected
 
 
 def _expected_create_capabilities(viz_id: str) -> set[str]:
-    capabilities = set(method_specs_for_viz(viz_id))
+    capabilities = set(_supported_method_specs(viz_id))
     if viz_id not in {"combined-chart", "geolayer"}:
-        capabilities.update(_viz_methods(viz_id))
+        capabilities.update(_wizard_slot_methods(viz_id, WIZARD_VISUALIZATION_STRUCTURE[viz_id]))
     if viz_id == "combined-chart":
         capabilities.update({"x", "add_layer"})
     if viz_id == "geolayer":
-        capabilities.update({"add_dataset", "add_layer", "map_type", "map_center"})
+        capabilities.update({"add_dataset", "add_layer", "map_center"})
     return capabilities
 
 
@@ -390,7 +469,7 @@ def _actual_create_capabilities(builder: object) -> set[str]:
 def test_create_leaf_capabilities_exactly_match_method_specs() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     location = EntryLocation.path("/Reports")
-    for viz_id in VIZ_SPECS:
+    for viz_id in WIZARD_VISUALIZATION_SEMANTICS:
         actual = _actual_create_capabilities(
             getattr(factory, factory_method_name(viz_id))(name="Chart", location=location)
         )
@@ -398,30 +477,39 @@ def test_create_leaf_capabilities_exactly_match_method_specs() -> None:
         assert actual == expected, f"{viz_id}: extra={sorted(actual - expected)}, missing={sorted(expected - actual)}"
 
 
-def test_raw_wizard_color_and_shape_placeholder_methods_are_not_generated() -> None:
+def test_raw_wizard_color_and_shape_slot_methods_are_not_generated() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     location = EntryLocation.path("/Reports")
-    for viz_id in VIZ_SPECS:
+    for viz_id in WIZARD_VISUALIZATION_SEMANTICS:
         builder = getattr(factory, factory_method_name(viz_id))(name="Chart", location=location)
         for raw_method in ("colors", "color", "shapes"):
             assert not hasattr(builder, raw_method), f"{viz_id} unexpectedly exposes {raw_method}()"
 
 
-def test_combined_exposes_group_a_without_placeholder_methods() -> None:
+def test_combined_exposes_layer_and_chart_capabilities_without_raw_slots() -> None:
     builder = WizardChartCreateFactory(cast(Any, None)).combined_chart(
         name="Chart", location=EntryLocation.path("/Reports")
     )
     for method_name in (
-        "legend",
-        "tooltip_sum",
-        "chart_title",
         "description",
         "add_filter",
         "add_sort",
+        "labels",
+        "labels_position",
+        "legend",
+        "tooltip",
+        "chart_title",
         "measure_format",
     ):
         assert callable(getattr(builder, method_name, None))
-    for method_name in ("y", "segments", "axis_title", "axis_scale", "grid"):
+    for method_name in (
+        "y",
+        "segments",
+        "axis_title",
+        "axis_scale",
+        "grid",
+        "tooltip_sum",
+    ):
         assert not hasattr(builder, method_name)
 
 
@@ -429,16 +517,18 @@ def test_every_applicable_helper_is_exposed_by_its_create_leaf() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     location = EntryLocation.path("/Reports")
 
-    for viz_id in VIZ_SPECS:
+    for viz_id in WIZARD_VISUALIZATION_SEMANTICS:
         builder = getattr(factory, factory_method_name(viz_id))(name="Chart", location=location)
-        applicable_helpers = {name for name, spec in method_specs_for_viz(viz_id).items() if spec["kind"] == "helper"}
+        applicable_helpers = {
+            name for name, spec in _supported_method_specs(viz_id).items() if spec["kind"] == "helper"
+        }
         missing = sorted(name for name in applicable_helpers if not callable(getattr(builder, name, None)))
         assert not missing, f"{viz_id}: missing applicable helper methods {missing}"
 
 
 def test_helper_capabilities_are_generated_from_the_code_generation_matrix() -> None:
     declared_helpers = {name for name, spec in METHOD_SPECS.items() if spec["kind"] == "helper"}
-    assert declared_helpers == set(_HELPER_WRAPPERS) | {"axis_title", "axis_scale", "grid"}
+    assert declared_helpers == set(_HELPER_WRAPPERS) | {"axis_title", "axis_scale", "grid", "label_mode"}
 
 
 def _parameter_shape(method: Any) -> tuple[tuple[str, object, object], ...]:
@@ -458,17 +548,17 @@ def test_update_helper_parity_has_explicit_exceptions_and_guards() -> None:
     for name in _UPDATE_PARITY_HELPERS:
         update_method = WizardChartUpdate.__dict__[name]
         assert callable(update_method)
-        viz_id = next(viz_id for viz_id in VIZ_SPECS if name in method_specs_for_viz(viz_id))
+        viz_id = next(viz_id for viz_id in WIZARD_VISUALIZATION_SEMANTICS if name in _supported_method_specs(viz_id))
         create_method = getattr(getattr(factory, factory_method_name(viz_id))(name="Chart", location=location), name)
         assert _parameter_shape(update_method) == _parameter_shape(create_method), name
-        if METHOD_SPECS[name].get("viz_ids"):
+        if METHOD_SPECS[name].get("visualization_types"):
             assert "_check_viz_applicability" in inspect.getsource(update_method), name
 
 
 def test_update_group_a_methods_match_create_signatures() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     location = EntryLocation.path("/Reports")
-    group_a_kinds = {"extra_setting", "data_field", "ph_setting"}
+    group_a_kinds = {"slot", "chart_setting", "slot_setting"}
     for name, spec in METHOD_SPECS.items():
         if spec.get("kind") not in group_a_kinds:
             continue
@@ -476,7 +566,7 @@ def test_update_group_a_methods_match_create_signatures() -> None:
             continue
         update_method = WizardChartUpdate.__dict__.get(name)
         assert update_method is not None, f"group-A method {name!r} missing on WizardChartUpdate"
-        viz_id = next(v for v in VIZ_SPECS if name in method_specs_for_viz(v))
+        viz_id = next(v for v in WIZARD_VISUALIZATION_SEMANTICS if name in _supported_method_specs(v))
         create_method = getattr(getattr(factory, factory_method_name(viz_id))(name="Chart", location=location), name)
         assert _parameter_shape(update_method) == _parameter_shape(create_method), name
 
@@ -489,24 +579,24 @@ def test_update_bool_and_literal_annotations_match_create() -> None:
     # Catches drift that ``_parameter_shape`` cannot see: Literal value sets
     # (e.g. ``'on'/'off'`` vs ``'yes'/'no'``) and bool flags. Two parameters are
     # intentionally NOT checked — both are known cosmetic gaps:
-    #   - ``ph_id`` carries a per-viz ``Literal[...]`` on create but ``str`` on
+    #   - ``slot_name`` carries a per-viz ``Literal[...]`` on create but ``str`` on
     #     update;
     #   - ``fields`` (Sequence[...]) carries ``FieldRef`` on update vs
     #     ``FieldLike | str`` on create.
     factory = WizardChartCreateFactory(cast(Any, None))
     location = EntryLocation.path("/Reports")
-    group_a_kinds = {"extra_setting", "data_field", "ph_setting"}
+    group_a_kinds = {"slot", "chart_setting", "slot_setting"}
     for name, spec in METHOD_SPECS.items():
         if spec.get("kind") not in group_a_kinds or name in _UPDATE_PARITY_GROUP_A_EXCEPTIONS:
             continue
         update_method = WizardChartUpdate.__dict__.get(name)
         assert update_method is not None, name
-        viz_id = next(v for v in VIZ_SPECS if name in method_specs_for_viz(v))
+        viz_id = next(v for v in WIZARD_VISUALIZATION_SEMANTICS if name in _supported_method_specs(v))
         create_method = getattr(getattr(factory, factory_method_name(viz_id))(name="Chart", location=location), name)
         create_hints = get_type_hints(create_method)
         update_hints = get_type_hints(update_method)
         for param in create_hints:
-            if param in ("self", "ph_id") or param not in update_hints:
+            if param in ("self", "slot_name") or param not in update_hints:
                 continue
             if _is_bool_or_literal(create_hints[param]) or _is_bool_or_literal(update_hints[param]):
                 assert create_hints[param] == update_hints[param], (

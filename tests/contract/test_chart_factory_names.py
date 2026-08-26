@@ -36,8 +36,8 @@ def test_metric_factories_use_ui_indicator_name_without_changing_builder_semanti
 
     wizard_factory = WizardChartCreateFactory(operations)
     wizard_builder = wizard_factory.indicator(name="Indicator", location=location)
-    assert wizard_builder.viz_id == "metric"
-    assert wizard_builder.wire_type == "metric_wizard_node"
+    assert wizard_builder.visualization_type == "metric"
+    assert not hasattr(wizard_builder, "wire_type")
     assert not hasattr(wizard_factory, "metric")
 
     ql_factory = QLChartCreateFactory(operations)

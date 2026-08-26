@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
+import copy
 from typing import Any, Literal, cast
 
 import httpx
@@ -9,24 +8,19 @@ import pytest
 
 from datalens_sdk import GeoLayerFilter
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
-from datalens_sdk._runtime.viz_specs import get_geo_layer_spec
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk.api.chart import ChartAPI, ChartService
 from datalens_sdk.api.entries import EntriesAPI, EntriesService
+from datalens_sdk.converter.wizard._assemble import _GEO_INPUT_SLOT_ALIASES
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.chart_types import GradientPaletteId
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
-from datalens_sdk.domain.fields import DatasetField
+from datalens_sdk.domain.fields import DatasetField, WizardHierarchy
 from datalens_sdk.domain.ports import NavigationOperations
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.errors import DataLensAPIError, DataLensConfigurationError
 from datalens_sdk.http import DataLensHTTPClient
-
-_REFERENCE_CHARTS_DIR = Path(__file__).parent / "fixtures" / "reference_charts" / "wizard"
-
-
-def _reference_chart(chart_id: str) -> dict[str, Any]:
-    return cast(dict[str, Any], json.loads((_REFERENCE_CHARTS_DIR / f"{chart_id}.json").read_text()))
 
 
 def _dataset() -> Dataset:
@@ -54,41 +48,39 @@ def _payload_data(builder: Any) -> dict[str, Any]:
     return cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()["data"])
 
 
-def test_combined_live_fixture_has_complete_per_layer_colors_config() -> None:
-    fixture = _reference_chart("zenewka5dvwij")
-    layers = cast(list[dict[str, Any]], fixture["data"]["visualization"]["layers"])
-    expected_keys = {"colorMode", "coloredByMeasure", "fieldGuid", "mountedColors", "palette", "polygonBorders"}
-    assert all(set(layer["commonPlaceholders"]["colorsConfig"]) == expected_keys for layer in layers)
-
-
 def test_combined_builds_layers_with_shared_x_and_measure_colors() -> None:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.combined_chart(name="C", location=EntryLocation.path("/F")).dataset(dataset)
-    builder.x(["Order Date"]).add_layer("column", y="Amount").add_layer("line", y2="Amount", name="Trend")
+    builder.x(["Order Date"]).add_layer("column", y="Amount").add_layer(
+        "line", y2="Amount", name="Trend"
+    ).add_date_filter("Order Date", start="2026-01-01", end="2026-05-11")
     data = _payload_data(builder)
     viz = data["visualization"]
-    assert viz["id"] == "combined-chart"
-    assert viz["placeholders"] == []
+    assert viz["type"] == "combined-chart"
     layers = viz["layers"]
-    assert [layer["id"] for layer in layers] == ["column", "line"]
+    assert [layer["type"] for layer in layers] == ["column", "line"]
     assert layers[1]["layerSettings"]["name"] == "Trend"
     assert viz["selectedLayerId"] == layers[-1]["layerSettings"]["id"]
     for layer in layers:
-        x_ph = next(p for p in layer["placeholders"] if p["id"] == "x")
-        assert x_ph["items"][0]["guid"] == "g_date"
-    column_y = next(p for p in layers[0]["placeholders"] if p["id"] == "y")
-    line_y2 = next(p for p in layers[1]["placeholders"] if p["id"] == "y2")
-    assert column_y["items"][0]["guid"] == "g_amt"
-    assert line_y2["items"][0]["guid"] == "g_amt"
-    assert layers[0]["commonPlaceholders"]["colorsConfig"] == {
+        assert layer["x"]["items"][0]["guid"] == "g_date"
+    assert layers[0]["y"]["items"][0]["guid"] == "g_amt"
+    assert layers[1]["y2"]["items"][0]["guid"] == "g_amt"
+    assert layers[0]["colors"]["settings"] == {
         "colorMode": "palette",
         "coloredByMeasure": True,
-        "fieldGuid": "g_amt",
-        "mountedColors": {"Amount": "0"},
-        "palette": "",
+        "mountedColors": {"g_amt": "0"},
+        "palette": "datalens-classic-20",
         "polygonBorders": "show",
     }
+    assert all(
+        set(layer["colors"]["settings"])
+        == {"colorMode", "coloredByMeasure", "mountedColors", "palette", "polygonBorders"}
+        for layer in layers
+    )
+    assert data["sources"]["filters"][0]["filter"]["value"] == [
+        "__interval_2026-01-01T00:00:00.000Z_2026-05-11T23:59:59.999Z"
+    ]
 
 
 def test_combined_layers_get_distinct_palette_indices() -> None:
@@ -112,29 +104,25 @@ def test_combined_layers_get_distinct_palette_indices() -> None:
     builder.x(["Order Date"]).add_layer("column", y="Amount").add_layer("line", y2="Quantity", name="Trend")
     data = _payload_data(builder)
     layers = data["visualization"]["layers"]
-    assert layers[0]["commonPlaceholders"]["colorsConfig"]["mountedColors"] == {"Amount": "0"}
-    assert layers[1]["commonPlaceholders"]["colorsConfig"]["mountedColors"] == {"Quantity": "1"}
+    assert layers[0]["colors"]["settings"]["mountedColors"] == {"g_amt": "0"}
+    assert layers[1]["colors"]["settings"]["mountedColors"] == {"g_qty": "1"}
 
 
-def test_combined_measure_format_reaches_layer_placeholders() -> None:
+def test_combined_measure_format_reaches_layer_slots() -> None:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
     amount = dataset.fields.by_name("Amount")
-    builder = (
+    builder = cast(
+        Any,
         factory.combined_chart(name="C", location=EntryLocation.path("/F"))
         .dataset(dataset)
         .x(["Order Date"])
-        .add_layer("column", y=amount)
-        .measure_format(amount, precision=2, unit="k")
+        .add_layer("column", y=amount),
     )
+    builder.measure_format(amount, precision=2, unit="k")
 
     layer = _payload_data(builder)["visualization"]["layers"][0]
-    amount_item = next(
-        item
-        for placeholder in layer["placeholders"]
-        for item in placeholder["items"]
-        if item.get("guid") == amount.guid
-    )
+    amount_item = layer["y"]["items"][0]
     assert amount_item["formatting"] == {"precision": 2, "unit": "k"}
 
 
@@ -148,18 +136,125 @@ def test_combined_update_x_reaches_every_layer() -> None:
         .add_layer("column", y="Amount")
         .add_layer("line", y2="Amount")
     )
-    chart = WizardChartConverter.to_domain(
-        {"entryId": "chart-1", "data": _payload_data(builder)},
-        installation="yacloud",
-    )
+    chart = WizardChart(id="chart-1", installation="yacloud", data=_payload_data(builder))
 
     payload = WizardChartConverter.from_domain_update(chart.update.x([dataset.fields.by_name("Region")])).to_payload()
     layers = cast(dict[str, Any], payload["data"])["visualization"]["layers"]
-    assert all(
-        next(placeholder for placeholder in layer["placeholders"] if placeholder["id"] == "x")["items"][0]["guid"]
-        == "g_reg"
-        for layer in layers
+    assert all(layer["x"]["items"][0]["guid"] == "g_reg" for layer in layers)
+
+
+def test_combined_update_targets_selected_layer_and_preserves_unknown_nested_data() -> None:
+    dataset = _dataset()
+    builder = (
+        WizardChartCreateFactory(cast(Any, None))
+        .combined_chart(name="C", location=EntryLocation.path("/F"))
+        .dataset(dataset)
+        .x(["Order Date"])
+        .add_layer("line", y="Amount", name="First")
+        .add_layer("column", y="Amount", name="Selected")
     )
+    data = _payload_data(builder)
+    data["visualization"]["layers"][0]["futureLayerField"] = {"keep": True}
+    selected_id = data["visualization"]["selectedLayerId"]
+    chart = WizardChart(id="chart-1", installation="yacloud", data=data)
+
+    update = (
+        chart.update.labels([dataset.fields.by_name("Region")])
+        .labels_position(mode="inside")
+        .add_sort(dataset.fields.by_name("Order Date"))
+    )
+    visualization = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])[
+        "visualization"
+    ]
+    layers = visualization["layers"]
+    assert [layer["layerSettings"]["name"] for layer in layers] == ["First", "Selected"]
+    assert visualization["selectedLayerId"] == selected_id
+    assert layers[0]["futureLayerField"] == {"keep": True}
+    assert layers[0]["labels"]["items"] == []
+    assert layers[1]["labels"]["items"][0]["guid"] == "g_reg"
+    assert layers[1]["labels"]["settings"] == {"labelsPosition": "inside"}
+    assert layers[1]["sort"]["items"] == [{"guid": "g_date", "datasetId": "ds1", "direction": "ASC"}]
+
+
+def _layered_update_data(visualization_type: Literal["combined-chart", "geolayer"]) -> dict[str, Any]:
+    dataset = _dataset()
+    factory = WizardChartCreateFactory(cast(Any, None))
+    if visualization_type == "combined-chart":
+        return _payload_data(
+            factory.combined_chart(name="C", location=EntryLocation.path("/F"))
+            .dataset(dataset)
+            .x(["Order Date"])
+            .add_layer("line", y="Amount", name="First")
+            .add_layer("column", y="Amount", name="Last")
+        )
+    return _payload_data(
+        factory.geolayer(name="G", location=EntryLocation.path("/F"))
+        .dataset(dataset)
+        .add_layer("geopoint", geopoint="Point", name="First")
+        .add_layer("geopoint", geopoint="Point", name="Last")
+    )
+
+
+@pytest.mark.parametrize("visualization_type", ["combined-chart", "geolayer"])
+@pytest.mark.parametrize("selector_state", ["absent", "valid"])
+def test_layered_update_resolves_absent_or_valid_selector(
+    visualization_type: Literal["combined-chart", "geolayer"],
+    selector_state: Literal["absent", "valid"],
+) -> None:
+    data = _layered_update_data(visualization_type)
+    visualization = data["visualization"]
+    layers = visualization["layers"]
+    expected_index = 1
+    if selector_state == "absent":
+        visualization.pop("selectedLayerId")
+    else:
+        expected_index = 0
+        visualization["selectedLayerId"] = layers[expected_index]["layerSettings"]["id"]
+    chart = WizardChart(id="chart-1", installation="yacloud", data=data)
+
+    payload = WizardChartConverter.from_domain_update(
+        chart.update.labels([_dataset().fields.by_name("Region")])
+    ).to_payload()
+
+    updated = cast(dict[str, Any], payload["data"])["visualization"]["layers"]
+    assert updated[expected_index]["labels"]["items"][0]["guid"] == "g_reg"
+    assert updated[1 - expected_index]["labels"]["items"] == []
+
+
+@pytest.mark.parametrize("visualization_type", ["combined-chart", "geolayer"])
+@pytest.mark.parametrize("selector", ["", "stale-layer", None, 1])
+def test_layered_update_rejects_invalid_present_selector_before_mutation(
+    visualization_type: Literal["combined-chart", "geolayer"],
+    selector: object,
+) -> None:
+    data = _layered_update_data(visualization_type)
+    data["visualization"]["selectedLayerId"] = selector
+    before = copy.deepcopy(data)
+    chart = WizardChart(id="chart-1", installation="yacloud", data=data)
+
+    with pytest.raises(DataLensConfigurationError, match="selectedLayerId"):
+        WizardChartConverter.from_domain_update(chart.update.labels([_dataset().fields.by_name("Region")]))
+
+    assert chart.data == before
+
+
+@pytest.mark.parametrize("visualization_type", ["combined-chart", "geolayer"])
+def test_layered_update_rejects_duplicate_selected_layer_id_before_mutation(
+    visualization_type: Literal["combined-chart", "geolayer"],
+) -> None:
+    data = _layered_update_data(visualization_type)
+    visualization = data["visualization"]
+    layers = visualization["layers"]
+    selected_id = layers[0]["layerSettings"]["id"]
+    layers[1]["layerSettings"]["id"] = selected_id
+    visualization["selectedLayerId"] = selected_id
+    before = copy.deepcopy(data)
+    chart = WizardChart(id="chart-1", installation="yacloud", data=data)
+
+    with pytest.raises(DataLensConfigurationError, match="exactly one"):
+        WizardChartConverter.from_domain_update(chart.update.labels([_dataset().fields.by_name("Region")]))
+
+    assert chart.data == before
 
 
 def test_combined_add_layer_requires_measure() -> None:
@@ -169,23 +264,6 @@ def test_combined_add_layer_requires_measure() -> None:
         builder.add_layer("line")
 
 
-def test_geolayer_live_heatmap_fixture_has_confirmed_common_placeholders() -> None:
-    fixture = _reference_chart("35prkj7b9xnun")
-    layer = fixture["data"]["visualization"]["layers"][0]
-    assert set(layer["commonPlaceholders"]) == {
-        "colors",
-        "colorsConfig",
-        "filters",
-        "geopointsConfig",
-        "labels",
-        "segments",
-        "shapes",
-        "shapesConfig",
-        "sort",
-        "tooltips",
-    }
-
-
 def test_geolayer_builds_layers_with_layer_local_fields() -> None:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
@@ -193,40 +271,25 @@ def test_geolayer_builds_layers_with_layer_local_fields() -> None:
     builder.add_layer("geopoint", geopoint="Region", color="Amount", tooltips=["Order Date"], labels=["Region"])
     data = _payload_data(builder)
     viz = data["visualization"]
-    assert viz["id"] == "geolayer"
-    assert viz["placeholders"] == []
+    assert viz["type"] == "geolayer"
     layers = viz["layers"]
     assert len(layers) == 1
     layer = layers[0]
-    assert layer["id"] == "geopoint"
+    assert layer["type"] == "geopoint"
     assert layer["layerSettings"]["name"] == "Layer 1"
     assert viz["selectedLayerId"] == layer["layerSettings"]["id"]
-    geopoint_ph = next(p for p in layer["placeholders"] if p["id"] == "geopoint")
-    assert geopoint_ph["items"][0]["guid"] == "g_reg"
-    common = layer["commonPlaceholders"]
-    assert set(common) == {
-        "colors",
-        "colorsConfig",
-        "filters",
-        "geopointsConfig",
-        "labels",
-        "segments",
-        "shapes",
-        "shapesConfig",
-        "sort",
-        "tooltips",
+    assert layer["points"]["items"][0]["guid"] == "g_reg"
+    assert layer["colors"]["items"][0]["guid"] == "g_amt"
+    assert layer["tooltip"]["items"][0]["guid"] == "g_date"
+    assert layer["labels"]["items"][0] == {
+        "guid": "g_reg",
+        "datasetId": "ds1",
+        "formatting": {"labelMode": "absolute"},
     }
-    assert common["colors"][0]["guid"] == "g_amt"
-    assert common["tooltips"][0]["guid"] == "g_date"
-    assert common["labels"][0]["guid"] == "g_reg"
-    assert common["labels"][0]["mode"] == "absolute"
-    assert {key: data[key] for key in common if key != "filters"} == {
-        key: value for key, value in common.items() if key != "filters"
-    }
-    assert data["filters"] == []
+    assert "filters" not in data["sources"]
 
 
-def test_geolayer_generic_labels_and_tooltips_update_selected_layer() -> None:
+def test_geolayer_generic_labels_update_selected_layer_without_mirroring_tooltip() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
     builder.add_layer(
@@ -234,29 +297,77 @@ def test_geolayer_generic_labels_and_tooltips_update_selected_layer() -> None:
         geopoint="Point",
         labels=["Region"],
         tooltips=["Order Date"],
-    ).labels(["Amount"]).tooltips(["Currency"])
+    ).labels(["Amount"])
 
     data = _payload_data(builder)
-    common = data["visualization"]["layers"][0]["commonPlaceholders"]
-    assert [(item["guid"], item["mode"]) for item in common["labels"]] == [("g_amt", "absolute")]
-    assert [item["guid"] for item in common["tooltips"]] == ["g_currency"]
-    assert data["labels"] == common["labels"]
-    assert data["tooltips"] == common["tooltips"]
+    layer = data["visualization"]["layers"][0]
+    assert [item["guid"] for item in layer["labels"]["items"]] == ["g_amt"]
+    assert [item["guid"] for item in layer["tooltip"]["items"]] == ["g_date"]
+    assert "labels" not in data["visualization"]
+    assert "tooltip" not in data["visualization"]
 
 
-def test_geolayer_measure_format_updates_layer_and_root_labels() -> None:
+def test_geolayer_measure_format_updates_layer_labels() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
-    builder.add_layer("geopoint", geopoint="Point", labels=["Amount"]).measure_format(
+    cast(Any, builder.add_layer("geopoint", geopoint="Point", labels=["Amount"])).measure_format(
         "Amount",
-        format="currency",
+        format="number",
         prefix="$",
     )
 
     data = _payload_data(builder)
-    common = data["visualization"]["layers"][0]["commonPlaceholders"]
-    assert common["labels"][0]["formatting"] == {"format": "currency", "prefix": "$"}
-    assert data["labels"] == common["labels"]
+    labels = data["visualization"]["layers"][0]["labels"]["items"]
+    assert labels[0]["formatting"] == {"format": "number", "labelMode": "absolute", "prefix": "$"}
+
+
+def test_geolayer_measure_format_skips_layer_filter_reference() -> None:
+    factory = WizardChartCreateFactory(cast(Any, None))
+    builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
+    cast(
+        Any,
+        builder.add_layer(
+            "geopoint",
+            geopoint="Point",
+            size="Amount",
+            filters=[GeoLayerFilter(field="Amount", operation="GT", values=["0"])],
+        ),
+    ).measure_format("Amount", precision=1)
+
+    layer = _payload_data(builder)["visualization"]["layers"][0]
+    assert layer["size"]["items"][0]["formatting"] == {"precision": 1}
+    assert layer["filters"]["items"][0] == {
+        "datasetId": "ds1",
+        "filter": {"operation": {"code": "GT"}, "value": ["0"]},
+        "guid": "g_amt",
+    }
+
+
+def test_geolayer_update_targets_only_selected_layer() -> None:
+    dataset = _dataset()
+    builder = (
+        WizardChartCreateFactory(cast(Any, None))
+        .geolayer(name="G", location=EntryLocation.path("/F"))
+        .dataset(dataset)
+        .add_layer("heatmap", geopoint="Point", name="Density")
+        .add_layer("geopoint", geopoint="Point", labels=["Region"], name="Selected")
+    )
+    data = _payload_data(builder)
+    selected_id = data["visualization"]["selectedLayerId"]
+    chart = WizardChart(id="chart-1", installation="yacloud", data=data)
+
+    update = chart.update.labels([dataset.fields.by_name("Amount")]).measure_format(
+        dataset.fields.by_name("Amount"),
+        precision=1,
+    )
+    visualization = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])[
+        "visualization"
+    ]
+    assert visualization["selectedLayerId"] == selected_id
+    assert [layer["type"] for layer in visualization["layers"]] == ["heatmap", "geopoint"]
+    assert "labels" not in visualization["layers"][0]
+    label = visualization["layers"][1]["labels"]["items"][0]
+    assert label == {"guid": "g_amt", "datasetId": "ds1", "formatting": {"precision": 1}}
 
 
 @pytest.mark.parametrize(
@@ -273,38 +384,35 @@ def test_geolayer_generic_fields_reject_unsupported_selected_layer(
 ) -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
-    cast(Any, builder).add_layer(layer_type, **geometry)
-    getattr(cast(Any, builder), method_name)(["Amount"])
-
     with pytest.raises(DataLensConfigurationError, match=rf"does not support {method_name}"):
-        _payload_data(builder)
+        _payload_data(cast(Any, builder).add_layer(layer_type, **geometry, **{method_name: ["Amount"]}))
 
 
 @pytest.mark.parametrize(
-    ("layer_type", "field_argument", "field_name", "placeholder_id"),
+    ("layer_type", "field_argument", "field_name", "slot_name"),
     [
-        ("geopoint", "geopoint", "Point", "geopoint"),
-        ("geopoint-with-cluster", "geopoint", "Point", "geopoint"),
-        ("heatmap", "geopoint", "Point", "heatmap"),
-        ("geopolygon", "polygon", "Region", "geopolygon"),
-        ("polyline", "polyline", "Region", "polyline"),
+        ("geopoint", "geopoint", "Point", "points"),
+        ("geopoint-with-cluster", "geopoint", "Point", "points"),
+        ("heatmap", "geopoint", "Point", "points"),
+        ("geopolygon", "polygon", "Region", "polygons"),
+        ("polyline", "polyline", "Region", "polylines"),
     ],
 )
 def test_geolayer_supports_each_layer_type(
     layer_type: str,
     field_argument: str,
     field_name: str,
-    placeholder_id: str,
+    slot_name: str,
 ) -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
     cast(Any, builder).add_layer(layer_type, **{field_argument: field_name})
     data = _payload_data(builder)
     layer = data["visualization"]["layers"][0]
-    assert layer["id"] == layer_type
-    placeholder = next(item for item in layer["placeholders"] if item["id"] == placeholder_id)
+    assert layer["type"] == layer_type
+    slot = layer[slot_name]
     expected_guid = "g_point" if field_name == "Point" else "g_reg"
-    assert placeholder["items"][0]["guid"] == expected_guid
+    assert slot["items"][0]["guid"] == expected_guid
 
 
 def test_polyline_builds_live_reference_grouping_color_and_sort_contract() -> None:
@@ -323,77 +431,52 @@ def test_polyline_builds_live_reference_grouping_color_and_sort_contract() -> No
 
     data = _payload_data(builder)
     layer = data["visualization"]["layers"][0]
-    placeholders = {placeholder["id"]: placeholder for placeholder in layer["placeholders"]}
-    assert [item["guid"] for item in placeholders["polyline"]["items"]] == ["g_point"]
-    assert placeholders["polyline"]["settings"] == {"polylinePoints": "off"}
-    assert placeholders["measures"]["items"] == []
-    assert [item["guid"] for item in placeholders["grouping"]["items"]] == ["g_reg"]
-    common = layer["commonPlaceholders"]
-    assert set(common) == {
-        "colors",
-        "colorsConfig",
-        "filters",
-        "geopointsConfig",
-        "labels",
-        "sort",
-        "tooltips",
-    }
-    assert [item["guid"] for item in common["colors"]] == ["g_amt"]
-    assert common["colorsConfig"] == {
+    assert [item["guid"] for item in layer["polylines"]["items"]] == ["g_point"]
+    assert layer["polylines"]["settings"] == {"polylinePoints": "off"}
+    assert layer["measures"]["items"] == []
+    assert [item["guid"] for item in layer["grouping"]["items"]] == ["g_reg"]
+    assert [item["guid"] for item in layer["colors"]["items"]] == ["g_amt"]
+    assert layer["colors"]["settings"] == {
+        "colorMode": "gradient",
+        "fieldGuid": "g_amt",
         "gradientMode": "3-point",
         "gradientPalette": "red-orange-green",
         "polygonBorders": "show",
         "reversed": False,
         "thresholdsMode": "auto",
     }
-    assert common["sort"] == [
-        {
-            "guid": "g_date",
-            "datasetId": "ds1",
-            "datasetName": "sales",
-            "data_type": "date",
-            "id": "dimension-0",
-            "title": "Order Date",
-            "type": "DIMENSION",
-            "calc_mode": "direct",
-            "direction": "ASC",
-        }
-    ]
-    assert data["colors"] == common["colors"]
-    assert data["colorsConfig"] == common["colorsConfig"]
-    assert data["sort"] == common["sort"]
-    assert "segments" not in data
-    assert "allowedFinalTypes" in placeholders["measures"]
-    assert "allowedDataTypes" not in placeholders["measures"]
+    assert layer["sort"]["items"] == [{"guid": "g_date", "datasetId": "ds1", "direction": "ASC"}]
+    assert "colors" not in data["visualization"]
+    assert "sort" not in data["visualization"]
 
 
 @pytest.mark.parametrize(
     "layer_type",
     ["geopoint", "geopoint-with-cluster", "heatmap", "geopolygon"],
 )
-def test_non_polyline_geo_layers_keep_their_live_common_placeholder_contract(layer_type: str) -> None:
+def test_non_polyline_geo_layers_use_their_exact_v1_slot_contract(layer_type: str) -> None:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(dataset)
     argument = "polygon" if layer_type == "geopolygon" else "geopoint"
     field = "Region" if layer_type == "geopolygon" else "Point"
-    cast(Any, builder).add_layer(layer_type, **{argument: field})
+    kwargs = {argument: field}
+    if layer_type == "heatmap":
+        kwargs["color"] = "Amount"
+    cast(Any, builder).add_layer(layer_type, **kwargs)
 
     data = _payload_data(builder)
-    common = data["visualization"]["layers"][0]["commonPlaceholders"]
-    assert set(common) == {
-        "colors",
-        "colorsConfig",
-        "filters",
-        "geopointsConfig",
-        "labels",
-        "segments",
-        "shapes",
-        "shapesConfig",
-        "sort",
-        "tooltips",
+    layer = data["visualization"]["layers"][0]
+    expected_slots = {
+        "geopoint": {"colors", "filters", "labels", "points", "size", "tooltip"},
+        "geopoint-with-cluster": {"colors", "filters", "labels", "points", "size", "tooltip"},
+        "heatmap": {"colors", "filters", "points"},
+        "geopolygon": {"colors", "filters", "polygons", "tooltip"},
     }
-    assert data["segments"] == []
+    assert set(layer) == {"type", "layerSettings", *expected_slots[layer_type]}
+    if layer_type == "heatmap":
+        assert layer["colors"]["items"][0]["guid"] == "g_amt"
+    assert "segments" not in data["visualization"]
 
 
 _GEO_LAYER_GEOMETRY: dict[str, dict[str, str]] = {
@@ -419,20 +502,14 @@ def _unsupported_geo_layer_inputs() -> list[tuple[str, str, object]]:
         "sort_by": "Order Date",
     }
     cases: list[tuple[str, str, object]] = []
-    for layer_type in _GEO_LAYER_GEOMETRY:
-        layer_spec = get_geo_layer_spec(layer_type)
-        placeholder_inputs = cast(dict[str, str], layer_spec["placeholder_inputs"])
-        viz = cast(dict[str, object], layer_spec["viz"])
-        supported_inputs = set(placeholder_inputs.values())
-        for argument, flag in (
-            ("color", "allowColors"),
-            ("filters", "allowLayerFilters"),
-            ("labels", "allowLabels"),
-            ("tooltips", "allowTooltips"),
-            ("sort_by", "allowSort"),
-        ):
-            if viz.get(flag) is True:
-                supported_inputs.add(argument)
+    layer_structures = (
+        WIZARD_VISUALIZATION_STRUCTURE["geolayer"]["layers"] if "geolayer" in WIZARD_VISUALIZATION_STRUCTURE else {}
+    )
+    for layer_type, layer_structure in layer_structures.items():
+        supported_slots = set(layer_structure["slots"])
+        supported_inputs = {
+            input_name for input_name, slot_name in _GEO_INPUT_SLOT_ALIASES.items() if slot_name in supported_slots
+        }
         cases.extend(
             (layer_type, argument, value)
             for argument, value in input_values.items()
@@ -447,7 +524,7 @@ def test_geolayer_rejects_unsupported_layer_inputs(layer_type: str, argument: st
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
     kwargs: dict[str, object] = {**_GEO_LAYER_GEOMETRY[layer_type], argument: value}
     with pytest.raises(DataLensConfigurationError, match=argument):
-        cast(Any, builder).add_layer(layer_type, **kwargs)
+        _payload_data(cast(Any, builder).add_layer(layer_type, **kwargs))
 
 
 @pytest.mark.parametrize(("layer_type", "geometry"), _GEO_LAYER_GEOMETRY.items())
@@ -468,20 +545,13 @@ def test_geolayer_builds_confirmed_mixed_heatmap_and_cluster_topology() -> None:
     )
 
     visualization = _payload_data(builder)["visualization"]
-    assert [layer["id"] for layer in visualization["layers"]] == ["heatmap", "geopoint-with-cluster"]
-    assert [layer["layerSettings"]["type"] for layer in visualization["layers"]] == [
-        "heatmap",
-        "geopoint-with-cluster",
-    ]
-    assert [placeholder["id"] for placeholder in visualization["layers"][0]["placeholders"]] == ["heatmap"]
-    assert [placeholder["id"] for placeholder in visualization["layers"][1]["placeholders"]] == [
-        "geopoint",
-        "size",
-    ]
+    assert [layer["type"] for layer in visualization["layers"]] == ["heatmap", "geopoint-with-cluster"]
+    assert visualization["layers"][0]["points"]["items"][0]["guid"] == "g_point"
+    assert visualization["layers"][1]["points"]["items"][0]["guid"] == "g_point"
     assert visualization["selectedLayerId"] == visualization["layers"][1]["layerSettings"]["id"]
 
 
-def test_geolayer_builds_chart_level_filters_from_confirmed_reference_shape() -> None:
+def test_geolayer_builds_chart_level_filters_in_wizard_v1_shape() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = (
         factory.geolayer(name="G", location=EntryLocation.path("/F"))
@@ -491,7 +561,7 @@ def test_geolayer_builds_chart_level_filters_from_confirmed_reference_shape() ->
         .add_layer("geopoint", geopoint="Point")
     )
 
-    filters = _payload_data(builder)["filters"]
+    filters = _payload_data(builder)["sources"]["filters"]
     assert [item["filter"]["operation"]["code"] for item in filters] == ["IN", "BETWEEN"]
     assert filters[0]["filter"]["value"] == ["North"]
     assert filters[1]["filter"]["value"] == ["__interval___relative_-1d___relative_-0d"]
@@ -520,18 +590,12 @@ def test_geolayer_builds_layer_local_filters_for_every_layer_type(
     )
 
     data = _payload_data(builder)
-    assert data["filters"] == []
-    layer_filter = data["visualization"]["layers"][0]["commonPlaceholders"]["filters"][0]
+    assert "filters" not in data["sources"]
+    layer_filter = data["visualization"]["layers"][0]["filters"]["items"][0]
     assert layer_filter == {
-        "calc_mode": "direct",
         "datasetId": "ds1",
-        "datasetName": "sales",
-        "data_type": "string",
         "filter": {"operation": {"code": "IN"}, "value": ["RUB"]},
         "guid": "g_currency",
-        "id": "dimension-0",
-        "title": "Currency",
-        "type": "DIMENSION",
     }
 
 
@@ -547,10 +611,11 @@ def test_geopolygon_builds_live_reference_gradient_contract() -> None:
         color_reversed=True,
     )
 
-    common = _payload_data(builder)["visualization"]["layers"][0]["commonPlaceholders"]
-    assert common["colors"][0]["guid"] == "g_amt"
-    assert common["colorsConfig"] == {
+    colors = _payload_data(builder)["visualization"]["layers"][0]["colors"]
+    assert colors["items"][0]["guid"] == "g_amt"
+    assert colors["settings"] == {
         "colorMode": "gradient",
+        "fieldGuid": "g_amt",
         "gradientMode": "2-point",
         "gradientPalette": "orange-yellow",
         "polygonBorders": "show",
@@ -580,9 +645,9 @@ def test_geolayer_infers_gradient_mode_from_palette(
     )
 
     data = _payload_data(builder)
-    common = data["visualization"]["layers"][0]["commonPlaceholders"]
-    assert common["colorsConfig"]["gradientMode"] == expected_mode
-    assert data["colorsConfig"] == common["colorsConfig"]
+    settings = data["visualization"]["layers"][0]["colors"]["settings"]
+    assert settings["gradientMode"] == expected_mode
+    assert "colors" not in data["visualization"]
 
 
 @pytest.mark.parametrize(
@@ -598,15 +663,13 @@ def test_geolayer_rejects_gradient_settings_for_dimension_color(
 ) -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
-    cast(Any, builder).add_layer(
-        "geopoint",
-        geopoint="Point",
-        color="Region",
-        **gradient_settings,
-    )
-
     with pytest.raises(DataLensConfigurationError, match="requires a MEASURE"):
-        _payload_data(builder)
+        cast(Any, builder).add_layer(
+            "geopoint",
+            geopoint="Point",
+            color="Region",
+            **gradient_settings,
+        )
 
 
 def test_geolayer_accepts_dimension_color_without_gradient_settings() -> None:
@@ -614,9 +677,9 @@ def test_geolayer_accepts_dimension_color_without_gradient_settings() -> None:
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
     builder.add_layer("geopoint", geopoint="Point", color="Region")
 
-    common = _payload_data(builder)["visualization"]["layers"][0]["commonPlaceholders"]
-    assert [(item["guid"], item["type"]) for item in common["colors"]] == [("g_reg", "DIMENSION")]
-    assert common["colorsConfig"] == {}
+    colors = _payload_data(builder)["visualization"]["layers"][0]["colors"]
+    assert [item["guid"] for item in colors["items"]] == ["g_reg"]
+    assert colors["settings"] == {}
 
 
 def test_geopoint_builds_all_live_reference_field_sections() -> None:
@@ -637,18 +700,12 @@ def test_geopoint_builds_all_live_reference_field_sections() -> None:
 
     data = _payload_data(builder)
     layer = data["visualization"]["layers"][0]
-    size = next(placeholder for placeholder in layer["placeholders"] if placeholder["id"] == "size")["items"]
-    common = layer["commonPlaceholders"]
-    assert [item["guid"] for item in size] == ["g_amt"]
-    assert [item["guid"] for item in common["colors"]] == ["g_amt"]
-    assert [item["guid"] for item in common["tooltips"]] == ["g_amt"]
-    assert [(item["guid"], item["mode"]) for item in common["labels"]] == [("g_amt", "absolute")]
-    assert data["colors"] == common["colors"]
-    assert data["colorsConfig"] == common["colorsConfig"]
-    assert data["labels"] == common["labels"]
-    assert data["tooltips"] == common["tooltips"]
-    assert [item["guid"] for item in data["filters"]] == ["g_reg"]
-    assert [item["guid"] for item in common["filters"]] == ["g_currency"]
+    assert [item["guid"] for item in layer["size"]["items"]] == ["g_amt"]
+    assert [item["guid"] for item in layer["colors"]["items"]] == ["g_amt"]
+    assert [item["guid"] for item in layer["tooltip"]["items"]] == ["g_amt"]
+    assert [item["guid"] for item in layer["labels"]["items"]] == ["g_amt"]
+    assert [item["guid"] for item in data["sources"]["filters"]] == ["g_reg"]
+    assert [item["guid"] for item in layer["filters"]["items"]] == ["g_currency"]
 
 
 def test_geolayer_gradient_settings_require_color() -> None:
@@ -708,8 +765,8 @@ def test_geolayer_adds_multiple_datasets() -> None:
     builder = factory.geolayer(name="G", location=EntryLocation.path("/F")).dataset(_dataset())
     builder.add_dataset(secondary).add_layer("geopoint", geopoint="Secondary region", dataset=secondary)
     data = _payload_data(builder)
-    assert data["datasetsIds"] == ["ds1", "ds2"]
-    geopoint_ph = data["visualization"]["layers"][0]["placeholders"][0]
+    assert data["sources"]["datasetsIds"] == ["ds1", "ds2"]
+    geopoint_ph = data["visualization"]["layers"][0]["points"]
     assert geopoint_ph["items"][0]["guid"] == "g_secondary"
 
 
@@ -731,23 +788,31 @@ def test_geolayer_add_layer_requires_its_geo_field(layer_type: str, kwargs: dict
 
 
 def _chart_for_update() -> WizardChart:
-    return WizardChartConverter.to_domain(
+    filters = [
         {
-            "entryId": "chart-1",
-            "type": "d3_wizard_node",
-            "data": {
-                "datasetsIds": ["ds1"],
-                "filters": [{"guid": "f1"}, {"guid": "f2"}],
-                "visualization": {
-                    "id": "line",
-                    "placeholders": [
-                        {"id": "x", "items": [{"guid": "g_date", "datasetId": "ds1"}]},
-                        {"id": "y", "items": [{"guid": "g_amt", "datasetId": "ds1", "title": "Amount"}]},
-                    ],
-                },
+            "guid": guid,
+            "datasetId": "ds1",
+            "filter": {"operation": {"code": "EQ"}},
+        }
+        for guid in ("f1", "f2")
+    ]
+    return WizardChart(
+        id="chart-1",
+        installation="yacloud",
+        data={
+            "sources": {"datasetsIds": ["ds1"], "filters": filters},
+            "visualization": {
+                "type": "line",
+                "colors": {"items": []},
+                "labels": {"items": []},
+                "segments": {"items": []},
+                "shapes": {"items": []},
+                "sort": {"items": []},
+                "x": {"items": [{"guid": "g_date", "datasetId": "ds1"}]},
+                "y": {"items": [{"guid": "g_amt", "datasetId": "ds1", "title": "Amount"}]},
+                "y2": {"items": []},
             },
         },
-        installation="yacloud",
     )
 
 
@@ -765,8 +830,8 @@ def test_update_replace_field_and_delete_field() -> None:
     update = chart.update.replace_field("g_date", replacement).delete_field("g_amt")
     dto = WizardChartConverter.from_domain_update(update)
     data = cast(dict[str, Any], dto.to_payload()["data"])
-    x_items = next(p for p in data["visualization"]["placeholders"] if p["id"] == "x")["items"]
-    y_items = next(p for p in data["visualization"]["placeholders"] if p["id"] == "y")["items"]
+    x_items = data["visualization"]["x"]["items"]
+    y_items = data["visualization"]["y"]["items"]
     assert x_items[0]["guid"] == "g_new"
     assert y_items == []
 
@@ -775,8 +840,8 @@ def test_update_replace_dataset() -> None:
     chart = _chart_for_update()
     update = chart.update.replace_dataset(old="ds1", new="ds2")
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
-    assert data["datasetsIds"] == ["ds2"]
-    x_items = next(p for p in data["visualization"]["placeholders"] if p["id"] == "x")["items"]
+    assert data["sources"]["datasetsIds"] == ["ds2"]
+    x_items = data["visualization"]["x"]["items"]
     assert x_items[0]["datasetId"] == "ds2"
 
 
@@ -784,7 +849,7 @@ def test_update_delete_filter() -> None:
     chart = _chart_for_update()
     update = chart.update.delete_filter("f1")
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
-    assert [f["guid"] for f in data["filters"]] == ["f2"]
+    assert [f["guid"] for f in data["sources"]["filters"]] == ["f2"]
 
 
 def test_update_delete_field_accepts_dataset_field() -> None:
@@ -793,8 +858,8 @@ def test_update_delete_field_accepts_dataset_field() -> None:
     field = DatasetField(guid="g_amt", title="Amount", name="Amount", calc_mode="direct", dataset_id="ds1")
     update = chart.update.delete_field(field)
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
-    y_items = next(p for p in data["visualization"]["placeholders"] if p["id"] == "y")["items"]
-    assert y_items == [], "delete_field(DatasetField) must clear y-placeholder items"
+    y_items = data["visualization"]["y"]["items"]
+    assert y_items == [], "delete_field(DatasetField) must clear y-slot items"
 
 
 def test_update_delete_filter_accepts_dataset_field() -> None:
@@ -803,7 +868,7 @@ def test_update_delete_filter_accepts_dataset_field() -> None:
     field = DatasetField(guid="f1", title="F1", name="F1", calc_mode="direct")
     update = chart.update.delete_filter(field)
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
-    assert [f["guid"] for f in data["filters"]] == ["f2"]
+    assert [f["guid"] for f in data["sources"]["filters"]] == ["f2"]
 
 
 def test_update_replace_field_accepts_dataset_field_pair() -> None:
@@ -813,7 +878,7 @@ def test_update_replace_field_accepts_dataset_field_pair() -> None:
     new = DatasetField(guid="g_new", title="New", name="New", calc_mode="direct")
     update = chart.update.replace_field(old, new)
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
-    x_items = next(p for p in data["visualization"]["placeholders"] if p["id"] == "x")["items"]
+    x_items = data["visualization"]["x"]["items"]
     assert x_items[0]["guid"] == "g_new"
 
 
@@ -821,7 +886,8 @@ def test_update_replace_formula_accepts_dataset_field() -> None:
     """``replace_formula`` extracts ``.guid`` from a ``DatasetField``."""
     chart = _chart_for_update()
     chart.data = dict(chart.data)
-    chart.data["updates"] = [
+    chart.data["sources"] = dict(cast(dict[str, Any], chart.data["sources"]))
+    cast(dict[str, Any], chart.data["sources"])["updates"] = [
         {"action": "add_field", "field": {"guid": "local-field", "formula": "[Revenue]", "local": True}}
     ]
     field = DatasetField(guid="local-field", title="Local", name="Local", calc_mode="formula", formula="[Revenue]")
@@ -831,7 +897,7 @@ def test_update_replace_formula_accepts_dataset_field() -> None:
             chart.update.replace_formula(field, formula="[Revenue] * 2")
         ).to_payload()["data"],
     )
-    assert data["updates"][0]["field"]["formula"] == "[Revenue] * 2"
+    assert data["sources"]["updates"][0]["field"]["formula"] == "[Revenue] * 2"
 
 
 def test_update_structural_ops_resolve_via_chart_fields_proxy() -> None:
@@ -841,37 +907,38 @@ def test_update_structural_ops_resolve_via_chart_fields_proxy() -> None:
     placed_amt = chart.fields.by_guid("g_amt")
     assert isinstance(placed_date, DatasetField)
     assert isinstance(placed_amt, DatasetField)
-    update = chart.update.delete_field(placed_amt).replace_field(placed_date, placed_amt)
-    data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
-    x_items = next(p for p in data["visualization"]["placeholders"] if p["id"] == "x")["items"]
-    y_items = next(p for p in data["visualization"]["placeholders"] if p["id"] == "y")["items"]
+    replaced = cast(
+        dict[str, Any],
+        WizardChartConverter.from_domain_update(chart.update.replace_field(placed_date, placed_amt)).to_payload()[
+            "data"
+        ],
+    )
+    x_items = replaced["visualization"]["x"]["items"]
     assert x_items[0]["guid"] == "g_amt"
+
+    deleted = cast(
+        dict[str, Any],
+        WizardChartConverter.from_domain_update(_chart_for_update().update.delete_field(placed_amt)).to_payload()[
+            "data"
+        ],
+    )
+    y_items = deleted["visualization"]["y"]["items"]
     assert y_items == []
 
 
-def test_chart_fields_surfaces_color_only_field_from_data_colors() -> None:
+def test_chart_fields_surfaces_color_only_field_from_colors_slot() -> None:
     """A field placed only through semantic Color on a cartesian chart lives in
     ``data.colors``. It must still
     be reachable via ``chart.fields.by_name(...)`` so a subsequent
     ``replace_field``/``delete_field`` can target it."""
-    chart = WizardChartConverter.to_domain(
-        {
-            "entryId": "chart-1",
-            "type": "d3_wizard_node",
-            "data": {
-                "datasetsIds": ["ds1"],
-                "colors": [{"guid": "g_country", "title": "Country", "type": "DIMENSION", "datasetId": "ds1"}],
-                "visualization": {
-                    "id": "line",
-                    "placeholders": [
-                        {"id": "x", "items": [{"guid": "g_date", "title": "Date", "datasetId": "ds1"}]},
-                        {"id": "y", "items": [{"guid": "g_amt", "title": "Amount", "datasetId": "ds1"}]},
-                    ],
-                },
-            },
-        },
-        installation="yacloud",
-    )
+    chart = _chart_for_update()
+    chart.data = dict(chart.data)
+    visualization = dict(cast(dict[str, Any], chart.data["visualization"]))
+    visualization["colors"] = {
+        "items": [{"guid": "g_country", "title": "Country", "type": "DIMENSION", "datasetId": "ds1"}]
+    }
+    visualization["x"] = {"items": [{"guid": "g_date", "title": "Date", "datasetId": "ds1"}]}
+    chart.data["visualization"] = visualization
     country = chart.fields.by_name("Country")
     assert isinstance(country, DatasetField)
     assert country.guid == "g_country"
@@ -879,32 +946,22 @@ def test_chart_fields_surfaces_color_only_field_from_data_colors() -> None:
     assert chart.fields.by_guid("g_amt").guid == "g_amt"
 
 
-def test_chart_fields_dedups_by_guid_across_placeholder_and_data_colors() -> None:
-    """A field present both in a placeholder and in ``data.colors`` appears once."""
-    chart = WizardChartConverter.to_domain(
-        {
-            "entryId": "chart-1",
-            "type": "d3_wizard_node",
-            "data": {
-                "datasetsIds": ["ds1"],
-                "colors": [{"guid": "g_amt", "title": "Amount", "type": "MEASURE", "datasetId": "ds1"}],
-                "visualization": {
-                    "id": "line",
-                    "placeholders": [{"id": "y", "items": [{"guid": "g_amt", "title": "Amount", "datasetId": "ds1"}]}],
-                },
-            },
-        },
-        installation="yacloud",
-    )
+def test_chart_fields_dedups_by_guid_across_named_slots() -> None:
+    """A field present in a named slot and ``data.colors`` appears once."""
+    chart = _chart_for_update()
+    chart.data = dict(chart.data)
+    visualization = dict(cast(dict[str, Any], chart.data["visualization"]))
+    visualization["colors"] = {"items": [{"guid": "g_amt", "title": "Amount", "type": "MEASURE", "datasetId": "ds1"}]}
+    chart.data["visualization"] = visualization
     guids = [f.guid for f in chart.fields]
     assert guids.count("g_amt") == 1
 
 
-def test_update_placeholder_edit() -> None:
+def test_update_named_slot_edit() -> None:
     chart = _chart_for_update()
     update = chart.update.y(["g_amt"]).x(["g_date"])
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
-    x_items = next(p for p in data["visualization"]["placeholders"] if p["id"] == "x")["items"]
+    x_items = data["visualization"]["x"]["items"]
     assert x_items[0]["guid"] == "g_date"
 
 
@@ -937,7 +994,7 @@ def test_update_raises_on_conflict() -> None:
         id="chart-1",
         installation="yacloud",
         wire_type="d3_wizard_node",
-        data={"visualization": {"id": "line", "placeholders": []}},
+        data=_chart_for_update().data,
         _operations=service,
     )
     update = chart.update.chart_title(text="Changed")
@@ -952,47 +1009,36 @@ def test_update_raises_on_conflict() -> None:
 
 def _chart_for_replace_dataset_regression() -> WizardChart:
     """Chart with datasetsIds=['ds1'] and a placed field resolvable by DatasetField."""
-    return WizardChartConverter.to_domain(
-        {
-            "entryId": "chart-1",
-            "type": "d3_wizard_node",
-            "data": {
-                "datasetsIds": ["ds1"],
-                "visualization": {
-                    "id": "line",
-                    "placeholders": [
-                        {
-                            "id": "x",
-                            "items": [
-                                {
-                                    "guid": "g_date",
-                                    "title": "Order Date",
-                                    "type": "DIMENSION",
-                                    "data_type": "date",
-                                    "calc_mode": "direct",
-                                    "datasetId": "ds1",
-                                }
-                            ],
-                        },
-                        {
-                            "id": "y",
-                            "items": [
-                                {
-                                    "guid": "g_amt",
-                                    "title": "Amount",
-                                    "type": "MEASURE",
-                                    "data_type": "float",
-                                    "calc_mode": "direct",
-                                    "datasetId": "ds1",
-                                }
-                            ],
-                        },
-                    ],
-                },
-            },
-        },
-        installation="yacloud",
-    )
+    chart = _chart_for_update()
+    chart.data = dict(chart.data)
+    chart.data["sources"] = {"datasetsIds": ["ds1"]}
+    visualization = dict(cast(dict[str, Any], chart.data["visualization"]))
+    visualization["x"] = {
+        "items": [
+            {
+                "guid": "g_date",
+                "title": "Order Date",
+                "type": "DIMENSION",
+                "data_type": "date",
+                "calc_mode": "direct",
+                "datasetId": "ds1",
+            }
+        ]
+    }
+    visualization["y"] = {
+        "items": [
+            {
+                "guid": "g_amt",
+                "title": "Amount",
+                "type": "MEASURE",
+                "data_type": "float",
+                "calc_mode": "direct",
+                "datasetId": "ds1",
+            }
+        ]
+    }
+    chart.data["visualization"] = visualization
+    return chart
 
 
 def test_replace_dataset_then_add_sort_uses_new_dataset_id() -> None:
@@ -1014,8 +1060,8 @@ def test_replace_dataset_then_add_sort_uses_new_dataset_id() -> None:
     update = chart.update.replace_dataset(old="ds1", new="ds2").add_sort(field)
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
 
-    assert data["datasetsIds"] == ["ds2"], "datasetsIds must be updated"
-    sort_items = cast(list[dict[str, Any]], data.get("sort", []))
+    assert data["sources"]["datasetsIds"] == ["ds2"], "sources.datasetsIds must be updated"
+    sort_items = cast(list[dict[str, Any]], data["visualization"]["sort"]["items"])
     assert len(sort_items) == 1, "one sort item expected"
     assert sort_items[0]["datasetId"] == "ds2", "sort item must reference the NEW dataset id after replace_dataset"
 
@@ -1033,8 +1079,8 @@ def test_replace_dataset_then_add_filter_uses_new_dataset_id() -> None:
     update = chart.update.replace_dataset(old="ds1", new="ds2").add_filter(field, operation="GT", values=["100"])
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
 
-    assert data["datasetsIds"] == ["ds2"], "datasetsIds must be updated"
-    filters = cast(list[dict[str, Any]], data.get("filters", []))
+    assert data["sources"]["datasetsIds"] == ["ds2"], "sources.datasetsIds must be updated"
+    filters = cast(list[dict[str, Any]], data["sources"].get("filters", []))
     assert len(filters) == 1, "one filter item expected"
     assert filters[0]["datasetId"] == "ds2", "filter item must reference the NEW dataset id after replace_dataset"
 
@@ -1053,10 +1099,10 @@ def test_replace_dataset_then_add_sort_and_filter_both_use_new_id() -> None:
     )
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
 
-    assert data["datasetsIds"] == ["ds2"]
-    sort_items = cast(list[dict[str, Any]], data.get("sort", []))
+    assert data["sources"]["datasetsIds"] == ["ds2"]
+    sort_items = cast(list[dict[str, Any]], data["visualization"]["sort"]["items"])
     assert sort_items[0]["datasetId"] == "ds2", "sort must use new dataset id"
-    filters = cast(list[dict[str, Any]], data.get("filters", []))
+    filters = cast(list[dict[str, Any]], data["sources"].get("filters", []))
     assert filters[0]["datasetId"] == "ds2", "filter must use new dataset id"
 
 
@@ -1064,13 +1110,15 @@ def test_replace_dataset_then_add_hierarchy_uses_new_dataset_id() -> None:
     chart = _chart_for_replace_dataset_regression()
 
     update = chart.update.replace_dataset(old="ds1", new="ds2").add_hierarchy(
-        "Date hierarchy",
-        ["g_date"],
-        guid="h-date",
+        WizardHierarchy(
+            title="Date hierarchy",
+            fields=["g_date"],
+            guid="h-date",
+        )
     )
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
 
-    assert data["hierarchies"][0]["fields"][0]["datasetId"] == "ds2"
+    assert data["sources"]["hierarchies"][0]["fields"][0]["datasetId"] == "ds2"
 
 
 def test_replace_dataset_then_color_by_dimension_uses_new_dataset_id() -> None:
@@ -1079,7 +1127,7 @@ def test_replace_dataset_then_color_by_dimension_uses_new_dataset_id() -> None:
     update = chart.update.replace_dataset(old="ds1", new="ds2").color_by_dimension("g_date")
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
 
-    assert data["colors"][0]["datasetId"] == "ds2"
+    assert data["visualization"]["colors"]["items"][0]["datasetId"] == "ds2"
 
 
 # ---------------------------------------------------------------------------
@@ -1090,34 +1138,31 @@ def test_replace_dataset_then_color_by_dimension_uses_new_dataset_id() -> None:
 
 def _bar_chart_with_labels() -> WizardChart:
     """bar chart that already has labels set."""
-    return WizardChartConverter.to_domain(
-        {
-            "entryId": "chart-2",
-            "type": "d3_wizard_node",
-            "data": {
-                "datasetsIds": ["ds1"],
-                "labels": [{"guid": "g_amt", "title": "Amount", "type": "MEASURE", "datasetId": "ds1"}],
-                "visualization": {
-                    "id": "bar",
-                    "placeholders": [
+    return WizardChart(
+        id="chart-2",
+        installation="yacloud",
+        data={
+            "sources": {"datasetsIds": ["ds1"]},
+            "visualization": {
+                "type": "bar",
+                "colors": {"items": []},
+                "labels": {"items": [{"guid": "g_amt", "datasetId": "ds1"}]},
+                "sort": {"items": []},
+                "x": {
+                    "items": [
                         {
-                            "id": "x",
-                            "items": [
-                                {
-                                    "guid": "g_amt",
-                                    "title": "Amount",
-                                    "type": "MEASURE",
-                                    "data_type": "float",
-                                    "calc_mode": "direct",
-                                    "datasetId": "ds1",
-                                }
-                            ],
+                            "guid": "g_amt",
+                            "title": "Amount",
+                            "type": "MEASURE",
+                            "data_type": "float",
+                            "calc_mode": "direct",
+                            "datasetId": "ds1",
                         }
                     ],
                 },
+                "y": {"items": []},
             },
         },
-        installation="yacloud",
     )
 
 
@@ -1134,9 +1179,9 @@ def test_labels_empty_list_clears_labels_without_labels_position_side_effect() -
     update = chart.update.labels([])
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
 
-    assert data.get("labels") == [], "labels must be cleared to [] by labels([])"
-    extras = cast(dict[str, Any], data.get("extraSettings", {}))
-    assert "labelsPosition" not in extras, "labelsPosition must NOT be written when labels are cleared"
+    labels = cast(dict[str, Any], data["visualization"]["labels"])
+    assert labels["items"] == [], "labels must be cleared to [] by labels([])"
+    assert "labelsPosition" not in cast(dict[str, Any], labels.get("settings", {}))
 
 
 # ---------------------------------------------------------------------------
@@ -1182,9 +1227,12 @@ def test_update_raises_on_409() -> None:
         return httpx.Response(
             200,
             json={
-                "entryId": "chart-1",
-                "type": "d3_wizard_node",
-                "data": {"visualization": {"id": "line", "placeholders": []}},
+                "entry": {
+                    "version": 1,
+                    "entryId": "chart-1",
+                    "type": "d3_wizard_node",
+                    "data": _chart_for_update().data,
+                },
             },
         )
 
@@ -1205,7 +1253,7 @@ def test_update_raises_on_409() -> None:
         id="chart-1",
         installation="yacloud",
         wire_type="d3_wizard_node",
-        data={"visualization": {"id": "line", "placeholders": []}},
+        data=_chart_for_update().data,
         _operations=service,
     )
     update = chart.update.chart_title(text="Changed")

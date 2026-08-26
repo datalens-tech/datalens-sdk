@@ -1,53 +1,9 @@
 from __future__ import annotations
 
-import copy
+from collections.abc import Mapping
+from datetime import date, datetime, timezone
 import re
 import uuid
-
-MINIMAL_WIZARD_DATA_DEFAULTS: dict[str, object] = {
-    "type": "datalens",
-    "version": "15",
-    "colors": [],
-    "colorsConfig": {},
-    "filters": [],
-    "geopointsConfig": {},
-    "hierarchies": [],
-    "labels": [],
-    "links": [],
-    "segments": [],
-    "shapes": [],
-    "shapesConfig": {},
-    "sort": [],
-    "tooltips": [],
-    "updates": [],
-}
-
-
-def merge_chart_defaults(data: dict[str, object] | None) -> dict[str, object]:
-    result: dict[str, object] = dict(data) if data else {}
-    for key, default in MINIMAL_WIZARD_DATA_DEFAULTS.items():
-        result.setdefault(key, copy.deepcopy(default))
-    return result
-
-
-def build_pseudo_measure_names_for_placeholder() -> dict[str, object]:
-    return {
-        "id": None,
-        "guid": None,
-        "title": "Measure Names",
-        "type": "PSEUDO",
-        "data_type": "string",
-    }
-
-
-def build_pseudo_measure_names_for_data_colors() -> dict[str, object]:
-    return {
-        "title": "Measure Names",
-        "type": "PSEUDO",
-        "className": "item pseudo-item dimension-item",
-        "data_type": "string",
-    }
-
 
 _ISO_DATE_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}"
@@ -65,6 +21,10 @@ def _normalize_iso_date(value: str, *, end: bool = False, inclusive_end: bool = 
     if not _ISO_DATE_RE.match(value):
         return value
     if "T" not in value:
+        try:
+            date.fromisoformat(value)
+        except ValueError:
+            return value
         if end and not inclusive_end:
             time_part = "T00:00:00.000Z"
         elif end:
@@ -72,11 +32,20 @@ def _normalize_iso_date(value: str, *, end: bool = False, inclusive_end: bool = 
         else:
             time_part = "T00:00:00.000Z"
         return value + time_part
-    if not value.endswith("Z"):
-        value = re.sub(r"[+-]\d{2}:\d{2}$", "", value)
-        if not value.endswith("Z"):
-            value = value + "Z"
-    return value
+    parseable = value[:-1] + "+00:00" if value.endswith("Z") else value
+    try:
+        parsed = datetime.fromisoformat(parseable)
+    except ValueError:
+        return value
+    if value.endswith("Z"):
+        return value
+    offset = re.search(r"[+-]\d{2}:\d{2}$", value)
+    if offset is None:
+        return value + "Z"
+    fraction = re.search(r"T\d{2}:\d{2}:\d{2}(\.\d+)?", value)
+    fractional_part = fraction.group(1) if fraction is not None and fraction.group(1) is not None else ""
+    utc = parsed.astimezone(timezone.utc)
+    return utc.strftime("%Y-%m-%dT%H:%M:%S") + fractional_part + "Z"
 
 
 def build_date_interval(start: str, end: str, *, inclusive_end: bool = True) -> str:
@@ -99,6 +68,23 @@ def build_relative_date_interval(start_offset: str, end_offset: str) -> str:
     return f"__interval___relative_{start_offset}___relative_{end_offset}"
 
 
+def build_navigator_settings(*, mode: str, current: object = None) -> dict[str, object]:
+    """Return the complete navigator object required by the Wizard v3 schema."""
+    settings = dict(current) if isinstance(current, Mapping) else {}
+    settings.setdefault("linesMode", "all")
+    settings["navigatorMode"] = mode
+    settings.setdefault(
+        "periodSettings",
+        {
+            "period": "year",
+            "type": "genericdatetime",
+            "value": "1",
+        },
+    )
+    settings.setdefault("selectedLines", [])
+    return settings
+
+
 def build_gradient_state(
     *,
     mode: str,
@@ -114,12 +100,12 @@ def build_gradient_state(
     if thresholds is not None:
         state["thresholdsMode"] = "manual"
         if mode == "2-point" and len(thresholds) == 2:
-            state["leftThreshold"] = thresholds[0]
-            state["rightThreshold"] = thresholds[1]
+            state["leftThreshold"] = str(thresholds[0])
+            state["rightThreshold"] = str(thresholds[1])
         elif mode == "3-point" and len(thresholds) == 3:
-            state["leftThreshold"] = thresholds[0]
-            state["middleThreshold"] = thresholds[1]
-            state["rightThreshold"] = thresholds[2]
+            state["leftThreshold"] = str(thresholds[0])
+            state["middleThreshold"] = str(thresholds[1])
+            state["rightThreshold"] = str(thresholds[2])
     else:
         state["thresholdsMode"] = "auto"
     return state
@@ -202,6 +188,5 @@ def build_bars_settings(
             one_color_settings["palette"] = palette
         if color_index is not None:
             one_color_settings["colorIndex"] = color_index
-        if one_color_settings:
-            settings["colorSettings"] = {"colorType": "one-color", "settings": one_color_settings}
+        settings["colorSettings"] = {"colorType": "one-color", "settings": one_color_settings}
     return settings

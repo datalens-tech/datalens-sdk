@@ -54,10 +54,16 @@ def _dashboard_snapshot() -> dict[str, JsonValue]:
 
 def _wizard_snapshot(chart_id: str) -> dict[str, JsonValue]:
     return {
-        "entryId": chart_id,
-        "type": "d3_wizard_node",
-        "key": f"/{chart_id}",
-        "data": {"datasetsIds": ["json-only-dataset"]},
+        "entry": {
+            "version": 1,
+            "entryId": chart_id,
+            "type": "d3_wizard_node",
+            "key": f"/{chart_id}",
+            "data": {
+                "sources": {"datasetsIds": ["json-only-dataset"]},
+                "visualization": {"type": "line", "x": {"items": []}},
+            },
+        }
     }
 
 
@@ -449,7 +455,7 @@ def test_unknown_chart_type_fails_before_chart_relations_or_resource_getters(tmp
             WizardChart(
                 id="chart-a",
                 wire_type="d3_wizard_node",
-                response_snapshot={"entryId": "chart-a", "type": "d3_wizard_node"},
+                response_snapshot={"entry": {"version": 1, "entryId": "chart-a", "type": "d3_wizard_node"}},
             ),
             "complete 'data' content",
         ),

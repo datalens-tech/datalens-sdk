@@ -7,15 +7,21 @@ import difflib
 from datalens_sdk._runtime.wizard_field_references import WizardFieldReferences
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.chart_types import ChartCategory
-from datalens_sdk.domain.fields import DatasetField, FieldLike, FieldRef, FieldsProxy
+from datalens_sdk.domain.fields import (
+    DatasetField,
+    FieldsProxy,
+    WizardAggregatedMeasure,
+    WizardFieldRef,
+    WizardLocalField,
+)
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
-__all__ = ["FieldRef", "WizardChart", "WizardChartUpdate", "resolve_field_snapshot"]
+__all__ = ["WizardChart", "WizardChartUpdate", "WizardFieldRef", "resolve_field_snapshot"]
 
 _UNBOUND = "Object is not bound to client operations. Use a client namespace."
 
 
-def _field_snapshot(field_obj: FieldLike) -> dict[str, object]:
+def _field_snapshot(field_obj: DatasetField) -> dict[str, object]:
     if field_obj.raw:
         snapshot: dict[str, object] = dict(field_obj.raw)
     else:
@@ -57,13 +63,25 @@ def _field_snapshot(field_obj: FieldLike) -> dict[str, object]:
 
 
 def resolve_field_snapshot(
-    ref: FieldLike | str | Mapping[str, object],
+    ref: WizardFieldRef | Mapping[str, object],
     *,
-    fields: Sequence[FieldLike],
+    fields: Sequence[DatasetField],
     local_fields: Mapping[str, Mapping[str, object]] | None = None,
     bound_dataset_name: str | None = None,
 ) -> dict[str, object]:
     local_fields = local_fields or {}
+    if isinstance(ref, (WizardLocalField, WizardAggregatedMeasure)):
+        registered = local_fields.get(ref.guid)
+        if registered is None:
+            method_name = "add_local_field" if isinstance(ref, WizardLocalField) else "add_aggregated_measure"
+            raise DataLensValidationError(
+                f"Wizard field {ref.title!r} ({ref.guid}) is not registered in this chart. "
+                f"Call {method_name}(field) before using the handle as a field reference."
+            )
+        snapshot = dict(registered)
+        if isinstance(ref, WizardLocalField) and ref.formatting:
+            snapshot["formatting"] = dict(ref.formatting)
+        return snapshot
     if isinstance(ref, DatasetField):
         return _field_snapshot(ref)
     if isinstance(ref, Mapping):
@@ -117,7 +135,7 @@ def resolve_field_snapshot(
         "fetch the dataset schema and pass a DatasetField:\n"
         "    dataset = client.get.dataset(by_id=chart.dataset_ids[0])\n"
         f"    field   = dataset.fields.by_name({ref!r})\n"
-        "    chart.update.<placeholder>([field]).execute()\n"
+        "    chart.update.<slot>([field]).execute()\n"
         f"Known field titles already placed in this chart: {known}.{hint}"
     )
 
@@ -130,11 +148,11 @@ class WizardChart(Chart):
 
     @property
     def visualization_id(self) -> str | None:
-        """The chart's visualization id (``data.visualization.id``)."""
+        """The Wizard V1 visualization discriminator (``data.visualization.type``)."""
         visualization = self.data.get("visualization")
         if not isinstance(visualization, Mapping):
             return None
-        value = visualization.get("id")
+        value = visualization.get("type")
         return value if isinstance(value, str) else None
 
     @property
@@ -143,22 +161,46 @@ class WizardChart(Chart):
 
     @property
     def dataset_ids(self) -> tuple[str, ...]:
-        """The dataset ids backing this chart (``data.datasetsIds``), non-strings filtered.
+        """The dataset ids backing this chart (``data.sources.datasetsIds``).
 
         Empty tuple when the key is absent or holds no string ids. Used by the
         update path to point users at the right dataset when a field reference
         cannot be resolved against placed fields alone.
         """
-        value = self.data.get("datasetsIds")
+        sources = self.data.get("sources")
+        if not isinstance(sources, Mapping):
+            return ()
+        value = sources.get("datasetsIds")
         if not isinstance(value, list):
             return ()
         return tuple(item for item in value if isinstance(item, str))
+
+    @property
+    def rev_id(self) -> str | None:
+        value = self.raw.get("revId")
+        return value if isinstance(value, str) else None
 
     @property
     def update(self) -> WizardChartUpdate:
         if not self.id:
             raise DataLensValidationError("Cannot update a chart without an id")
         return WizardChartUpdate(chart=self, operations=self._operations)
+
+    def publish_revision(self, *, rev_id: str | None = None) -> WizardChart:
+        """Publish an existing revision without creating a new one.
+
+        ``rev_id=None`` publishes the revision this object was loaded as. To
+        persist changes and publish them in one call, use
+        ``chart.update.mode("publish").execute()`` instead.
+        """
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot publish a chart without an id")
+        effective_rev_id = rev_id if rev_id is not None else self.rev_id
+        if not effective_rev_id:
+            raise DataLensValidationError("Cannot publish: no rev_id given and the chart carries none")
+        return self._operations.publish_wizard_chart(self, effective_rev_id)
 
     def delete(self) -> None:
         if self._operations is None:

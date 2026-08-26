@@ -51,26 +51,43 @@ def _wizard_snapshot(
     *,
     chart_id: str = "wizard-source",
     wire_type: str = "d3_wizard_node",
+    revision_id: str = "source-revision",
+    key: str = "/source/Wizard Source",
 ) -> dict[str, object]:
     return {
-        "entryId": chart_id,
-        "type": wire_type,
-        "key": "/source/Wizard Source",
-        "revId": "source-revision",
-        "permissions": {"edit": True},
-        "futureOuter": {"mustNotBeWritten": True},
-        "annotation": {"description": "Wizard source"},
-        "data": {
-            "datasetsIds": ["dataset-1"],
-            "visualization": {
-                "id": "line",
-                "placeholders": [
-                    {"id": "x", "items": []},
-                    {"id": "y", "items": [{"guid": "measure-1"}]},
-                ],
+        "entry": {
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "createdBy": "user-1",
+            "version": 1,
+            "entryId": chart_id,
+            "hidden": False,
+            "type": wire_type,
+            "key": key,
+            "meta": {},
+            "public": False,
+            "publishedId": revision_id,
+            "revId": revision_id,
+            "savedId": revision_id,
+            "scope": "widget",
+            "tenantId": "tenant-1",
+            "updatedAt": "2026-01-02T00:00:00.000Z",
+            "updatedBy": "user-1",
+            "workbookId": None,
+            "annotation": {"description": "Wizard source"},
+            "data": {
+                "sources": {"datasetsIds": ["dataset-1"]},
+                "visualization": {
+                    "type": "line",
+                    "x": {"items": []},
+                    "y": {"items": [{"guid": "measure-1", "datasetId": "dataset-1"}]},
+                },
+                "futureData": {"nested": {"preserved": True}},
             },
-            "futureData": {"nested": {"preserved": True}},
+            "futureEntry": {"mustNotBeWritten": True},
         },
+        "isFavorite": False,
+        "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
+        "futureOuter": {"mustNotBeWritten": True},
     }
 
 
@@ -162,7 +179,7 @@ def _client(recorder: RecordedTransport) -> dl.DataLensClientYC:
             "/rpc/getWizardChart",
             lambda client: client.get.wizard_chart(by_id="wizard-source"),
             _wizard_snapshot(),
-            "root",
+            "entry",
         ),
         (
             "/rpc/getEditorChart",
@@ -288,9 +305,15 @@ def test_split_tabs_is_not_exposed_by_non_editor_charts(tmp_path: Path, chart: d
 def test_raw_wizard_create_and_update_project_only_mutable_content() -> None:
     recorder = RecordedTransport(
         {
-            "/rpc/createWizardChart": httpx.Response(200, json={"entryId": "wizard-clone"}),
-            "/rpc/getWizardChart": httpx.Response(200, json=_wizard_snapshot(chart_id="wizard-target")),
-            "/rpc/updateWizardChart": httpx.Response(200, json={"entryId": "wizard-target"}),
+            "/rpc/createWizardChart": httpx.Response(200, json=_wizard_snapshot(chart_id="wizard-clone")),
+            "/rpc/getWizardChart": httpx.Response(
+                200,
+                json=_wizard_snapshot(chart_id="wizard-target", revision_id="target-revision"),
+            ),
+            "/rpc/updateWizardChart": httpx.Response(
+                200,
+                json=_wizard_snapshot(chart_id="wizard-target", revision_id="target-revision"),
+            ),
         }
     )
     client = _client(recorder)
@@ -313,15 +336,14 @@ def test_raw_wizard_create_and_update_project_only_mutable_content() -> None:
     assert created.wire_type == "d3_wizard_node"
     assert updated.id == "wizard-target"
     create_payload = recorder.request_json(0)
-    assert create_payload["template"] == "datalens"
     assert create_payload["key"] == "/target/Wizard Clone"
     assert create_payload["annotation"] == {"description": "Wizard source"}
     assert cast(dict[str, object], create_payload["data"])["futureData"] == {"nested": {"preserved": True}}
-    assert not ({"entryId", "revId", "permissions", "futureOuter", "type"} & create_payload.keys())
+    assert set(create_payload) == {"data", "key", "annotation"}
     update_payload = recorder.request_json(2)
-    assert update_payload["entryId"] == "wizard-target"
+    assert update_payload["chartId"] == "wizard-target"
     assert update_payload["mode"] == "publish"
-    assert "revId" not in update_payload
+    assert update_payload["revId"] == "target-revision"
     assert cast(dict[str, object], update_payload["data"])["futureData"] == {"nested": {"preserved": True}}
 
 
@@ -368,12 +390,18 @@ def test_raw_wizard_namespace_defers_captures_inputs_and_repeats_terminal_calls(
     recorder = RecordedTransport(
         {
             "/rpc/createWizardChart": [
-                httpx.Response(200, json={"entryId": "wizard-clone-1"}),
-                httpx.Response(200, json={"entryId": "wizard-clone-2"}),
+                httpx.Response(200, json=_wizard_snapshot(chart_id="wizard-clone-1")),
+                httpx.Response(200, json=_wizard_snapshot(chart_id="wizard-clone-2")),
             ],
             "/rpc/updateWizardChart": [
-                httpx.Response(200, json={"entryId": "wizard-target"}),
-                httpx.Response(200, json={"entryId": "wizard-target"}),
+                httpx.Response(
+                    200,
+                    json=_wizard_snapshot(chart_id="wizard-target", key="/existing/Wizard Target"),
+                ),
+                httpx.Response(
+                    200,
+                    json=_wizard_snapshot(chart_id="wizard-target", key="/existing/Wizard Target"),
+                ),
             ],
         }
     )
@@ -403,7 +431,10 @@ def test_raw_wizard_namespace_defers_captures_inputs_and_repeats_terminal_calls(
 
     nested = cast(
         dict[str, object],
-        cast(dict[str, object], cast(dict[str, object], snapshot["data"])["futureData"])["nested"],
+        cast(
+            dict[str, object],
+            cast(dict[str, object], cast(dict[str, object], snapshot["entry"])["data"])["futureData"],
+        )["nested"],
     )
     nested["preserved"] = False
     target.id = "mutated-id"
@@ -429,7 +460,7 @@ def test_raw_wizard_namespace_defers_captures_inputs_and_repeats_terminal_calls(
     for index in range(4):
         data = cast(dict[str, object], recorder.request_json(index)["data"])
         assert data["futureData"] == {"nested": {"preserved": True}}
-    assert recorder.request_json(2)["entryId"] == "wizard-target"
+    assert recorder.request_json(2)["chartId"] == "wizard-target"
     assert recorder.request_json(2)["mode"] == "publish"
 
 
@@ -506,8 +537,8 @@ def test_raw_ql_namespace_defers_captures_inputs_and_repeats_terminal_calls() ->
 def test_raw_chart_builder_owns_prevalidated_snapshot_view(boundary: str) -> None:
     recorder = RecordedTransport(
         {
-            "/rpc/createWizardChart": httpx.Response(200, json={"entryId": "wizard-clone"}),
-            "/rpc/updateWizardChart": httpx.Response(200, json={"entryId": "wizard-target"}),
+            "/rpc/createWizardChart": httpx.Response(200, json=_wizard_snapshot(chart_id="wizard-clone")),
+            "/rpc/updateWizardChart": httpx.Response(200, json=_wizard_snapshot(chart_id="wizard-target")),
         }
     )
     snapshot = artifact_serialization.ChartSnapshotView.from_raw(
@@ -541,11 +572,12 @@ def test_raw_chart_builder_owns_prevalidated_snapshot_view(boundary: str) -> Non
 def test_raw_chart_builder_revalidates_forged_snapshot_view_before_http(boundary: str) -> None:
     recorder = RecordedTransport({})
     snapshot = cast(dict[str, dl.JsonValue], _wizard_snapshot())
-    snapshot.pop("entryId")
-    data = cast(dict[str, dl.JsonValue], snapshot["data"])
+    entry = cast(dict[str, dl.JsonValue], snapshot["entry"])
+    entry.pop("entryId")
+    data = cast(dict[str, dl.JsonValue], entry["data"])
     forged = artifact_serialization.ChartSnapshotView(
         snapshot=snapshot,
-        entry=snapshot,
+        entry=entry,
         category="wizard",
         wire_type="d3_wizard_node",
         data=data,
@@ -586,8 +618,10 @@ def test_raw_chart_namespaces_direct_and_file_payloads_match(
         )
         create_path = "/rpc/createWizardChart"
         update_path = "/rpc/updateWizardChart"
-        create_responses = [httpx.Response(200, json={"entryId": f"wizard-clone-{index}"}) for index in range(2)]
-        update_responses = [httpx.Response(200, json={"entryId": "wizard-target"}) for _ in range(2)]
+        create_responses = [
+            httpx.Response(200, json=_wizard_snapshot(chart_id=f"wizard-clone-{index}")) for index in range(2)
+        ]
+        update_responses = [httpx.Response(200, json=_wizard_snapshot(chart_id="wizard-target")) for _ in range(2)]
     else:
         snapshot = _raw(_ql_snapshot())
         source = dl.QLChart(
@@ -854,8 +888,8 @@ def test_editor_raw_projection_captures_source_at_builder_boundary(
                 wire_type="d3_wizard_node",
                 response_snapshot=_raw(_wizard_snapshot()),
             ),
-            _wizard_snapshot(chart_id="wizard-target"),
-            {"entryId": "wizard-target"},
+            _wizard_snapshot(chart_id="wizard-target", revision_id="target-revision"),
+            _wizard_snapshot(chart_id="wizard-target", revision_id="target-revision"),
             RawWizardChartReplace,
             id="wizard",
         ),
@@ -1099,13 +1133,13 @@ def test_raw_chart_replace_rejects_wire_type_mismatch_before_http(category: str)
     if category == "wizard":
         replace_from_snapshot = partial(
             client.raw.replace.wizard_chart,
-            target=dl.WizardChart(id="target", wire_type="d3_wizard_node_v2"),
+            target=dl.WizardChart(id="target", wire_type="other_wizard_node"),
             response_snapshot=_raw(_wizard_snapshot()),
         )
     else:
         replace_from_snapshot = partial(
             client.raw.replace.ql_chart,
-            target=dl.QLChart(id="target", wire_type="d3_ql_node_v2"),
+            target=dl.QLChart(id="target", wire_type="other_ql_node"),
             response_snapshot=_raw(_ql_snapshot()),
         )
 

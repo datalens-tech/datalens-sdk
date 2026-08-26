@@ -17,7 +17,7 @@ signatures, arguments, persistence, placement, and verification.
 | Owner | Create signal | Update signal | Meaning |
 |---|---|---|---|
 | Dataset reusable calculation | `add_calculation(...)` | `add_calculation(...)`, `update_calculation(...)` | Reusable field stored in a Dataset |
-| Wizard local field | `add_local_field(...)` | `add_local_field(...)`, `replace_formula(...)` | Field local to one Wizard chart |
+| Wizard local field | `add_local_field(WizardLocalField...)` | `add_local_field(WizardLocalField...)`, `replace_formula(...)` | Field local to one Wizard chart; reuse its GUID-bearing handle in field references |
 | Dataset cache invalidation | `update_cache_invalidation_source(...)` | same | Service formula pair; not a reusable field |
 
 Choose Dataset when the calculation should be reusable by multiple charts.

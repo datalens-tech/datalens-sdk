@@ -7,7 +7,8 @@ from typing import Any, cast, get_args
 
 from datalens_sdk import GeoLayerFilter
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
-from datalens_sdk._runtime.viz_specs import get_geo_layer_spec
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
+from datalens_sdk.converter.wizard._assemble import _GEO_INPUT_SLOT_ALIASES
 from datalens_sdk.domain.chart_types import GeoLayerType, GradientPaletteId
 from datalens_sdk.domain.entry_location import EntryLocation
 
@@ -119,8 +120,8 @@ def test_documented_geolayer_surface_matches_the_public_sdk() -> None:
         "red-orange-green",
     }
 
-    placeholders_header, placeholders_rows = _table(geolayer_text, "Placeholders")
-    assert placeholders_header == [
+    slots_header, slots_rows = _table(geolayer_text, "Layer slots")
+    assert slots_header == [
         "Layer type",
         "Required public argument",
         "Geometry field group",
@@ -132,41 +133,30 @@ def test_documented_geolayer_surface_matches_the_public_sdk() -> None:
             "geometry_group": row[2].strip("`"),
             "optional_inputs": set(re.findall(r"`([^`]+)`", row[3])),
         }
-        for row in placeholders_rows
+        for row in slots_rows
     }
     assert set(documented_capabilities) == set(get_args(GeoLayerType))
 
     for layer_type, documented in documented_capabilities.items():
-        layer_spec = get_geo_layer_spec(layer_type)
-        viz = cast(dict[str, object], layer_spec["viz"])
-        placeholders = cast(dict[str, dict[str, object]], layer_spec["placeholders"])
-        placeholder_inputs = cast(dict[str, str], layer_spec["placeholder_inputs"])
-        required_groups = [
-            placeholder_id
-            for placeholder_id, placeholder in placeholders.items()
-            if placeholder.get("required") is True
+        layer_structure = WIZARD_VISUALIZATION_STRUCTURE["geolayer"]["layers"][layer_type]
+        required_slots = {slot_name for slot_name, slot in layer_structure["slots"].items() if slot["required"]}
+        geometry_arguments = [
+            argument
+            for argument in ("geopoint", "polygon", "polyline")
+            if _GEO_INPUT_SLOT_ALIASES[argument] in required_slots
         ]
-        assert len(required_groups) == 1
-        geometry_group = required_groups[0]
-
-        expected_optional_inputs: set[str] = set()
-        if "size" in placeholder_inputs.values():
-            expected_optional_inputs.add("size")
-        if "grouping" in placeholder_inputs.values():
-            expected_optional_inputs.add("grouping")
-        for capability, public_input in (
-            ("allowColors", "color"),
-            ("allowLayerFilters", "filters"),
-            ("allowTooltips", "tooltips"),
-            ("allowLabels", "labels"),
-        ):
-            if viz.get(capability) is True:
-                expected_optional_inputs.add(public_input)
-        if viz.get("allowSort") is True:
-            expected_optional_inputs.add("sort_by")
+        assert len(geometry_arguments) == 1
+        geometry_argument = geometry_arguments[0]
+        geometry_group = {"geopolygon": "geopolygon", "heatmap": "heatmap"}.get(layer_type, geometry_argument)
+        public_optional_inputs = {"size", "grouping", "color", "filters", "tooltips", "labels", "sort_by"}
+        expected_optional_inputs = {
+            argument
+            for argument, slot_name in _GEO_INPUT_SLOT_ALIASES.items()
+            if argument in public_optional_inputs and slot_name in layer_structure["slots"]
+        }
 
         assert documented == {
-            "geometry_argument": placeholder_inputs[geometry_group],
+            "geometry_argument": geometry_argument,
             "geometry_group": geometry_group,
             "optional_inputs": expected_optional_inputs,
         }

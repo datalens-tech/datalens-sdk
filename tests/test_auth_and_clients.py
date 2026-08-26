@@ -121,7 +121,7 @@ def test_client_applies_auth_headers_and_public_sdk_version(monkeypatch: pytest.
     assert seen
     assert seen[0].headers["authorization"] == "Bearer token-1"
     assert seen[0].headers["x-dl-org-id"] == "org-1"
-    assert seen[0].headers["x-dl-api-version"] == "2"
+    assert seen[0].headers["x-dl-api-version"] == "3"
     assert seen[0].headers["user-agent"] == "datalens-sdk/1.2.3 (yacloud)"
     assert distributions == ["datalens-sdk"]
 
@@ -241,7 +241,7 @@ def test_enterprise_service_account_provider_signs_exchanges_and_caches_jwt(
         assert exchange_requests == [
             (
                 "https://enterprise.example.test/rpc/exchangeServiceAccountToken",
-                {"x-dl-api-version": "2"},
+                {"x-dl-api-version": "3"},
                 {"saToken": "signed-jwt"},
             )
         ]

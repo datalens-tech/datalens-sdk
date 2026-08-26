@@ -53,8 +53,11 @@ Naming traps:
 ## Full fluent-operation matrix
 
 `C` = create builder, `U` = `WizardChartUpdate`, `CU` = both, `—` =
-unsupported. `Field` means `DatasetField | str`. `StructuralTarget` means
-`DatasetField | exact GUID str`; titles do not resolve for those arguments.
+unsupported. `Field` means `DatasetField | WizardLocalField |
+WizardAggregatedMeasure | WizardHierarchy | str`; prefer identity objects and
+use strings only for exact identifiers. `StructuralTarget` means a
+`DatasetField`, a saved Wizard handle, or an exact GUID string; titles do not
+resolve for those arguments.
 Every cell describes only the installed package's typed public API.
 
 | Operation | Arguments | area | area_100p | bar | bar_100p | column | column_100p | combined_chart | donut | flat_table | funnel | geolayer | line | indicator | pie | pivot_table | scatter | treemap |
@@ -63,41 +66,40 @@ Every cell describes only the installed package's typed public API.
 | `dataset()` | `dataset: Dataset` | C | C | C | C | C | C | C | C | C | C | C | C | C | C | C | C | C |
 | `add_dataset()` | `dataset: Dataset` | — | — | — | — | — | — | — | — | — | — | C | — | — | — | — | — | — |
 | `x()` | `fields: Sequence[Field]` | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | — | CU | CU |
-| `y()` | `fields: Sequence[Field]` | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | CU | CU | CU | CU | CU |
+| `y()` | `fields: Sequence[Field]` | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | CU | CU | — | CU | CU |
 | `y2()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | — | — |
 | `columns()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | CU | — | — |
 | `rows()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — | — |
-| `measures()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | U | — | U | — | — | U | U | U | — | U |
+| `measures()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | U | — | U | — | — | U | U | CU | — | U |
 | `points()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — |
 | `size()` | `fields: Sequence[Field]` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — |
 | `add_layer()` | `combined_chart`: `layer_type: CombinedLayerType, *, y: Field \| None = None, y2: Field \| None = None, name: str \| None = None`<br>`geolayer`: `layer_type: GeoLayerType, *, ...` — [full signature and layer capabilities](chart-geolayer.md#fluent-operations) | — | — | — | — | — | — | C | — | — | — | C | — | — | — | — | — | — |
-| `map_type()` | `*, mode: MapType` | — | — | — | — | — | — | — | — | — | — | C | — | — | — | — | — | — |
 | `map_center()` | `*, lat: float, lon: float, zoom: int \| None = None` | — | — | — | — | — | — | — | — | — | — | C | — | — | — | — | — | — |
-| `add_aggregated_measure()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str \| None = None, guid: str \| None = None` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
-| `add_local_field()` | `*, title: str, formula: str, guid: str \| None = None, cast: str = 'float', measure: bool = False, aggregation: str \| None = None, formatting: MeasureFormat \| None = None` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
-| `add_hierarchy()` | `title: str, fields: Sequence[Field], *, guid: str \| None = None` | CU | CU | CU | CU | CU | CU | — | — | CU | — | — | CU | — | — | CU | CU | — |
+| `add_aggregated_measure()` | `field: WizardAggregatedMeasure` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
+| `add_local_field()` | `field: WizardLocalField` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
+| `add_hierarchy()` | `hierarchy: WizardHierarchy` | CU | CU | CU | CU | CU | CU | — | — | CU | — | — | CU | — | — | CU | CU | — |
 | `add_filter()` | `field: Field, *, operation: FilterOperation, values: Sequence[str] = ()` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `add_date_filter()` | `field: Field, *, start: str, end: str, inclusive_end: bool = True` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `add_relative_date_filter()` | `field: Field, *, start_offset: str, end_offset: str` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `add_sort()` | `field: Field, *, direction: Literal['asc', 'desc'] = 'asc'` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | — | CU | CU | CU | — |
 | `sort()` | `fields: Sequence[Field]` | C | C | C | C | C | C | C | C | C | C | — | C | — | C | C | C | — |
-| `chart_title()` | `*, text: str = '', mode: Literal['show', 'hide'] = 'show'` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
+| `chart_title()` | `*, text: str = '', mode: Literal['show', 'hide'] = 'show'` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | CU |
 | `description()` | `text: str` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
-| `legend()` | `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
-| `tooltip_sum()` | `*, enabled: bool` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
-| `tooltips()` | `fields: Sequence[Field]` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
-| `labels()` | `fields: Sequence[Field]` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | CU |
-| `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
-| `label_mode()` | `*, mode: Literal['absolute', 'percent']` | — | CU | — | CU | — | CU | — | CU | — | CU | — | — | — | CU | — | — | — |
+| `legend()` | `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | — | CU | — | CU | — |
+| `tooltip_sum()` | `*, enabled: bool` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | — | — |
+| `tooltip()` | `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | — | CU | CU |
+| `labels()` | `fields: Sequence[Field]` | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | — | CU | — | — | — |
+| `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | — | — | CU | — | CU | — | CU | — | — | CU | — | — | — | — | — | — | — |
+| `label_mode()` | `*, mode: Literal['absolute']` (`'percent'` also on 100% charts, donut, funnel, and pie) | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | — | CU | — | — | — |
 | `tooltip_percentage_base()` | `*, mode: Literal['auto', 'first', 'previous']` | — | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | — | — |
 | `shape()` | `*, value: FunnelShape` | — | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | — | — |
-| `navigator()` | `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | — | — |
-| `axis_visibility()` | `ph_id: Literal['x', 'y']` (`'y2'` also on line), `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
-| `axis_title()` | `ph_id: Literal['x', 'y']` (`'y2'` also on line), `*, mode: Literal['off', 'manual', 'auto'], text: str = ''` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
-| `axis_scale()` | `ph_id: Literal['x', 'y']` (`'y2'` also on line), `*, scale: Literal['linear', 'logarithmic'] = 'linear', mode: Literal['auto', 'manual'] = 'auto', min: str \| None = None, max: str \| None = None` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
-| `grid()` | `ph_id: Literal['x', 'y']` (`'y2'` also on line), `*, enabled: bool, step: int \| None = None` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
-| `hide_labels()` | `ph_id: Literal['x', 'y']` (`'y2'` also on line), `*, enabled: bool` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
-| `nulls_mode()` | `ph_id: Literal['x', 'y']` (`'y2'` also on line), `*, mode: Literal['ignore', 'connect', 'as-0']` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
+| `navigator()` | `*, mode: Literal['show', 'hide']` | CU | CU | — | — | CU | CU | — | — | — | — | — | CU | — | — | — | — | — |
+| `axis_visibility()` | `slot_name: Literal['x', 'y']` (`'y2'` also on line), `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
+| `axis_title()` | `slot_name: Literal['x', 'y']` (`'y2'` also on line), `*, mode: Literal['off', 'manual', 'auto'], text: str = ''` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
+| `axis_scale()` | `slot_name` is `'y'` on area/column, `'x'` on bar, `'y'`/`'y2'` on line, and `'x'`/`'y'` on scatter; `*, scale: Literal['linear', 'logarithmic'] = 'linear', mode: Literal['auto', 'manual'] = 'auto', min: str \| None = None, max: str \| None = None` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
+| `grid()` | `slot_name: Literal['x', 'y']` (`'y2'` also on line), `*, enabled: bool, step: int \| None = None` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
+| `hide_labels()` | `slot_name: Literal['x', 'y']` (`'y2'` also on line), `*, enabled: bool` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
+| `nulls_mode()` | `slot_name` is `'y'` on area/column, `'x'` on bar, and `'y'`/`'y2'` on line; `*, mode: Literal['ignore', 'connect', 'as-0', 'use-previous']` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | — | — |
 | `segments()` | `fields: Sequence[Field]` | CU | CU | — | — | CU | CU | — | — | — | — | — | CU | — | — | — | — | — |
 | `palette()` | `*, id: PaletteId` | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | — | CU | — | CU | CU | CU | CU |
 | `color_by_dimension()` | `field: Field` | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | — | CU | — | CU | CU |
@@ -106,7 +108,7 @@ Every cell describes only the installed package's typed public API.
 | `shape_by_dimension()` | `field: Field, *, shapes_map: Mapping[str, ShapeStyle] \| None = None` | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | CU | — |
 | `shape_by_measure_name()` | `*, shapes_map: Mapping[Field, ShapeStyle] \| None = None` | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | — | — |
 | `point_size_range()` | `*, min_radius: float = 4.5, max_radius: float = 9.0` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — |
-| `measure_format()` | `field: Field, *, format: Literal['number', 'percent', 'currency'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'bln'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
+| `measure_format()` | `field: Field, *, format: Literal['number', 'percent'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `font_size()` | `*, size: Literal['xs', 's', 'm', 'l']` | — | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | — |
 | `font_color()` | `*, color: str` | — | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | — |
 | `measure_title_mode()` | `*, mode: Literal['by-field', 'manual', 'hide']` | — | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | — |
@@ -116,7 +118,7 @@ Every cell describes only the installed package's typed public API.
 | `freeze_columns()` | `*, count: int = 1` | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | CU | — | — |
 | `pagination()` | `*, enabled: bool, limit: int = 100` | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | CU | — | — |
 | `table_size()` | `*, size: Literal['s', 'm', 'l']` | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | CU | — | — |
-| `totals()` | `*, enabled: bool` | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | — | — | — |
+| `totals()` | `*, enabled: bool` | — | — | — | — | — | — | — | CU | CU | — | — | — | — | — | — | — | — |
 | `subtotals()` | `field: Field, *, enabled: bool` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — | — |
 | `replace_formula()` | `field: StructuralTarget, *, formula: str` | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U |
 | `change_aggregation()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str, guid: str \| None = None` | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U |
@@ -133,7 +135,7 @@ Every cell describes only the installed package's typed public API.
 
 `change_visualization_to()` retains only the mapped field groups, drops incompatible chart state, and validates target capacities before sending the update.
 
-| Source | Allowed target | Retained placeholder mapping |
+| Source | Allowed target | Retained slot mapping |
 | --- | --- | --- |
 | `line` | `column` | `x -> x`, `y -> y` |
 | `column` | `line` | `x -> x`, `y -> y` |
@@ -147,7 +149,9 @@ Every other source/target pair, unknown target, and same-visualization transitio
 - `dataset()` is create-only. On update, pass a `DatasetField` for any new or unplaced field.
 - `sort(fields)` is create-only by design; update uses append-style `add_sort(field, direction=...)`.
 - `add_layer()` and geolayer map/layer topology operations are create-only.
-- `measures()` is an update-only field-group spelling for indicator, pie, donut, funnel, treemap, and pivot. Their create builders expose `y()`.
+- `measures()` is the canonical create/update field group for pivot. It is an
+  update-only spelling for indicator, pie, donut, funnel, and treemap, whose
+  create builders expose `y()`.
 - Structural target strings are exact GUIDs. Prefer `DatasetField` objects from
   `chart.fields`, especially for `replace_formula()`.
 - `build()` performs create. Update uses `mode('save'|'publish').execute()`; update defaults to `save`.

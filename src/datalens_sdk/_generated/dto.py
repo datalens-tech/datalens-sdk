@@ -3,11 +3,20 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Literal
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from typing import Annotated, Any, Literal
+from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
+from datalens_sdk._runtime.wizard_structure import WizardFieldStructure, WizardVisualizationRegistry
 from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
 from datalens_sdk.errors import NotSupportedError
+from datalens_sdk.serialization.json_types import JsonValue
+
+
+_UNVALIDATED_NONE_DEFAULT: Any = None
+
+
+def _json_array_to_tuple(value: object) -> object:
+    return tuple(value) if isinstance(value, list) else value
 
 INSTALLATION_CONNECTORS: dict[str, frozenset[str]] = {
     'enterprise': frozenset(['appmetrica_api', 'chyt', 'clickhouse', 'greenplum', 'json_api', 'metrika_api', 'mssql', 'mysql', 'oracle', 'postgres', 'promql', 'trino', 'ydb']),
@@ -839,21 +848,2576 @@ INSTALLATION_EDITOR_NODE_TYPES: dict[str, frozenset[str]] = {
 }
 
 
-class WizardChartCreateDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+WIZARD_SCHEMA_FINGERPRINT: str | None = '63a0d35b8f7d02d8555dede73cb06a432dfc959d9b088b2a7ff767b06e5ba244'
+WIZARD_VISUALIZATION_STRUCTURE: WizardVisualizationRegistry = {'area': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'navigatorSettings': {}, 'stacking': {'enum': ['off', 'on']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'area100p': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'navigatorSettings': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'bar': {'properties': ['chartSettings', 'colors', 'labels', 'sort', 'type', 'x', 'y'], 'required': ['type', 'y'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'labelsPosition': {'enum': ['inside', 'outside']}, 'overlap': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'bar100p': {'properties': ['chartSettings', 'colors', 'labels', 'sort', 'type', 'x', 'y'], 'required': ['type', 'y'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'column': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'labelsPosition': {'enum': ['inside', 'outside']}, 'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'navigatorSettings': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'column100p': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'navigatorSettings': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'combined-chart': {'properties': ['chartSettings', 'layers', 'selectedLayerId', 'type'], 'required': ['layers', 'type'], 'slots': {}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}}, 'layers': {'area': {'properties': ['colors', 'labels', 'layerSettings', 'sort', 'type', 'x', 'y'], 'required': ['layerSettings', 'type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'layer_settings': {'id': {}, 'name': {}}}, 'column': {'properties': ['colors', 'labels', 'layerSettings', 'sort', 'type', 'x', 'y'], 'required': ['layerSettings', 'type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'labelsPosition': {'enum': ['inside', 'outside']}, 'overlap': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'layer_settings': {'id': {}, 'name': {}}}, 'line': {'properties': ['colors', 'labels', 'layerSettings', 'shapes', 'sort', 'type', 'x', 'y', 'y2'], 'required': ['layerSettings', 'type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'shapes': {'required': False, 'items_required': False, 'settings': {'commonLineSettings': {}, 'fieldGuid': {}, 'lineSettings': {}, 'mountedShapes': {}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y2': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'layer_settings': {'id': {}, 'name': {}}}}}, 'donut': {'properties': ['chartSettings', 'colors', 'dimensions', 'labels', 'measures', 'sort', 'type'], 'required': ['measures', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'dimensions': {'required': False, 'items_required': True, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'legendMode': {'enum': ['hide', 'show']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'totals': {'enum': ['off', 'on']}}, 'layers': {}}, 'flatTable': {'properties': ['chartSettings', 'colors', 'columns', 'sort', 'type'], 'required': ['columns', 'type'], 'slots': {'colors': {'required': False, 'items_required': True, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'columns': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'grouping': {'enum': ['disabled', 'off', 'on']}, 'limit': {}, 'pagination': {'enum': ['off', 'on']}, 'pinnedColumns': {}, 'preserveWhiteSpace': {}, 'size': {'enum': ['l', 'm', 's']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'totals': {'enum': ['off', 'on']}}, 'layers': {}}, 'funnel': {'properties': ['chartSettings', 'colors', 'dimensions', 'labels', 'measures', 'sort', 'type'], 'required': ['dimensions', 'measures', 'type'], 'slots': {'colors': {'required': False, 'items_required': True, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'dimensions': {'required': True, 'items_required': True, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {'align': {'enum': ['auto', 'center', 'left', 'right']}, 'overlap': {'enum': ['off', 'on']}, 'position': {'enum': ['inside', 'outside']}, 'reserveSpace': {'enum': ['auto', 'off', 'on']}, 'separator': {'enum': ['auto', 'line-break', 'space']}}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'barGap': {'enum': ['auto', 'l', 'm', 'none', 's']}, 'legendMode': {'enum': ['hide', 'show']}, 'shape': {'enum': ['auto', 'rectangle', 'trapezoid']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipPercentageBase': {'enum': ['auto', 'first', 'previous']}}, 'layers': {}}, 'geolayer': {'properties': ['chartSettings', 'layers', 'selectedLayerId', 'type'], 'required': ['layers', 'type'], 'slots': {}, 'chart_settings': {'legendMode': {'enum': ['hide', 'show']}, 'mapCenterMode': {'enum': ['auto', 'manual']}, 'mapCenterValue': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'zoomMode': {'enum': ['auto', 'manual']}, 'zoomValue': {}}, 'layers': {'geopoint': {'properties': ['colors', 'filters', 'labels', 'layerSettings', 'points', 'size', 'tooltip', 'type'], 'required': ['layerSettings', 'points', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {}}, 'points': {'required': True, 'items_required': True, 'settings': {}}, 'size': {'required': False, 'items_required': False, 'settings': {'radius': {}}}, 'tooltip': {'required': False, 'items_required': True, 'settings': {'color': {'enum': ['off', 'on']}, 'fieldTitle': {'enum': ['off', 'on']}}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}, 'geopoint-with-cluster': {'properties': ['colors', 'filters', 'labels', 'layerSettings', 'points', 'size', 'tooltip', 'type'], 'required': ['layerSettings', 'points', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {}}, 'points': {'required': True, 'items_required': True, 'settings': {}}, 'size': {'required': False, 'items_required': False, 'settings': {'radius': {}}}, 'tooltip': {'required': False, 'items_required': True, 'settings': {'color': {'enum': ['off', 'on']}, 'fieldTitle': {'enum': ['off', 'on']}}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}, 'geopolygon': {'properties': ['colors', 'filters', 'layerSettings', 'polygons', 'tooltip', 'type'], 'required': ['layerSettings', 'polygons', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'polygons': {'required': True, 'items_required': True, 'settings': {}}, 'tooltip': {'required': False, 'items_required': True, 'settings': {'color': {'enum': ['off', 'on']}, 'fieldTitle': {'enum': ['off', 'on']}}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}, 'heatmap': {'properties': ['colors', 'filters', 'layerSettings', 'points', 'type'], 'required': ['layerSettings', 'points', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'points': {'required': True, 'items_required': True, 'settings': {}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}, 'polyline': {'properties': ['colors', 'filters', 'grouping', 'layerSettings', 'measures', 'polylines', 'sort', 'type'], 'required': ['layerSettings', 'polylines', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'grouping': {'required': False, 'items_required': False, 'settings': {}}, 'measures': {'required': False, 'items_required': False, 'settings': {}}, 'polylines': {'required': True, 'items_required': True, 'settings': {'polylinePoints': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}}}, 'line': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'shapes', 'sort', 'type', 'x', 'y', 'y2'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'shapes': {'required': False, 'items_required': False, 'settings': {'commonLineSettings': {}, 'fieldGuid': {}, 'lineSettings': {}, 'mountedShapes': {}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y2': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'navigatorSettings': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'metric': {'properties': ['chartSettings', 'colors', 'isMarkup', 'measures', 'type'], 'required': ['measures', 'type'], 'slots': {'measures': {'required': True, 'items_required': True, 'settings': {}}}, 'chart_settings': {'metricFontColor': {}, 'metricFontColorIndex': {}, 'metricFontColorPalette': {}, 'metricFontSize': {'enum': ['l', 'm', 's', 'xl']}, 'title': {}, 'titleMode': {'enum': ['by-field', 'hide', 'manual']}}, 'layers': {}}, 'pie': {'properties': ['chartSettings', 'colors', 'dimensions', 'labels', 'measures', 'sort', 'type'], 'required': ['measures', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'dimensions': {'required': False, 'items_required': True, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'legendMode': {'enum': ['hide', 'show']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}}, 'layers': {}}, 'pivotTable': {'properties': ['chartSettings', 'colors', 'columns', 'measures', 'rows', 'sort', 'type'], 'required': ['columns', 'measures', 'rows', 'type'], 'slots': {'colors': {'required': False, 'items_required': True, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'columns': {'required': True, 'items_required': True, 'settings': {}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}, 'rows': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'limit': {}, 'pagination': {'enum': ['off', 'on']}, 'pinnedColumns': {}, 'pivotFallback': {'enum': ['off', 'on']}, 'pivotInlineSort': {'enum': ['off', 'on']}, 'preserveWhiteSpace': {}, 'size': {'enum': ['l', 'm', 's']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}}, 'layers': {}}, 'scatter': {'properties': ['chartSettings', 'colors', 'points', 'shapes', 'size', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'points': {'required': False, 'items_required': False, 'settings': {}}, 'shapes': {'required': False, 'items_required': False, 'settings': {'fieldGuid': {}, 'mountedShapes': {}}}, 'size': {'required': False, 'items_required': False, 'settings': {'maxRadius': {}, 'minRadius': {}, 'radius': {}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': False, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}}, 'layers': {}}, 'treemap': {'properties': ['chartSettings', 'colors', 'dimensions', 'measures', 'type'], 'required': ['dimensions', 'measures', 'type'], 'slots': {'colors': {'required': False, 'items_required': True, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'dimensions': {'required': True, 'items_required': True, 'settings': {}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}}, 'chart_settings': {'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}}, 'layers': {}}}
+WIZARD_FIELD_STRUCTURE: WizardFieldStructure = {
+    'direct_properties': ('backgroundSettings', 'barsSettings', 'columnSettings', 'fakeTitle', 'format', 'formatting', 'hideLabelMode', 'hintSettings', 'markupType', 'subTotalsSettings'),
+    'nullable_update_properties': ('default_value', 'originalDateCast'),
+    'update_properties': ('aggregation', 'aggregation_locked', 'autoaggregated', 'avatar_id', 'calc_mode', 'cast', 'data_type', 'datasetId', 'default_value', 'fakeTitle', 'format', 'formula', 'grouping', 'guid', 'local', 'originalDateCast', 'originalFormula', 'originalSource', 'originalTitle', 'quickFormula', 'source', 'title', 'type'),
+}
 
-    template: Literal["datalens"]
-    data: Mapping[str, object]
+class EntryAnnotationArgDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    description: str
+
+class WizardV1FiltersItemSchemaFilterOperationDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    code: str
+
+class WizardV1FiltersItemSchemaFilterDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    operation: WizardV1FiltersItemSchemaFilterOperationDTO
+    value: list[str] | str = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1FiltersItemSchemaDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    dataset_id: str = Field(alias='datasetId')
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    filter: WizardV1FiltersItemSchemaFilterDTO
+    guid: str
+
+class WizardV1ConfigSchemaSourcesHierarchiesItemFieldsItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    dataset_id: str = Field(alias='datasetId')
+    guid: str
+
+class WizardV1ConfigSchemaSourcesHierarchiesItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    fields: list[WizardV1ConfigSchemaSourcesHierarchiesItemFieldsItemDTO]
+    guid: str
+    title: str
+
+class WizardV1ConfigSchemaSourcesLinksItemFieldsValueDatasetDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    id: str
+    real_name: str = Field(alias='realName')
+
+class WizardV1ConfigSchemaSourcesLinksItemFieldsValueFieldDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    guid: str
+    title: str
+
+class WizardV1ConfigSchemaSourcesLinksItemFieldsValueDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    dataset: WizardV1ConfigSchemaSourcesLinksItemFieldsValueDatasetDTO
+    field: WizardV1ConfigSchemaSourcesLinksItemFieldsValueFieldDTO
+
+class WizardV1ConfigSchemaSourcesLinksItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    fields: dict[str, WizardV1ConfigSchemaSourcesLinksItemFieldsValueDTO]
+    id: str
+
+class WizardV1ConfigSchemaSourcesUpdatesItemFieldDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    aggregation: str = _UNVALIDATED_NONE_DEFAULT
+    aggregation_locked: bool = _UNVALIDATED_NONE_DEFAULT
+    autoaggregated: bool = _UNVALIDATED_NONE_DEFAULT
+    avatar_id: str = _UNVALIDATED_NONE_DEFAULT
+    calc_mode: Literal['direct', 'formula', 'parameter'] = _UNVALIDATED_NONE_DEFAULT
+    cast: str = _UNVALIDATED_NONE_DEFAULT
+    data_type: Literal['array_float', 'array_int', 'array_str', 'boolean', 'date', 'datetimetz', 'float', 'genericdatetime', 'geopoint', 'geopolygon', 'heatmap', 'hierarchy', 'integer', 'markup', 'string', 'tree_float', 'tree_int', 'tree_str', 'uinteger', 'unsupported'] = _UNVALIDATED_NONE_DEFAULT
+    dataset_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='datasetId')
+    default_value: bool | None | float | str = _UNVALIDATED_NONE_DEFAULT
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formula: str = _UNVALIDATED_NONE_DEFAULT
+    grouping: str = _UNVALIDATED_NONE_DEFAULT
+    guid: str
+    local: bool = _UNVALIDATED_NONE_DEFAULT
+    original_date_cast: Literal['array_float', 'array_int', 'array_str', 'boolean', 'date', 'datetimetz', 'float', 'genericdatetime', 'geopoint', 'geopolygon', 'heatmap', 'hierarchy', 'integer', 'markup', 'string', 'tree_float', 'tree_int', 'tree_str', 'uinteger', 'unsupported'] | None = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='originalDateCast')
+    original_formula: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='originalFormula')
+    original_source: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='originalSource')
+    original_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='originalTitle')
+    quick_formula: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='quickFormula')
+    source: str = _UNVALIDATED_NONE_DEFAULT
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['DIMENSION', 'MEASURE', 'PARAMETER', 'PSEUDO'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaSourcesUpdatesItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    action: Literal['add', 'add_field', 'delete', 'delete_field', 'update', 'update_field']
+    debug_info: str = _UNVALIDATED_NONE_DEFAULT
+    field: WizardV1ConfigSchemaSourcesUpdatesItemFieldDTO
+
+class WizardV1ConfigSchemaSourcesDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    datasets_ids: list[str] = Field(alias='datasetsIds')
+    filters: list[WizardV1FiltersItemSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+    hierarchies: list[WizardV1ConfigSchemaSourcesHierarchiesItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    links: list[WizardV1ConfigSchemaSourcesLinksItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    updates: list[WizardV1ConfigSchemaSourcesUpdatesItemDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf0ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    bar_gap: Literal['auto', 'l', 'm', 'none', 's'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barGap')
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    shape: Literal['auto', 'rectangle', 'trapezoid'] = _UNVALIDATED_NONE_DEFAULT
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_percentage_base: Literal['auto', 'first', 'previous'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipPercentageBase')
+
+class WizardFieldSchemaAnyOf0BackgroundSettingsSettingsGradientStateDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    gradient_mode: Literal['2-point', '3-point'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gradientMode')
+    gradient_palette: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gradientPalette')
+    left_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='leftThreshold')
+    middle_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='middleThreshold')
+    null_mode: Literal['as-0', 'ignore'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='nullMode')
+    reversed: bool = _UNVALIDATED_NONE_DEFAULT
+    right_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='rightThreshold')
+    thresholds_mode: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='thresholdsMode')
+
+class WizardFieldSchemaAnyOf0BackgroundSettingsSettingsPaletteStateDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    mounted_colors: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedColors')
+    palette: str = _UNVALIDATED_NONE_DEFAULT
+
+class WizardFieldSchemaAnyOf0BackgroundSettingsSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    gradient_state: WizardFieldSchemaAnyOf0BackgroundSettingsSettingsGradientStateDTO = Field(alias='gradientState')
+    is_continuous: bool = Field(alias='isContinuous')
+    palette_state: WizardFieldSchemaAnyOf0BackgroundSettingsSettingsPaletteStateDTO = Field(alias='paletteState')
+
+class WizardFieldSchemaAnyOf0BackgroundSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    color_field_guid: str = Field(alias='colorFieldGuid')
+    enabled: bool
+    settings: WizardFieldSchemaAnyOf0BackgroundSettingsSettingsDTO
+    settings_id: str = Field(alias='settingsId')
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsThresholdsOneOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    max: str
+    mid: str = _UNVALIDATED_NONE_DEFAULT
+    min: str
+    mode: Literal['manual']
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsThresholdsOneOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    mode: Literal['auto']
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    gradient_type: Literal['2-point', '3-point'] = Field(alias='gradientType')
+    palette: str = _UNVALIDATED_NONE_DEFAULT
+    reversed: bool = _UNVALIDATED_NONE_DEFAULT
+    thresholds: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsThresholdsOneOf0DTO | WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsThresholdsOneOf1DTO
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    color_type: Literal['gradient'] = Field(alias='colorType')
+    settings: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsDTO
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf1SettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    color: str = _UNVALIDATED_NONE_DEFAULT
+    color_index: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='colorIndex')
+    palette: str = _UNVALIDATED_NONE_DEFAULT
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    color_type: Literal['one-color'] = Field(alias='colorType')
+    settings: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf1SettingsDTO
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf2SettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    negative_color: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='negativeColor')
+    negative_color_index: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='negativeColorIndex')
+    palette: str = _UNVALIDATED_NONE_DEFAULT
+    positive_color: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='positiveColor')
+    positive_color_index: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='positiveColorIndex')
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    color_type: Literal['two-color'] = Field(alias='colorType')
+    settings: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf2SettingsDTO
+
+class WizardFieldSchemaAnyOf0BarsSettingsScaleOneOf1SettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    max: str = _UNVALIDATED_NONE_DEFAULT
+    min: str = _UNVALIDATED_NONE_DEFAULT
+
+class WizardFieldSchemaAnyOf0BarsSettingsScaleOneOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    mode: Literal['manual']
+    settings: WizardFieldSchemaAnyOf0BarsSettingsScaleOneOf1SettingsDTO
+
+class WizardFieldSchemaAnyOf0BarsSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    align: Literal['default', 'left', 'right']
+    color_settings: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0DTO | WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf1DTO | WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf2DTO = Field(alias='colorSettings')
+    enabled: bool
+    scale: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsThresholdsOneOf1DTO | WizardFieldSchemaAnyOf0BarsSettingsScaleOneOf1DTO
+    show_bars_in_totals: bool = Field(alias='showBarsInTotals')
+    show_labels: bool = Field(alias='showLabels')
+
+class WizardFieldSchemaAnyOf0ColumnSettingsWidthOneOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    mode: Literal['percent']
+    value: str
+
+class WizardFieldSchemaAnyOf0ColumnSettingsWidthOneOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    mode: Literal['pixel']
+    value: str
+
+class WizardFieldSchemaAnyOf0ColumnSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    horizontal_alignment: Literal['auto', 'center', 'end', 'start'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='horizontalAlignment')
+    width: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsThresholdsOneOf1DTO | WizardFieldSchemaAnyOf0ColumnSettingsWidthOneOf1DTO | WizardFieldSchemaAnyOf0ColumnSettingsWidthOneOf2DTO
+
+class WizardFieldSchemaAnyOf0FormattingDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    format: Literal['number', 'percent'] = _UNVALIDATED_NONE_DEFAULT
+    label_mode: Literal['absolute', 'percent'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelMode')
+    postfix: str = _UNVALIDATED_NONE_DEFAULT
+    precision: float = _UNVALIDATED_NONE_DEFAULT
+    prefix: str = _UNVALIDATED_NONE_DEFAULT
+    show_rank_delimiter: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showRankDelimiter')
+    unit: Literal['auto', 'b', 'k', 'm', 't'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardFieldSchemaAnyOf0HintSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    enabled: bool = _UNVALIDATED_NONE_DEFAULT
+    text: str = _UNVALIDATED_NONE_DEFAULT
+
+class WizardFieldSchemaAnyOf0SubTotalsSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    enabled: bool
+
+class WizardFieldSchemaAnyOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['float']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingDTO = _UNVALIDATED_NONE_DEFAULT
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: Literal['Measure Values']
+    type: Literal['PSEUDO']
+
+class WizardFieldSchemaAnyOf1FieldsItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    dataset_id: str = Field(alias='datasetId')
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingDTO = _UNVALIDATED_NONE_DEFAULT
+    guid: str
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+
+class WizardFieldSchemaAnyOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['hierarchy']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    fields: list[WizardFieldSchemaAnyOf1FieldsItemDTO]
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingDTO = _UNVALIDATED_NONE_DEFAULT
+    guid: str
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: str
+
+class WizardFieldSchemaAnyOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['string']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingDTO = _UNVALIDATED_NONE_DEFAULT
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: Literal['Measure Names']
+    type: Literal['PSEUDO']
+
+WizardFieldSchemaDTO = WizardFieldSchemaAnyOf0DTO | WizardFieldSchemaAnyOf1DTO | WizardFieldSchemaAnyOf2DTO | WizardFieldSchemaAnyOf1FieldsItemDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf0ColorsSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    color_mode: Literal['gradient', 'palette'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='colorMode')
+    colored_by_measure: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='coloredByMeasure')
+    field_guid: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldGuid')
+    gradient_mode: Literal['2-point', '3-point'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gradientMode')
+    gradient_palette: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gradientPalette')
+    left_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='leftThreshold')
+    middle_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='middleThreshold')
+    mounted_colors: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedColors')
+    null_mode: Literal['as-0', 'ignore'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='nullMode')
+    palette: str = _UNVALIDATED_NONE_DEFAULT
+    polygon_borders: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='polygonBorders')
+    reversed: bool = _UNVALIDATED_NONE_DEFAULT
+    right_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='rightThreshold')
+    thresholds_mode: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='thresholdsMode')
+
+class WizardV1ConfigSchemaVisualizationOneOf0ColorsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO]
+    settings: WizardV1ConfigSchemaVisualizationOneOf0ColorsSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO]
+
+class WizardLabelsItemSchemaAllOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['float']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingDTO = _UNVALIDATED_NONE_DEFAULT
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    label_percentage_base: Literal['auto', 'first', 'previous'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelPercentageBase')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: Literal['Measure Values']
+    type: Literal['PSEUDO']
+
+class WizardLabelsItemSchemaAllOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['hierarchy']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    fields: list[WizardFieldSchemaAnyOf1FieldsItemDTO]
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingDTO = _UNVALIDATED_NONE_DEFAULT
+    guid: str
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    label_percentage_base: Literal['auto', 'first', 'previous'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelPercentageBase')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: str
+
+class WizardLabelsItemSchemaAllOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['string']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingDTO = _UNVALIDATED_NONE_DEFAULT
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    label_percentage_base: Literal['auto', 'first', 'previous'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelPercentageBase')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: Literal['Measure Names']
+    type: Literal['PSEUDO']
+
+class WizardLabelsItemSchemaAllOf3DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    dataset_id: str = Field(alias='datasetId')
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingDTO = _UNVALIDATED_NONE_DEFAULT
+    guid: str
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    label_percentage_base: Literal['auto', 'first', 'previous'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelPercentageBase')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+
+WizardLabelsItemSchemaDTO = WizardLabelsItemSchemaAllOf0DTO | WizardLabelsItemSchemaAllOf1DTO | WizardLabelsItemSchemaAllOf2DTO | WizardLabelsItemSchemaAllOf3DTO
+
+class WizardV1ConfigSchemaVisualizationOneOf0LabelsSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    align: Literal['auto', 'center', 'left', 'right'] = _UNVALIDATED_NONE_DEFAULT
+    overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    position: Literal['inside', 'outside'] = _UNVALIDATED_NONE_DEFAULT
+    reserve_space: Literal['auto', 'off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='reserveSpace')
+    separator: Literal['auto', 'line-break', 'space'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf0LabelsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf0LabelsSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardSortItemSchemaAnyOf0AllOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['float']
+    direction: Literal['ASC', 'DESC']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingDTO = _UNVALIDATED_NONE_DEFAULT
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: Literal['Measure Values']
+    type: Literal['PSEUDO']
+
+class WizardSortItemSchemaAnyOf0AllOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['string']
+    direction: Literal['ASC', 'DESC']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingDTO = _UNVALIDATED_NONE_DEFAULT
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: Literal['Measure Names']
+    type: Literal['PSEUDO']
+
+class WizardSortItemSchemaAnyOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    dataset_id: str = Field(alias='datasetId')
+    direction: Literal['ASC', 'DESC']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    guid: str
+
+WizardSortItemSchemaDTO = WizardSortItemSchemaAnyOf0AllOf0DTO | WizardSortItemSchemaAnyOf0AllOf1DTO | WizardSortItemSchemaAnyOf1DTO
+
+class WizardV1ConfigSchemaVisualizationOneOf0SortDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardSortItemSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf0ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf0ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    labels: WizardV1ConfigSchemaVisualizationOneOf0LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['funnel']
+
+class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsPeriodSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    period: Literal['day', 'hour', 'month', 'quarter', 'week', 'year']
+    type: Literal['array_float', 'array_int', 'array_str', 'boolean', 'date', 'datetimetz', 'float', 'genericdatetime', 'geopoint', 'geopolygon', 'heatmap', 'hierarchy', 'integer', 'markup', 'string', 'tree_float', 'tree_int', 'tree_str', 'uinteger', 'unsupported']
+    value: str
+
+class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    lines_mode: Literal['all', 'selected'] = Field(alias='linesMode')
+    navigator_mode: Literal['hide', 'show'] = Field(alias='navigatorMode')
+    period_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsPeriodSettingsDTO = Field(alias='periodSettings')
+    selected_lines: list[str] = Field(alias='selectedLines')
+
+class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
+    stacking: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf0ColorsSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1LabelsSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf1LabelsSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1XSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
+    axis_label_date_format: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelDateFormat')
+    axis_label_formatting: WizardFieldSchemaAnyOf0FormattingDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelFormatting')
+    axis_mode_map: dict[str, Literal['continuous', 'discrete']] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisModeMap')
+    axis_visibility: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisVisibility')
+    grid: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    grid_step: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStep')
+    grid_step_value: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStepValue')
+    hide_labels: Literal['no', 'yes'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabels')
+    holidays: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    labels_view: Literal['angle', 'auto', 'horizontal', 'vertical'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsView')
+    title: Literal['auto', 'manual', 'off'] = _UNVALIDATED_NONE_DEFAULT
+    title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
+    type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1XDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO]
+    settings: WizardV1ConfigSchemaVisualizationOneOf1XSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1YSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
+    axis_label_date_format: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelDateFormat')
+    axis_label_formatting: WizardFieldSchemaAnyOf0FormattingDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelFormatting')
+    axis_visibility: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisVisibility')
+    grid: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    grid_step: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStep')
+    grid_step_value: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStepValue')
+    hide_labels: Literal['no', 'yes'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabels')
+    labels_view: Literal['angle', 'auto', 'horizontal', 'vertical'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsView')
+    nulls: Literal['as-0', 'connect', 'ignore', 'use-previous'] = _UNVALIDATED_NONE_DEFAULT
+    scale: Literal['auto', 'manual'] = _UNVALIDATED_NONE_DEFAULT
+    scale_value: Literal['0-max', 'data-min-max', 'min-max'] | Annotated[tuple[str, str], BeforeValidator(_json_array_to_tuple)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='scaleValue')
+    title: Literal['auto', 'manual', 'off'] = _UNVALIDATED_NONE_DEFAULT
+    title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
+    type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1YDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO]
+    settings: WizardV1ConfigSchemaVisualizationOneOf1YSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['area']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf2LabelsSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    labels_position: Literal['inside', 'outside'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsPosition')
+    overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf2LabelsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf2LabelsSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf2LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['column']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsCommonLineSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    line_width: Literal['auto'] | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineWidth')
+    linecap: Literal['butt', 'none', 'round', 'square'] = _UNVALIDATED_NONE_DEFAULT
+    linejoin: Literal['bevel', 'miter', 'round', 'unset'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1LineShapeSettingsSchemaDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    line_width: Literal['auto'] | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineWidth')
+    linecap: Literal['butt', 'none', 'round', 'square'] = _UNVALIDATED_NONE_DEFAULT
+    linejoin: Literal['bevel', 'miter', 'round', 'unset'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    common_line_settings: WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsCommonLineSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='commonLineSettings')
+    field_guid: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldGuid')
+    line_settings: dict[str, WizardV1LineShapeSettingsSchemaDTO] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineSettings')
+    mounted_shapes: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedShapes')
+
+class WizardV1ConfigSchemaVisualizationOneOf3ShapesDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf3DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
+    shapes: WizardV1ConfigSchemaVisualizationOneOf3ShapesDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['line']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
+    y2: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf4DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['area100p']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf5DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['column100p']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf6XSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
+    axis_label_date_format: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelDateFormat')
+    axis_label_formatting: WizardFieldSchemaAnyOf0FormattingDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelFormatting')
+    axis_visibility: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisVisibility')
+    grid: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    grid_step: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStep')
+    grid_step_value: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStepValue')
+    hide_labels: Literal['no', 'yes'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabels')
+    holidays: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    labels_view: Literal['angle', 'auto', 'horizontal', 'vertical'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsView')
+    nulls: Literal['as-0', 'connect', 'ignore', 'use-previous'] = _UNVALIDATED_NONE_DEFAULT
+    scale: Literal['auto', 'manual'] = _UNVALIDATED_NONE_DEFAULT
+    scale_value: Literal['0-max', 'data-min-max', 'min-max'] | Annotated[tuple[str, str], BeforeValidator(_json_array_to_tuple)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='scaleValue')
+    title: Literal['auto', 'manual', 'off'] = _UNVALIDATED_NONE_DEFAULT
+    title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
+    type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6XDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO]
+    settings: WizardV1ConfigSchemaVisualizationOneOf6XSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6YSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
+    axis_label_date_format: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelDateFormat')
+    axis_label_formatting: WizardFieldSchemaAnyOf0FormattingDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelFormatting')
+    axis_mode_map: dict[str, Literal['continuous', 'discrete']] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisModeMap')
+    axis_visibility: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisVisibility')
+    grid: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    grid_step: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStep')
+    grid_step_value: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStepValue')
+    hide_labels: Literal['no', 'yes'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabels')
+    labels_view: Literal['angle', 'auto', 'horizontal', 'vertical'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsView')
+    title: Literal['auto', 'manual', 'off'] = _UNVALIDATED_NONE_DEFAULT
+    title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
+    type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6YDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO]
+    settings: WizardV1ConfigSchemaVisualizationOneOf6YSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf2LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['bar']
+    x: WizardV1ConfigSchemaVisualizationOneOf6XDTO = _UNVALIDATED_NONE_DEFAULT
+    y: WizardV1ConfigSchemaVisualizationOneOf6YDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf7DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['bar100p']
+    x: WizardV1ConfigSchemaVisualizationOneOf6XDTO = _UNVALIDATED_NONE_DEFAULT
+    y: WizardV1ConfigSchemaVisualizationOneOf6YDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf8ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8ShapesSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    field_guid: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldGuid')
+    mounted_shapes: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedShapes')
+
+class WizardV1ConfigSchemaVisualizationOneOf8ShapesDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf8ShapesSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8SizeSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    max_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='maxRadius')
+    min_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='minRadius')
+    radius: float = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8SizeDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf8SizeSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8XSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
+    axis_label_date_format: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelDateFormat')
+    axis_label_formatting: WizardFieldSchemaAnyOf0FormattingDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelFormatting')
+    axis_mode_map: dict[str, Literal['continuous', 'discrete']] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisModeMap')
+    axis_visibility: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisVisibility')
+    grid: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    grid_step: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStep')
+    grid_step_value: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStepValue')
+    hide_labels: Literal['no', 'yes'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabels')
+    holidays: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    labels_view: Literal['angle', 'auto', 'horizontal', 'vertical'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsView')
+    scale: Literal['auto', 'manual'] = _UNVALIDATED_NONE_DEFAULT
+    scale_value: Literal['0-max', 'data-min-max', 'min-max'] | Annotated[tuple[str, str], BeforeValidator(_json_array_to_tuple)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='scaleValue')
+    title: Literal['auto', 'manual', 'off'] = _UNVALIDATED_NONE_DEFAULT
+    title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
+    type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8XDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO]
+    settings: WizardV1ConfigSchemaVisualizationOneOf8XSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8YSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
+    axis_label_date_format: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelDateFormat')
+    axis_label_formatting: WizardFieldSchemaAnyOf0FormattingDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelFormatting')
+    axis_mode_map: dict[str, Literal['continuous', 'discrete']] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisModeMap')
+    axis_visibility: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisVisibility')
+    grid: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    grid_step: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStep')
+    grid_step_value: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStepValue')
+    hide_labels: Literal['no', 'yes'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabels')
+    labels_view: Literal['angle', 'auto', 'horizontal', 'vertical'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsView')
+    scale: Literal['auto', 'manual'] = _UNVALIDATED_NONE_DEFAULT
+    scale_value: Literal['0-max', 'data-min-max', 'min-max'] | Annotated[tuple[str, str], BeforeValidator(_json_array_to_tuple)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='scaleValue')
+    title: Literal['auto', 'manual', 'off'] = _UNVALIDATED_NONE_DEFAULT
+    title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
+    type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8YDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf8YSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf8ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    points: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
+    shapes: WizardV1ConfigSchemaVisualizationOneOf8ShapesDTO = _UNVALIDATED_NONE_DEFAULT
+    size: WizardV1ConfigSchemaVisualizationOneOf8SizeDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['scatter']
+    x: WizardV1ConfigSchemaVisualizationOneOf8XDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf8YDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    id: str
+    name: str
+
+class WizardV1CombinedChartLayerSchemaOneOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf2LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsDTO = Field(alias='layerSettings')
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['column']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1CombinedChartLayerSchemaOneOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsDTO = Field(alias='layerSettings')
+    shapes: WizardV1ConfigSchemaVisualizationOneOf3ShapesDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['line']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
+    y2: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1CombinedChartLayerSchemaOneOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsDTO = Field(alias='layerSettings')
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['area']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
+
+WizardV1CombinedChartLayerSchemaDTO = WizardV1CombinedChartLayerSchemaOneOf0DTO | WizardV1CombinedChartLayerSchemaOneOf1DTO | WizardV1CombinedChartLayerSchemaOneOf2DTO
+
+class WizardV1ConfigSchemaVisualizationOneOf9DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf8ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    layers: list[WizardV1CombinedChartLayerSchemaDTO]
+    selected_layer_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='selectedLayerId')
+    type: Literal['combined-chart']
+
+class WizardV1ConfigSchemaVisualizationOneOf10ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    grouping: Literal['disabled', 'off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    limit: float = _UNVALIDATED_NONE_DEFAULT
+    pagination: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    pinned_columns: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pinnedColumns')
+    preserve_white_space: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='preserveWhiteSpace')
+    size: Literal['l', 'm', 's'] = _UNVALIDATED_NONE_DEFAULT
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    totals: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf10DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf10ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf0ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    columns: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['flatTable']
+
+class WizardV1ConfigSchemaVisualizationOneOf11ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    map_center_mode: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mapCenterMode')
+    map_center_value: None | str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mapCenterValue')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    zoom_mode: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='zoomMode')
+    zoom_value: None | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='zoomValue')
+
+class WizardV1GeolayerLayerSchemaOneOf0FiltersDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardV1FiltersItemSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1GeolayerLayerSchemaOneOf0LayerSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    alpha: float = _UNVALIDATED_NONE_DEFAULT
+    id: str
+    name: str
+
+class WizardV1GeolayerLayerSchemaOneOf0PolylinesSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    polyline_points: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='polylinePoints')
+
+class WizardV1GeolayerLayerSchemaOneOf0PolylinesDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO]
+    settings: WizardV1GeolayerLayerSchemaOneOf0PolylinesSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1GeolayerLayerSchemaOneOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    filters: WizardV1GeolayerLayerSchemaOneOf0FiltersDTO = _UNVALIDATED_NONE_DEFAULT
+    grouping: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsDTO = Field(alias='layerSettings')
+    measures: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
+    polylines: WizardV1GeolayerLayerSchemaOneOf0PolylinesDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['polyline']
+
+class WizardV1GeolayerLayerSchemaOneOf1LabelsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1GeolayerLayerSchemaOneOf1SizeSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    radius: float = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1GeolayerLayerSchemaOneOf1SizeDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1GeolayerLayerSchemaOneOf1SizeSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1GeolayerLayerSchemaOneOf1TooltipSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    color: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    field_title: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldTitle')
+
+class WizardV1GeolayerLayerSchemaOneOf1TooltipDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO]
+    settings: WizardV1GeolayerLayerSchemaOneOf1TooltipSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1GeolayerLayerSchemaOneOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    filters: WizardV1GeolayerLayerSchemaOneOf0FiltersDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsDTO = Field(alias='layerSettings')
+    points: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    size: WizardV1GeolayerLayerSchemaOneOf1SizeDTO = _UNVALIDATED_NONE_DEFAULT
+    tooltip: WizardV1GeolayerLayerSchemaOneOf1TooltipDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['geopoint']
+
+class WizardV1GeolayerLayerSchemaOneOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    filters: WizardV1GeolayerLayerSchemaOneOf0FiltersDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsDTO = Field(alias='layerSettings')
+    points: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    size: WizardV1GeolayerLayerSchemaOneOf1SizeDTO = _UNVALIDATED_NONE_DEFAULT
+    tooltip: WizardV1GeolayerLayerSchemaOneOf1TooltipDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['geopoint-with-cluster']
+
+class WizardV1GeolayerLayerSchemaOneOf3DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    filters: WizardV1GeolayerLayerSchemaOneOf0FiltersDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsDTO = Field(alias='layerSettings')
+    points: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    type: Literal['heatmap']
+
+class WizardV1GeolayerLayerSchemaOneOf4DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    filters: WizardV1GeolayerLayerSchemaOneOf0FiltersDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsDTO = Field(alias='layerSettings')
+    polygons: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    tooltip: WizardV1GeolayerLayerSchemaOneOf1TooltipDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['geopolygon']
+
+WizardV1GeolayerLayerSchemaDTO = WizardV1GeolayerLayerSchemaOneOf0DTO | WizardV1GeolayerLayerSchemaOneOf1DTO | WizardV1GeolayerLayerSchemaOneOf2DTO | WizardV1GeolayerLayerSchemaOneOf3DTO | WizardV1GeolayerLayerSchemaOneOf4DTO
+
+class WizardV1ConfigSchemaVisualizationOneOf11DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf11ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    layers: list[WizardV1GeolayerLayerSchemaDTO]
+    selected_layer_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='selectedLayerId')
+    type: Literal['geolayer']
+
+class WizardV1ConfigSchemaVisualizationOneOf12ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    totals: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf12DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf12ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['donut']
+
+class WizardV1ConfigSchemaVisualizationOneOf13ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf13DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf13ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['pie']
+
+class WizardV1ConfigSchemaVisualizationOneOf14ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    limit: float = _UNVALIDATED_NONE_DEFAULT
+    pagination: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    pinned_columns: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pinnedColumns')
+    pivot_fallback: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pivotFallback')
+    pivot_inline_sort: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pivotInlineSort')
+    preserve_white_space: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='preserveWhiteSpace')
+    size: Literal['l', 'm', 's'] = _UNVALIDATED_NONE_DEFAULT
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+
+class WizardV1ConfigSchemaVisualizationOneOf14DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf14ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf0ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    columns: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    rows: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['pivotTable']
+
+class WizardV1ConfigSchemaVisualizationOneOf15ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    metric_font_color: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='metricFontColor')
+    metric_font_color_index: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='metricFontColorIndex')
+    metric_font_color_palette: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='metricFontColorPalette')
+    metric_font_size: Literal['l', 'm', 's', 'xl'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='metricFontSize')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['by-field', 'hide', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+
+class WizardV1ConfigSchemaVisualizationOneOf15ColorsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    settings: WizardV1ConfigSchemaVisualizationOneOf0ColorsSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf15DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf15ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf15ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    is_markup: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='isMarkup')
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    type: Literal['metric']
+
+class WizardV1ConfigSchemaVisualizationOneOf16ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf16DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf16ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf0ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    type: Literal['treemap']
+
+class WizardV1ConfigSchemaDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    sources: WizardV1ConfigSchemaSourcesDTO
+    visualization: WizardV1ConfigSchemaVisualizationOneOf0DTO | WizardV1ConfigSchemaVisualizationOneOf1DTO | WizardV1ConfigSchemaVisualizationOneOf2DTO | WizardV1ConfigSchemaVisualizationOneOf3DTO | WizardV1ConfigSchemaVisualizationOneOf4DTO | WizardV1ConfigSchemaVisualizationOneOf5DTO | WizardV1ConfigSchemaVisualizationOneOf6DTO | WizardV1ConfigSchemaVisualizationOneOf7DTO | WizardV1ConfigSchemaVisualizationOneOf8DTO | WizardV1ConfigSchemaVisualizationOneOf9DTO | WizardV1ConfigSchemaVisualizationOneOf10DTO | WizardV1ConfigSchemaVisualizationOneOf11DTO | WizardV1ConfigSchemaVisualizationOneOf12DTO | WizardV1ConfigSchemaVisualizationOneOf13DTO | WizardV1ConfigSchemaVisualizationOneOf14DTO | WizardV1ConfigSchemaVisualizationOneOf15DTO | WizardV1ConfigSchemaVisualizationOneOf16DTO
+
+class CreateWizardChartV1ArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    annotation: EntryAnnotationArgDTO = _UNVALIDATED_NONE_DEFAULT
+    data: WizardV1ConfigSchemaDTO
+    key: str = _UNVALIDATED_NONE_DEFAULT
+    name: str = _UNVALIDATED_NONE_DEFAULT
+    workbook_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='workbookId')
+
+class DeleteWizardChartArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_id: str = Field(alias='chartId')
+
+EntryBranchDTO = Literal['published', 'saved']
+
+class GetWizardChartV1ArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    branch: EntryBranchDTO = _UNVALIDATED_NONE_DEFAULT
+    chart_id: str = Field(alias='chartId')
+    include_favorite: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includeFavorite')
+    include_links: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includeLinks')
+    include_permissions: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includePermissions')
+    rev_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revId')
+    workbook_id: None | str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='workbookId')
+
+EntryUpdateModeDTO = Literal['publish', 'save']
+
+class UpdateWizardV1ArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    annotation: EntryAnnotationArgDTO = _UNVALIDATED_NONE_DEFAULT
+    chart_id: str = Field(alias='chartId')
+    data: WizardV1ConfigSchemaDTO
+    mode: EntryUpdateModeDTO
+    rev_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revId')
+
+class WizardV1AnnotationObjectReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    description: str = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    annotation: None | WizardV1AnnotationObjectReadDTO = _UNVALIDATED_NONE_DEFAULT
+    created_at: str = Field(alias='createdAt')
+    created_by: str = Field(alias='createdBy')
+    data: dict[str, JsonValue]
+    entry_id: str = Field(alias='entryId')
+    hidden: bool
+    key: None | str
+    links: None | dict[str, str] = _UNVALIDATED_NONE_DEFAULT
+    meta: None | dict[str, JsonValue]
+    public: bool
+    published_id: None | str = Field(alias='publishedId')
+    rev_id: str = Field(alias='revId')
+    saved_id: str = Field(alias='savedId')
+    scope: Literal['widget']
+    tenant_id: str = Field(alias='tenantId')
+    type: Literal['d3_wizard_node', 'graph_wizard_node', 'markup_wizard_node', 'metric_wizard_node', 'table_wizard_node', 'timeseries_wizard_node', 'ymap_wizard_node'] = _UNVALIDATED_NONE_DEFAULT
+    updated_at: str = Field(alias='updatedAt')
+    updated_by: str = Field(alias='updatedBy')
+    version: Literal[1]
+    workbook_id: None | str = Field(alias='workbookId')
+
+class CreateWizardChartV1ResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    entry: WizardV1ReadDTO
+
+class GetWizardChartV1ResultPermissionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    admin: bool
+    edit: bool
+    execute: bool
+    read: bool
+
+class GetWizardChartV1ResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    entry: WizardV1ReadDTO
+    is_favorite: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='isFavorite')
+    permissions: GetWizardChartV1ResultPermissionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class EntryAnnotationArgReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    description: str
+
+EntryUpdateModeReadDTO = Literal['publish', 'save']
+
+class UpdateWizardV1ArgsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    annotation: EntryAnnotationArgReadDTO = _UNVALIDATED_NONE_DEFAULT
+    chart_id: str = Field(alias='chartId')
+    data: dict[str, JsonValue]
+    mode: EntryUpdateModeReadDTO
+    rev_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revId')
+
+class UpdateWizardV1ResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    entry: WizardV1ReadDTO
+
+class WizardV1FiltersItemSchemaFilterOperationReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    code: str
+
+class WizardV1FiltersItemSchemaFilterReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    operation: WizardV1FiltersItemSchemaFilterOperationReadDTO
+    value: list[str] | str = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1FiltersItemSchemaReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    dataset_id: str = Field(alias='datasetId')
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    filter: WizardV1FiltersItemSchemaFilterReadDTO
+    guid: str
+
+class WizardV1ConfigSchemaSourcesHierarchiesItemFieldsItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    dataset_id: str = Field(alias='datasetId')
+    guid: str
+
+class WizardV1ConfigSchemaSourcesHierarchiesItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    fields: list[WizardV1ConfigSchemaSourcesHierarchiesItemFieldsItemReadDTO]
+    guid: str
+    title: str
+
+class WizardV1ConfigSchemaSourcesLinksItemFieldsValueDatasetReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    id: str
+    real_name: str = Field(alias='realName')
+
+class WizardV1ConfigSchemaSourcesLinksItemFieldsValueFieldReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    guid: str
+    title: str
+
+class WizardV1ConfigSchemaSourcesLinksItemFieldsValueReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    dataset: WizardV1ConfigSchemaSourcesLinksItemFieldsValueDatasetReadDTO
+    field: WizardV1ConfigSchemaSourcesLinksItemFieldsValueFieldReadDTO
+
+class WizardV1ConfigSchemaSourcesLinksItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    fields: dict[str, WizardV1ConfigSchemaSourcesLinksItemFieldsValueReadDTO]
+    id: str
+
+class WizardV1ConfigSchemaSourcesUpdatesItemFieldReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    aggregation: str = _UNVALIDATED_NONE_DEFAULT
+    aggregation_locked: bool = _UNVALIDATED_NONE_DEFAULT
+    autoaggregated: bool = _UNVALIDATED_NONE_DEFAULT
+    avatar_id: str = _UNVALIDATED_NONE_DEFAULT
+    calc_mode: Literal['direct', 'formula', 'parameter'] = _UNVALIDATED_NONE_DEFAULT
+    cast: str = _UNVALIDATED_NONE_DEFAULT
+    data_type: Literal['array_float', 'array_int', 'array_str', 'boolean', 'date', 'datetimetz', 'float', 'genericdatetime', 'geopoint', 'geopolygon', 'heatmap', 'hierarchy', 'integer', 'markup', 'string', 'tree_float', 'tree_int', 'tree_str', 'uinteger', 'unsupported'] = _UNVALIDATED_NONE_DEFAULT
+    dataset_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='datasetId')
+    default_value: bool | None | float | str = _UNVALIDATED_NONE_DEFAULT
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formula: str = _UNVALIDATED_NONE_DEFAULT
+    grouping: str = _UNVALIDATED_NONE_DEFAULT
+    guid: str
+    local: bool = _UNVALIDATED_NONE_DEFAULT
+    original_date_cast: Literal['array_float', 'array_int', 'array_str', 'boolean', 'date', 'datetimetz', 'float', 'genericdatetime', 'geopoint', 'geopolygon', 'heatmap', 'hierarchy', 'integer', 'markup', 'string', 'tree_float', 'tree_int', 'tree_str', 'uinteger', 'unsupported'] | None = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='originalDateCast')
+    original_formula: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='originalFormula')
+    original_source: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='originalSource')
+    original_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='originalTitle')
+    quick_formula: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='quickFormula')
+    source: str = _UNVALIDATED_NONE_DEFAULT
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['DIMENSION', 'MEASURE', 'PARAMETER', 'PSEUDO'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaSourcesUpdatesItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    action: Literal['add', 'add_field', 'delete', 'delete_field', 'update', 'update_field']
+    debug_info: str = _UNVALIDATED_NONE_DEFAULT
+    field: WizardV1ConfigSchemaSourcesUpdatesItemFieldReadDTO
+
+class WizardV1ConfigSchemaSourcesReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    datasets_ids: list[str] = Field(alias='datasetsIds')
+    filters: list[WizardV1FiltersItemSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    hierarchies: list[WizardV1ConfigSchemaSourcesHierarchiesItemReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    links: list[WizardV1ConfigSchemaSourcesLinksItemReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    updates: list[WizardV1ConfigSchemaSourcesUpdatesItemReadDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf0ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    bar_gap: Literal['auto', 'l', 'm', 'none', 's'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barGap')
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    shape: Literal['auto', 'rectangle', 'trapezoid'] = _UNVALIDATED_NONE_DEFAULT
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_percentage_base: Literal['auto', 'first', 'previous'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipPercentageBase')
+
+class WizardFieldSchemaAnyOf0BackgroundSettingsSettingsGradientStateReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    gradient_mode: Literal['2-point', '3-point'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gradientMode')
+    gradient_palette: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gradientPalette')
+    left_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='leftThreshold')
+    middle_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='middleThreshold')
+    null_mode: Literal['as-0', 'ignore'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='nullMode')
+    reversed: bool = _UNVALIDATED_NONE_DEFAULT
+    right_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='rightThreshold')
+    thresholds_mode: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='thresholdsMode')
+
+class WizardFieldSchemaAnyOf0BackgroundSettingsSettingsPaletteStateReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    mounted_colors: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedColors')
+    palette: str = _UNVALIDATED_NONE_DEFAULT
+
+class WizardFieldSchemaAnyOf0BackgroundSettingsSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    gradient_state: WizardFieldSchemaAnyOf0BackgroundSettingsSettingsGradientStateReadDTO = Field(alias='gradientState')
+    is_continuous: bool = Field(alias='isContinuous')
+    palette_state: WizardFieldSchemaAnyOf0BackgroundSettingsSettingsPaletteStateReadDTO = Field(alias='paletteState')
+
+class WizardFieldSchemaAnyOf0BackgroundSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    color_field_guid: str = Field(alias='colorFieldGuid')
+    enabled: bool
+    settings: WizardFieldSchemaAnyOf0BackgroundSettingsSettingsReadDTO
+    settings_id: str = Field(alias='settingsId')
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsThresholdsOneOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    max: str
+    mid: str = _UNVALIDATED_NONE_DEFAULT
+    min: str
+    mode: Literal['manual']
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsThresholdsOneOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    mode: Literal['auto']
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    gradient_type: Literal['2-point', '3-point'] = Field(alias='gradientType')
+    palette: str = _UNVALIDATED_NONE_DEFAULT
+    reversed: bool = _UNVALIDATED_NONE_DEFAULT
+    thresholds: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsThresholdsOneOf0ReadDTO | WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsThresholdsOneOf1ReadDTO
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    color_type: Literal['gradient'] = Field(alias='colorType')
+    settings: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsReadDTO
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf1SettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    color: str = _UNVALIDATED_NONE_DEFAULT
+    color_index: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='colorIndex')
+    palette: str = _UNVALIDATED_NONE_DEFAULT
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    color_type: Literal['one-color'] = Field(alias='colorType')
+    settings: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf1SettingsReadDTO
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf2SettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    negative_color: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='negativeColor')
+    negative_color_index: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='negativeColorIndex')
+    palette: str = _UNVALIDATED_NONE_DEFAULT
+    positive_color: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='positiveColor')
+    positive_color_index: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='positiveColorIndex')
+
+class WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf2ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    color_type: Literal['two-color'] = Field(alias='colorType')
+    settings: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf2SettingsReadDTO
+
+class WizardFieldSchemaAnyOf0BarsSettingsScaleOneOf1SettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    max: str = _UNVALIDATED_NONE_DEFAULT
+    min: str = _UNVALIDATED_NONE_DEFAULT
+
+class WizardFieldSchemaAnyOf0BarsSettingsScaleOneOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    mode: Literal['manual']
+    settings: WizardFieldSchemaAnyOf0BarsSettingsScaleOneOf1SettingsReadDTO
+
+class WizardFieldSchemaAnyOf0BarsSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    align: Literal['default', 'left', 'right']
+    color_settings: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0ReadDTO | WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf1ReadDTO | WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf2ReadDTO = Field(alias='colorSettings')
+    enabled: bool
+    scale: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsThresholdsOneOf1ReadDTO | WizardFieldSchemaAnyOf0BarsSettingsScaleOneOf1ReadDTO
+    show_bars_in_totals: bool = Field(alias='showBarsInTotals')
+    show_labels: bool = Field(alias='showLabels')
+
+class WizardFieldSchemaAnyOf0ColumnSettingsWidthOneOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    mode: Literal['percent']
+    value: str
+
+class WizardFieldSchemaAnyOf0ColumnSettingsWidthOneOf2ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    mode: Literal['pixel']
+    value: str
+
+class WizardFieldSchemaAnyOf0ColumnSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    horizontal_alignment: Literal['auto', 'center', 'end', 'start'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='horizontalAlignment')
+    width: WizardFieldSchemaAnyOf0BarsSettingsColorSettingsOneOf0SettingsThresholdsOneOf1ReadDTO | WizardFieldSchemaAnyOf0ColumnSettingsWidthOneOf1ReadDTO | WizardFieldSchemaAnyOf0ColumnSettingsWidthOneOf2ReadDTO
+
+class WizardFieldSchemaAnyOf0FormattingReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    format: Literal['number', 'percent'] = _UNVALIDATED_NONE_DEFAULT
+    label_mode: Literal['absolute', 'percent'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelMode')
+    postfix: str = _UNVALIDATED_NONE_DEFAULT
+    precision: float = _UNVALIDATED_NONE_DEFAULT
+    prefix: str = _UNVALIDATED_NONE_DEFAULT
+    show_rank_delimiter: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showRankDelimiter')
+    unit: Literal['auto', 'b', 'k', 'm', 't'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardFieldSchemaAnyOf0HintSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    enabled: bool = _UNVALIDATED_NONE_DEFAULT
+    text: str = _UNVALIDATED_NONE_DEFAULT
+
+class WizardFieldSchemaAnyOf0SubTotalsSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    enabled: bool
+
+class WizardFieldSchemaAnyOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['float']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = _UNVALIDATED_NONE_DEFAULT
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: Literal['Measure Values']
+    type: Literal['PSEUDO']
+
+class WizardFieldSchemaAnyOf1FieldsItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    dataset_id: str = Field(alias='datasetId')
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = _UNVALIDATED_NONE_DEFAULT
+    guid: str
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+
+class WizardFieldSchemaAnyOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['hierarchy']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    fields: list[WizardFieldSchemaAnyOf1FieldsItemReadDTO]
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = _UNVALIDATED_NONE_DEFAULT
+    guid: str
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: str
+
+class WizardFieldSchemaAnyOf2ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['string']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = _UNVALIDATED_NONE_DEFAULT
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: Literal['Measure Names']
+    type: Literal['PSEUDO']
+
+WizardFieldSchemaReadDTO = WizardFieldSchemaAnyOf0ReadDTO | WizardFieldSchemaAnyOf1ReadDTO | WizardFieldSchemaAnyOf2ReadDTO | WizardFieldSchemaAnyOf1FieldsItemReadDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf0ColorsSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    color_mode: Literal['gradient', 'palette'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='colorMode')
+    colored_by_measure: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='coloredByMeasure')
+    field_guid: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldGuid')
+    gradient_mode: Literal['2-point', '3-point'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gradientMode')
+    gradient_palette: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gradientPalette')
+    left_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='leftThreshold')
+    middle_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='middleThreshold')
+    mounted_colors: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedColors')
+    null_mode: Literal['as-0', 'ignore'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='nullMode')
+    palette: str = _UNVALIDATED_NONE_DEFAULT
+    polygon_borders: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='polygonBorders')
+    reversed: bool = _UNVALIDATED_NONE_DEFAULT
+    right_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='rightThreshold')
+    thresholds_mode: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='thresholdsMode')
+
+class WizardV1ConfigSchemaVisualizationOneOf0ColorsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO]
+    settings: WizardV1ConfigSchemaVisualizationOneOf0ColorsSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO]
+
+class WizardLabelsItemSchemaAllOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['float']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = _UNVALIDATED_NONE_DEFAULT
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    label_percentage_base: Literal['auto', 'first', 'previous'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelPercentageBase')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: Literal['Measure Values']
+    type: Literal['PSEUDO']
+
+class WizardLabelsItemSchemaAllOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['hierarchy']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    fields: list[WizardFieldSchemaAnyOf1FieldsItemReadDTO]
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = _UNVALIDATED_NONE_DEFAULT
+    guid: str
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    label_percentage_base: Literal['auto', 'first', 'previous'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelPercentageBase')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: str
+
+class WizardLabelsItemSchemaAllOf2ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['string']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = _UNVALIDATED_NONE_DEFAULT
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    label_percentage_base: Literal['auto', 'first', 'previous'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelPercentageBase')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: Literal['Measure Names']
+    type: Literal['PSEUDO']
+
+class WizardLabelsItemSchemaAllOf3ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    dataset_id: str = Field(alias='datasetId')
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = _UNVALIDATED_NONE_DEFAULT
+    guid: str
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    label_percentage_base: Literal['auto', 'first', 'previous'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelPercentageBase')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+
+WizardLabelsItemSchemaReadDTO = WizardLabelsItemSchemaAllOf0ReadDTO | WizardLabelsItemSchemaAllOf1ReadDTO | WizardLabelsItemSchemaAllOf2ReadDTO | WizardLabelsItemSchemaAllOf3ReadDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf0LabelsSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    align: Literal['auto', 'center', 'left', 'right'] = _UNVALIDATED_NONE_DEFAULT
+    overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    position: Literal['inside', 'outside'] = _UNVALIDATED_NONE_DEFAULT
+    reserve_space: Literal['auto', 'off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='reserveSpace')
+    separator: Literal['auto', 'line-break', 'space'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf0LabelsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf0LabelsSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardSortItemSchemaAnyOf0AllOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['float']
+    direction: Literal['ASC', 'DESC']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = _UNVALIDATED_NONE_DEFAULT
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: Literal['Measure Values']
+    type: Literal['PSEUDO']
+
+class WizardSortItemSchemaAnyOf0AllOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    background_settings: WizardFieldSchemaAnyOf0BackgroundSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    bars_settings: WizardFieldSchemaAnyOf0BarsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barsSettings')
+    column_settings: WizardFieldSchemaAnyOf0ColumnSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='columnSettings')
+    data_type: Literal['string']
+    direction: Literal['ASC', 'DESC']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = _UNVALIDATED_NONE_DEFAULT
+    hide_label_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabelMode')
+    hint_settings: WizardFieldSchemaAnyOf0HintSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hintSettings')
+    markup_type: Literal['html', 'md', 'none'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='markupType')
+    sub_totals_settings: WizardFieldSchemaAnyOf0SubTotalsSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='subTotalsSettings')
+    title: Literal['Measure Names']
+    type: Literal['PSEUDO']
+
+class WizardSortItemSchemaAnyOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    dataset_id: str = Field(alias='datasetId')
+    direction: Literal['ASC', 'DESC']
+    fake_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fakeTitle')
+    format: str = _UNVALIDATED_NONE_DEFAULT
+    guid: str
+
+WizardSortItemSchemaReadDTO = WizardSortItemSchemaAnyOf0AllOf0ReadDTO | WizardSortItemSchemaAnyOf0AllOf1ReadDTO | WizardSortItemSchemaAnyOf1ReadDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardSortItemSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf0ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf0ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    labels: WizardV1ConfigSchemaVisualizationOneOf0LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['funnel']
+
+class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsPeriodSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    period: Literal['day', 'hour', 'month', 'quarter', 'week', 'year']
+    type: Literal['array_float', 'array_int', 'array_str', 'boolean', 'date', 'datetimetz', 'float', 'genericdatetime', 'geopoint', 'geopolygon', 'heatmap', 'hierarchy', 'integer', 'markup', 'string', 'tree_float', 'tree_int', 'tree_str', 'uinteger', 'unsupported']
+    value: str
+
+class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    lines_mode: Literal['all', 'selected'] = Field(alias='linesMode')
+    navigator_mode: Literal['hide', 'show'] = Field(alias='navigatorMode')
+    period_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsPeriodSettingsReadDTO = Field(alias='periodSettings')
+    selected_lines: list[str] = Field(alias='selectedLines')
+
+class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
+    stacking: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf0ColorsSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1LabelsSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf1LabelsSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1XSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
+    axis_label_date_format: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelDateFormat')
+    axis_label_formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelFormatting')
+    axis_mode_map: dict[str, Literal['continuous', 'discrete']] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisModeMap')
+    axis_visibility: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisVisibility')
+    grid: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    grid_step: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStep')
+    grid_step_value: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStepValue')
+    hide_labels: Literal['no', 'yes'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabels')
+    holidays: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    labels_view: Literal['angle', 'auto', 'horizontal', 'vertical'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsView')
+    title: Literal['auto', 'manual', 'off'] = _UNVALIDATED_NONE_DEFAULT
+    title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
+    type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1XReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO]
+    settings: WizardV1ConfigSchemaVisualizationOneOf1XSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1YSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
+    axis_label_date_format: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelDateFormat')
+    axis_label_formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelFormatting')
+    axis_visibility: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisVisibility')
+    grid: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    grid_step: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStep')
+    grid_step_value: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStepValue')
+    hide_labels: Literal['no', 'yes'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabels')
+    labels_view: Literal['angle', 'auto', 'horizontal', 'vertical'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsView')
+    nulls: Literal['as-0', 'connect', 'ignore', 'use-previous'] = _UNVALIDATED_NONE_DEFAULT
+    scale: Literal['auto', 'manual'] = _UNVALIDATED_NONE_DEFAULT
+    scale_value: Literal['0-max', 'data-min-max', 'min-max'] | Annotated[tuple[str, str], BeforeValidator(_json_array_to_tuple)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='scaleValue')
+    title: Literal['auto', 'manual', 'off'] = _UNVALIDATED_NONE_DEFAULT
+    title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
+    type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1YReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO]
+    settings: WizardV1ConfigSchemaVisualizationOneOf1YSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['area']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf2LabelsSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    labels_position: Literal['inside', 'outside'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsPosition')
+    overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf2LabelsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf2LabelsSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf2ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf2LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['column']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsCommonLineSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    line_width: Literal['auto'] | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineWidth')
+    linecap: Literal['butt', 'none', 'round', 'square'] = _UNVALIDATED_NONE_DEFAULT
+    linejoin: Literal['bevel', 'miter', 'round', 'unset'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1LineShapeSettingsSchemaReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    line_width: Literal['auto'] | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineWidth')
+    linecap: Literal['butt', 'none', 'round', 'square'] = _UNVALIDATED_NONE_DEFAULT
+    linejoin: Literal['bevel', 'miter', 'round', 'unset'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    common_line_settings: WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsCommonLineSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='commonLineSettings')
+    field_guid: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldGuid')
+    line_settings: dict[str, WizardV1LineShapeSettingsSchemaReadDTO] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineSettings')
+    mounted_shapes: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedShapes')
+
+class WizardV1ConfigSchemaVisualizationOneOf3ShapesReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf3ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    shapes: WizardV1ConfigSchemaVisualizationOneOf3ShapesReadDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['line']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
+    y2: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf4ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['area100p']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf5ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['column100p']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf6XSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
+    axis_label_date_format: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelDateFormat')
+    axis_label_formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelFormatting')
+    axis_visibility: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisVisibility')
+    grid: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    grid_step: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStep')
+    grid_step_value: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStepValue')
+    hide_labels: Literal['no', 'yes'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabels')
+    holidays: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    labels_view: Literal['angle', 'auto', 'horizontal', 'vertical'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsView')
+    nulls: Literal['as-0', 'connect', 'ignore', 'use-previous'] = _UNVALIDATED_NONE_DEFAULT
+    scale: Literal['auto', 'manual'] = _UNVALIDATED_NONE_DEFAULT
+    scale_value: Literal['0-max', 'data-min-max', 'min-max'] | Annotated[tuple[str, str], BeforeValidator(_json_array_to_tuple)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='scaleValue')
+    title: Literal['auto', 'manual', 'off'] = _UNVALIDATED_NONE_DEFAULT
+    title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
+    type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6XReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO]
+    settings: WizardV1ConfigSchemaVisualizationOneOf6XSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6YSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
+    axis_label_date_format: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelDateFormat')
+    axis_label_formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelFormatting')
+    axis_mode_map: dict[str, Literal['continuous', 'discrete']] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisModeMap')
+    axis_visibility: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisVisibility')
+    grid: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    grid_step: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStep')
+    grid_step_value: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStepValue')
+    hide_labels: Literal['no', 'yes'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabels')
+    labels_view: Literal['angle', 'auto', 'horizontal', 'vertical'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsView')
+    title: Literal['auto', 'manual', 'off'] = _UNVALIDATED_NONE_DEFAULT
+    title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
+    type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6YReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO]
+    settings: WizardV1ConfigSchemaVisualizationOneOf6YSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf2LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['bar']
+    x: WizardV1ConfigSchemaVisualizationOneOf6XReadDTO = _UNVALIDATED_NONE_DEFAULT
+    y: WizardV1ConfigSchemaVisualizationOneOf6YReadDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf7ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['bar100p']
+    x: WizardV1ConfigSchemaVisualizationOneOf6XReadDTO = _UNVALIDATED_NONE_DEFAULT
+    y: WizardV1ConfigSchemaVisualizationOneOf6YReadDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf8ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8ShapesSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    field_guid: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldGuid')
+    mounted_shapes: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedShapes')
+
+class WizardV1ConfigSchemaVisualizationOneOf8ShapesReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf8ShapesSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8SizeSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    max_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='maxRadius')
+    min_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='minRadius')
+    radius: float = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8SizeReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf8SizeSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8XSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
+    axis_label_date_format: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelDateFormat')
+    axis_label_formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelFormatting')
+    axis_mode_map: dict[str, Literal['continuous', 'discrete']] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisModeMap')
+    axis_visibility: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisVisibility')
+    grid: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    grid_step: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStep')
+    grid_step_value: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStepValue')
+    hide_labels: Literal['no', 'yes'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabels')
+    holidays: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    labels_view: Literal['angle', 'auto', 'horizontal', 'vertical'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsView')
+    scale: Literal['auto', 'manual'] = _UNVALIDATED_NONE_DEFAULT
+    scale_value: Literal['0-max', 'data-min-max', 'min-max'] | Annotated[tuple[str, str], BeforeValidator(_json_array_to_tuple)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='scaleValue')
+    title: Literal['auto', 'manual', 'off'] = _UNVALIDATED_NONE_DEFAULT
+    title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
+    type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8XReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO]
+    settings: WizardV1ConfigSchemaVisualizationOneOf8XSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8YSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
+    axis_label_date_format: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelDateFormat')
+    axis_label_formatting: WizardFieldSchemaAnyOf0FormattingReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisLabelFormatting')
+    axis_mode_map: dict[str, Literal['continuous', 'discrete']] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisModeMap')
+    axis_visibility: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisVisibility')
+    grid: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    grid_step: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStep')
+    grid_step_value: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='gridStepValue')
+    hide_labels: Literal['no', 'yes'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideLabels')
+    labels_view: Literal['angle', 'auto', 'horizontal', 'vertical'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsView')
+    scale: Literal['auto', 'manual'] = _UNVALIDATED_NONE_DEFAULT
+    scale_value: Literal['0-max', 'data-min-max', 'min-max'] | Annotated[tuple[str, str], BeforeValidator(_json_array_to_tuple)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='scaleValue')
+    title: Literal['auto', 'manual', 'off'] = _UNVALIDATED_NONE_DEFAULT
+    title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
+    type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8YReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf8YSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf8ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf8ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    points: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    shapes: WizardV1ConfigSchemaVisualizationOneOf8ShapesReadDTO = _UNVALIDATED_NONE_DEFAULT
+    size: WizardV1ConfigSchemaVisualizationOneOf8SizeReadDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['scatter']
+    x: WizardV1ConfigSchemaVisualizationOneOf8XReadDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf8YReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    id: str
+    name: str
+
+class WizardV1CombinedChartLayerSchemaOneOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf2LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsReadDTO = Field(alias='layerSettings')
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['column']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1CombinedChartLayerSchemaOneOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsReadDTO = Field(alias='layerSettings')
+    shapes: WizardV1ConfigSchemaVisualizationOneOf3ShapesReadDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['line']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
+    y2: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1CombinedChartLayerSchemaOneOf2ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsReadDTO = Field(alias='layerSettings')
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['area']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+WizardV1CombinedChartLayerSchemaReadDTO = WizardV1CombinedChartLayerSchemaOneOf0ReadDTO | WizardV1CombinedChartLayerSchemaOneOf1ReadDTO | WizardV1CombinedChartLayerSchemaOneOf2ReadDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf9ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf8ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    layers: list[WizardV1CombinedChartLayerSchemaReadDTO]
+    selected_layer_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='selectedLayerId')
+    type: Literal['combined-chart']
+
+class WizardV1ConfigSchemaVisualizationOneOf10ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    grouping: Literal['disabled', 'off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    limit: float = _UNVALIDATED_NONE_DEFAULT
+    pagination: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    pinned_columns: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pinnedColumns')
+    preserve_white_space: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='preserveWhiteSpace')
+    size: Literal['l', 'm', 's'] = _UNVALIDATED_NONE_DEFAULT
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    totals: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf10ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf10ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf0ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    columns: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['flatTable']
+
+class WizardV1ConfigSchemaVisualizationOneOf11ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    map_center_mode: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mapCenterMode')
+    map_center_value: None | str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mapCenterValue')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    zoom_mode: Literal['auto', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='zoomMode')
+    zoom_value: None | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='zoomValue')
+
+class WizardV1GeolayerLayerSchemaOneOf0FiltersReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardV1FiltersItemSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1GeolayerLayerSchemaOneOf0LayerSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    alpha: float = _UNVALIDATED_NONE_DEFAULT
+    id: str
+    name: str
+
+class WizardV1GeolayerLayerSchemaOneOf0PolylinesSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    polyline_points: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='polylinePoints')
+
+class WizardV1GeolayerLayerSchemaOneOf0PolylinesReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO]
+    settings: WizardV1GeolayerLayerSchemaOneOf0PolylinesSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1GeolayerLayerSchemaOneOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    filters: WizardV1GeolayerLayerSchemaOneOf0FiltersReadDTO = _UNVALIDATED_NONE_DEFAULT
+    grouping: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsReadDTO = Field(alias='layerSettings')
+    measures: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    polylines: WizardV1GeolayerLayerSchemaOneOf0PolylinesReadDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['polyline']
+
+class WizardV1GeolayerLayerSchemaOneOf1LabelsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1GeolayerLayerSchemaOneOf1SizeSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    radius: float = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1GeolayerLayerSchemaOneOf1SizeReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1GeolayerLayerSchemaOneOf1SizeSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1GeolayerLayerSchemaOneOf1TooltipSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    color: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    field_title: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldTitle')
+
+class WizardV1GeolayerLayerSchemaOneOf1TooltipReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO]
+    settings: WizardV1GeolayerLayerSchemaOneOf1TooltipSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1GeolayerLayerSchemaOneOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    filters: WizardV1GeolayerLayerSchemaOneOf0FiltersReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsReadDTO = Field(alias='layerSettings')
+    points: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    size: WizardV1GeolayerLayerSchemaOneOf1SizeReadDTO = _UNVALIDATED_NONE_DEFAULT
+    tooltip: WizardV1GeolayerLayerSchemaOneOf1TooltipReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['geopoint']
+
+class WizardV1GeolayerLayerSchemaOneOf2ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    filters: WizardV1GeolayerLayerSchemaOneOf0FiltersReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsReadDTO = Field(alias='layerSettings')
+    points: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    size: WizardV1GeolayerLayerSchemaOneOf1SizeReadDTO = _UNVALIDATED_NONE_DEFAULT
+    tooltip: WizardV1GeolayerLayerSchemaOneOf1TooltipReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['geopoint-with-cluster']
+
+class WizardV1GeolayerLayerSchemaOneOf3ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    filters: WizardV1GeolayerLayerSchemaOneOf0FiltersReadDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsReadDTO = Field(alias='layerSettings')
+    points: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    type: Literal['heatmap']
+
+class WizardV1GeolayerLayerSchemaOneOf4ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    filters: WizardV1GeolayerLayerSchemaOneOf0FiltersReadDTO = _UNVALIDATED_NONE_DEFAULT
+    layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsReadDTO = Field(alias='layerSettings')
+    polygons: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    tooltip: WizardV1GeolayerLayerSchemaOneOf1TooltipReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['geopolygon']
+
+WizardV1GeolayerLayerSchemaReadDTO = WizardV1GeolayerLayerSchemaOneOf0ReadDTO | WizardV1GeolayerLayerSchemaOneOf1ReadDTO | WizardV1GeolayerLayerSchemaOneOf2ReadDTO | WizardV1GeolayerLayerSchemaOneOf3ReadDTO | WizardV1GeolayerLayerSchemaOneOf4ReadDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf11ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf11ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    layers: list[WizardV1GeolayerLayerSchemaReadDTO]
+    selected_layer_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='selectedLayerId')
+    type: Literal['geolayer']
+
+class WizardV1ConfigSchemaVisualizationOneOf12ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    totals: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf12ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf12ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['donut']
+
+class WizardV1ConfigSchemaVisualizationOneOf13ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf13ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf13ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['pie']
+
+class WizardV1ConfigSchemaVisualizationOneOf14ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    limit: float = _UNVALIDATED_NONE_DEFAULT
+    pagination: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    pinned_columns: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pinnedColumns')
+    pivot_fallback: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pivotFallback')
+    pivot_inline_sort: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pivotInlineSort')
+    preserve_white_space: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='preserveWhiteSpace')
+    size: Literal['l', 'm', 's'] = _UNVALIDATED_NONE_DEFAULT
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+
+class WizardV1ConfigSchemaVisualizationOneOf14ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf14ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf0ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    columns: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    rows: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['pivotTable']
+
+class WizardV1ConfigSchemaVisualizationOneOf15ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    metric_font_color: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='metricFontColor')
+    metric_font_color_index: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='metricFontColorIndex')
+    metric_font_color_palette: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='metricFontColorPalette')
+    metric_font_size: Literal['l', 'm', 's', 'xl'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='metricFontSize')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['by-field', 'hide', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+
+class WizardV1ConfigSchemaVisualizationOneOf15ColorsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    settings: WizardV1ConfigSchemaVisualizationOneOf0ColorsSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf15ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf15ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf15ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    is_markup: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='isMarkup')
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    type: Literal['metric']
+
+class WizardV1ConfigSchemaVisualizationOneOf16ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf16ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf16ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf0ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    type: Literal['treemap']
+
+class WizardV1ConfigSchemaReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    sources: WizardV1ConfigSchemaSourcesReadDTO
+    visualization: WizardV1ConfigSchemaVisualizationOneOf0ReadDTO | WizardV1ConfigSchemaVisualizationOneOf1ReadDTO | WizardV1ConfigSchemaVisualizationOneOf2ReadDTO | WizardV1ConfigSchemaVisualizationOneOf3ReadDTO | WizardV1ConfigSchemaVisualizationOneOf4ReadDTO | WizardV1ConfigSchemaVisualizationOneOf5ReadDTO | WizardV1ConfigSchemaVisualizationOneOf6ReadDTO | WizardV1ConfigSchemaVisualizationOneOf7ReadDTO | WizardV1ConfigSchemaVisualizationOneOf8ReadDTO | WizardV1ConfigSchemaVisualizationOneOf9ReadDTO | WizardV1ConfigSchemaVisualizationOneOf10ReadDTO | WizardV1ConfigSchemaVisualizationOneOf11ReadDTO | WizardV1ConfigSchemaVisualizationOneOf12ReadDTO | WizardV1ConfigSchemaVisualizationOneOf13ReadDTO | WizardV1ConfigSchemaVisualizationOneOf14ReadDTO | WizardV1ConfigSchemaVisualizationOneOf15ReadDTO | WizardV1ConfigSchemaVisualizationOneOf16ReadDTO
+
+
+def _validate_wizard_v1_config(data: Mapping[str, JsonValue]) -> None:
+    sources = data.get("sources")
+    visualization = data.get("visualization")
+    if not isinstance(sources, Mapping) or not isinstance(sources.get("datasetsIds"), list):
+        raise ValueError("Wizard V1 config sources.datasetsIds must be an array")
+    supported = sorted(WIZARD_VISUALIZATION_STRUCTURE)
+    if not supported:
+        raise NotSupportedError("Wizard API v3 is unavailable for this installation")
+    if not isinstance(visualization, Mapping) or visualization.get("type") not in supported:
+        raise ValueError(f"Wizard V1 config visualization.type must be one of {sorted(supported)}")
+
+
+class WizardChartCreateDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
+
+    data: dict[str, JsonValue]
     key: str | None = None
     name: str | None = None
     workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
-    annotation: Mapping[str, object] | None = None
+    annotation: dict[str, JsonValue] | None = None
 
-    def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {
-            "template": self.template,
-            "data": dict(self.data),
-        }
+    @model_validator(mode="after")
+    def _validate_data(self) -> WizardChartCreateDTO:
+        CreateWizardChartV1ArgsDTO.model_validate(self.to_payload())
+        return self
+
+    def to_payload(self) -> dict[str, JsonValue]:
+        payload: dict[str, JsonValue] = {"data": dict(self.data)}
         if self.key is not None:
             payload["key"] = self.key
         if self.name is not None:
@@ -866,33 +3430,40 @@ class WizardChartCreateDTO(BaseModel):
 
 
 class WizardChartUpdateDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
-    entry_id: str = Field(serialization_alias="entryId")
-    template: Literal["datalens"]
+    chart_id: str = Field(serialization_alias="chartId")
     mode: Literal["save", "publish"]
-    data: Mapping[str, object]
-    annotation: Mapping[str, object] | None = None
+    data: dict[str, JsonValue]
+    annotation: dict[str, JsonValue] | None = None
+    rev_id: str | None = Field(default=None, serialization_alias="revId")
 
-    def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {
-            "entryId": self.entry_id,
-            "template": self.template,
+    @model_validator(mode="after")
+    def _validate_data(self) -> WizardChartUpdateDTO:
+        UpdateWizardV1ArgsReadDTO.model_validate(self.to_payload())
+        WizardV1ConfigSchemaReadDTO.model_validate(self.data)
+        return self
+
+    def to_payload(self) -> dict[str, JsonValue]:
+        payload: dict[str, JsonValue] = {
+            "chartId": self.chart_id,
             "mode": self.mode,
             "data": dict(self.data),
         }
         if self.annotation is not None:
             payload["annotation"] = dict(self.annotation)
+        if self.rev_id is not None:
+            payload["revId"] = self.rev_id
         return payload
 
+
+WizardChartEntryReadDTO = WizardV1ReadDTO
 
 class WizardChartReadDTO(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
-    entry_id: str | None = Field(default=None, alias="entryId")
-    template: str | None = None
-    data: dict[str, object] | None = None
-    raw: dict[str, object] = Field(default_factory=dict)
+    entry: WizardChartEntryReadDTO
+    raw: dict[str, JsonValue] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod

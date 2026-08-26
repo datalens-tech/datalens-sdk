@@ -7,6 +7,7 @@ import httpx
 import pytest
 
 import datalens_sdk as dl
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.editor_chart import EditorChart
 from datalens_sdk.domain.fields import DatasetField
@@ -52,39 +53,81 @@ def _dataset() -> dl.Dataset:
 
 
 def _wizard_response(*, entry_id: str = "chart-1", viz_id: str = "line") -> dict[str, object]:
+    visualization: dict[str, object] = {
+        "type": viz_id,
+        **{slot_name: {"items": []} for slot_name in WIZARD_VISUALIZATION_STRUCTURE[viz_id]["slots"]},
+    }
+    if viz_id == "line":
+        visualization["x"] = {
+            "items": [
+                {"guid": "g_date", "datasetId": "ds-1", "title": "Order Date"},
+                {"guid": "g_reg", "datasetId": "ds-1", "title": "Region"},
+            ]
+        }
+        visualization["y"] = {"items": [{"guid": "g_amt", "datasetId": "ds-1", "title": "Amount"}]}
     return {
-        "entryId": entry_id,
-        "key": "/Users/me/Sales",
-        "type": "d3_wizard_node",
-        "data": {
-            "visualization": {
-                "id": viz_id,
-                "placeholders": [
-                    {
-                        "id": "x",
-                        "items": [
-                            {"guid": "g_date", "datasetId": "ds-1", "title": "Order Date"},
-                            {"guid": "g_reg", "datasetId": "ds-1", "title": "Region"},
-                        ],
-                    },
-                    {"id": "y", "items": [{"guid": "g_amt", "datasetId": "ds-1", "title": "Amount"}]},
-                ],
+        "entry": {
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "createdBy": "user-1",
+            "version": 1,
+            "entryId": entry_id,
+            "hidden": False,
+            "key": "/Users/me/Sales",
+            "meta": {},
+            "public": False,
+            "publishedId": "revision-1",
+            "revId": "revision-1",
+            "savedId": "revision-1",
+            "scope": "widget",
+            "tenantId": "tenant-1",
+            "type": "d3_wizard_node",
+            "updatedAt": "2026-01-02T00:00:00.000Z",
+            "updatedBy": "user-1",
+            "data": {
+                "sources": {"datasetsIds": ["ds-1"], "filters": []},
+                "visualization": visualization,
             },
-            "datasetsIds": ["ds-1"],
-            "filters": [],
+            "workbookId": None,
         },
+        "isFavorite": False,
+        "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
     }
 
 
 def _sparse_wizard_response(*, entry_id: str) -> dict[str, object]:
     return {
-        "entryId": entry_id,
-        "type": "d3_wizard_node",
-        "data": {"visualization": {"id": "line", "placeholders": []}},
+        "entry": {
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "createdBy": "user-1",
+            "version": 1,
+            "entryId": entry_id,
+            "hidden": False,
+            "key": None,
+            "meta": {},
+            "public": False,
+            "publishedId": "revision-1",
+            "revId": "revision-1",
+            "savedId": "revision-1",
+            "scope": "widget",
+            "tenantId": "tenant-1",
+            "type": "d3_wizard_node",
+            "updatedAt": "2026-01-02T00:00:00.000Z",
+            "updatedBy": "user-1",
+            "data": {
+                "sources": {"datasetsIds": []},
+                "visualization": {
+                    "type": "line",
+                    **{slot_name: {"items": []} for slot_name in WIZARD_VISUALIZATION_STRUCTURE["line"]["slots"]},
+                },
+            },
+            "workbookId": None,
+        },
+        "isFavorite": False,
+        "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
     }
 
 
-def test_wizard_create_payload_carries_field_snapshots() -> None:
+def test_wizard_create_payload_carries_v3_field_references() -> None:
     recorder = _RecordedTransport({"/rpc/createWizardChart": httpx.Response(200, json=_wizard_response())})
     client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
     dataset = _dataset()
@@ -96,12 +139,10 @@ def test_wizard_create_payload_carries_field_snapshots() -> None:
     payload = recorder.request_json(0)
     data = cast(dict[str, object], payload["data"])
     viz = cast(dict[str, object], data["visualization"])
-    placeholders = cast(list[dict[str, object]], viz["placeholders"])
-    x_ph = next(p for p in placeholders if p["id"] == "x")
-    x_items = cast(list[dict[str, object]], x_ph["items"])
+    x_items = cast(list[dict[str, object]], cast(dict[str, object], viz["x"])["items"])
     assert x_items[0]["guid"] == "g_date"
-    assert x_items[0]["title"] == "Order Date"
     assert x_items[0]["datasetId"] == "ds-1"
+    assert set(x_items[0]) == {"guid", "datasetId"}
 
 
 def test_chart_create_accepts_resource_objects_and_equivalent_location_refs() -> None:
@@ -275,9 +316,9 @@ def test_wizard_delete_sends_chart_id() -> None:
 
 def test_update_from_fetched_chart_sends_mode_and_entry_id() -> None:
     update_response = _wizard_response()
-    update_response_data = cast(dict[str, object], update_response["data"])
+    update_response_data = cast(dict[str, object], cast(dict[str, object], update_response["entry"])["data"])
     viz = cast(dict[str, object], update_response_data["visualization"])
-    y_ph = next(p for p in cast(list[dict[str, object]], viz["placeholders"]) if p["id"] == "y")
+    y_ph = cast(dict[str, object], viz["y"])
     y_ph["items"] = [{"guid": "g_reg", "datasetId": "ds-1"}]
 
     recorder = _RecordedTransport(
@@ -294,15 +335,12 @@ def test_update_from_fetched_chart_sends_mode_and_entry_id() -> None:
     assert isinstance(updated, WizardChart)
     assert recorder.paths() == ["/rpc/getWizardChart", "/rpc/updateWizardChart"]
     update_payload = recorder.request_json(1)
-    assert update_payload["entryId"] == "chart-1"
+    assert update_payload["chartId"] == "chart-1"
     assert update_payload["mode"] == "save"
-    assert update_payload["template"] == "datalens"
+    assert "revId" not in update_payload
     update_data = cast(dict[str, object], update_payload["data"])
     update_viz = cast(dict[str, object], update_data["visualization"])
-    y_items = cast(
-        list[dict[str, object]],
-        next(p for p in cast(list[dict[str, object]], update_viz["placeholders"]) if p["id"] == "y")["items"],
-    )
+    y_items = cast(list[dict[str, object]], cast(dict[str, object], update_viz["y"])["items"])
     assert y_items[0]["guid"] == "g_reg"
 
 
@@ -323,12 +361,7 @@ def test_update_mode_defaults_to_save() -> None:
 
 
 def test_update_change_visualization_to_changes_viz_id_in_payload() -> None:
-    update_response = {
-        "entryId": "chart-1",
-        "key": "/Users/me/Sales",
-        "type": "graph_wizard_node",
-        "data": {"visualization": {"id": "bar", "placeholders": []}},
-    }
+    update_response = _wizard_response(viz_id="bar")
     recorder = _RecordedTransport(
         {
             "/rpc/getWizardChart": httpx.Response(200, json=_wizard_response()),
@@ -343,10 +376,10 @@ def test_update_change_visualization_to_changes_viz_id_in_payload() -> None:
     update_payload = recorder.request_json(1)
     update_data = cast(dict[str, object], update_payload["data"])
     update_viz = cast(dict[str, object], update_data["visualization"])
-    assert update_viz["id"] == "bar"
+    assert update_viz["type"] == "bar"
 
 
-def test_update_deep_merge_preserves_untouched_placeholders() -> None:
+def test_update_deep_merge_preserves_untouched_named_slots() -> None:
     recorder = _RecordedTransport(
         {
             "/rpc/getWizardChart": httpx.Response(200, json=_wizard_response()),
@@ -361,18 +394,17 @@ def test_update_deep_merge_preserves_untouched_placeholders() -> None:
     update_payload = recorder.request_json(1)
     update_data = cast(dict[str, object], update_payload["data"])
     update_viz = cast(dict[str, object], update_data["visualization"])
-    placeholder_ids = [p["id"] for p in cast(list[dict[str, object]], update_viz["placeholders"])]
-    assert "x" in placeholder_ids
-    x_ph = next(p for p in cast(list[dict[str, object]], update_viz["placeholders"]) if p["id"] == "x")
+    assert "x" in update_viz
+    x_ph = cast(dict[str, object], update_viz["x"])
     x_items = cast(list[dict[str, object]], x_ph["items"])
     assert x_items[0]["guid"] == "g_date"
 
 
 def test_update_replace_field_via_client_namespace() -> None:
     update_response = _wizard_response()
-    update_data = cast(dict[str, object], update_response["data"])
+    update_data = cast(dict[str, object], cast(dict[str, object], update_response["entry"])["data"])
     update_viz = cast(dict[str, object], update_data["visualization"])
-    x_ph = next(p for p in cast(list[dict[str, object]], update_viz["placeholders"]) if p["id"] == "x")
+    x_ph = cast(dict[str, object], update_viz["x"])
     x_ph["items"] = [{"guid": "g_new", "datasetId": "ds-1"}]
 
     recorder = _RecordedTransport(
@@ -398,10 +430,7 @@ def test_update_replace_field_via_client_namespace() -> None:
     update_payload = recorder.request_json(1)
     update_data = cast(dict[str, object], update_payload["data"])
     update_viz = cast(dict[str, object], update_data["visualization"])
-    x_items = cast(
-        list[dict[str, object]],
-        next(p for p in cast(list[dict[str, object]], update_viz["placeholders"]) if p["id"] == "x")["items"],
-    )
+    x_items = cast(list[dict[str, object]], cast(dict[str, object], update_viz["x"])["items"])
     assert x_items[0]["guid"] == "g_new"
 
 

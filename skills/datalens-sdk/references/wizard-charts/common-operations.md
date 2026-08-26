@@ -25,8 +25,12 @@ from datalens_sdk import (
     EntryLocation,
     EntryRelation,
     Pager,
+    WizardAggregatedMeasure,
     WizardChart,
     WizardChartUpdate,
+    WizardHierarchy,
+    WizardLocalField,
+    WizardFieldRef,
 )
 from datalens_sdk.domain.chart_types import (
     CombinedLayerType,
@@ -35,14 +39,15 @@ from datalens_sdk.domain.chart_types import (
     FunnelShape,
     GeoLayerType,
     GradientPaletteId,
-    MapType,
     MeasureFormat,
     PaletteId,
     ShapeStyle,
 )
 ```
 
-The signatures below use `FieldRef` as shorthand for `DatasetField | str`.
+The signatures below use the public `WizardFieldRef` alias: `DatasetField`,
+one of the GUID-bearing Wizard handle types (`WizardLocalField`,
+`WizardAggregatedMeasure`, `WizardHierarchy`), or an exact string reference.
 Examples assume `client` is already configured. For client construction and
 authentication, see [../setup.md](../setup.md).
 
@@ -95,7 +100,7 @@ Every create builder inherits:
 
 The `Required` markers in the chart tables describe the server contract.
 Unlike QL builders, Wizard `.build()` does not validate that required
-placeholders are populated client-side. Re-fetch and validate the persisted
+slots are populated client-side. Re-fetch and validate the persisted
 chart instead of treating a successful build as proof of completeness.
 
 `geolayer` additionally has `.add_dataset(dataset)` for multiple layer
@@ -186,11 +191,11 @@ starting another update that depends on the persisted chart state.
 
 ## Field References
 
-Create-side field arguments use `FieldLike | str`, where current `FieldLike` is
-`DatasetField`. Update-side arguments use `FieldRef`, currently
-`DatasetField | str`.
+Create and update field arguments accept `DatasetField`,
+`WizardLocalField`, `WizardAggregatedMeasure`, `WizardHierarchy`, or an exact
+string reference.
 
-Prefer `DatasetField`:
+For a Dataset field, save and reuse its `DatasetField`:
 
 ```python
 dataset = client.get.dataset(by_id="dataset-id")
@@ -198,7 +203,67 @@ date = dataset.fields.by_name("Order Date")
 sales = dataset.fields.by_guid("sales-guid")
 ```
 
-For placeholder, decoration, filter, sort, hierarchy, and replacement-new
+For a Wizard-owned field, construct a handle first, pass it to the matching
+`add_*` method, and reuse the same object in slots and decorations. The
+handle has its GUID before any I/O:
+
+```python
+from datalens_sdk import WizardAggregatedMeasure, WizardHierarchy, WizardLocalField
+
+country = dataset.fields.by_name("Country")
+city = dataset.fields.by_name("City")
+aov = WizardLocalField.measure(
+    guid="customer-aov",
+    title="AOV",
+    formula="SUM([Sales]) / COUNTD([Order ID])",
+    cast="float",
+)
+unique_cities = WizardAggregatedMeasure(
+    guid="unique-cities",
+    field=city,
+    aggregation="countunique",
+    title="Unique cities",
+)
+geo = WizardHierarchy(guid="geo-country-city", title="Geo", fields=[country, city])
+
+builder = (
+    builder.add_local_field(aov)
+    .add_aggregated_measure(unique_cities)
+    .add_hierarchy(geo)
+    .columns([geo, aov, unique_cities])
+)
+```
+
+The handle constructors are explicit and keyword-only:
+
+```python
+WizardLocalField.dimension(
+    *, title: str, formula: str, guid: str | None = None,
+    cast: DataType = "float", formatting: MeasureFormat | None = None,
+)
+WizardLocalField.measure(
+    *, title: str, formula: str, guid: str | None = None,
+    cast: DataType = "float", aggregation: Aggregation | None = None,
+    formatting: MeasureFormat | None = None,
+)
+WizardAggregatedMeasure(
+    *, field: DatasetField, aggregation: ExplicitAggregation,
+    title: str, guid: str = <generated>,
+)
+WizardHierarchy(
+    *, title: str, fields: Sequence[WizardHierarchyMember],
+    guid: str = <generated>,
+)
+```
+
+`DataType` includes values such as `"string"`, `"integer"`, `"float"`,
+`"boolean"`, `"date"`, and `"datetime"`; prefer the type that the formula
+actually returns. Reproducible examples and automations should set a semantic
+GUID explicitly. A hierarchy normally replaces its standalone member columns
+at the placement where drill-down is wanted; do not also place the same
+members there unless that duplicate presentation is intentional and verified.
+
+For slot, decoration, filter, sort, hierarchy, and replacement-new
 arguments, string resolution is deterministic:
 
 1. Resolve a chart-local field or hierarchy by exact GUID/title where supported.
@@ -209,18 +274,27 @@ arguments, string resolution is deterministic:
 On create, call `.dataset(dataset)` before relying on dataset field strings. On
 update, strings can resolve only against fields already active in the loaded
 chart and chart-local fields. To place an unreferenced dataset field, fetch the
-dataset using `chart.dataset_ids[0]` and pass its `DatasetField`.
+dataset using `chart.dataset_ids[0]` and pass its `DatasetField`. After a fetch,
+reuse a saved handle for a Wizard-owned field; when no handle is available,
+resolve an active snapshot by exact GUID with `chart.fields.by_guid(...)`, not
+by title.
 
 Structural target arguments are stricter. For `replace_field(old, ...)`,
 `delete_field(field)`, `delete_filter(field)`, and
 `replace_formula(field, ...)`, a string means an exact field GUID, not a title.
-Prefer the matching object from `chart.fields`; otherwise pass its exact GUID.
+Prefer a saved Wizard handle or the matching `DatasetField` from
+`chart.fields`; otherwise pass its exact GUID.
 `replace_formula()` applies only to a chart-local `add_field` formula. An
 unknown or title-like target can fail or leave the formula unchanged.
 
-Placeholder setters replace that placeholder's complete field list; pass `[]`
-to clear an optional placeholder. `chart.fields` lists active fields but does
-not expose their placeholder membership. When updating an existing chart,
+After a formatting update and re-fetch, inspect the active snapshot selected
+by GUID. Known persisted presentation properties are available in
+`chart.fields.by_guid(handle.guid).raw`, for example its `formatting` mapping;
+the returned object remains a `DatasetField`, not the original handle type.
+
+Slot setters replace that slot's complete field list; pass `[]`
+to clear an optional slot. `chart.fields` lists active fields but does
+not expose their slot membership. When updating an existing chart,
 obtain the intended complete field list from the user or known chart design;
 do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 `sort(fields)` replaces the create-side sort list, while
@@ -232,14 +306,14 @@ do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 
 | Signature | Side | Notes |
 |---|---|---|
-| `.x(fields: Sequence[FieldRef])` | C/U | Set `x`; meaning and capacity are chart-specific. |
-| `.y(fields: Sequence[FieldRef])` | C/U | Set `y`; aliases `measures` for indicator, pie, donut, funnel, treemap, and pivot table. |
-| `.y2(fields: Sequence[FieldRef])` | C/U | Line create; update only when the active viz accepts `y2`. |
-| `.columns(fields: Sequence[FieldRef])` | C/U | Flat/pivot create; update applicability is viz-checked. |
-| `.rows(fields: Sequence[FieldRef])` | C/U | Pivot create; update applicability is viz-checked. |
-| `.measures(fields: Sequence[FieldRef])` | U | Update alias for indicator, pie, donut, funnel, treemap, and pivot table; their create builders expose `.y(...)`. |
-| `.points(fields: Sequence[FieldRef])` | C/U | Scatter point identity. |
-| `.size(fields: Sequence[FieldRef])` | C/U | Scatter size; capacity is chart-specific. |
+| `.x(fields: Sequence[WizardFieldRef])` | C/U | Set `x`; meaning and capacity are chart-specific. |
+| `.y(fields: Sequence[WizardFieldRef])` | C/U | Set `y`; aliases `measures` for indicator, pie, donut, funnel, and treemap. Pivot table uses `.measures(...)` directly. |
+| `.y2(fields: Sequence[WizardFieldRef])` | C/U | Line create; update only when the active viz accepts `y2`. |
+| `.columns(fields: Sequence[WizardFieldRef])` | C/U | Flat/pivot create; update applicability is viz-checked. |
+| `.rows(fields: Sequence[WizardFieldRef])` | C/U | Pivot create; update applicability is viz-checked. |
+| `.measures(fields: Sequence[WizardFieldRef])` | C/U for pivot, U otherwise | Canonical pivot-table measure carrier. For indicator, pie, donut, funnel, and treemap it is update-only; their create builders expose `.y(...)`. |
+| `.points(fields: Sequence[WizardFieldRef])` | C/U | Scatter point identity. |
+| `.size(fields: Sequence[WizardFieldRef])` | C/U | Scatter size; capacity is chart-specific. |
 | `.add_layer(layer_type: CombinedLayerType, *, y=None, y2=None, name=None)` | C | Combined only; require at least one of `y`/`y2`. |
 | `.add_dataset(dataset: Dataset)` | C | Geolayer only; register an additional layer dataset. |
 | `.add_layer(layer_type: GeoLayerType, *, ...)` | C | Geolayer only; see the [full signature and layer capabilities](chart-geolayer.md#fluent-operations). |
@@ -249,20 +323,19 @@ do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 | Signature | Side | Notes |
 |---|---|---|
 | `.description(text: str)` | C/U | Set entry description. |
-| `.add_local_field(*, title, formula, guid=None, cast="float", measure=False, aggregation=None, formatting=None)` | C/U | Add a chart-local formula field. |
-| `.add_aggregated_measure(field: DatasetField, *, aggregation, name=None, guid=None)` | C/U | Add a local aggregated measure from a dataset dimension; existing measures are rejected. |
+| `.add_local_field(field: WizardLocalField)` | C/U | Add a formula dimension/measure handle created with `WizardLocalField.dimension(...)` or `.measure(...)`. |
+| `.add_aggregated_measure(field: WizardAggregatedMeasure)` | C/U | Add a handle that aggregates its source Dataset dimension; existing measures are rejected. |
 | `.change_aggregation(field: DatasetField, *, aggregation, name, guid=None)` | U | Replace a placed dimension or manually aggregated measure; `name` is required. |
-| `.add_hierarchy(title, fields, *, guid=None)` | C/U | Add a chart hierarchy; omit `guid` to create one automatically. |
-| `.replace_formula(field, *, formula: str)` | U | Replace a chart-local `add_field` formula; target by `DatasetField` or exact GUID, never by title. |
+| `.add_hierarchy(hierarchy: WizardHierarchy)` | C/U | Add a hierarchy handle; its members are frozen to an ordered tuple. |
+| `.replace_formula(field, *, formula: str)` | U | Replace a chart-local formula; target by its saved `WizardLocalField`, a `DatasetField` snapshot, or exact GUID, never by title. |
 | `.add_filter(field, *, operation: FilterOperation, values=())` | C/U | Append a filter. Null checks normally use empty `values`. |
 | `.add_date_filter(field, *, start, end, inclusive_end=True)` | C/U | Append `BETWEEN`; normalize ISO date/datetime values. |
 | `.add_relative_date_filter(field, *, start_offset, end_offset)` | C/U | Append relative `BETWEEN`; offsets follow DataLens forms such as `-30d`, `-1M`, `+0d`. |
-| `.sort(fields: Sequence[FieldRef])` | C | Replace the create-side sort field list; no directions. |
+| `.sort(fields: Sequence[WizardFieldRef])` | C | Replace the create-side sort field list; no directions. |
 | `.add_sort(field, *, direction="asc")` | C/U | Append one directional sort; direction is `"asc"` or `"desc"`. |
-| `.labels(fields: Sequence[FieldRef])` | C/U | Replace labels fields. |
-| `.segments(fields: Sequence[FieldRef])` | C/U | Replace split/segment fields where supported. |
-| `.tooltips(fields: Sequence[FieldRef])` | C/U | Replace tooltip fields. |
-| `.measure_format(field, *, format=None, precision=None, unit=None, prefix=None, postfix=None, show_rank_delimiter=None)` | C/U | Patch only supplied formatting keys; the field must already be placed in a visualization placeholder. |
+| `.labels(fields: Sequence[WizardFieldRef])` | C/U | Replace labels fields. |
+| `.segments(fields: Sequence[WizardFieldRef])` | C/U | Replace split/segment fields where supported. |
+| `.measure_format(field, *, format=None, precision=None, unit=None, prefix=None, postfix=None, show_rank_delimiter=None)` | C/U | Patch only supplied formatting keys; the field must already be placed in a visualization slot. |
 
 `aggregation` for aggregated-measure operations is one of `"sum"`, `"avg"`,
 `"min"`, `"max"`, `"count"`, or `"countunique"`.
@@ -273,16 +346,17 @@ do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 |---|---|---|
 | `.chart_title(*, text="", mode="show")` | C/U | Mode is `"show"` or `"hide"`. |
 | `.legend(*, mode: Literal["show", "hide"])` | C/U | Set legend visibility. |
+| `.tooltip(*, mode: Literal["show", "hide"])` | C/U | Set chart-level tooltip visibility on supported visualizations. Geolayer tooltip fields belong to `add_layer(..., tooltips=...)`. |
 | `.tooltip_sum(*, enabled: bool)` | C/U | Toggle tooltip totals. |
 | `.labels_position(*, mode)` | C/U | `"inside"`, `"outside"`, or `"auto"`. |
-| `.label_mode(*, mode)` | C/U | `"absolute"` or `"percent"` on supported charts. |
+| `.label_mode(*, mode)` | C/U | `"absolute"`; `"percent"` is additionally available on 100% charts, donut, funnel, and pie. |
 | `.tooltip_percentage_base(*, mode)` | C/U | Funnel only: `"auto"`, `"first"`, or `"previous"`. |
-| `.axis_visibility(ph_id, *, mode)` | C/U | Axis ID is chart-specific; mode is `"show"`/`"hide"`. |
-| `.hide_labels(ph_id, *, enabled: bool)` | C/U | Toggle labels on one supported axis. |
-| `.nulls_mode(ph_id, *, mode)` | C/U | `"ignore"`, `"connect"`, or `"as-0"`. |
-| `.axis_title(ph_id, *, mode, text="")` | C/U | Mode is `"off"`, `"manual"`, or `"auto"`; `text` is used for manual mode. |
-| `.axis_scale(ph_id, *, scale="linear", mode="auto", min=None, max=None)` | C/U | Scale is `"linear"`/`"logarithmic"`; manual mode requires a bound. |
-| `.grid(ph_id, *, enabled: bool, step=None)` | C/U | Supplying `step` switches grid step to manual. |
+| `.axis_visibility(slot_name, *, mode)` | C/U | Slot name is chart-specific; mode is `"show"`/`"hide"`. |
+| `.hide_labels(slot_name, *, enabled: bool)` | C/U | Toggle labels on one supported axis. |
+| `.nulls_mode(slot_name, *, mode)` | C/U | `"ignore"`, `"connect"`, `"as-0"`, or `"use-previous"` on a supported measure axis. |
+| `.axis_title(slot_name, *, mode, text="")` | C/U | Mode is `"off"`, `"manual"`, or `"auto"`; `text` is used for manual mode. |
+| `.axis_scale(slot_name, *, scale="linear", mode="auto", min=None, max=None)` | C/U | Scale is `"linear"`/`"logarithmic"`; manual mode requires a bound. The accepted measure-axis slot is chart-specific. |
+| `.grid(slot_name, *, enabled: bool, step=None)` | C/U | Supplying `step` switches grid step to manual. |
 | `.navigator(*, mode)` | C/U | `"show"` or `"hide"` on supported Cartesian charts. |
 
 ### Color and Shape Encodings
@@ -318,8 +392,8 @@ non-negative palette-index string such as `"2"` for each override value.
 | `.pagination(*, enabled: bool, limit=100)` | C/U | Store `limit` when enabled. |
 | `.table_size(*, size)` | C/U | `"s"`, `"m"`, or `"l"`. |
 | `.freeze_columns(*, count=1)` | C/U | Set pinned column count. |
-| `.totals(*, enabled: bool)` | C/U | Flat table only. |
-| `.column_title(field, *, title: str)` | C/U | Target a field already placed in a table placeholder. |
+| `.totals(*, enabled: bool)` | C/U | Donut and flat table only. |
+| `.column_title(field, *, title: str)` | C/U | Target a field already placed in a table slot. |
 | `.column_background(field, *, mode="3-point", palette="red-orange-green", thresholds=None, reversed=False)` | C/U | Gradient cell background; thresholds count must match mode. |
 | `.column_bars(field, *, enabled=True, color_type="one-color", color=None, palette=None, color_index=None, color_positive=None, color_negative=None, positive_color_index=None, negative_color_index=None, gradient_palette=None, gradient_type="2-point", reversed=False, show_labels=True, show_in_totals=False, align="default")` | C/U | Configure in-cell bars; obey color-mode constraints below. |
 | `.subtotals(field, *, enabled: bool)` | C/U | Pivot table only; target a placed field. |
@@ -331,7 +405,6 @@ non-negative palette-index string such as `"2"` for each override value.
 | `.font_size(*, size)` | C/U | Indicator only: `"xs"`, `"s"`, `"m"`, or `"l"`. |
 | `.font_color(*, color: str)` | C/U | Indicator only; require `#RRGGBB`. |
 | `.measure_title_mode(*, mode)` | C/U | Indicator only: `"by-field"`, `"manual"`, or `"hide"`. |
-| `.map_type(*, mode: MapType)` | C | Geolayer only: `"light"`, `"dark"`, or `"satellite"`. |
 | `.map_center(*, lat: float, lon: float, zoom: int | None=None)` | C | Geolayer only; selects manual center. |
 
 ### Update-Only Structural Mutations
@@ -357,8 +430,8 @@ review the result before publishing.
 - `FilterOperation`: `"IN"`, `"EQ"`, `"NE"`, `"GT"`, `"GTE"`, `"LT"`,
   `"LTE"`, `"BETWEEN"`, `"ISNULL"`, `"ISNOTNULL"`, `"STARTSWITH"`,
   `"CONTAINS"`.
-- `MeasureFormat.format`: `"number"`, `"percent"`, `"currency"`.
-- `MeasureFormat.unit`: `"auto"`, `"k"`, `"m"`, `"bln"`.
+- `MeasureFormat.format`: `"number"`, `"percent"`.
+- `MeasureFormat.unit`: `"auto"`, `"k"`, `"m"`, `"b"`, `"t"`.
 - `CombinedLayerType`: `"column"`, `"line"`, `"area"`.
 - `GeoLayerType`: `"geopoint"`, `"geopoint-with-cluster"`, `"geopolygon"`, `"heatmap"`, `"polyline"`.
 - `ShapeStyle`: `"Solid"`, `"Dash"`, `"Dot"`, `"ShortDash"`, `"ShortDot"`,
@@ -373,14 +446,15 @@ review the result before publishing.
 ### Validation Rules
 
 - `axis_scale(mode="manual")` requires at least one of `min` or `max`.
-- `add_aggregated_measure` requires a dimension `DatasetField` whose
+- `WizardAggregatedMeasure` requires a dimension `DatasetField` whose
   `calc_mode` is `"direct"` or `"formula"` and whose source/formula metadata is
-  present. It rejects fields that are already measures.
+  present; `add_aggregated_measure(handle)` rejects a handle backed by an
+  existing measure.
 - `change_aggregation` requires the exact `DatasetField` to be active in the
   loaded chart. It accepts a placed dimension or manually aggregated measure
   and rejects automatically aggregated measures.
 - `measure_format` requires its field to be placed first. In one create/update
-  chain, call the applicable placeholder setter before `measure_format`.
+  chain, call the applicable slot setter before `measure_format`.
 - `color_by_dimension` and `shape_by_dimension` require dimension fields;
   `color_by_measure` requires a measure. Treemap dimension color additionally
   requires the same field in its `dimensions` section.
@@ -389,11 +463,11 @@ review the result before publishing.
   `orange-gray-blue`, `pink-gray-green`, and `red-orange-green` support only
   `"3-point"`.
 - `color_by_measure_name` and `shape_by_measure_name` require at least two
-  measures across the chart's supported measure placeholders. Override-map
+  measures across the chart's supported measure slots. Override-map
   keys must resolve to measures already placed there.
 - On `column` and `bar`, multi-measure coloring inserts the pseudo
-  `Measure Names` item into the category placeholder (`x` for column, `y` for
-  bar). It counts toward that placeholder's capacity of 2, so use at most one
+  `Measure Names` item into the category slot (`x` for column, `y` for
+  bar). It counts toward that slot's capacity of 2, so use at most one
   ordinary category field with multiple measures.
 - `palette` requires an existing Color field. Use a discrete palette with a
   dimension or Measure Names, and a gradient palette with a measure.
@@ -407,7 +481,7 @@ review the result before publishing.
   use `color`/`palette`/`color_index` for `"one-color"`;
   `color_positive`/`color_negative` and their indexes for `"two-color"`;
   `gradient_palette` for `"gradient"`.
-- Table item mutations must target a field already placed in a placeholder.
+- Table item mutations must target a field already placed in a slot.
 - Combined `.add_layer()` requires at least one of `y` or `y2`.
 - For geolayer field types, layer capabilities, filter scopes, gradients,
   polyline ordering, and lifecycle constraints, use the

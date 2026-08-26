@@ -154,28 +154,45 @@ For a path-located entity, `name` must not contain `/` — the directory goes in
 
 ## Field references in chart builders
 
-Two conventions, one rule:
+Use stable identity objects:
 
-1. **Dataset fields → pass `DatasetField` objects.** Fetch the dataset, then `dataset.fields.by_name("Sales")` or `.by_guid(...)`. This is unambiguous and carries the full field snapshot.
-2. **Chart-local fields → pass their title strings.** Fields born inside the same builder chain — `add_local_field(title=..., formula=...)`, `add_hierarchy(title, fields)`, `add_aggregated_measure(field, aggregation=..., name=...)` — have no `DatasetField` object yet; refer to them by the exact title you gave them.
+1. **Dataset fields → save and pass `DatasetField` objects.** Fetch the
+   dataset, then resolve with `dataset.fields.by_name("Sales")` or
+   `.by_guid(...)`. After fetching a chart, use the saved object or an exact
+   GUID through `chart.fields.by_guid(...)`; do not target direct fields by
+   chart title.
+2. **Wizard-owned fields → create and reuse typed handles.** Formula fields,
+   aggregated measures, and hierarchies use `WizardLocalField`,
+   `WizardAggregatedMeasure`, and `WizardHierarchy`. A handle owns a stable
+   GUID before persistence, so pass it both to the matching `add_*` method and
+   to every placeholder or decoration that references it.
 
 ```python
+from datalens_sdk import WizardLocalField
+
 ds = client.get.dataset(by_id=dataset_id)
+city = ds.fields.by_name("City")
+aov = WizardLocalField.measure(
+    guid="sales-aov",
+    title="AOV",
+    formula="SUM([Sales]) / COUNTD([Order ID])",
+    cast="float",
+)
 chart = (
     client.create.wizard_chart.column(name="Sales by City", location=wb)
     .dataset(ds)
-    .add_local_field(
-        title="AOV",
-        formula="SUM([Sales]) / COUNTD([Order ID])",
-        measure=True,
-    )
-    .x([ds.fields.by_name("City")])  # dataset field -> DatasetField object
-    .y(["AOV"])  # chart-local field -> its title string
+    .add_local_field(aov)
+    .x([city])
+    .y([aov])
     .build()
 )
 ```
 
-Strings *can* also resolve against the bound dataset schema (guid first, then title/name), but a title shared by several fields raises `DataLensValidationError` ("ambiguous"), and on the update path only already-placed fields are known — so `DatasetField` objects are the reliable form for anything that lives in the dataset. Unresolvable strings fail at build/execute time with a message that suggests close matches and the `fields.by_name` pattern.
+Strings still resolve against a bound dataset schema (GUID first, then
+title/name), but they are a fallback for exact identifiers, not a way to name
+new Wizard-owned fields. A title shared by several fields is ambiguous, and an
+update knows only already-placed fields. Prefer saved objects and handles;
+unresolvable strings fail at build/execute time.
 
 ## Critical behaviors
 

@@ -10,8 +10,6 @@ if TYPE_CHECKING:
 
 DEFAULT_CATEGORICAL_PALETTE = "datalens-classic-20"
 
-COLORS_IN_PLACEHOLDER_VIZ: frozenset[str] = frozenset({"pie", "donut"})
-
 VALID_DISCRETE_PALETTES: frozenset[str] = frozenset(
     {
         "datalens-classic-20",

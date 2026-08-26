@@ -46,6 +46,14 @@ def _dict_with_string_keys(value: object) -> dict[str, object]:
     return {key: item for key, item in value.items() if isinstance(key, str)}
 
 
+def _api_error_details(value: object) -> dict[str, object] | list[object] | None:
+    if isinstance(value, Mapping):
+        return _dict_with_string_keys(value) or None
+    if isinstance(value, list):
+        return list(value) or None
+    return None
+
+
 @dataclass(frozen=True, slots=True)
 class RetryPolicy:
     """Retry settings selected explicitly by an API operation."""
@@ -212,13 +220,13 @@ class DataLensHTTPClient:
 
         code = payload.get("code")
         message = payload.get("message") or payload.get("error") or response.text or "Request failed"
-        details = _dict_with_string_keys(payload.get("details"))
+        details = _api_error_details(payload.get("details"))
         return DataLensAPIError(
             APIErrorContext(
                 status_code=response.status_code,
                 code=str(code) if code is not None else None,
                 message=str(message),
-                details=details or None,
+                details=details,
                 request_url=str(exc.request.url),
                 request_id=response.headers.get("x-request-id"),
                 request_method=exc.request.method,

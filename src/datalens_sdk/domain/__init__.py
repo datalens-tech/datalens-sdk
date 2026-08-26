@@ -56,7 +56,17 @@ from datalens_sdk.domain.dataset_update import DatasetUpdate
 from datalens_sdk.domain.editor_chart import EditorChart, EditorChartUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
-from datalens_sdk.domain.fields import DatasetField, FieldLike, FieldsProxy
+from datalens_sdk.domain.fields import (
+    DatasetField,
+    FieldLike,
+    FieldsProxy,
+    WizardAggregatedMeasure,
+    WizardFieldHandle,
+    WizardFieldLike,
+    WizardFieldRef,
+    WizardHierarchy,
+    WizardLocalField,
+)
 from datalens_sdk.domain.folder import Folder, FolderCreate, FolderUpdate
 from datalens_sdk.domain.license import (
     License,
@@ -215,8 +225,14 @@ __all__ = [
     "StructureSummary",
     "ThemedColor",
     "WhereOperation",
+    "WizardAggregatedMeasure",
     "WizardChart",
     "WizardChartUpdate",
+    "WizardFieldHandle",
+    "WizardFieldLike",
+    "WizardFieldRef",
+    "WizardHierarchy",
+    "WizardLocalField",
     "Workbook",
     "WorkbookCreate",
     "WorkbookStatus",

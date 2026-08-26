@@ -5,7 +5,9 @@ from typing import Any, cast
 import pytest
 
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
-from datalens_sdk._runtime.viz_specs import VIZ_SPECS, factory_method_name, get_viz_spec
+from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
+from datalens_sdk._runtime.viz_specs import factory_method_name
+from datalens_sdk._runtime.wizard_semantics import resolve_slot_name
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
@@ -26,7 +28,7 @@ def _dataset() -> Dataset:
 
 
 # ---------------------------------------------------------------------------
-# G3a: Leaf facades expose only applicable placeholder methods (no drift)
+# Leaf facades expose only applicable named-slot methods.
 # ---------------------------------------------------------------------------
 
 
@@ -77,13 +79,14 @@ def test_flat_table_has_columns_but_not_x_or_y2() -> None:
     assert not hasattr(builder, "y2")
 
 
-def test_pivot_has_columns_rows_y_but_not_x() -> None:
+def test_pivot_has_columns_rows_measures_but_not_xy() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     builder = factory.pivot_table(name="T", location=EntryLocation.path("/F"))
     assert hasattr(builder, "columns")
     assert hasattr(builder, "rows")
-    assert hasattr(builder, "y")
+    assert hasattr(builder, "measures")
     assert not hasattr(builder, "x")
+    assert not hasattr(builder, "y")
 
 
 def test_metric_has_y_and_font_color_but_no_color_encoding_or_axes() -> None:
@@ -109,7 +112,7 @@ def test_combined_has_x_and_add_layer_but_not_y() -> None:
 
 
 # ---------------------------------------------------------------------------
-# G3b: capacity spec — formalise the contract (no hard-error, tracks state)
+# Named single-value slots remain available on the generated leaves.
 # ---------------------------------------------------------------------------
 
 _CAPACITY_ONE_VIZZES = [
@@ -122,22 +125,17 @@ _CAPACITY_ONE_VIZZES = [
 ]
 
 
-@pytest.mark.parametrize(("viz_id", "ph_name"), _CAPACITY_ONE_VIZZES)
-def test_capacity_one_placeholder_accepts_single_field(viz_id: str, ph_name: str) -> None:
-    spec = get_viz_spec(viz_id)
-    actual_ph_id_map = {
-        "x": "dimensions",
-        "y": "measures",
-    }
-    actual_ph_id = actual_ph_id_map.get(ph_name, ph_name)
-    ph_spec = cast(dict[str, object], spec.get("placeholders", {})).get(actual_ph_id)
-    if ph_spec is None:
-        pytest.skip(f"{viz_id} has no placeholder '{actual_ph_id}' in spec")
-    assert cast(dict[str, object], ph_spec).get("capacity") == 1, f"Expected capacity=1 for {viz_id}.{actual_ph_id}"
+@pytest.mark.parametrize(("viz_id", "slot_alias"), _CAPACITY_ONE_VIZZES)
+def test_capacity_one_slot_accepts_single_field(viz_id: str, slot_alias: str) -> None:
+    actual_slot = resolve_slot_name(viz_id, slot_alias)
+    assert actual_slot in WIZARD_VISUALIZATION_STRUCTURE[viz_id]["slots"]
+    factory = WizardChartCreateFactory(cast(Any, None))
+    builder = getattr(factory, factory_method_name(viz_id))(name="T", location=EntryLocation.path("/F"))
+    assert callable(getattr(builder, slot_alias))
 
 
 # ---------------------------------------------------------------------------
-# G3c: converter builds correct number of placeholder items (not limited in converter)
+# The converter preserves every item accepted by an unbounded named slot.
 # ---------------------------------------------------------------------------
 
 
@@ -147,9 +145,7 @@ def test_metric_single_measure_builds_correctly() -> None:
     builder = factory.indicator(name="I", location=EntryLocation.path("/F")).dataset(dataset).y(["Meas1"])
     data = cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()["data"])
     viz = cast(dict[str, Any], data["visualization"])
-    y_ph = next((p for p in viz["placeholders"] if p["id"] == "measures"), None)
-    assert y_ph is not None, "metric payload must have 'measures' placeholder"
-    assert len(cast(list[Any], y_ph["items"])) == 1
+    assert len(cast(list[Any], viz["measures"]["items"])) == 1
 
 
 def test_pie_single_dim_and_measure_builds_correctly() -> None:
@@ -158,11 +154,8 @@ def test_pie_single_dim_and_measure_builds_correctly() -> None:
     builder = factory.pie(name="P", location=EntryLocation.path("/F")).dataset(dataset).x(["Dim1"]).y(["Meas1"])
     data = cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()["data"])
     viz = cast(dict[str, Any], data["visualization"])
-    phs = {p["id"]: p for p in viz["placeholders"]}
-    assert "dimensions" in phs
-    assert "measures" in phs
-    assert len(cast(list[Any], phs["dimensions"]["items"])) == 1
-    assert len(cast(list[Any], phs["measures"]["items"])) == 1
+    assert len(cast(list[Any], viz["dimensions"]["items"])) == 1
+    assert len(cast(list[Any], viz["measures"]["items"])) == 1
 
 
 def test_line_multiple_measures_on_y_accepted_no_exception() -> None:
@@ -173,20 +166,18 @@ def test_line_multiple_measures_on_y_accepted_no_exception() -> None:
     )
     data = cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()["data"])
     viz = cast(dict[str, Any], data["visualization"])
-    y_ph = next((p for p in viz["placeholders"] if p["id"] == "y"), None)
-    assert y_ph is not None
-    assert len(cast(list[Any], y_ph["items"])) == 2
+    assert len(cast(list[Any], viz["y"]["items"])) == 2
 
 
 # ---------------------------------------------------------------------------
-# G3d: all viz in VIZ_SPECS have a factory method
+# G3d: all semantic visualization types have a factory method
 # ---------------------------------------------------------------------------
 
 
 def test_all_viz_specs_have_factory_method() -> None:
     factory = WizardChartCreateFactory(cast(Any, None))
     missing = []
-    for viz_id in VIZ_SPECS:
+    for viz_id in WIZARD_VISUALIZATION_STRUCTURE:
         if not hasattr(factory, factory_method_name(viz_id)):
             missing.append(viz_id)
     assert not missing, f"WizardChartCreateFactory missing methods for viz: {missing}"

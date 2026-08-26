@@ -3,7 +3,7 @@
 Factory: `client.create.wizard_chart.area(name=..., location=...)`
 `chart.visualization_id`: `area`
 
-`Field` below means a `DatasetField` or an exact string reference. Prefer `DatasetField`; strings on create require a bound `.dataset(dataset)`, while updates can resolve strings only from fields already placed in the fetched chart.
+`Field` below means `DatasetField`, `WizardLocalField`, `WizardAggregatedMeasure`, `WizardHierarchy`, or an exact string reference. Prefer identity objects: save Dataset fields from the dataset schema and reuse GUID-bearing Wizard handles. After fetching a chart, resolve direct snapshots by exact GUID with `chart.fields.by_guid(...)`, never by title.
 
 ## Placeholders
 
@@ -22,9 +22,9 @@ Factory: `client.create.wizard_chart.area(name=..., location=...)`
 | `dataset()` | `dataset: Dataset` | C |
 | `x()` | `fields: Sequence[Field]` | CU |
 | `y()` | `fields: Sequence[Field]` | CU |
-| `add_aggregated_measure()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str \| None = None, guid: str \| None = None` | CU |
-| `add_local_field()` | `*, title: str, formula: str, guid: str \| None = None, cast: str = 'float', measure: bool = False, aggregation: str \| None = None, formatting: MeasureFormat \| None = None` | CU |
-| `add_hierarchy()` | `title: str, fields: Sequence[Field], *, guid: str \| None = None` | CU |
+| `add_aggregated_measure()` | `field: WizardAggregatedMeasure` | CU |
+| `add_local_field()` | `field: WizardLocalField` | CU |
+| `add_hierarchy()` | `hierarchy: WizardHierarchy` | CU |
 | `add_filter()` | `field: Field, *, operation: FilterOperation, values: Sequence[str] = ()` | CU |
 | `add_date_filter()` | `field: Field, *, start: str, end: str, inclusive_end: bool = True` | CU |
 | `add_relative_date_filter()` | `field: Field, *, start_offset: str, end_offset: str` | CU |
@@ -34,20 +34,20 @@ Factory: `client.create.wizard_chart.area(name=..., location=...)`
 | `description()` | `text: str` | CU |
 | `legend()` | `*, mode: Literal['show', 'hide']` | CU |
 | `tooltip_sum()` | `*, enabled: bool` | CU |
-| `tooltips()` | `fields: Sequence[Field]` | CU |
+| `tooltip()` | `*, mode: Literal['show', 'hide']` | CU |
 | `labels()` | `fields: Sequence[Field]` | CU |
-| `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
+| `label_mode()` | `*, mode: Literal['absolute']` | CU |
 | `navigator()` | `*, mode: Literal['show', 'hide']` | CU |
-| `axis_visibility()` | `ph_id: Literal['x', 'y'], *, mode: Literal['show', 'hide']` | CU |
-| `axis_title()` | `ph_id: Literal['x', 'y'], *, mode: Literal['off', 'manual', 'auto'], text: str = ''` | CU |
-| `axis_scale()` | `ph_id: Literal['x', 'y'], *, scale: Literal['linear', 'logarithmic'] = 'linear', mode: Literal['auto', 'manual'] = 'auto', min: str \| None = None, max: str \| None = None` | CU |
-| `grid()` | `ph_id: Literal['x', 'y'], *, enabled: bool, step: int \| None = None` | CU |
-| `hide_labels()` | `ph_id: Literal['x', 'y'], *, enabled: bool` | CU |
-| `nulls_mode()` | `ph_id: Literal['x', 'y'], *, mode: Literal['ignore', 'connect', 'as-0']` | CU |
+| `axis_visibility()` | `slot_name: Literal['x', 'y'], *, mode: Literal['show', 'hide']` | CU |
+| `axis_title()` | `slot_name: Literal['x', 'y'], *, mode: Literal['off', 'manual', 'auto'], text: str = ''` | CU |
+| `axis_scale()` | `slot_name: Literal['y'], *, scale: Literal['linear', 'logarithmic'] = 'linear', mode: Literal['auto', 'manual'] = 'auto', min: str \| None = None, max: str \| None = None` | CU |
+| `grid()` | `slot_name: Literal['x', 'y'], *, enabled: bool, step: int \| None = None` | CU |
+| `hide_labels()` | `slot_name: Literal['x', 'y'], *, enabled: bool` | CU |
+| `nulls_mode()` | `slot_name: Literal['y'], *, mode: Literal['ignore', 'connect', 'as-0', 'use-previous']` | CU |
 | `segments()` | `fields: Sequence[Field]` | CU |
 | `palette()` | `*, id: PaletteId` | CU |
 | `color_by_dimension()` | `field: Field` | CU |
-| `measure_format()` | `field: Field, *, format: Literal['number', 'percent', 'currency'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'bln'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
+| `measure_format()` | `field: Field, *, format: Literal['number', 'percent'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
 | `replace_formula()` | `field: Field, *, formula: str` | U |
 | `change_aggregation()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str, guid: str \| None = None` | U |
 | `replace_field()` | `old: Field, new: Field` | U |

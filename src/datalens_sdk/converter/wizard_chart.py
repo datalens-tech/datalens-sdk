@@ -7,6 +7,8 @@ from datalens_sdk.converter.wizard.converter import (
     WizardChartReadDTOProtocol,
     WizardChartUpdateDTOClass,
     WizardChartUpdateDTOProtocol,
+    WizardGeneratedContract,
+    validate_wizard_generated_contract,
 )
 
 __all__ = [
@@ -18,4 +20,6 @@ __all__ = [
     "WizardChartReadDTOProtocol",
     "WizardChartUpdateDTOClass",
     "WizardChartUpdateDTOProtocol",
+    "WizardGeneratedContract",
+    "validate_wizard_generated_contract",
 ]

@@ -304,6 +304,8 @@ class ChartOperations(Protocol):
 
     def update_wizard_chart(self, builder: WizardChartUpdate) -> WizardChart: ...
 
+    def publish_wizard_chart(self, chart: WizardChart, rev_id: str) -> WizardChart: ...
+
     def replace_wizard_chart_from_raw(
         self,
         spec: RawReplaceSpec,

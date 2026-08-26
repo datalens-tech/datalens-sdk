@@ -3,7 +3,7 @@
 Factory: `client.create.wizard_chart.treemap(name=..., location=...)`
 `chart.visualization_id`: `treemap`
 
-`Field` below means a `DatasetField` or an exact string reference. Prefer `DatasetField`; strings on create require a bound `.dataset(dataset)`, while updates can resolve strings only from fields already placed in the fetched chart.
+`Field` below means `DatasetField`, `WizardLocalField`, `WizardAggregatedMeasure`, `WizardHierarchy`, or an exact string reference. Prefer identity objects: save Dataset fields from the dataset schema and reuse GUID-bearing Wizard handles. After fetching a chart, resolve direct snapshots by exact GUID with `chart.fields.by_guid(...)`, never by title.
 
 ## Placeholders
 
@@ -24,22 +24,18 @@ Factory: `client.create.wizard_chart.treemap(name=..., location=...)`
 | `x()` | `fields: Sequence[Field]` | CU |
 | `y()` | `fields: Sequence[Field]` | CU |
 | `measures()` | `fields: Sequence[Field]` | U |
-| `add_aggregated_measure()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str \| None = None, guid: str \| None = None` | CU |
-| `add_local_field()` | `*, title: str, formula: str, guid: str \| None = None, cast: str = 'float', measure: bool = False, aggregation: str \| None = None, formatting: MeasureFormat \| None = None` | CU |
+| `add_aggregated_measure()` | `field: WizardAggregatedMeasure` | CU |
+| `add_local_field()` | `field: WizardLocalField` | CU |
 | `add_filter()` | `field: Field, *, operation: FilterOperation, values: Sequence[str] = ()` | CU |
 | `add_date_filter()` | `field: Field, *, start: str, end: str, inclusive_end: bool = True` | CU |
 | `add_relative_date_filter()` | `field: Field, *, start_offset: str, end_offset: str` | CU |
 | `chart_title()` | `*, text: str = '', mode: Literal['show', 'hide'] = 'show'` | CU |
 | `description()` | `text: str` | CU |
-| `legend()` | `*, mode: Literal['show', 'hide']` | CU |
-| `tooltip_sum()` | `*, enabled: bool` | CU |
-| `tooltips()` | `fields: Sequence[Field]` | CU |
-| `labels()` | `fields: Sequence[Field]` | CU |
-| `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
+| `tooltip()` | `*, mode: Literal['show', 'hide']` | CU |
 | `palette()` | `*, id: PaletteId` | CU |
 | `color_by_dimension()` | `field: Field` | CU |
 | `color_by_measure()` | `field: Field, *, mode: Literal['2-point', '3-point'] \| None = None, palette: GradientPaletteId \| None = None, reversed: bool \| None = None` | CU |
-| `measure_format()` | `field: Field, *, format: Literal['number', 'percent', 'currency'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'bln'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
+| `measure_format()` | `field: Field, *, format: Literal['number', 'percent'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
 | `replace_formula()` | `field: Field, *, formula: str` | U |
 | `change_aggregation()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str, guid: str \| None = None` | U |
 | `replace_field()` | `old: Field, new: Field` | U |
@@ -71,8 +67,8 @@ chart = (
     .x([category, subcategory])
     .y([value])
     .color_by_measure(color_value, mode="3-point", palette="red-orange-green")
-    .tooltips([value, color_value])
-    .measure_format(value, format="currency", unit="m", precision=1)
+    .tooltip(mode="show")
+    .measure_format(value, format="number", unit="m", precision=1)
     .build()
 )
 ```
