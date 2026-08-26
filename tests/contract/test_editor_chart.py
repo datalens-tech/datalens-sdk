@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import cast
 
 import httpx
@@ -16,6 +17,78 @@ from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.specs.editor_chart import EditorChartCreateSpec
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
 from datalens_sdk.errors import DataLensValidationError
+
+ROOT = Path(__file__).resolve().parents[2]
+
+_PUBLIC_EDITOR_CONTRACTS = {
+    "advanced-chart_node": (
+        "EditorAdvancedChartNode",
+        "CreateEditorAdvancedChartNodeEntry",
+        "UpdateEditorAdvancedChartNodeEntry",
+    ),
+    "control_node": (
+        "EditorSelectorNode",
+        "CreateEditorSelectorNodeEntry",
+        "UpdateEditorSelectorNodeEntry",
+    ),
+    "d3_node": (
+        "EditorGravityChartsNode",
+        "CreateEditorGravityChartsNodeEntry",
+        "UpdateEditorGravityChartsNodeEntry",
+    ),
+    "markdown_node": (
+        "EditorMarkdownNode",
+        "CreateEditorMarkdownNodeEntry",
+        "UpdateEditorMarkdownNodeEntry",
+    ),
+    "table_node": (
+        "EditorTableNode",
+        "CreateEditorTableNodeEntry",
+        "UpdateEditorTableNodeEntry",
+    ),
+}
+_EDITOR_SECRET_FIELDS = {
+    "addedBy",
+    "alias",
+    "entryId",
+    "key",
+    "name",
+    "secretId",
+    "token",
+    "tokenId",
+}
+
+
+def _object(value: object) -> dict[str, object]:
+    assert isinstance(value, dict)
+    return cast(dict[str, object], value)
+
+
+def _editor_data_properties(schemas: dict[str, object], schema_name: str) -> dict[str, object]:
+    schema = _object(schemas[schema_name])
+    properties = _object(schema["properties"])
+    data = _object(properties["data"])
+    return _object(data["properties"])
+
+
+@pytest.mark.parametrize("installation", ["enterprise", "yacloud"])
+def test_public_editor_specs_expose_secrets_only_on_existing_read_nodes(installation: str) -> None:
+    spec = _object(json.loads((ROOT / "spec" / f"{installation}.json").read_text(encoding="utf-8")))
+    schemas = _object(_object(spec["components"])["schemas"])
+
+    assert generated_dto.INSTALLATION_EDITOR_NODE_TYPES[installation] == frozenset(_PUBLIC_EDITOR_CONTRACTS)
+    for read_schema, create_schema, update_schema in _PUBLIC_EDITOR_CONTRACTS.values():
+        read_properties = _editor_data_properties(schemas, read_schema)
+        secrets = _object(read_properties["secrets"])
+        secret_item = _object(secrets["items"])
+
+        assert secrets["type"] == "array"
+        assert set(_object(secret_item["properties"])) == _EDITOR_SECRET_FIELDS
+        assert set(cast(list[str], secret_item["required"])) == _EDITOR_SECRET_FIELDS
+        assert "Read-only" in cast(str, secrets["description"])
+        assert "secrets" not in _editor_data_properties(schemas, create_schema)
+        assert "secrets" not in _editor_data_properties(schemas, update_schema)
+
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -237,6 +310,36 @@ def test_to_domain_builds_editor_chart() -> None:
     assert chart.description == "Editor read description"
 
 
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_to_domain_redacts_read_only_secrets_from_all_domain_state(wrapped: bool) -> None:
+    sentinel = "must-not-leak-editor-token"
+    entry: dict[str, object] = {
+        "entryId": "chart-1",
+        "type": "advanced-chart_node",
+        "data": {
+            "sources": "s",
+            "params": "p",
+            "controls": "c",
+            "meta": "m",
+            "prepare": "pr",
+            "secrets": [{"token": sentinel}],
+        },
+    }
+    raw = {"entry": entry} if wrapped else entry
+
+    chart = EditorChartConverter.to_domain(raw, installation="yacloud")
+
+    assert "secrets" not in chart.data
+    assert "secrets" not in cast(dict[str, object], chart.raw["data"])
+    snapshot_entry = cast(
+        dict[str, object],
+        chart.response_snapshot["entry"] if wrapped else chart.response_snapshot,
+    )
+    assert "secrets" not in cast(dict[str, object], snapshot_entry["data"])
+    assert sentinel not in repr(chart)
+    assert sentinel not in json.dumps(chart.response_snapshot)
+
+
 # ---------------------------------------------------------------------------
 # 5. mode validation
 # ---------------------------------------------------------------------------
@@ -346,10 +449,11 @@ def test_nullable_update_tabs_preserve_explicit_none() -> None:
     ops = cast(ChartOperations, _FakeOps())
     update = EditorChart(id="e1", wire_type="advanced-chart_node", _operations=ops).update
 
-    assert update.activities(None).secrets(None).tab_edits == {
-        "activities": None,
-        "secrets": None,
-    }
+    assert update.activities(None).tab_edits == {"activities": None}
+
+
+def test_editor_update_has_no_writable_secrets_surface() -> None:
+    assert not hasattr(EditorChartUpdate, "secrets")
 
 
 # ---------------------------------------------------------------------------
@@ -368,10 +472,13 @@ def _editor_chart_response(entry_id: str = "e1", wire_type: str = "advanced-char
 
 
 def test_editor_chart_create_get_update_delete_flow() -> None:
+    read_response = _editor_chart_response()
+    read_data = cast(dict[str, object], read_response["data"])
+    read_data["secrets"] = [{"token": "must-not-leak-editor-token"}]
     recorder = RecordedTransport(
         {
             "/rpc/createEditorChart": httpx.Response(200, json=_editor_chart_response()),
-            "/rpc/getEditorChart": httpx.Response(200, json=_editor_chart_response()),
+            "/rpc/getEditorChart": httpx.Response(200, json=read_response),
             "/rpc/updateEditorChart": httpx.Response(200, json=_editor_chart_response()),
             "/rpc/deleteEditorChart": httpx.Response(200, json={}),
         }
@@ -399,6 +506,11 @@ def test_editor_chart_create_get_update_delete_flow() -> None:
     assert recorder.requests[1].url.path == "/rpc/getEditorChart"
     assert recorder.requests[2].url.path == "/rpc/updateEditorChart"
     assert recorder.requests[3].url.path == "/rpc/deleteEditorChart"
+    update_entry = cast(dict[str, object], recorder.request_json(2)["entry"])
+    update_data = cast(dict[str, object], update_entry["data"])
+    assert "secrets" not in update_data
+    assert update_data["sources"] == "new_src"
+    assert update_data["params"] == "p"
 
 
 def test_editor_chart_create_payload_wrapped() -> None:

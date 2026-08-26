@@ -9,6 +9,14 @@
   `template`/`placeholders` representation are no longer supported.
 - Replace split chart-local field arguments with stable GUID-bearing
   `WizardLocalField`, `WizardAggregatedMeasure`, and `WizardHierarchy` handles.
+  Reuse the same handle across create and update; after fetch, resolve direct
+  fields by GUID or against an explicitly loaded `Dataset`.
+- Rename the pivot-table measure setter from `.y(...)` to `.measures(...)` and
+  remove unsupported `map_type()`, `currency`, and `bln` values. Measure units
+  are now `auto`, `k`, `m`, `b`, and `t`.
+- Remove `EditorChartUpdate.secrets()`. API v3 exposes this block as read-only,
+  UI-managed state; the SDK excludes it from domain state, artifacts, and
+  mutation payloads while ordinary updates preserve the server-side binding.
   Construct a handle first and pass it to `add_local_field()`,
   `add_aggregated_measure()`, or `add_hierarchy()`; the former split keyword
   signatures are removed. Reuse the same handle across create and update;
@@ -45,6 +53,9 @@
 
 ### Changed
 
+- Align the bundled Editor chart skill with the official Advanced HTML,
+  selector controls, runtime-method, tab, Gravity UI, Markdown, and table
+  contracts.
 - Generate Wizard request/result DTOs, typed builders, fingerprints, and
   structural metadata from OpenAPI. The generator covers 17 visualizations,
   5 geo-layer variants, and 3 combined-layer variants when every installation

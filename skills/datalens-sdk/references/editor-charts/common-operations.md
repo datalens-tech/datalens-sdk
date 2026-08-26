@@ -106,7 +106,7 @@ updated = (
 
 Update defaults to `.mode("save")`. Use `.mode("publish")` only when the
 result must be published. The generic `EditorChartUpdate` exposes setters
-for every tab — use only the tabs listed for the
+for writable tabs — use only the tabs listed for the
 chart's renderer in [the routing index](_index.md), and do not
 call `.meta()` (the setter exists, but its content format is not verified).
 A successful `.execute()` confirms persistence, not JavaScript execution.
@@ -116,17 +116,20 @@ content.
 ## Nullable Tabs
 
 The create builders accept only `str`, but the generic `EditorChartUpdate`
-exposes nullable setters (`activities`, `secrets`, `documentation_en`,
+exposes nullable setters (`activities`, `documentation_en`,
 `documentation_ru`) that accept `str | None`. These tabs belong to no
 renderer in [the routing index](_index.md) — leave them unset.
 
 - `None` clears a nullable tab.
 - `""` stores an empty string and is distinct from `None`.
-- Do not log or compare a persisted `secrets` value. Treat a successful
-  setter call as the only safe observable result.
 - Leave a tab untouched on update when its exact renderer format is unknown.
   In particular, do not invent `activities` or `statface_graph` content from
   the fact that a setter exists.
+
+Editor secrets are UI-managed, read-only API v3 state. The SDK does not expose
+a create or update setter for them and removes the returned block before it can
+enter domain state, artifacts, or raw mutation payloads. Ordinary updates
+preserve the server-side binding.
 
 ## Rename, Relations, and Delete
 

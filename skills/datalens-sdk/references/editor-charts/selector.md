@@ -6,8 +6,8 @@ Factory: `client.create.editor_chart.selector`. `chart.wire_type`:
 Tabs: `controls`, `meta`, `params`, `sources`. There is no `prepare` tab on
 this renderer.
 
-`controls` must export an array of control definitions. The selected values
-live in the object exported by `params`.
+`controls` must export an object whose `controls` member is an array of control
+definitions. The selected values live in the object exported by `params`.
 
 ```python
 from datalens_sdk import EntryLocation
@@ -15,17 +15,19 @@ from datalens_sdk import EntryLocation
 SOURCES = "module.exports = {};\n"
 PARAMS = "module.exports = {region: ['North']};\n"
 CONTROLS = """\
-module.exports = [{
-    type: 'select',
-    param: 'region',
-    label: 'Region',
-    content: ['North', 'West', 'South', 'East'].map(
-        (value) => ({title: value, value})
-    ),
-    multiselect: false,
-    searchable: false,
-    width: '100%',
-}];
+module.exports = {
+    controls: [{
+        type: 'select',
+        param: 'region',
+        label: 'Region',
+        content: ['North', 'West', 'South', 'East'].map(
+            (value) => ({title: value, value})
+        ),
+        multiselect: false,
+        searchable: false,
+        width: '100%',
+    }],
+};
 """
 
 
@@ -50,3 +52,4 @@ Leave `meta` unset.
 - [_index.md](_index.md) — routing, exact tab matrix
 - [common-operations.md](common-operations.md) — read, update, publish, delete
 - [troubleshooting.md](troubleshooting.md) — chart persists but does not render
+- [Official Controls documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/controls)

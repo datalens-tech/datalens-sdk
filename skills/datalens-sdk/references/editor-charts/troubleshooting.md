@@ -48,8 +48,9 @@ not JavaScript execution. If read-back succeeds but rendering fails, inspect
 the renderer contract (routing per
 [the routing index](_index.md)):
 
-- Advanced chart expects `{render: Editor.wrapFn(...)}`.
-- Selector expects an array of control definitions.
+- Advanced chart expects `{render: Editor.wrapFn(...)}` and any returned HTML
+  or SVG must go through `Editor.generateHtml(...)`; raw strings are escaped.
+- Selector expects `{controls: [...]}`.
 - Gravity Charts expects a chart configuration object.
 - Markdown expects `{markdown}`.
 - Table expects `{head, rows, footer}`.
@@ -72,4 +73,5 @@ saved version has the intended content. Never print `secrets`.
 
 - [_index.md](_index.md) — renderer routing, exact tab matrix
 - [common-operations.md](common-operations.md) — lifecycle and tab semantics
+- [Available Editor methods](https://yandex.cloud/ru/docs/datalens/charts/editor/methods) — `Editor.generateHtml`, `Editor.wrapFn`, and other runtime methods
 - [../troubleshooting.md](../troubleshooting.md) — API error decision trees

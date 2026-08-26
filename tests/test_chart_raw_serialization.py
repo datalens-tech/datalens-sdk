@@ -277,6 +277,27 @@ def test_editor_split_tabs_is_export_only_and_preserves_main_document(tmp_path: 
     assert (artifact / "Tabs" / "futureTab.js").is_file()
 
 
+@pytest.mark.parametrize("split_tabs", [False, True])
+def test_editor_artifacts_redact_read_only_secrets(tmp_path: Path, split_tabs: bool) -> None:
+    sentinel = "must-not-leak-editor-token"
+    snapshot = _editor_snapshot()
+    entry = cast(dict[str, object], snapshot["entry"])
+    cast(dict[str, object], entry["data"])["secrets"] = [{"token": sentinel}]
+    chart = dl.EditorChart(
+        id="editor-source",
+        name="Editor Source",
+        wire_type="advanced-chart_node",
+        response_snapshot=_raw(snapshot),
+    )
+
+    artifact = chart.to_file(tmp_path, split_tabs=split_tabs)
+    stored = json.loads((artifact / "chart.json").read_text(encoding="utf-8"))
+
+    stored_entry = cast(dict[str, object], stored["entry"])
+    assert "secrets" not in cast(dict[str, object], stored_entry["data"])
+    assert sentinel not in json.dumps(stored)
+
+
 @pytest.mark.parametrize(
     "chart",
     [
@@ -696,8 +717,12 @@ def test_raw_editor_create_and_update_preserve_supported_blocks_without_revision
         }
     )
     client = _client(recorder)
+    sentinel = "must-not-leak-editor-token"
+    snapshot = _editor_snapshot()
+    snapshot_entry = cast(dict[str, object], snapshot["entry"])
+    cast(dict[str, object], snapshot_entry["data"])["secrets"] = [{"token": sentinel}]
     create = client.raw.create.editor_chart(
-        response_snapshot=_raw(_editor_snapshot()),
+        response_snapshot=_raw(snapshot),
         name="Editor Clone",
         location=dl.EntryLocation.path("/target"),
     )
@@ -706,7 +731,7 @@ def test_raw_editor_create_and_update_preserve_supported_blocks_without_revision
     target = client.get.editor_chart(by_id="editor-target")
     replace = client.raw.replace.editor_chart(
         target=target,
-        response_snapshot=_raw(_editor_snapshot()),
+        response_snapshot=_raw(snapshot),
     )
     assert isinstance(replace, RawEditorChartReplace)
     updated = replace.execute()
@@ -729,6 +754,10 @@ def test_raw_editor_create_and_update_preserve_supported_blocks_without_revision
     assert update_entry["entryId"] == "editor-target"
     assert update_entry["type"] == "advanced-chart_node"
     assert "revId" not in update_entry
+    assert "secrets" not in cast(dict[str, object], create_entry["data"])
+    assert "secrets" not in cast(dict[str, object], update_entry["data"])
+    assert sentinel not in json.dumps(create_payload)
+    assert sentinel not in json.dumps(update_payload)
 
 
 def test_raw_editor_namespace_defers_create_and_replace_until_terminal_call() -> None:

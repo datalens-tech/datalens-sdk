@@ -20,6 +20,27 @@ successful `.build()` or `.execute()` confirms persistence, not JavaScript
 execution — re-fetch the intended branch and verify the stored tabs before
 reporting done.
 
+## Official Editor runtime contract
+
+Use the current DataLens documentation as the source of truth for JavaScript
+tab formats, sandbox methods, and renderer-specific configuration:
+
+| Contract | Official documentation |
+|---|---|
+| Tab execution order and export formats | [Editor tabs](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs) |
+| `Editor.*` methods and `Editor.wrapFn` | [Available Editor methods](https://yandex.cloud/ru/docs/datalens/charts/editor/methods) |
+| Advanced HTML/SVG renderer | [Advanced chart](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced) |
+| Gravity UI Charts configuration | [Gravity UI Charts](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/gravity-ui) |
+| Selector controls | [Controls](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/controls) |
+| Markdown output | [Markdown](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/markdown) |
+| Table output | [Table](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/table) |
+
+Tab code runs on the server. Functions wrapped with `Editor.wrapFn` run in a
+restricted client-side sandbox. Built-in renderer arguments are passed to
+`fn` first; values listed in `args` follow them. A wrapped function cannot
+close over surrounding variables, so pass only the minimal serializable data
+it needs through `args`.
+
 ## Available renderers
 
 The public SDK exposes **five** renderer factories on
@@ -89,8 +110,9 @@ chart.update.<tab>(value)
 .execute()
 ```
 
-`EditorChartUpdate` exposes setters for every tab, including some used by
-no renderer in the routing table.
+`EditorChartUpdate` exposes setters for writable tabs, including some used by
+no renderer in the routing table. It intentionally has no `secrets()` setter:
+API v3 treats Editor secrets as UI-managed, read-only state.
 Use only the tabs in the row for the chart's current renderer.
 `EditorChartUpdate.meta()` exists (as does `.meta()` on the create
 builders) but should not be called — its content format is not verified. To
@@ -101,6 +123,8 @@ create time.
 
 - [common-operations.md](common-operations.md) — the full editor chart lifecycle
 - [troubleshooting.md](troubleshooting.md) — `ERR.CHARTS.INVALID_SOURCE_FORMAT` and render failures
+- [Editor tabs](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs) — official tab formats and execution model
+- [Available Editor methods](https://yandex.cloud/ru/docs/datalens/charts/editor/methods) — official `Editor.*` runtime API
 - [../setup.md](../setup.md) — clients, installations, auth
 - [../core-concepts.md](../core-concepts.md) — namespaces, builders, terminal calls
 - [../serialization.md](../serialization.md) — export/import via `to_file` and `client.raw`
