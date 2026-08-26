@@ -758,13 +758,10 @@ def build_wizard_schema_meta(spec: Mapping[str, object]) -> WizardSchemaMeta:
     }
 
 
-def build_dashboard_contract_meta(spec: Mapping[str, object]) -> DashboardContractMeta | None:
+def build_dashboard_contract_meta(spec: Mapping[str, object]) -> DashboardContractMeta:
     """Extract the focused Dashboard V2 roots and their transitive schema closure."""
 
     schemas = _schemas(spec)
-    if "CreateDashboardV2Args" not in schemas:
-        return None
-
     missing_roots = sorted(set(_DASHBOARD_V2_ROOTS) - schemas.keys())
     if missing_roots:
         raise ValueError(f"Dashboard V2 contract is missing roots: {missing_roots}")
@@ -1460,16 +1457,12 @@ def _chart_meta(schemas: dict[str, dict[str, object]]) -> ChartMeta:
 def build_metadata(installations: dict[str, Path]) -> Metadata:
     out: Metadata = {"installations": {}}
     dashboard_contracts: list[tuple[str, DashboardContractMeta]] = []
-    installations_without_dashboard_v2: list[str] = []
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
         schemas = _schemas(spec)
         dashboard_contract = build_dashboard_contract_meta(spec)
-        if dashboard_contract is None:
-            installations_without_dashboard_v2.append(installation)
-        else:
-            dashboard_contracts.append((installation, dashboard_contract))
+        dashboard_contracts.append((installation, dashboard_contract))
         connection_discriminator = _string_object_dict(
             schemas["ConnectionCreate"].get("discriminator"),
             context="ConnectionCreate.discriminator",
@@ -1518,10 +1511,6 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
         )
         out["installations"][installation] = installation_metadata
     if dashboard_contracts:
-        if installations_without_dashboard_v2:
-            raise ValueError(
-                f"Dashboard V2 roots are missing for installations: {sorted(installations_without_dashboard_v2)}"
-            )
         canonical_installation, canonical_dashboard = dashboard_contracts[0]
         for installation, candidate in dashboard_contracts[1:]:
             if candidate != canonical_dashboard:

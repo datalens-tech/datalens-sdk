@@ -48,7 +48,28 @@ def test_auto_cursor_wraps_when_row_fills() -> None:
 def test_auto_selector_uses_control_size() -> None:
     tab = DashboardTab("T").add_selector(item_id="sel", param_name="region", element="input")
     placements = set(_laid_out(tab).values())
-    assert (0, 0, 2, 2, None) in placements  # standalone selector auto-places at the control default
+    assert (0, 0, 9, 2, None) in placements  # standalone selector auto-places at the control default
+
+
+def test_four_auto_controls_fill_one_row_before_body_wraps() -> None:
+    tab = (
+        DashboardTab("T")
+        .add_selector(item_id="s1", param_name="p1", element="input")
+        .add_selector(item_id="s2", param_name="p2", element="input")
+        .add_selector(item_id="s3", param_name="p3", element="input")
+        .add_selector(item_id="external", chart="chart-id", title="External")
+        .add_text("body", item_id="body")
+    )
+    layout = _laid_out(tab)
+    controls = sorted(placement for item_id, placement in layout.items() if item_id != "body")
+    assert controls == [
+        (0, 0, 9, 2, None),
+        (9, 0, 9, 2, None),
+        (18, 0, 9, 2, None),
+        (27, 0, 9, 2, None),
+    ]
+    assert layout["external"] == (27, 0, 9, 2, None)
+    assert layout["body"] == (0, 2, 12, 6, None)
 
 
 def test_auto_group_selector_is_full_width_with_auto_height() -> None:

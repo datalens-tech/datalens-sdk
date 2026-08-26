@@ -375,6 +375,28 @@ def _build_dashboard_metadata(tmp_path: Path) -> Metadata:
     return build_metadata({"enterprise": spec_path})
 
 
+def test_build_metadata_requires_dashboard_v2_roots_for_single_installation(tmp_path: Path) -> None:
+    installation = cast(
+        dict[str, object],
+        json.loads((ROOT / "spec" / "yacloud.json").read_text(encoding="utf-8")),
+    )
+    components = cast(dict[str, object], installation["components"])
+    schemas = cast(dict[str, object], components["schemas"])
+    for root in (
+        "CreateDashboardV2Args",
+        "DeleteDashboardArgs",
+        "GetDashboardV2Args",
+        "GetDashboardV2Result",
+        "UpdateDashboardV2Args",
+    ):
+        del schemas[root]
+    spec_path = tmp_path / "installation-without-dashboard-v2.json"
+    spec_path.write_text(json.dumps(installation), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Dashboard V2 contract is missing roots"):
+        build_metadata({"yacloud": spec_path})
+
+
 @pytest.fixture(scope="module")
 def dashboard_dto_module(tmp_path_factory: pytest.TempPathFactory) -> ModuleType:
     tmp_path = tmp_path_factory.mktemp("dashboard-dto")

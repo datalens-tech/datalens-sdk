@@ -554,8 +554,8 @@ def test_update_add_tab_mixed_local_and_shared_autos_keep_row_flow() -> None:
     builder = _synthetic([_raw_tab("tab_1", global_items=[], layout=[])], counter=2).update
     tab = DashboardTab("New")
     tab.add_text("a", item_id="a", at=None)  # (0, 0, 12, 6)
-    tab.add_selector(param_name="p", element="input", item_id="s", at=None, show_on_tabs="all")  # (12, 0, 2, 2)
-    tab.add_text("b", item_id="b", at=None)  # (14, 0, 12, 6)
+    tab.add_selector(param_name="p", element="input", item_id="s", at=None, show_on_tabs="all")  # (12, 0, 9, 2)
+    tab.add_text("b", item_id="b", at=None)  # (21, 0, 12, 6)
     builder.add_tab(tab)
     data = _apply_update(builder.to_spec())
     new_tab = next(t for t in _tabs(data) if t.get("title") == "New")
@@ -565,7 +565,7 @@ def test_update_add_tab_mixed_local_and_shared_autos_keep_row_flow() -> None:
     # the shared selector keeps its inline slot (no drop below the tab content)
     assert (layout[wrapper_id]["x"], layout[wrapper_id]["y"]) == (12, 0)
     # ...and the following local item flows right after it (no gap at x=12)
-    assert (layout["b"]["x"], layout["b"]["y"]) == (14, 0)
+    assert (layout["b"]["x"], layout["b"]["y"]) == (21, 0)
 
 
 def test_tab_apply_layout_pins_auto_item_for_update_add_tab() -> None:

@@ -4,6 +4,11 @@
 
 ### Breaking changes
 
+- Increase the Dashboard auto-layout default for standalone and external
+  selectors from `(2, 2)` to `(9, 2)`, allowing four controls per 36-column
+  row. Pass an explicit `size=(2, 2)` to preserve the former compact geometry,
+  and call `tab.start_row()` after a selector row when dashboard content must
+  begin below it.
 - Replace legacy Wizard API v2 payloads with HTTP API v3 envelopes carrying
   Wizard document schema V1. V2 raw snapshots and the former
   `template`/`placeholders` representation are no longer supported.

@@ -20,17 +20,18 @@ GRID_COLUMNS: Final[int] = 36
 # Default (w, h) per item type for auto-cursor placement (at=None). User-tuned
 # DX defaults for a 3-up grid (charts/text/image are a third of the 36-col
 # width, so three fit across a row when arranged with Layout.grid/row);
-# titles span full width. Selectors auto-place too: a standalone selector uses
-# the compact ``control`` size and an assembled group uses the full-width
-# ``group_control`` size. All values are user-overridable via at=. Wrapped in a
-# MappingProxyType so the shared table cannot be mutated at runtime.
+# titles span full width. Selectors auto-place too: standalone and external
+# selectors use the quarter-width ``control`` size so four fit in one row; an
+# assembled group uses the full-width ``group_control`` size. All values are
+# user-overridable via at=/size=. Wrapped in a MappingProxyType so the shared
+# table cannot be mutated at runtime.
 DEFAULT_ITEM_SIZES: Final[Mapping[DashboardItemType, tuple[int, int]]] = MappingProxyType(
     {
         "title": (36, 2),
         "text": (12, 6),
         "widget": (12, 12),
         "image": (12, 12),
-        "control": (2, 2),
+        "control": (9, 2),
         "group_control": (36, 2),
         "neuro_widget": (12, 12),
     }

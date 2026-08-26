@@ -200,7 +200,7 @@ def test_dashboard_refresh_rereads_without_branch_or_rev_id() -> None:
     ],
 )
 def test_get_dashboard_malformed_envelope_translates_to_invalid_response_error(payload: object) -> None:
-    # GetDashboardV1Result requires entry with entryId/data: a malformed 200 must
+    # GetDashboardV2Result requires entry with entryId/data: a malformed 200 must
     # not masquerade as a successfully loaded dashboard.
     recorder = _RecordedTransport({"/rpc/getDashboard": httpx.Response(200, json=payload)})
     client = _client(recorder)
@@ -211,7 +211,7 @@ def test_get_dashboard_malformed_envelope_translates_to_invalid_response_error(p
 
 @pytest.mark.parametrize("id_key", ["id", "entry_id"])
 def test_get_dashboard_non_canonical_id_key_translates_to_invalid_response_error(id_key: str) -> None:
-    # DashboardV1 identity is the canonical entryId; a generic id/entry_id must
+    # DashboardV2 identity is the canonical entryId; a generic id/entry_id must
     # not bind a malformed 200 into a working Dashboard (PR review finding).
     entry = _dashboard_entry()
     entry[id_key] = entry.pop("entryId")
