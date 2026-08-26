@@ -1,5 +1,7 @@
 # DataLens Python SDK
 
+[![CI](https://github.com/datalens-tech/datalens-sdk/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/datalens-tech/datalens-sdk/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/datalens-sdk.svg)](https://pypi.org/project/datalens-sdk/) [![Python](https://img.shields.io/pypi/pyversions/datalens-sdk.svg)](https://pypi.org/project/datalens-sdk/) [![License](https://img.shields.io/pypi/l/datalens-sdk.svg)](https://github.com/datalens-tech/datalens-sdk/blob/main/LICENSE)
+
 `datalens-sdk` is the typed Python SDK for the [DataLens](https://datalens.ru/promo) API. It provides clients and
 domain models for working with connections, datasets, charts, dashboards, collections, workbooks, folders, and
 navigation in Yandex Cloud DataLens and DataLens Enterprise.
