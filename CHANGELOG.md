@@ -17,6 +17,39 @@
 - Remove `EditorChartUpdate.secrets()`. API v3 exposes this block as read-only,
   UI-managed state; the SDK excludes it from domain state, artifacts, and
   mutation payloads while ordinary updates preserve the server-side binding.
+  Construct a handle first and pass it to `add_local_field()`,
+  `add_aggregated_measure()`, or `add_hierarchy()`; the former split keyword
+  signatures are removed. Reuse the same handle across create and update;
+  after fetch, resolve direct fields by GUID or against an explicitly loaded
+  `Dataset`.
+- Rename the pivot-table measure setter from `.y(...)` to `.measures(...)`.
+  Rename the `ph_id=` keyword to `slot_name=` for `axis_scale()`, `axis_title()`,
+  `axis_visibility()`, `grid()`, `hide_labels()`, and `nulls_mode()`; positional
+  calls are unaffected.
+- Restrict `axis_scale()` to the axes present in the API v3 contract: `y` for
+  area and column charts, `x` for bar charts, `y` and `y2` for line charts, and
+  `x` and `y` for scatter charts. Restrict `nulls_mode()` to `y` for area and
+  column charts, `x` for bar charts, and `y` and `y2` for line charts; scatter
+  charts no longer expose it.
+- Remove unsupported `measure_format(format="currency")`; use `format="number"`
+  with `prefix` or `postfix` when appropriate. Rename the `bln` unit to `b` and
+  add `t`; measure units are now `auto`, `k`, `m`, `b`, and `t`.
+- Remove typed Wizard setters absent from the API v3 contract:
+  - `tooltips(fields)` is removed from all 17 create builders and from
+    `WizardChartUpdate`, with no general replacement. `tooltip(mode=...)`
+    controls visibility only and does not select tooltip fields. Geolayer
+    creation still accepts layer fields through `add_layer(..., tooltips=...)`.
+  - `labels()` is removed from flat-table, pivot-table, scatter, and treemap
+    builders; `labels_position()` is removed from area, area-100%, bar-100%,
+    column-100%, donut, flat-table, geolayer, line, indicator, pie, pivot-table,
+    scatter, and treemap builders.
+  - `legend()` is removed from flat-table, indicator, pivot-table, and treemap
+    builders; `navigator()` is removed from bar and bar-100% builders.
+  - `tooltip_sum()` is removed from combined, donut, flat-table, funnel,
+    geolayer, indicator, pie, pivot-table, scatter, and treemap builders.
+  - `chart_title()` is removed from the indicator builder, `nulls_mode()` from
+    the scatter builder, and `map_type()` from the geolayer builder. These
+    removals have no equivalent typed Wizard replacement.
 
 ### Changed
 

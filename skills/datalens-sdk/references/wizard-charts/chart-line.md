@@ -39,14 +39,14 @@ Factory: `client.create.wizard_chart.line(name=..., location=...)`
 | `tooltip_sum()` | `*, enabled: bool` | CU |
 | `tooltip()` | `*, mode: Literal['show', 'hide']` | CU |
 | `labels()` | `fields: Sequence[Field]` | CU |
-| `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
+| `label_mode()` | `*, mode: Literal['absolute']` | CU |
 | `navigator()` | `*, mode: Literal['show', 'hide']` | CU |
-| `axis_visibility()` | `ph_id: Literal['x', 'y', 'y2'], *, mode: Literal['show', 'hide']` | CU |
-| `axis_title()` | `ph_id: Literal['x', 'y', 'y2'], *, mode: Literal['off', 'manual', 'auto'], text: str = ''` | CU |
-| `axis_scale()` | `ph_id: Literal['x', 'y', 'y2'], *, scale: Literal['linear', 'logarithmic'] = 'linear', mode: Literal['auto', 'manual'] = 'auto', min: str \| None = None, max: str \| None = None` | CU |
-| `grid()` | `ph_id: Literal['x', 'y', 'y2'], *, enabled: bool, step: int \| None = None` | CU |
-| `hide_labels()` | `ph_id: Literal['x', 'y', 'y2'], *, enabled: bool` | CU |
-| `nulls_mode()` | `ph_id: Literal['x', 'y', 'y2'], *, mode: Literal['ignore', 'connect', 'as-0']` | CU |
+| `axis_visibility()` | `slot_name: Literal['x', 'y', 'y2'], *, mode: Literal['show', 'hide']` | CU |
+| `axis_title()` | `slot_name: Literal['x', 'y', 'y2'], *, mode: Literal['off', 'manual', 'auto'], text: str = ''` | CU |
+| `axis_scale()` | `slot_name: Literal['y', 'y2'], *, scale: Literal['linear', 'logarithmic'] = 'linear', mode: Literal['auto', 'manual'] = 'auto', min: str \| None = None, max: str \| None = None` | CU |
+| `grid()` | `slot_name: Literal['x', 'y', 'y2'], *, enabled: bool, step: int \| None = None` | CU |
+| `hide_labels()` | `slot_name: Literal['x', 'y', 'y2'], *, enabled: bool` | CU |
+| `nulls_mode()` | `slot_name: Literal['y', 'y2'], *, mode: Literal['ignore', 'connect', 'as-0', 'use-previous']` | CU |
 | `segments()` | `fields: Sequence[Field]` | CU |
 | `palette()` | `*, id: PaletteId` | CU |
 | `color_by_dimension()` | `field: Field` | CU |

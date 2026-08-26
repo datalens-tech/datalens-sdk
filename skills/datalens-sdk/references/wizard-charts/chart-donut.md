@@ -34,11 +34,10 @@ Factory: `client.create.wizard_chart.donut(name=..., location=...)`
 | `chart_title()` | `*, text: str = '', mode: Literal['show', 'hide'] = 'show'` | CU |
 | `description()` | `text: str` | CU |
 | `legend()` | `*, mode: Literal['show', 'hide']` | CU |
-| `tooltip_sum()` | `*, enabled: bool` | CU |
 | `tooltip()` | `*, mode: Literal['show', 'hide']` | CU |
 | `labels()` | `fields: Sequence[Field]` | CU |
-| `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
 | `label_mode()` | `*, mode: Literal['absolute', 'percent']` | CU |
+| `totals()` | `*, enabled: bool` | CU |
 | `palette()` | `*, id: PaletteId` | CU |
 | `color_by_dimension()` | `field: Field` | CU |
 | `measure_format()` | `field: Field, *, format: Literal['number', 'percent'] \| None = None, precision: int \| None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] \| None = None, prefix: str \| None = None, postfix: str \| None = None, show_rank_delimiter: bool \| None = None` | CU |
@@ -73,7 +72,7 @@ chart = (
     .color_by_dimension(category)
     .labels([value])
     .label_mode(mode="percent")
-    .labels_position(mode="inside")
+    .totals(enabled=True)
     .palette(id="datalens-neo-20")
     .build()
 )

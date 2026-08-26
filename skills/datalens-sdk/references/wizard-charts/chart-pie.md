@@ -34,10 +34,8 @@ Factory: `client.create.wizard_chart.pie(name=..., location=...)`
 | `chart_title()` | `*, text: str = '', mode: Literal['show', 'hide'] = 'show'` | CU |
 | `description()` | `text: str` | CU |
 | `legend()` | `*, mode: Literal['show', 'hide']` | CU |
-| `tooltip_sum()` | `*, enabled: bool` | CU |
 | `tooltip()` | `*, mode: Literal['show', 'hide']` | CU |
 | `labels()` | `fields: Sequence[Field]` | CU |
-| `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
 | `label_mode()` | `*, mode: Literal['absolute', 'percent']` | CU |
 | `palette()` | `*, id: PaletteId` | CU |
 | `color_by_dimension()` | `field: Field` | CU |
@@ -73,7 +71,6 @@ chart = (
     .color_by_dimension(category)
     .labels([value])
     .label_mode(mode="percent")
-    .labels_position(mode="outside")
     .palette(id="datalens-neo-20")
     .legend(mode="show")
     .build()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+import copy
 from typing import TYPE_CHECKING
 
 from datalens_sdk._runtime.method_specs import METHOD_SPECS, resolve_method_carriers
@@ -35,6 +36,7 @@ from datalens_sdk.converter.wizard._assemble import (
     _without_field_decorations,
 )
 from datalens_sdk.converter.wizard._normalizer import _hierarchies_map, _local_fields_map, _Normalizer
+from datalens_sdk.converter.wizard._semantic_guids import _SemanticGuidRegistry
 from datalens_sdk.converter.wizard._types import WizardJsonObject
 from datalens_sdk.domain.wizard_chart import resolve_field_snapshot
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
@@ -95,10 +97,10 @@ def _primary_dataset_id(data: WizardJsonObject) -> str | None:
     return next((item for item in _dataset_ids(data) if isinstance(item, str)), None)
 
 
-def _local_fields_from_data(data: WizardJsonObject) -> dict[str, dict[str, object]]:
+def _field_definitions_from_data(data: WizardJsonObject) -> list[Mapping[str, object]]:
     updates = _sources(data).get("updates")
     if not isinstance(updates, list):
-        return {}
+        return []
     fields: list[Mapping[str, object]] = []
     for operation in updates:
         if not isinstance(operation, Mapping) or operation.get("action") not in {
@@ -111,6 +113,45 @@ def _local_fields_from_data(data: WizardJsonObject) -> dict[str, dict[str, objec
         field = operation.get("field")
         if isinstance(field, Mapping):
             fields.append(field)
+    return fields
+
+
+def _local_fields_from_data(data: WizardJsonObject) -> dict[str, dict[str, object]]:
+    fields = _field_definitions_from_data(data)
+    return _local_fields_map(fields)
+
+
+def _project_local_field_addition(
+    addition: Mapping[str, object],
+    *,
+    dataset_id: str | None,
+    field_structure: WizardFieldStructure,
+) -> WizardJsonObject:
+    field = _json_object(
+        {key: value for key, value in addition.items() if key in field_structure["update_properties"]},
+        context="Wizard local field",
+    )
+    if dataset_id is not None and "datasetId" not in field:
+        field["datasetId"] = dataset_id
+    return field
+
+
+def _local_fields_for_update(
+    data: WizardJsonObject,
+    update: WizardChartUpdate,
+    *,
+    field_structure: WizardFieldStructure,
+) -> dict[str, dict[str, object]]:
+    dataset_id = _primary_dataset_id(data)
+    fields = [*_field_definitions_from_data(data)]
+    fields.extend(
+        _project_local_field_addition(
+            addition,
+            dataset_id=dataset_id,
+            field_structure=field_structure,
+        )
+        for addition in update.local_field_additions
+    )
     return _local_fields_map(fields)
 
 
@@ -134,12 +175,67 @@ def _normalizer(
 ) -> _Normalizer:
     return _Normalizer(
         dataset=None,
-        local_fields=_local_fields_from_data(data),
+        local_fields=_local_fields_for_update(data, update, field_structure=field_structure),
         fields=list(update.chart.fields),
         hierarchies=_hierarchies_for_update(data, update),
         dataset_replacement=update.dataset_replacement,
         field_structure=field_structure,
     )
+
+
+def _validate_update_semantic_guids(data: WizardJsonObject, update: WizardChartUpdate) -> None:
+    registry = _SemanticGuidRegistry()
+
+    def observe(guid: object, *, kind: str, owner: str) -> None:
+        if not isinstance(guid, str) or not guid:
+            return
+        registry.register(
+            guid,
+            kind="hierarchy" if kind == "hierarchy" else "field",
+            owner=owner,
+            allow_existing_same_kind=True,
+        )
+
+    def claim_field(field: Mapping[str, object]) -> None:
+        title = field.get("title")
+        registry.register(
+            field.get("guid"),
+            kind="field",
+            owner=f"staged chart-local field {title!r}",
+        )
+
+    for field in _field_definitions_from_data(data):
+        observe(field.get("guid"), kind="field", owner=f"existing field {field.get('title')!r}")
+
+    hierarchies = _sources(data).get("hierarchies")
+    if isinstance(hierarchies, list):
+        for stored_hierarchy in hierarchies:
+            if isinstance(stored_hierarchy, Mapping):
+                observe(
+                    stored_hierarchy.get("guid"),
+                    kind="hierarchy",
+                    owner=f"existing hierarchy {stored_hierarchy.get('title')!r}",
+                )
+
+    for field in WizardFieldReferences(data).unique_active_snapshots():
+        hierarchy = field.get("data_type") == "hierarchy"
+        observe(
+            field.get("guid"),
+            kind="hierarchy" if hierarchy else "field",
+            owner=("mounted hierarchy" if hierarchy else "active field") + f" {field.get('title')!r}",
+        )
+
+    for addition in update.local_field_additions:
+        claim_field(addition)
+
+    for staged_hierarchy in update.new_hierarchies:
+        title = staged_hierarchy.get("title")
+        registry.register(
+            staged_hierarchy.get("guid"),
+            kind="hierarchy",
+            owner=f"staged hierarchy {title!r}",
+            allow_existing_same_kind=True,
+        )
 
 
 def _slot(visualization: WizardJsonObject, slot_name: str) -> WizardJsonObject:
@@ -187,12 +283,11 @@ def _apply_local_field_additions(
         addition_guid = addition.get("guid")
         if addition_guid in existing_guids:
             raise DataLensValidationError(f"add_local_field: field guid {addition_guid!r} already exists in the chart.")
-        field = _json_object(
-            {key: value for key, value in addition.items() if key in field_structure["update_properties"]},
-            context="Wizard local field",
+        field = _project_local_field_addition(
+            addition,
+            dataset_id=dataset_id,
+            field_structure=field_structure,
         )
-        if dataset_id is not None and "datasetId" not in field:
-            field["datasetId"] = dataset_id
         updates.append(_json_object({"action": "add_field", "field": field}, context="Wizard field update"))
         if isinstance(addition_guid, str):
             existing_guids.add(addition_guid)
@@ -287,12 +382,14 @@ def _resolve_replacement_snapshot(
     data: WizardJsonObject,
     update: WizardChartUpdate,
     field: object,
+    *,
+    field_structure: WizardFieldStructure,
 ) -> WizardJsonObject:
     return _json_object(
         resolve_field_snapshot(
             field,  # type: ignore[arg-type]
             fields=list(update.chart.fields),
-            local_fields=_local_fields_from_data(data),
+            local_fields=_local_fields_for_update(data, update, field_structure=field_structure),
         ),
         context="Wizard replacement field",
     )
@@ -320,7 +417,7 @@ def _validate_link_mutations(
         if old_guid not in deleted:
             references.validate_field_replacement(
                 old_guid,
-                _resolve_replacement_snapshot(data, update, field),
+                _resolve_replacement_snapshot(data, update, field, field_structure=field_structure),
             )
     if update.dataset_replacement is not None:
         references.validate_dataset_replacement(*update.dataset_replacement)
@@ -356,7 +453,12 @@ def _apply_structural_field_mutations(
 
     for old_guid, field in update.field_replacements.items():
         if old_guid not in deleted:
-            resolved_replacement = _resolve_replacement_snapshot(data, update, field)
+            resolved_replacement = _resolve_replacement_snapshot(
+                data,
+                update,
+                field,
+                field_structure=field_structure,
+            )
             references.replace_field(
                 old_guid,
                 _project_field(
@@ -366,6 +468,47 @@ def _apply_structural_field_mutations(
                 ),
                 link_replacement=resolved_replacement,
             )
+
+
+def _merge_hierarchy_fields(current: object, replacement: object) -> list[JsonValue]:
+    current_by_guid: dict[str, list[Mapping[str, object]]] = {}
+    if isinstance(current, list):
+        for field in current:
+            if not isinstance(field, Mapping):
+                continue
+            guid = field.get("guid")
+            if isinstance(guid, str) and guid:
+                current_by_guid.setdefault(guid, []).append(field)
+
+    merged: list[JsonValue] = []
+    if not isinstance(replacement, list):
+        return merged
+    for field in replacement:
+        if not isinstance(field, Mapping):
+            merged.append(copy.deepcopy(field))
+            continue
+        guid = field.get("guid")
+        candidates = current_by_guid.get(guid, []) if isinstance(guid, str) else []
+        previous = candidates.pop(0) if candidates else {}
+        item = {key: copy.deepcopy(value) for key, value in previous.items() if key not in {"guid", "datasetId"}}
+        item.update({key: copy.deepcopy(value) for key, value in field.items() if key in {"guid", "datasetId"}})
+        merged.append(_json_object(item, context="Wizard hierarchy field"))
+    return merged
+
+
+def _merge_hierarchy_snapshot(
+    current: Mapping[str, object],
+    replacement: Mapping[str, object],
+    *,
+    mounted: bool,
+) -> WizardJsonObject:
+    owned = {"guid", "title", "fields"}
+    if mounted:
+        owned.add("data_type")
+    merged = {key: copy.deepcopy(value) for key, value in current.items() if key not in owned}
+    merged.update({key: copy.deepcopy(value) for key, value in replacement.items() if key in owned})
+    merged["fields"] = _merge_hierarchy_fields(current.get("fields"), replacement.get("fields"))
+    return _json_object(merged, context="Wizard mounted hierarchy" if mounted else "Wizard source hierarchy")
 
 
 def _apply_hierarchies(
@@ -404,7 +547,13 @@ def _apply_hierarchies(
         )
         guid = source_hierarchy.get("guid")
         if guid in positions:
-            hierarchies[positions[guid]] = source_hierarchy
+            index = positions[guid]
+            current_hierarchy = hierarchies[index]
+            hierarchies[index] = (
+                _merge_hierarchy_snapshot(current_hierarchy, source_hierarchy, mounted=False)
+                if isinstance(current_hierarchy, Mapping)
+                else source_hierarchy
+            )
         else:
             positions[guid] = len(hierarchies)
             hierarchies.append(source_hierarchy)
@@ -419,7 +568,7 @@ def _apply_hierarchies(
                 continue
             for index, item in enumerate(items):
                 if isinstance(item, Mapping) and item.get("guid") == guid and item.get("data_type") == "hierarchy":
-                    items[index] = mounted.copy()
+                    items[index] = _merge_hierarchy_snapshot(item, mounted, mounted=True)
     sources["hierarchies"] = hierarchies
 
 
@@ -778,6 +927,7 @@ def _apply_update_operations(
 
     _apply_visualization_transition(data, update, structure=visualization_structure)
     _validate_update_structure(data, update, visualization_structure)
+    _validate_update_semantic_guids(data, update)
     _validate_link_mutations(data, update, field_structure=field_structure)
     _apply_local_field_additions(data, update, field_structure=field_structure)
     _apply_structural_field_mutations(data, update, field_structure=field_structure)

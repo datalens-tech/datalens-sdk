@@ -156,6 +156,39 @@ def test_add_aggregated_measure_appends_direct_field() -> None:
     assert sort_item["guid"] == measure.guid
 
 
+def test_add_local_field_can_replace_field_in_same_update() -> None:
+    chart = _line_chart_with_data(_base_line_data())
+    local = WizardLocalField.measure(title="GMV/trip", formula="[gmv]/[trips]", guid="lf_replace")
+
+    data = _payload(chart.update.add_local_field(local).replace_field("g_reg", local))
+
+    assert _added_field(data, local.guid)["formula"] == "[gmv]/[trips]"
+    assert _x_item(data)["guid"] == local.guid
+
+
+def test_add_aggregated_measure_can_replace_field_in_same_update() -> None:
+    chart = _line_chart_with_data(_base_line_data())
+    measure = WizardAggregatedMeasure(
+        field=DatasetField(
+            guid="g_gmv",
+            title="GMV",
+            name="gmv",
+            calc_mode="direct",
+            data_type="float",
+            type="DIMENSION",
+            source="g_gmv_src",
+        ),
+        aggregation="sum",
+        guid="agg_replace",
+        title="GMV (sum)",
+    )
+
+    data = _payload(chart.update.add_aggregated_measure(measure).replace_field("g_reg", measure))
+
+    assert _added_field(data, measure.guid)["aggregation"] == "sum"
+    assert _x_item(data)["guid"] == measure.guid
+
+
 def test_add_aggregated_measure_copies_formula_dimension() -> None:
     chart = _line_chart_with_data(_base_line_data())
     formula_dimension = DatasetField(
@@ -436,6 +469,16 @@ def test_add_local_field_collision_raises() -> None:
     chart = _line_chart_with_data(data_in)
     update = chart.update.add_local_field(WizardLocalField.dimension(title="New", formula="[x]", guid="dup"))
     with pytest.raises(DataLensValidationError, match="already exists"):
+        _payload(update)
+
+
+def test_add_local_field_rejects_active_direct_field_guid_collision() -> None:
+    data_in = _base_line_data()
+    data_in["sources"].pop("updates")
+    chart = _line_chart_with_data(data_in)
+    update = chart.update.add_local_field(WizardLocalField.dimension(title="Conflicting", formula="[x]", guid="g_reg"))
+
+    with pytest.raises(DataLensValidationError, match="semantic GUID 'g_reg'"):
         _payload(update)
 
 

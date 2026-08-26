@@ -39,16 +39,12 @@ Factory: `client.create.wizard_chart.scatter(name=..., location=...)`
 | `chart_title()` | `*, text: str = '', mode: Literal['show', 'hide'] = 'show'` | CU |
 | `description()` | `text: str` | CU |
 | `legend()` | `*, mode: Literal['show', 'hide']` | CU |
-| `tooltip_sum()` | `*, enabled: bool` | CU |
 | `tooltip()` | `*, mode: Literal['show', 'hide']` | CU |
-| `labels()` | `fields: Sequence[Field]` | CU |
-| `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU |
-| `axis_visibility()` | `ph_id: Literal['x', 'y'], *, mode: Literal['show', 'hide']` | CU |
-| `axis_title()` | `ph_id: Literal['x', 'y'], *, mode: Literal['off', 'manual', 'auto'], text: str = ''` | CU |
-| `axis_scale()` | `ph_id: Literal['x', 'y'], *, scale: Literal['linear', 'logarithmic'] = 'linear', mode: Literal['auto', 'manual'] = 'auto', min: str \| None = None, max: str \| None = None` | CU |
-| `grid()` | `ph_id: Literal['x', 'y'], *, enabled: bool, step: int \| None = None` | CU |
-| `hide_labels()` | `ph_id: Literal['x', 'y'], *, enabled: bool` | CU |
-| `nulls_mode()` | `ph_id: Literal['x', 'y'], *, mode: Literal['ignore', 'connect', 'as-0']` | CU |
+| `axis_visibility()` | `slot_name: Literal['x', 'y'], *, mode: Literal['show', 'hide']` | CU |
+| `axis_title()` | `slot_name: Literal['x', 'y'], *, mode: Literal['off', 'manual', 'auto'], text: str = ''` | CU |
+| `axis_scale()` | `slot_name: Literal['x', 'y'], *, scale: Literal['linear', 'logarithmic'] = 'linear', mode: Literal['auto', 'manual'] = 'auto', min: str \| None = None, max: str \| None = None` | CU |
+| `grid()` | `slot_name: Literal['x', 'y'], *, enabled: bool, step: int \| None = None` | CU |
+| `hide_labels()` | `slot_name: Literal['x', 'y'], *, enabled: bool` | CU |
 | `palette()` | `*, id: PaletteId` | CU |
 | `color_by_dimension()` | `field: Field` | CU |
 | `color_by_measure()` | `field: Field, *, mode: Literal['2-point', '3-point'] \| None = None, palette: GradientPaletteId \| None = None, reversed: bool \| None = None` | CU |

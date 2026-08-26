@@ -349,14 +349,14 @@ do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 | `.tooltip(*, mode: Literal["show", "hide"])` | C/U | Set chart-level tooltip visibility on supported visualizations. Geolayer tooltip fields belong to `add_layer(..., tooltips=...)`. |
 | `.tooltip_sum(*, enabled: bool)` | C/U | Toggle tooltip totals. |
 | `.labels_position(*, mode)` | C/U | `"inside"`, `"outside"`, or `"auto"`. |
-| `.label_mode(*, mode)` | C/U | `"absolute"` or `"percent"` on supported charts. |
+| `.label_mode(*, mode)` | C/U | `"absolute"`; `"percent"` is additionally available on 100% charts, donut, funnel, and pie. |
 | `.tooltip_percentage_base(*, mode)` | C/U | Funnel only: `"auto"`, `"first"`, or `"previous"`. |
-| `.axis_visibility(ph_id, *, mode)` | C/U | Axis ID is chart-specific; mode is `"show"`/`"hide"`. |
-| `.hide_labels(ph_id, *, enabled: bool)` | C/U | Toggle labels on one supported axis. |
-| `.nulls_mode(ph_id, *, mode)` | C/U | `"ignore"`, `"connect"`, or `"as-0"`. |
-| `.axis_title(ph_id, *, mode, text="")` | C/U | Mode is `"off"`, `"manual"`, or `"auto"`; `text` is used for manual mode. |
-| `.axis_scale(ph_id, *, scale="linear", mode="auto", min=None, max=None)` | C/U | Scale is `"linear"`/`"logarithmic"`; manual mode requires a bound. |
-| `.grid(ph_id, *, enabled: bool, step=None)` | C/U | Supplying `step` switches grid step to manual. |
+| `.axis_visibility(slot_name, *, mode)` | C/U | Slot name is chart-specific; mode is `"show"`/`"hide"`. |
+| `.hide_labels(slot_name, *, enabled: bool)` | C/U | Toggle labels on one supported axis. |
+| `.nulls_mode(slot_name, *, mode)` | C/U | `"ignore"`, `"connect"`, `"as-0"`, or `"use-previous"` on a supported measure axis. |
+| `.axis_title(slot_name, *, mode, text="")` | C/U | Mode is `"off"`, `"manual"`, or `"auto"`; `text` is used for manual mode. |
+| `.axis_scale(slot_name, *, scale="linear", mode="auto", min=None, max=None)` | C/U | Scale is `"linear"`/`"logarithmic"`; manual mode requires a bound. The accepted measure-axis slot is chart-specific. |
+| `.grid(slot_name, *, enabled: bool, step=None)` | C/U | Supplying `step` switches grid step to manual. |
 | `.navigator(*, mode)` | C/U | `"show"` or `"hide"` on supported Cartesian charts. |
 
 ### Color and Shape Encodings
@@ -392,7 +392,7 @@ non-negative palette-index string such as `"2"` for each override value.
 | `.pagination(*, enabled: bool, limit=100)` | C/U | Store `limit` when enabled. |
 | `.table_size(*, size)` | C/U | `"s"`, `"m"`, or `"l"`. |
 | `.freeze_columns(*, count=1)` | C/U | Set pinned column count. |
-| `.totals(*, enabled: bool)` | C/U | Flat table only. |
+| `.totals(*, enabled: bool)` | C/U | Donut and flat table only. |
 | `.column_title(field, *, title: str)` | C/U | Target a field already placed in a table slot. |
 | `.column_background(field, *, mode="3-point", palette="red-orange-green", thresholds=None, reversed=False)` | C/U | Gradient cell background; thresholds count must match mode. |
 | `.column_bars(field, *, enabled=True, color_type="one-color", color=None, palette=None, color_index=None, color_positive=None, color_negative=None, positive_color_index=None, negative_color_index=None, gradient_palette=None, gradient_type="2-point", reversed=False, show_labels=True, show_in_totals=False, align="default")` | C/U | Configure in-cell bars; obey color-mode constraints below. |

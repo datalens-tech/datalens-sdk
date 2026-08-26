@@ -83,23 +83,23 @@ Every cell describes only the installed package's typed public API.
 | `add_relative_date_filter()` | `field: Field, *, start_offset: str, end_offset: str` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
 | `add_sort()` | `field: Field, *, direction: Literal['asc', 'desc'] = 'asc'` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | — | CU | CU | CU | — |
 | `sort()` | `fields: Sequence[Field]` | C | C | C | C | C | C | C | C | C | C | — | C | — | C | C | C | — |
-| `chart_title()` | `*, text: str = '', mode: Literal['show', 'hide'] = 'show'` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
+| `chart_title()` | `*, text: str = '', mode: Literal['show', 'hide'] = 'show'` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | CU |
 | `description()` | `text: str` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
-| `legend()` | `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
-| `tooltip_sum()` | `*, enabled: bool` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
+| `legend()` | `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | — | CU | — | CU | — |
+| `tooltip_sum()` | `*, enabled: bool` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | — | — |
 | `tooltip()` | `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | — | CU | CU |
-| `labels()` | `fields: Sequence[Field]` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | CU |
-| `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU | CU |
-| `label_mode()` | `*, mode: Literal['absolute', 'percent']` | — | CU | — | CU | — | CU | — | CU | — | CU | — | — | — | CU | — | — | — |
+| `labels()` | `fields: Sequence[Field]` | CU | CU | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | — | CU | — | — | — |
+| `labels_position()` | `*, mode: Literal['inside', 'outside', 'auto']` | — | — | CU | — | CU | — | CU | — | — | CU | — | — | — | — | — | — | — |
+| `label_mode()` | `*, mode: Literal['absolute']` (`'percent'` also on 100% charts, donut, funnel, and pie) | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | — | CU | — | — | — |
 | `tooltip_percentage_base()` | `*, mode: Literal['auto', 'first', 'previous']` | — | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | — | — |
 | `shape()` | `*, value: FunnelShape` | — | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | — | — |
-| `navigator()` | `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | — | — |
-| `axis_visibility()` | `ph_id: Literal['x', 'y']` (`'y2'` also on line), `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
-| `axis_title()` | `ph_id: Literal['x', 'y']` (`'y2'` also on line), `*, mode: Literal['off', 'manual', 'auto'], text: str = ''` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
-| `axis_scale()` | `ph_id: Literal['x', 'y']` (`'y2'` also on line), `*, scale: Literal['linear', 'logarithmic'] = 'linear', mode: Literal['auto', 'manual'] = 'auto', min: str \| None = None, max: str \| None = None` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
-| `grid()` | `ph_id: Literal['x', 'y']` (`'y2'` also on line), `*, enabled: bool, step: int \| None = None` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
-| `hide_labels()` | `ph_id: Literal['x', 'y']` (`'y2'` also on line), `*, enabled: bool` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
-| `nulls_mode()` | `ph_id: Literal['x', 'y']` (`'y2'` also on line), `*, mode: Literal['ignore', 'connect', 'as-0']` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
+| `navigator()` | `*, mode: Literal['show', 'hide']` | CU | CU | — | — | CU | CU | — | — | — | — | — | CU | — | — | — | — | — |
+| `axis_visibility()` | `slot_name: Literal['x', 'y']` (`'y2'` also on line), `*, mode: Literal['show', 'hide']` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
+| `axis_title()` | `slot_name: Literal['x', 'y']` (`'y2'` also on line), `*, mode: Literal['off', 'manual', 'auto'], text: str = ''` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
+| `axis_scale()` | `slot_name` is `'y'` on area/column, `'x'` on bar, `'y'`/`'y2'` on line, and `'x'`/`'y'` on scatter; `*, scale: Literal['linear', 'logarithmic'] = 'linear', mode: Literal['auto', 'manual'] = 'auto', min: str \| None = None, max: str \| None = None` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
+| `grid()` | `slot_name: Literal['x', 'y']` (`'y2'` also on line), `*, enabled: bool, step: int \| None = None` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
+| `hide_labels()` | `slot_name: Literal['x', 'y']` (`'y2'` also on line), `*, enabled: bool` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | CU | — |
+| `nulls_mode()` | `slot_name` is `'y'` on area/column, `'x'` on bar, and `'y'`/`'y2'` on line; `*, mode: Literal['ignore', 'connect', 'as-0', 'use-previous']` | CU | CU | CU | CU | CU | CU | — | — | — | — | — | CU | — | — | — | — | — |
 | `segments()` | `fields: Sequence[Field]` | CU | CU | — | — | CU | CU | — | — | — | — | — | CU | — | — | — | — | — |
 | `palette()` | `*, id: PaletteId` | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | — | CU | — | CU | CU | CU | CU |
 | `color_by_dimension()` | `field: Field` | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | — | CU | — | CU | CU |
@@ -118,7 +118,7 @@ Every cell describes only the installed package's typed public API.
 | `freeze_columns()` | `*, count: int = 1` | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | CU | — | — |
 | `pagination()` | `*, enabled: bool, limit: int = 100` | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | CU | — | — |
 | `table_size()` | `*, size: Literal['s', 'm', 'l']` | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | CU | — | — |
-| `totals()` | `*, enabled: bool` | — | — | — | — | — | — | — | — | CU | — | — | — | — | — | — | — | — |
+| `totals()` | `*, enabled: bool` | — | — | — | — | — | — | — | CU | CU | — | — | — | — | — | — | — | — |
 | `subtotals()` | `field: Field, *, enabled: bool` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — | — |
 | `replace_formula()` | `field: StructuralTarget, *, formula: str` | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U |
 | `change_aggregation()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str, guid: str \| None = None` | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U |
