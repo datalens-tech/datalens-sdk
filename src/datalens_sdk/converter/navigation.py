@@ -148,7 +148,7 @@ class DirectoryBreadcrumbReadDTOProtocol(Protocol):
 
 class EntryRelationReadDTOProtocol(Protocol):
     id: str
-    scope: EntryScope
+    scope: str
     type: str
     key: str | None
     created_at: str | None

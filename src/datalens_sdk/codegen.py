@@ -2658,7 +2658,7 @@ class EntryRelationReadDTO(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     id: str = Field(validation_alias="entryId")
-    scope: Literal["dash", "report", "widget", "dataset", "folder", "connection"]
+    scope: str
     type: str
     key: str | None = None
     created_at: str | None = Field(default=None, validation_alias="createdAt")
