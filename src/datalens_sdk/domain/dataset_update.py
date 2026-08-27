@@ -34,16 +34,13 @@ from datalens_sdk.domain.dataset_types import (
     WhereOperation,
     cache_invalidation_source_payload,
 )
-from datalens_sdk.domain.fields import DatasetField, FieldLike
+from datalens_sdk.domain.fields import DatasetField, FieldRef
 from datalens_sdk.domain.ports import DatasetOperations
 from datalens_sdk.domain.specs.dataset import DatasetUpdateSpec
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.dataset import Dataset, Source
-
-
-FieldRef = FieldLike | str
 
 
 def _field_guid(field: FieldRef) -> str:

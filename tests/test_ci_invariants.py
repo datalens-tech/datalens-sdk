@@ -12,6 +12,8 @@ from typing import cast, get_args
 
 from datalens_sdk._generated import dto
 from datalens_sdk.domain import dashboard_types, entry_types
+from datalens_sdk.domain.common_types import SortDirection
+from datalens_sdk.domain.dataset_types import WhereOperation
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "datalens_sdk"
@@ -431,6 +433,47 @@ def _spec_schemas(spec_name: str) -> tuple[dict[str, object], dict[str, dict[str
     components = cast(dict[str, object], spec["components"])
     schemas = cast(dict[str, dict[str, object]], components["schemas"])
     return paths, schemas
+
+
+def _dataset_data_request_schema(spec_name: str) -> dict[str, object]:
+    spec = cast(dict[str, object], json.loads((ROOT / "spec" / f"{spec_name}.json").read_text()))
+    paths = cast(dict[str, object], spec["paths"])
+    route = cast(dict[str, object], paths["/rpc/getDatasetData"])
+    post = cast(dict[str, object], route["post"])
+    request_body = cast(dict[str, object], post["requestBody"])
+    content = cast(dict[str, object], request_body["content"])
+    request_json = cast(dict[str, object], content["application/json"])
+    return cast(dict[str, object], request_json["schema"])
+
+
+def test_dataset_data_domain_literals_match_spec_enums() -> None:
+    for spec_name in SPEC_NAMES:
+        request_schema = _dataset_data_request_schema(spec_name)
+        properties = cast(dict[str, dict[str, object]], request_schema["properties"])
+        filter_item = cast(dict[str, object], properties["filters"]["items"])
+        filter_properties = cast(dict[str, dict[str, object]], filter_item["properties"])
+        sort_item = cast(dict[str, object], properties["sort"]["items"])
+        sort_properties = cast(dict[str, dict[str, object]], sort_item["properties"])
+
+        assert {operation.lower() for operation in get_args(WhereOperation)} == set(
+            cast(list[str], filter_properties["operation"]["enum"])
+        )
+        assert set(get_args(SortDirection)) == set(cast(list[str], sort_properties["direction"]["enum"]))
+
+
+def test_sort_direction_has_one_neutral_domain_owner() -> None:
+    owners = sorted(
+        path.relative_to(SRC).as_posix()
+        for path in _python_files("domain")
+        if 'SortDirection: TypeAlias = Literal["asc", "desc"]' in path.read_text()
+    )
+    assert owners == ["domain/common_types.py"]
+
+    for path in _python_files("domain"):
+        tree = ast.parse(path.read_text(), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module == "datalens_sdk.domain.navigation":
+                assert all(alias.name != "SortDirection" for alias in node.names), path
 
 
 def _resolved_schema(

@@ -272,6 +272,7 @@ Verify before reporting done (hard rule 4): the returned `ds` reflects the appli
 
 ## Related references
 
+- [dataset-data.md](dataset-data.md) — reading typed rows from an existing dataset
 - [core-concepts.md](core-concepts.md) — namespaces, locations, field-reference rules, retries
 - [connections.md](connections.md) — building the connection and sources a dataset consumes
 - [wizard-charts/_index.md](wizard-charts/_index.md) — putting dataset fields into charts

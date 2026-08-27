@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.dashboard import Dashboard
     from datalens_sdk.domain.dashboard_create import DashboardCreate
     from datalens_sdk.domain.dashboard_update import DashboardUpdate
+    from datalens_sdk.domain.data import DatasetData, DatasetDataQuery
     from datalens_sdk.domain.dataset import Dataset, DatasetCreate, Source
     from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
     from datalens_sdk.domain.dataset_update import DatasetUpdate
@@ -132,6 +133,8 @@ class DatasetOperations(Protocol):
         workbook_id: str | None = None,
         rev_id: str | None = None,
     ) -> Dataset: ...
+
+    def get_dataset_data(self, query: DatasetDataQuery) -> DatasetData: ...
 
     def update_dataset(self, builder: DatasetUpdate) -> Dataset: ...
 

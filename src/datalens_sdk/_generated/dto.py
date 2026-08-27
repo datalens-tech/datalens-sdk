@@ -232,6 +232,51 @@ class DatasetReadDTO(BaseModel):
         return value
 
 
+
+class DatasetDataArgsFiltersItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    guid: Annotated[str, Field(min_length=1)]
+    operation: Literal['between', 'contains', 'endswith', 'eq', 'gt', 'gte', 'icontains', 'iendswith', 'in', 'isnotnull', 'isnull', 'istartswith', 'leneq', 'lengt', 'lengte', 'lenlt', 'lenlte', 'lenne', 'lt', 'lte', 'ne', 'nin', 'notcontains', 'noticontains', 'startswith']
+    values: list[bool | float | str] = _UNVALIDATED_NONE_DEFAULT
+
+class DatasetDataArgsParamsItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    guid: Annotated[str, Field(min_length=1)]
+    value: bool | float | str
+
+class DatasetDataArgsSortItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    direction: Literal['asc', 'desc']
+    guid: Annotated[str, Field(min_length=1)]
+
+class DatasetDataArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    columns: Annotated[list[Annotated[str, Field(min_length=1)]], Field(min_length=1)]
+    dataset_id: Annotated[str, Field(min_length=1, alias='datasetId')]
+    filters: list[DatasetDataArgsFiltersItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    limit: Annotated[int, Field(ge=1, le=100000)] = _UNVALIDATED_NONE_DEFAULT
+    offset: Annotated[int, Field(ge=0)] = _UNVALIDATED_NONE_DEFAULT
+    params: list[DatasetDataArgsParamsItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    sort: list[DatasetDataArgsSortItemDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class DatasetDataSchemaItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    guid: Annotated[str, Field(min_length=1)]
+    name: str
+    type: str
+
+class DatasetDataReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    rows: list[list[JsonValue]]
+    columns: list[DatasetDataSchemaItemReadDTO] = Field(alias='schema')
+
+
 class DatasetValidateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 

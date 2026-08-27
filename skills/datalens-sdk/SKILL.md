@@ -183,7 +183,15 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
     `"widget"`. Treat this id as the chart's layout primary key: use it in
     `Layout.*`, `apply_layout`, move/resize/swap/pin operations, connections,
     replacements, and removals.
-12. **Wizard-owned fields use stable handles.** Construct formula locals,
+12. **Never read returned data without permission.** Do not inspect, iterate,
+    print, summarize, sample, validate, count, or otherwise read values returned
+    by a data-returning method unless the user explicitly requested or permitted
+    that handling. Building or saving a script is not permission to run it. If
+    the task does not unambiguously specify what should happen to the result,
+    ask whether it should be shown in chat, saved to a file, left in a saved
+    script as a variable, or analyzed in code. Do not call the method or read
+    its result until the user answers. A smoke test is not an exception.
+13. **Wizard-owned fields use stable handles.** Construct formula locals,
     aggregated measures, and hierarchies as `WizardLocalField`,
     `WizardAggregatedMeasure`, and `WizardHierarchy`; pass the handle to the
     matching `add_*` method and reuse that same object in placeholders and
@@ -207,6 +215,7 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 | Debug by printing credentials or only the exception text | Keep tokens opaque and report `e.context.request_id` |
 | Fall back to raw HTTP or private imports | Stay on the documented public SDK surface |
 | Prepare `client.raw.replace` because a typed update is missing | Stop, explain the SDK boundary, and request explicit approval before constructing it |
+| Call or inspect a data-returning method as a smoke test without a requested result destination | Ask whether to show it in chat, save it to a file, leave it in a saved script variable, or analyze it in code; wait for the answer |
 
 ## Common scenarios
 
@@ -233,6 +242,7 @@ Read this file plus the one reference the task needs — not everything.
 | Object model unclear; lifecycle, errors, retries, pagination               | [references/core-concepts.md](references/core-concepts.md)               |
 | Creating/updating a connection or data source                              | [references/connections.md](references/connections.md)                   |
 | Datasets: fields, calculations, parameters, joins, RLS                     | [references/datasets.md](references/datasets.md)                         |
+| Reading rows from a dataset                                                 | [references/dataset-data.md](references/dataset-data.md)                 |
 | Writing, fixing, or reviewing a calculated field or formula                | [references/formulas/_index.md](references/formulas/_index.md)           |
 | A chart built on a dataset                                                 | [references/wizard-charts/_index.md](references/wizard-charts/_index.md) |
 | A chart built on a raw SQL query                                           | [references/ql-charts/_index.md](references/ql-charts/_index.md)         |

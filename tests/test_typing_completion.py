@@ -18,6 +18,10 @@ from datalens_sdk import (
     DataLensClientEnterprise,
     DataLensClientYC,
     Dataset,
+    DatasetData,
+    DatasetDataFilter,
+    DatasetDataParameter,
+    DatasetDataSort,
     DatasetField,
     DatasetUpdate,
     DirectoryPager,
@@ -85,6 +89,7 @@ from datalens_sdk._generated.builders.yacloud import PostgresConnectionCreate
 from datalens_sdk.client import (
     CreateNamespace,
     DashboardCreateFactory,
+    DataNamespace,
     DatasetCreateFactory,
     GetNamespace,
     LicensesNamespace,
@@ -100,7 +105,7 @@ from datalens_sdk.domain import (
     RawDatasetReplace,
     SourceCreate,
 )
-from datalens_sdk.domain.dataset_update import FieldRef
+from datalens_sdk.domain.fields import FieldRef
 from datalens_sdk.raw import (
     RawConnectionCreateFactory,
     RawConnectionReplaceFactory,
@@ -525,12 +530,15 @@ def _transport() -> httpx.MockTransport:
 
 
 def _dataset_transport() -> httpx.MockTransport:
-    return httpx.MockTransport(
-        lambda request: httpx.Response(
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/rpc/getDatasetData":
+            return httpx.Response(200, json={"schema": [], "rows": []})
+        return httpx.Response(
             200,
             json={"id": "ds-1", "dataset": {"description": "", "sources": [], "result_schema": []}},
         )
-    )
+
+    return httpx.MockTransport(handler)
 
 
 def _object_transport() -> httpx.MockTransport:
@@ -636,6 +644,17 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
     )
     assert_type(client.create.dataset, DatasetCreateFactory)
     assert_type(client.get, GetNamespace)
+    assert_type(client.data, DataNamespace)
+    assert_type(
+        client.data.get_dataset_data(
+            dataset_id="ds-1",
+            columns=["region", "sales"],
+            filters=[DatasetDataFilter(field="region", operation="EQ", values=("East",))],
+            params=[DatasetDataParameter(field="threshold", value=100)],
+            sort=[DatasetDataSort(field="sales", direction="desc")],
+        ),
+        DatasetData,
+    )
     assert_type(client.navigation, NavigationNamespace)
     assert_type(client.navigation.get_entries(), Pager[EntrySummary])
     assert_type(client.licenses, LicensesNamespace)
@@ -646,6 +665,15 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
     assert_type(dataset.parameters, FieldsProxy)
     assert_type(dataset.find_source_avatar("source-1"), Mapping[str, object] | None)
     assert_type(dataset.update, DatasetUpdate)
+    assert_type(
+        dataset.get_dataset_data(
+            columns=["region", "sales"],
+            filters=[DatasetDataFilter(field="region", operation="EQ", values=("East",))],
+            params=[DatasetDataParameter(field="threshold", value=100)],
+            sort=[DatasetDataSort(field="sales", direction="desc")],
+        ),
+        DatasetData,
+    )
     assert_type(
         client.raw.create.dataset(
             response_snapshot={"id": "source", "dataset": {}},

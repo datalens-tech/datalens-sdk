@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 
 from typing_extensions import Self
 
+from datalens_sdk.domain.common_types import SortDirection
 from datalens_sdk.domain.entry_location import (
     EntryLocation,
     resolve_entry_location,
@@ -15,7 +16,6 @@ from datalens_sdk.domain.navigation import (
     DirectoryPager,
     EntryOrderField,
     EntrySummary,
-    SortDirection,
 )
 from datalens_sdk.domain.ports import FolderOperations
 from datalens_sdk.domain.specs.folder import FolderCreateSpec, FolderUpdateSpec

@@ -9,6 +9,13 @@ from typing import overload
 from uuid import uuid4
 
 from datalens_sdk.domain.connection import Connection
+from datalens_sdk.domain.data import (
+    DatasetData,
+    DatasetDataFilter,
+    DatasetDataParameter,
+    DatasetDataQuery,
+    DatasetDataSort,
+)
 from datalens_sdk.domain.dataset_types import (
     Aggregation,
     CacheInvalidationSource,
@@ -39,7 +46,7 @@ from datalens_sdk.domain.entry_location import (
     validate_entry_name,
     workbook_id_from_location,
 )
-from datalens_sdk.domain.fields import DatasetField, FieldLike, FieldsProxy
+from datalens_sdk.domain.fields import DatasetField, FieldLike, FieldRef, FieldsProxy
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import DatasetOperations
 from datalens_sdk.domain.specs.dataset import DatasetCreateSpec
@@ -538,6 +545,32 @@ class Dataset:
                 page_size=page_size,
                 scope=scope,
             ),
+        )
+
+    def get_dataset_data(
+        self,
+        *,
+        columns: Sequence[FieldRef],
+        filters: Sequence[DatasetDataFilter] = (),
+        params: Sequence[DatasetDataParameter] = (),
+        sort: Sequence[DatasetDataSort] = (),
+        limit: int = 500,
+        offset: int | None = None,
+    ) -> DatasetData:
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot get data for a dataset without an id")
+        return self._operations.get_dataset_data(
+            DatasetDataQuery.create(
+                dataset_id=self.id,
+                columns=columns,
+                filters=filters,
+                params=params,
+                sort=sort,
+                limit=limit,
+                offset=offset,
+            )
         )
 
     def enrich_via_refresh(self, *, force_update_fields: bool = True) -> Dataset:

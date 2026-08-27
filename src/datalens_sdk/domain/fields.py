@@ -249,6 +249,7 @@ class WizardHierarchy:
 
 WizardFieldHandle: TypeAlias = WizardLocalField | WizardAggregatedMeasure | WizardHierarchy
 FieldLike: TypeAlias = DatasetField
+FieldRef: TypeAlias = FieldLike | str
 WizardFieldLike: TypeAlias = DatasetField | WizardFieldHandle
 WizardFieldRef: TypeAlias = WizardFieldLike | str
 

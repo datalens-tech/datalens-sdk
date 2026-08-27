@@ -6,12 +6,12 @@ from typing import Literal, TypeAlias
 
 from typing_extensions import Self
 
+from datalens_sdk.domain.common_types import SortDirection
 from datalens_sdk.domain.entry_location import EntryLocation, resolve_entry_location, validate_entry_name
 from datalens_sdk.domain.navigation import (
     EntryOrderField,
     EntrySummary,
     Pager,
-    SortDirection,
     WorkbookListOptions,
 )
 from datalens_sdk.domain.ports import WorkbookOperations
