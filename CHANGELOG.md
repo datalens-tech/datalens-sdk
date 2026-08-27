@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 3.0.0rc1 - 2026-08-27
+
 ### Breaking changes
 
 - Increase the Dashboard auto-layout default for standalone and external
