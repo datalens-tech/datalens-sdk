@@ -253,21 +253,24 @@ and the complete `nox` gate.
 
 ## Maintainer release process
 
-Every stable minor line is published from a protected `release/X.Y` branch.
-Production tags have the exact `vX.Y.Z` form and must point to a commit on the
-matching release branch. The publish workflow rejects a tag from any other
-branch, runs the complete quality and Python-version matrix, builds and
-validates one wheel and sdist, publishes those exact files, and attaches them
-to the GitHub Release.
+Every minor line is published from a protected `release/X.Y` branch. Production
+tags have the canonical `vX.Y.Z` or `vX.Y.ZrcN` form and must point to a commit
+on the matching release branch. Release-candidate numbering starts at `rc1`;
+subsequent candidates increment `N`, and the final release drops the `rcN`
+suffix. The publish workflow rejects a tag from any other branch, runs the
+complete quality and Python-version matrix, builds and validates one wheel and
+sdist, publishes those exact files, and attaches them to the GitHub Release.
+Release-candidate GitHub Releases are marked as pre-releases.
 
 To start a new minor line:
 
-1. Open a release PR against `main` that sets the final version and adds its
-   dated changelog section.
+1. Open a release PR against `main` that sets the final or release-candidate
+   version and adds its dated changelog section. Use the canonical PEP 440 form
+   `X.Y.ZrcN`, never the SemVer-style `X.Y.Z-rc.N` form.
 2. Merge the PR after every required check passes.
 3. Create `release/X.Y` from that merge commit and wait for the release-branch
    CI run to pass.
-4. Create and push an annotated `vX.Y.Z` tag at that commit.
+4. Create and push an annotated `vX.Y.Z` or `vX.Y.ZrcN` tag at that commit.
 5. Approve the `pypi` deployment, then verify the published metadata,
    provenance, hashes, installation, and a read-only call.
 

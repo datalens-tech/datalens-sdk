@@ -8,13 +8,19 @@ import re
 import subprocess
 import sys
 
-STABLE_TAG_PATTERN = re.compile(r"^v(?P<major>[0-9]+)\.(?P<minor>[0-9]+)\.(?P<patch>[0-9]+)$")
+PRODUCTION_TAG_PATTERN = re.compile(
+    r"^v(?P<major>0|[1-9][0-9]*)\."
+    r"(?P<minor>0|[1-9][0-9]*)\."
+    r"(?P<patch>0|[1-9][0-9]*)"
+    r"(?P<prerelease>rc[1-9][0-9]*)?$"
+)
 
 
 @dataclass(frozen=True)
 class PublishTarget:
     package_index: str
     release_branch: str | None = None
+    prerelease: bool = False
 
 
 def _required_environment_value(environ: Mapping[str, str], name: str) -> str:
@@ -41,9 +47,9 @@ def _check_release(tag: str | None = None) -> None:
 
 
 def _validate_production_tag(tag: str, ref: str) -> PublishTarget:
-    match = STABLE_TAG_PATTERN.fullmatch(tag)
+    match = PRODUCTION_TAG_PATTERN.fullmatch(tag)
     if match is None:
-        raise SystemExit("Production tags must have the stable vX.Y.Z form")
+        raise SystemExit("Production tags must have the canonical vX.Y.Z or vX.Y.ZrcN form")
 
     release_branch = f"release/{match['major']}.{match['minor']}"
     remote_release_branch = f"refs/remotes/origin/{release_branch}"
@@ -69,7 +75,11 @@ def _validate_production_tag(tag: str, ref: str) -> PublishTarget:
         raise SystemExit(f"Tag {tag!r} is not on {release_branch!r}")
 
     _check_release(tag)
-    return PublishTarget(package_index="pypi", release_branch=release_branch)
+    return PublishTarget(
+        package_index="pypi",
+        release_branch=release_branch,
+        prerelease=match["prerelease"] is not None,
+    )
 
 
 def validate_publish_ref(environ: Mapping[str, str]) -> PublishTarget:
@@ -91,6 +101,7 @@ def _write_github_outputs(target: PublishTarget, output_path: Path) -> None:
     values = [f"value={target.package_index}"]
     if target.release_branch is not None:
         values.append(f"release-branch={target.release_branch}")
+    values.append(f"prerelease={str(target.prerelease).lower()}")
     with output_path.open("a", encoding="utf-8") as output:
         output.write("\n".join(values) + "\n")
 
