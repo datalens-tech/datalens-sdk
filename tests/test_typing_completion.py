@@ -666,6 +666,15 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
     assert_type(dataset.find_source_avatar("source-1"), Mapping[str, object] | None)
     assert_type(dataset.update, DatasetUpdate)
     assert_type(
+        dataset.get_dataset_data(
+            columns=["region", "sales"],
+            filters=[DatasetDataFilter(field="region", operation="EQ", values=("East",))],
+            params=[DatasetDataParameter(field="threshold", value=100)],
+            sort=[DatasetDataSort(field="sales", direction="desc")],
+        ),
+        DatasetData,
+    )
+    assert_type(
         client.raw.create.dataset(
             response_snapshot={"id": "source", "dataset": {}},
             name="Raw dataset",

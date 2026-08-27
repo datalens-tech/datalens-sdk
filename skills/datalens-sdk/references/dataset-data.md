@@ -36,6 +36,9 @@ result = client.data.get_dataset_data(
     dataset_id=dataset.id,
     columns=[date, sales],
 )
+
+# Equivalent after fetching the dataset:
+result = dataset.get_dataset_data(columns=[date, sales])
 ```
 
 The SDK always sends `limit=500` unless an explicit limit is provided. This

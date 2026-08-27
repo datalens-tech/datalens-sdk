@@ -62,6 +62,8 @@
   rejecting the entire relation page.
 - Add typed `client.data.get_dataset_data(...)` reads for Yandex Cloud and
   Enterprise, with a default limit of 500 rows.
+- Add `client.get.dataset(...).get_dataset_data(...)` as a dataset-bound
+  convenience for the same typed read API.
 - Align typed Dashboard create and update payloads with the API v3 Dashboard V2
   contract: descriptions use annotations, ordinary item colors use themed
   values, selector display and influence scopes stay separate, and new update

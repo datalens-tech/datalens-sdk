@@ -240,3 +240,56 @@ def test_get_dataset_data_retries_transient_failures() -> None:
         "/rpc/getDatasetData",
         "/rpc/getDatasetData",
     ]
+
+
+def test_dataset_bound_get_dataset_data_delegates_with_dataset_id() -> None:
+    recorder = RecordedTransport(
+        [
+            httpx.Response(
+                200,
+                json={
+                    "id": "dataset-1",
+                    "dataset": {"description": "", "sources": [], "result_schema": []},
+                },
+            ),
+            httpx.Response(200, json={"schema": [], "rows": []}),
+        ]
+    )
+    client = dl.DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
+
+    result = client.get.dataset(by_id="dataset-1").get_dataset_data(columns=["sales"])
+
+    assert result == dl.DatasetData(schema=(), rows=())
+    assert [request.url.path for request in recorder.requests] == [
+        "/rpc/getDataset",
+        "/rpc/getDatasetData",
+    ]
+    assert recorder.request_json(1) == {
+        "datasetId": "dataset-1",
+        "columns": ["sales"],
+        "limit": 500,
+    }
+
+
+def test_dataset_bound_get_dataset_data_rejects_bare_string_columns() -> None:
+    recorder = RecordedTransport(
+        httpx.Response(
+            200,
+            json={
+                "id": "dataset-1",
+                "dataset": {"description": "", "sources": [], "result_schema": []},
+            },
+        )
+    )
+    client = dl.DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
+
+    dataset = client.get.dataset(by_id="dataset-1")
+    with pytest.raises(dl.DataLensValidationError, match="columns must be a sequence of field references"):
+        dataset.get_dataset_data(columns="sales")
+
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getDataset"]
+
+
+def test_unbound_dataset_cannot_get_dataset_data() -> None:
+    with pytest.raises(dl.DataLensConfigurationError, match="not bound"):
+        dl.Dataset(id="dataset-1").get_dataset_data(columns=["sales"])
