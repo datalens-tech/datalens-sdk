@@ -25,6 +25,7 @@ jobs:
     outputs:
       target: ${{ steps.target.outputs.value }}
       release-branch: ${{ steps.target.outputs.release-branch }}
+      prerelease: ${{ steps.target.outputs.prerelease }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -132,7 +133,13 @@ jobs:
         with:
           name: distributions
           path: dist/
-      - run: gh release create "${GITHUB_REF_NAME}" dist/* --verify-tag --generate-notes
+      - if: needs.validate.outputs.prerelease == 'true'
+        run: gh release create "${GITHUB_REF_NAME}" dist/* --verify-tag --generate-notes --prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+      - if: needs.validate.outputs.prerelease != 'true'
+        run: gh release create "${GITHUB_REF_NAME}" dist/* --verify-tag --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
