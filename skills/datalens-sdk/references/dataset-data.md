@@ -41,10 +41,6 @@ result = client.data.get_dataset_data(
 result = dataset.get_dataset_data(columns=[date, sales])
 ```
 
-The SDK always sends `limit=500` unless an explicit limit is provided. This
-keeps an accidental read small while still allowing an explicit value from 1
-through 100000.
-
 ## Filters, parameters, sorting, and pagination
 
 ```python
