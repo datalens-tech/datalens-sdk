@@ -13,6 +13,7 @@ from datalens_sdk.api.chart import ChartAPI, ChartService
 from datalens_sdk.api.collection import CollectionAPI, CollectionService
 from datalens_sdk.api.connection import ConnectionAPI, ConnectionService
 from datalens_sdk.api.dashboard import DashboardAPI, DashboardService
+from datalens_sdk.api.data import DataAPI
 from datalens_sdk.api.dataset import DatasetAPI, DatasetService
 from datalens_sdk.api.entries import EntriesAPI, EntriesDtoModule, EntriesService
 from datalens_sdk.api.folder import FolderAPI, FolderService
@@ -29,6 +30,7 @@ from datalens_sdk.auth import (
 from datalens_sdk.converter.collection import CollectionDtoModule
 from datalens_sdk.converter.connection import ConnectionDtoModule
 from datalens_sdk.converter.dashboard import DashboardDtoModule
+from datalens_sdk.converter.data import DatasetDataDtoModule
 from datalens_sdk.converter.dataset import DatasetDtoModule
 from datalens_sdk.converter.editor_chart import EditorChartDtoModule, editor_wire_types
 from datalens_sdk.converter.folder import FolderDtoModule
@@ -36,13 +38,22 @@ from datalens_sdk.converter.license import LicenseDtoModule
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
 from datalens_sdk.converter.workbook import WorkbookDtoModule
 from datalens_sdk.domain.collection import Collection, CollectionCreate
+from datalens_sdk.domain.common_types import SortDirection
 from datalens_sdk.domain.connection import Connection
 from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.dashboard_create import DashboardCreate
+from datalens_sdk.domain.data import (
+    DatasetData,
+    DatasetDataFilter,
+    DatasetDataParameter,
+    DatasetDataQuery,
+    DatasetDataSort,
+)
 from datalens_sdk.domain.dataset import Dataset, DatasetCreate, SourceBuilder
 from datalens_sdk.domain.editor_chart import EditorChart
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.entry_types import EntryBranch
+from datalens_sdk.domain.fields import FieldRef
 from datalens_sdk.domain.folder import Folder, FolderCreate
 from datalens_sdk.domain.license import (
     License,
@@ -56,7 +67,6 @@ from datalens_sdk.domain.navigation import (
     EntrySummary,
     GetEntriesOptions,
     Pager,
-    SortDirection,
 )
 from datalens_sdk.domain.ports import (
     ChartOperations,
@@ -201,6 +211,34 @@ class DatasetCreateFactory:
             location=location,
             name=name,
             operations=self._operations,
+        )
+
+
+class DataNamespace:
+    def __init__(self, operations: DatasetOperations) -> None:
+        self._operations = operations
+
+    def get_dataset_data(
+        self,
+        *,
+        dataset_id: str,
+        columns: Sequence[FieldRef],
+        filters: Sequence[DatasetDataFilter] = (),
+        params: Sequence[DatasetDataParameter] = (),
+        sort: Sequence[DatasetDataSort] = (),
+        limit: int = 500,
+        offset: int | None = None,
+    ) -> DatasetData:
+        return self._operations.get_dataset_data(
+            DatasetDataQuery.create(
+                dataset_id=dataset_id,
+                columns=columns,
+                filters=filters,
+                params=params,
+                sort=sort,
+                limit=limit,
+                offset=offset,
+            )
         )
 
 
@@ -538,6 +576,7 @@ class DataLensClientBase:
     SDK_DISTRIBUTION = "datalens-sdk"
     DEFAULT_BASE_URL = ""
     KNOWN_NAMESPACE_OWNERS: ClassVar[dict[str, list[str]]] = {}
+    data: DataNamespace
     get: GetNamespace
     navigation: NavigationNamespace
     raw: RawNamespace
@@ -622,9 +661,11 @@ class DataLensClientBase:
         self._dataset_service = DatasetService(
             installation=self.INSTALLATION,
             api=DatasetAPI(self._http),
+            data_api=DataAPI(self._http),
             entries_service=entries_service,
             navigation_operations=self._navigation_service,
             dto_module=cast(DatasetDtoModule, dto_module),
+            data_dto_module=cast(DatasetDataDtoModule, dto_module),
         )
         self._chart_service = ChartService(
             installation=self.INSTALLATION,
@@ -702,6 +743,7 @@ class DataLensClientBase:
             dashboard_operations=self._dashboard_service,
             chart_operations=self._chart_service,
         )
+        self.data = DataNamespace(self._dataset_service)
         self.get = GetNamespace(
             chart_operations=self._chart_service,
             collection_operations=self._collection_service,

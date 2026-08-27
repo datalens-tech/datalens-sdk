@@ -47242,6 +47242,281 @@
         ]
       }
     },
+    "/rpc/getDatasetData": {
+      "post": {
+        "description": "Returns up to `limit` rows from the specified dataset. If `sort` is omitted, neither the row order nor the subset selected by `limit` is guaranteed and may change between requests. Every field used in `sort` must also be included in `columns`. An `offset` greater than zero requires a non-empty `sort`. For stable pagination, sorting should define a total order; add tie-breaking fields when sort values may repeat.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "columns": {
+                    "description": "Dataset field GUIDs to return.",
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "datasetId": {
+                    "description": "Dataset ID.",
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "filters": {
+                    "description": "Filters to apply.",
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "guid": {
+                          "description": "Dataset field GUID.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "operation": {
+                          "description": "Filter operation.",
+                          "enum": [
+                            "in",
+                            "nin",
+                            "isnull",
+                            "isnotnull",
+                            "between",
+                            "eq",
+                            "ne",
+                            "gt",
+                            "lt",
+                            "gte",
+                            "lte",
+                            "istartswith",
+                            "startswith",
+                            "iendswith",
+                            "endswith",
+                            "icontains",
+                            "contains",
+                            "noticontains",
+                            "notcontains",
+                            "leneq",
+                            "lenne",
+                            "lengt",
+                            "lengte",
+                            "lenlt",
+                            "lenlte"
+                          ],
+                          "type": "string"
+                        },
+                        "values": {
+                          "description": "Filter values; the required count depends on the operation.",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              }
+                            ]
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "guid",
+                        "operation"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "limit": {
+                    "description": "Maximum number of rows to return. Defaults to 100. Without sort, the selected rows and their order are not guaranteed.",
+                    "maximum": 100000,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "offset": {
+                    "description": "Number of rows to skip. Values greater than zero require a non-empty sort.",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "params": {
+                    "description": "Dataset parameter values.",
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "guid": {
+                          "description": "Dataset parameter GUID.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "value": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            }
+                          ],
+                          "description": "Parameter value."
+                        }
+                      },
+                      "required": [
+                        "guid",
+                        "value"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "sort": {
+                    "description": "Sorting rules. Use a unique tie-breaking field to make pagination deterministic.",
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "direction": {
+                          "description": "Sort direction.",
+                          "enum": [
+                            "asc",
+                            "desc"
+                          ],
+                          "type": "string"
+                        },
+                        "guid": {
+                          "description": "Dataset field GUID.",
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "guid",
+                        "direction"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "workbookId": {
+                    "description": "Workbook ID.",
+                    "minLength": 1,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "datasetId",
+                  "columns"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "rows": {
+                      "description": "Rows with values ordered according to schema.",
+                      "items": {
+                        "items": {},
+                        "type": "array"
+                      },
+                      "type": "array"
+                    },
+                    "schema": {
+                      "description": "Returned columns in row value order.",
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "guid": {
+                            "description": "Dataset field GUID.",
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "Dataset field name.",
+                            "type": "string"
+                          },
+                          "type": {
+                            "description": "Dataset field data type.",
+                            "enum": [
+                              "date",
+                              "genericdatetime",
+                              "datetimetz",
+                              "integer",
+                              "uinteger",
+                              "string",
+                              "float",
+                              "boolean",
+                              "geopoint",
+                              "geopolygon",
+                              "markup",
+                              "heatmap",
+                              "array_int",
+                              "array_float",
+                              "array_str",
+                              "unsupported",
+                              "hierarchy",
+                              "tree_str",
+                              "tree_int",
+                              "tree_float"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "guid",
+                          "type"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "schema",
+                    "rows"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Get dataset data",
+        "tags": [
+          "Data"
+        ]
+      }
+    },
     "/rpc/getEditorChart": {
       "post": {
         "description": "Returns the specified Editor chart.",

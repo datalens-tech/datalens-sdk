@@ -1,6 +1,7 @@
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.chart_types import GeoLayerFilter, QLCast, QLParamType
 from datalens_sdk.domain.collection import Collection, CollectionCreate, CollectionUpdate
+from datalens_sdk.domain.common_types import SortDirection
 from datalens_sdk.domain.connection import Connection, ConnectionUpdate
 from datalens_sdk.domain.dashboard import (
     ControlMemberView,
@@ -28,6 +29,14 @@ from datalens_sdk.domain.dashboard_types import (
     ThemedColor,
 )
 from datalens_sdk.domain.dashboard_update import DashboardUpdate
+from datalens_sdk.domain.data import (
+    DatasetData,
+    DatasetDataColumn,
+    DatasetDataFilter,
+    DatasetDataParameter,
+    DatasetDataScalar,
+    DatasetDataSort,
+)
 from datalens_sdk.domain.dataset import Dataset, DatasetCreate, Source, SourceCreate
 from datalens_sdk.domain.dataset_types import (
     Aggregation,
@@ -59,6 +68,7 @@ from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
 from datalens_sdk.domain.fields import (
     DatasetField,
     FieldLike,
+    FieldRef,
     FieldsProxy,
     WizardAggregatedMeasure,
     WizardFieldHandle,
@@ -91,7 +101,6 @@ from datalens_sdk.domain.navigation import (
     LinkDirection,
     Page,
     Pager,
-    SortDirection,
     StructureOrderField,
     StructureSummary,
     WorkbookSummary,
@@ -151,6 +160,12 @@ __all__ = [
     "DataType",
     "Dataset",
     "DatasetCreate",
+    "DatasetData",
+    "DatasetDataColumn",
+    "DatasetDataFilter",
+    "DatasetDataParameter",
+    "DatasetDataScalar",
+    "DatasetDataSort",
     "DatasetField",
     "DatasetUpdate",
     "DateInterval",
@@ -168,6 +183,7 @@ __all__ = [
     "EntryUpdateMode",
     "FieldKind",
     "FieldLike",
+    "FieldRef",
     "FieldsProxy",
     "FilterValue",
     "FilterValues",

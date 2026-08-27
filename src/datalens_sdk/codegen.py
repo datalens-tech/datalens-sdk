@@ -8,7 +8,7 @@ import json
 import keyword
 from pathlib import Path
 import re
-from typing import TypedDict
+from typing import TypedDict, cast
 
 from typing_extensions import NotRequired
 
@@ -41,8 +41,8 @@ INSTALLATIONS = {
 }
 
 NAMESPACES = {
-    "enterprise": ["collections", "connections", "dashboards", "datasets", "folders", "workbooks"],
-    "yacloud": ["collections", "connections", "dashboards", "datasets", "folders", "licenses", "workbooks"],
+    "enterprise": ["collections", "connections", "dashboards", "data", "datasets", "folders", "workbooks"],
+    "yacloud": ["collections", "connections", "dashboards", "data", "datasets", "folders", "licenses", "workbooks"],
 }
 
 READ_ONLY_FIELDS = {"id", "key", "created_at", "updated_at", "meta"}
@@ -80,6 +80,8 @@ _DASHBOARD_V2_ROOTS = (
     "GetDashboardV2Result",
     "UpdateDashboardV2Args",
 )
+_DATASET_DATA_ROUTE = "/rpc/getDatasetData"
+_DATASET_DATA_ROOTS = ("DatasetDataArgs", "DatasetData")
 _SCHEMA_REF_PREFIX = "#/components/schemas/"
 _SCHEMA_DOCUMENTATION_KEYS = frozenset({"$comment", "description", "example", "examples", "title"})
 _SCHEMA_NAMED_MAP_KEYS = frozenset({"properties"})
@@ -101,6 +103,7 @@ _SCHEMA_SUPPORTED_KEYS = frozenset(
     }
 )
 _DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "minItems", "minLength", "minimum"})
+_DATASET_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"maximum", "minItems", "minLength", "minimum"})
 
 
 class _WizardSchemaFeatureState(Enum):
@@ -205,6 +208,11 @@ class DashboardContractMeta(TypedDict):
     schemas: dict[str, JsonValue]
 
 
+class DatasetDataContractMeta(TypedDict):
+    roots: list[str]
+    schemas: dict[str, JsonValue]
+
+
 class InstallationMetadata(TypedDict):
     name: str
     namespaces: list[str]
@@ -218,6 +226,7 @@ class InstallationMetadata(TypedDict):
 class Metadata(TypedDict):
     installations: dict[str, InstallationMetadata]
     dashboard: NotRequired[DashboardContractMeta]
+    dataset_data: NotRequired[DatasetDataContractMeta]
 
 
 def _string_object_dict(value: object, *, context: str) -> dict[str, object]:
@@ -291,8 +300,7 @@ def _schema_refs(value: object) -> set[str]:
         return set()
 
     refs: set[str] = set()
-    ref = value.get("$ref")
-    if isinstance(ref, str) and ref.startswith(_SCHEMA_REF_PREFIX):
+    if "$ref" in value:
         refs.add(_schema_ref_name(value, context="schema node"))
     for child in value.values():
         refs.update(_schema_refs(child))
@@ -375,8 +383,10 @@ def _audit_pydantic_schema_features(
         if not isinstance(key, str):
             raise TypeError(f"{contract} schema node at {pointer} contains a non-string key")
         state = _wizard_schema_feature_state(key)
-        dashboard_extension = contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS
-        if state is _WizardSchemaFeatureState.SEMANTIC_UNSUPPORTED and not dashboard_extension:
+        contract_extension = (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS) or (
+            contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS
+        )
+        if state is _WizardSchemaFeatureState.SEMANTIC_UNSUPPORTED and not contract_extension:
             raise ValueError(
                 f"Unsupported behavior-bearing {contract} schema feature at {_schema_pointer(pointer, key)}: {key}"
             )
@@ -420,6 +430,9 @@ def _audit_pydantic_schema_features(
     minimum = value.get("minimum")
     if "minimum" in value and (not isinstance(minimum, (int, float)) or isinstance(minimum, bool)):
         raise ValueError(f"{contract} schema feature at {_schema_pointer(pointer, 'minimum')} must be a number")
+    maximum = value.get("maximum")
+    if "maximum" in value and (not isinstance(maximum, (int, float)) or isinstance(maximum, bool)):
+        raise ValueError(f"{contract} schema feature at {_schema_pointer(pointer, 'maximum')} must be a number")
 
     discriminator = value.get("discriminator")
     if "discriminator" in value:
@@ -513,6 +526,7 @@ def _audit_pydantic_schema_features(
                     if (
                         _wizard_schema_feature_state(str(key)) is _WizardSchemaFeatureState.SUPPORTED
                         or (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS)
+                        or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
                     )
                     and key not in {"$ref", "properties", "required", "type"}
                 }
@@ -783,6 +797,150 @@ def build_dashboard_contract_meta(spec: Mapping[str, object]) -> DashboardContra
 
     return {
         "roots": list(_DASHBOARD_V2_ROOTS),
+        "schemas": dict(sorted(normalized_schemas.items())),
+    }
+
+
+def _dataset_data_route_schema(spec: Mapping[str, object], *, request: bool) -> dict[str, object] | None:
+    paths = _string_object_dict(spec.get("paths"), context="paths")
+    route_value = paths.get(_DATASET_DATA_ROUTE)
+    if route_value is None:
+        return None
+    route = _string_object_dict(route_value, context=_DATASET_DATA_ROUTE)
+    operation = _string_object_dict(route.get("post"), context=f"{_DATASET_DATA_ROUTE}.post")
+    if request:
+        body = _string_object_dict(
+            operation.get("requestBody"),
+            context=f"{_DATASET_DATA_ROUTE}.post.requestBody",
+        )
+        content = _string_object_dict(
+            body.get("content"),
+            context=f"{_DATASET_DATA_ROUTE}.post.requestBody.content",
+        )
+        media = _string_object_dict(
+            content.get("application/json"),
+            context=f"{_DATASET_DATA_ROUTE}.post.requestBody.content.application/json",
+        )
+        return _string_object_dict(
+            media.get("schema"),
+            context=f"{_DATASET_DATA_ROUTE} request schema",
+        )
+
+    responses = _string_object_dict(
+        operation.get("responses"),
+        context=f"{_DATASET_DATA_ROUTE}.post.responses",
+    )
+    response = _string_object_dict(
+        responses.get("200"),
+        context=f"{_DATASET_DATA_ROUTE}.post.responses.200",
+    )
+    content = _string_object_dict(
+        response.get("content"),
+        context=f"{_DATASET_DATA_ROUTE}.post.responses.200.content",
+    )
+    media = _string_object_dict(
+        content.get("application/json"),
+        context=f"{_DATASET_DATA_ROUTE}.post.responses.200.content.application/json",
+    )
+    return _string_object_dict(
+        media.get("schema"),
+        context=f"{_DATASET_DATA_ROUTE} response schema",
+    )
+
+
+def _widen_dataset_data_column_type(schemas: dict[str, JsonValue]) -> None:
+    response = _string_object_dict(schemas["DatasetData"], context="DatasetData")
+    properties = _string_object_dict(response.get("properties"), context="DatasetData.properties")
+    schema_array = _string_object_dict(properties.get("schema"), context="DatasetData.properties.schema")
+    column = _string_object_dict(schema_array.get("items"), context="DatasetData.properties.schema.items")
+    seen: set[str] = set()
+    referenced_name: str | None = None
+    while "$ref" in column:
+        name = _schema_ref_name(column, context="DatasetData.properties.schema.items")
+        if name in seen:
+            raise ValueError(f"Recursive getDatasetData schema {name!r} is not supported")
+        seen.add(name)
+        referenced_name = name
+        target = schemas.get(name)
+        if target is None:
+            raise ValueError(f"getDatasetData schema graph references missing component {name!r}")
+        column = _string_object_dict(target, context=f"getDatasetData schema {name}")
+    column_properties = _string_object_dict(
+        column.get("properties"),
+        context="DatasetData.properties.schema.items.properties",
+    )
+    type_schema = _string_object_dict(
+        column_properties.get("type"),
+        context="DatasetData.properties.schema.items.properties.type",
+    )
+    type_schema.pop("enum", None)
+    type_schema["type"] = "string"
+    column_properties["type"] = type_schema
+    column["properties"] = column_properties
+    if referenced_name is not None:
+        schemas[referenced_name] = cast(JsonValue, column)
+        return
+    schema_array["items"] = column
+    properties["schema"] = schema_array
+    response["properties"] = properties
+    schemas["DatasetData"] = cast(JsonValue, response)
+
+
+def build_dataset_data_contract_meta(spec: Mapping[str, object]) -> DatasetDataContractMeta | None:
+    request_schema = _dataset_data_route_schema(spec, request=True)
+    response_schema = _dataset_data_route_schema(spec, request=False)
+    if request_schema is None and response_schema is None:
+        return None
+    if request_schema is None or response_schema is None:
+        raise ValueError("getDatasetData must define both request and response schemas")
+
+    normalized_request = _string_object_dict(
+        _normalize_wizard_schema(request_schema),
+        context="getDatasetData request schema",
+    )
+    request_properties = _string_object_dict(
+        normalized_request.get("properties"),
+        context="getDatasetData request schema.properties",
+    )
+    request_properties.pop("workbookId", None)
+    normalized_request["properties"] = request_properties
+    required = normalized_request.get("required")
+    if isinstance(required, list):
+        normalized_request["required"] = [item for item in required if item != "workbookId"]
+
+    normalized_response = _string_object_dict(
+        _normalize_wizard_schema(response_schema),
+        context="getDatasetData response schema",
+    )
+    available: dict[str, object] = {
+        **_schemas(spec),
+        "DatasetDataArgs": normalized_request,
+        "DatasetData": normalized_response,
+    }
+    reached: set[str] = set()
+    queue = list(_DATASET_DATA_ROOTS)
+    normalized_schemas: dict[str, JsonValue] = {}
+    while queue:
+        name = queue.pop(0)
+        if name in reached:
+            continue
+        schema = available.get(name)
+        if schema is None:
+            raise ValueError(f"getDatasetData schema graph references missing component {name!r}")
+        normalized = _normalize_wizard_schema(schema)
+        _audit_pydantic_schema_features(
+            normalized,
+            pointer=f"/schemas/{_json_pointer_token(name)}",
+            contract="getDatasetData",
+            require_provably_disjoint_one_of=False,
+        )
+        reached.add(name)
+        normalized_schemas[name] = normalized
+        queue.extend(sorted(_schema_refs(normalized) - reached - set(queue)))
+
+    _widen_dataset_data_column_type(normalized_schemas)
+    return {
+        "roots": list(_DATASET_DATA_ROOTS),
         "schemas": dict(sorted(normalized_schemas.items())),
     }
 
@@ -1457,12 +1615,19 @@ def _chart_meta(schemas: dict[str, dict[str, object]]) -> ChartMeta:
 def build_metadata(installations: dict[str, Path]) -> Metadata:
     out: Metadata = {"installations": {}}
     dashboard_contracts: list[tuple[str, DashboardContractMeta]] = []
+    dataset_data_contracts: list[tuple[str, DatasetDataContractMeta]] = []
+    dataset_data_missing: list[str] = []
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
         schemas = _schemas(spec)
         dashboard_contract = build_dashboard_contract_meta(spec)
         dashboard_contracts.append((installation, dashboard_contract))
+        dataset_data_contract = build_dataset_data_contract_meta(spec)
+        if dataset_data_contract is None:
+            dataset_data_missing.append(installation)
+        else:
+            dataset_data_contracts.append((installation, dataset_data_contract))
         connection_discriminator = _string_object_dict(
             schemas["ConnectionCreate"].get("discriminator"),
             context="ConnectionCreate.discriminator",
@@ -1518,6 +1683,19 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
                     f"Dashboard V2 schema closure differs between {canonical_installation!r} and {installation!r}"
                 )
         out["dashboard"] = canonical_dashboard
+    if dataset_data_contracts and dataset_data_missing:
+        raise ValueError(
+            "getDatasetData availability differs between installations: "
+            f"present on {[name for name, _ in dataset_data_contracts]!r}, missing on {dataset_data_missing!r}"
+        )
+    if dataset_data_contracts:
+        canonical_installation, canonical_dataset_data = dataset_data_contracts[0]
+        for installation, candidate in dataset_data_contracts[1:]:
+            if candidate != canonical_dataset_data:
+                raise ValueError(
+                    f"getDatasetData schemas differ between {canonical_installation!r} and {installation!r}"
+                )
+        out["dataset_data"] = canonical_dataset_data
     editor_methods_by_wire_type: dict[str, tuple[str, str]] = {}
     for installation, info in sorted(out["installations"].items()):
         for wire_type, node_meta in sorted(info["charts"]["editor_nodes"].items()):
@@ -1578,6 +1756,7 @@ class _PydanticSchemaEmitter:
         read: bool,
         contract: str,
         open_schema_refs: Mapping[str, str] | frozenset[str] = frozenset(),
+        field_name_overrides: Mapping[tuple[str, ...], str] | None = None,
     ) -> None:
         self._schemas = schemas
         self._read = read
@@ -1587,6 +1766,7 @@ class _PydanticSchemaEmitter:
             if isinstance(open_schema_refs, Mapping)
             else dict.fromkeys(open_schema_refs, "dict[str, JsonValue]")
         )
+        self._field_name_overrides = dict(field_name_overrides or {})
         self._lines: list[str] = []
         self._emitted: set[str] = set()
         self._emitting: set[str] = set()
@@ -1792,6 +1972,8 @@ class _PydanticSchemaEmitter:
             constraints.append(f"min_length={schema[length_key]!r}")
         if minimum and isinstance(schema.get("minimum"), (int, float)):
             constraints.append(f"ge={schema['minimum']!r}")
+        if minimum and isinstance(schema.get("maximum"), (int, float)):
+            constraints.append(f"le={schema['maximum']!r}")
         if not constraints:
             return annotation
         return f"Annotated[{annotation}, Field({', '.join(constraints)})]"
@@ -1845,7 +2027,10 @@ class _PydanticSchemaEmitter:
         for wire_name, raw_field_schema in sorted(properties.items()):
             if not isinstance(raw_field_schema, dict):
                 raise TypeError(f"{self._contract} schema {'.'.join(path)}.{wire_name} must be an object")
-            python_name = _wizard_python_field_name(wire_name)
+            python_name = self._field_name_overrides.get(
+                (*path, wire_name),
+                _wizard_python_field_name(wire_name),
+            )
             annotation = self._annotation(raw_field_schema, path=(*path, wire_name))
             alias_in_annotation = False
             if python_name != wire_name:
@@ -2841,6 +3026,25 @@ class DashboardDeleteArgsDTO(BaseModel):
 """
 
 
+def _emit_dataset_data_dto(metadata: Metadata) -> str:
+    contract = metadata.get("dataset_data")
+    if contract is None:
+        return ""
+    schemas = contract["schemas"]
+    request_models = _PydanticSchemaEmitter(
+        schemas,
+        read=False,
+        contract="getDatasetData",
+    ).emit(("DatasetDataArgs",))
+    response_models = _PydanticSchemaEmitter(
+        schemas,
+        read=True,
+        contract="getDatasetData",
+        field_name_overrides={("DatasetData", "schema"): "columns"},
+    ).emit(("DatasetData",))
+    return f"\n{request_models}\n{response_models}\n"
+
+
 def emit_dto(metadata: Metadata) -> str:
     installations = metadata["installations"]
     connectors = {name: sorted(info["connectors"]) for name, info in sorted(installations.items())}
@@ -2852,6 +3056,7 @@ def emit_dto(metadata: Metadata) -> str:
     sources = {name: sorted(info["dataset_sources"]) for name, info in sorted(installations.items())}
     chart_dto_block = _emit_chart_dto(metadata)
     dashboard_dto_block = _emit_dashboard_dto(metadata)
+    dataset_data_dto_block = _emit_dataset_data_dto(metadata)
     navigation_dto_block = _emit_navigation_dto()
     return f"""# AUTOGENERATED by scripts/generate_sdk.py. Do not edit by hand.
 # ruff: noqa
@@ -3044,6 +3249,7 @@ class DatasetReadDTO(BaseModel):
         return value
 
 
+{dataset_data_dto_block}
 class DatasetValidateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 

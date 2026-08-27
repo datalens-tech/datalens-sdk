@@ -7,8 +7,11 @@ import warnings
 
 from pydantic import ValidationError
 
+from datalens_sdk.api.data import DataAPI
 from datalens_sdk.api.entries import EntriesService
+from datalens_sdk.converter.data import DatasetDataConverter, DatasetDataDtoModule
 from datalens_sdk.converter.dataset import DatasetConverter, DatasetDtoModule
+from datalens_sdk.domain.data import DatasetData, DatasetDataQuery
 from datalens_sdk.domain.dataset import Dataset, DatasetCreate, Source
 from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
 from datalens_sdk.domain.dataset_update import DatasetUpdate
@@ -121,15 +124,19 @@ class DatasetService(DatasetOperations):
         *,
         installation: str,
         api: DatasetAPI,
+        data_api: DataAPI,
         entries_service: EntriesService,
         navigation_operations: NavigationOperations,
         dto_module: DatasetDtoModule | None = None,
+        data_dto_module: DatasetDataDtoModule | None = None,
     ) -> None:
         self._installation = installation
         self._api = api
+        self._data_api = data_api
         self._entries_service = entries_service
         self._navigation_operations = navigation_operations
         self._dto_module = dto_module
+        self._data_dto_module = data_dto_module
 
     def create_dataset(self, builder: DatasetCreate) -> Dataset:
         spec = builder.to_spec()
@@ -196,6 +203,14 @@ class DatasetService(DatasetOperations):
             id_fallback=dataset_id,
             dto_module=self._dto_module,
         )
+
+    def get_dataset_data(self, query: DatasetDataQuery) -> DatasetData:
+        try:
+            payload = DatasetDataConverter.request_payload(query, dto_module=self._data_dto_module)
+            response = self._data_api.get_dataset_data(payload)
+            return DatasetDataConverter.result(response, dto_module=self._data_dto_module)
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="getDatasetData", reason=str(exc)) from exc
 
     def update_dataset(self, builder: DatasetUpdate) -> Dataset:
         spec: DatasetUpdateSpec = builder.to_spec()

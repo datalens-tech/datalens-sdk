@@ -4,7 +4,8 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Generic, Literal, TypeAlias, TypeVar
 
-SortDirection: TypeAlias = Literal["asc", "desc"]
+from datalens_sdk.domain.common_types import SortDirection
+
 EntryOrderField: TypeAlias = Literal["created_at", "name"]
 StructureOrderField: TypeAlias = Literal["name", "created_at", "updated_at"]
 CollectionContentMode: TypeAlias = Literal["all", "collections", "workbooks", "entries"]

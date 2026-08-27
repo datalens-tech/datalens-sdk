@@ -7,6 +7,7 @@ import warnings
 import httpx
 import pytest
 
+from datalens_sdk.api.data import DataAPI
 from datalens_sdk.api.dataset import DatasetAPI, DatasetService
 from datalens_sdk.api.entries import EntriesAPI, EntriesService
 from datalens_sdk.converter.dataset import DatasetConverter
@@ -68,6 +69,7 @@ def _make_service(routes: dict[str, list[httpx.Response] | httpx.Response]) -> t
     service = DatasetService(
         installation="test",
         api=api,
+        data_api=DataAPI(client),
         entries_service=EntriesService(api=EntriesAPI(client)),
         navigation_operations=cast(NavigationOperations, object()),
     )
