@@ -13,8 +13,9 @@ navigation in Yandex Cloud DataLens and DataLens Enterprise.
 
 ## Project status
 
-The `0.1` series is an alpha release. Until `1.0`, breaking API changes may be
-made in minor releases.
+The `3.0` series is currently available as a release candidate and contains
+breaking API changes. A plain `pip install datalens-sdk` does not select
+pre-releases; install `datalens-sdk==3.0.0rc1` explicitly to try this version.
 
 ## Installation
 
