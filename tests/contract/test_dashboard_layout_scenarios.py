@@ -54,7 +54,6 @@ def test_update_move_pin_compact_pipeline() -> None:
     data: dict[str, object] = {
         "counter": 1,
         "salt": "s",
-        "schemeVersion": 8,
         "settings": {},
         "tabs": [
             {
@@ -93,7 +92,6 @@ def test_validate_flags_reflow_then_compact_clears_it() -> None:
     data: dict[str, object] = {
         "counter": 1,
         "salt": "s",
-        "schemeVersion": 8,
         "settings": {},
         "tabs": [
             {

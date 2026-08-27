@@ -80,3 +80,21 @@ def test_full_scenario_is_repeatable() -> None:
     second = DashboardConverter.from_domain_update(update.to_spec(), publish=False).to_payload()
     assert first == second
     assert first["mode"] == "save"
+
+
+def test_golden_uses_dashboard_v2_document_paths() -> None:
+    golden = cast(dict[str, object], json.loads(_GOLDEN_PATH.read_text()))
+    entry = cast(dict[str, object], golden["entry"])
+    data = cast(dict[str, object], entry["data"])
+
+    assert "schemeVersion" not in data
+    assert "description" not in data
+    assert entry["annotation"] == {"description": "Updated by the golden scenario"}
+
+    tabs = cast(list[dict[str, object]], data["tabs"])
+    added = next(
+        item for tab in tabs for item in cast(list[dict[str, object]], tab["items"]) if item.get("id") == "el_1"
+    )
+    added_data = cast(dict[str, object], added["data"])
+    background = cast(dict[str, object], added_data["backgroundSettings"])
+    assert background["color"] == {"light": "#11223344", "dark": "#11223344"}

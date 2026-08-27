@@ -73,6 +73,13 @@ _WIZARD_ROUTES = (
     "/rpc/getWizardChart",
     "/rpc/updateWizardChart",
 )
+_DASHBOARD_V2_ROOTS = (
+    "CreateDashboardV2Args",
+    "DeleteDashboardArgs",
+    "GetDashboardV2Args",
+    "GetDashboardV2Result",
+    "UpdateDashboardV2Args",
+)
 _SCHEMA_REF_PREFIX = "#/components/schemas/"
 _SCHEMA_DOCUMENTATION_KEYS = frozenset({"$comment", "description", "example", "examples", "title"})
 _SCHEMA_NAMED_MAP_KEYS = frozenset({"properties"})
@@ -93,6 +100,7 @@ _SCHEMA_SUPPORTED_KEYS = frozenset(
         "type",
     }
 )
+_DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "minItems", "minLength", "minimum"})
 
 
 class _WizardSchemaFeatureState(Enum):
@@ -192,6 +200,11 @@ class WizardContractMeta(TypedDict):
     field_structure: WizardFieldStructure
 
 
+class DashboardContractMeta(TypedDict):
+    roots: list[str]
+    schemas: dict[str, JsonValue]
+
+
 class InstallationMetadata(TypedDict):
     name: str
     namespaces: list[str]
@@ -204,6 +217,7 @@ class InstallationMetadata(TypedDict):
 
 class Metadata(TypedDict):
     installations: dict[str, InstallationMetadata]
+    dashboard: NotRequired[DashboardContractMeta]
 
 
 def _string_object_dict(value: object, *, context: str) -> dict[str, object]:
@@ -347,22 +361,29 @@ def _one_of_is_provably_disjoint(branches: list[object]) -> bool:
     )
 
 
-def _audit_wizard_schema_features(value: object, *, pointer: str) -> None:
+def _audit_pydantic_schema_features(
+    value: object,
+    *,
+    pointer: str,
+    contract: str,
+    require_provably_disjoint_one_of: bool,
+) -> None:
     if not isinstance(value, Mapping):
-        raise TypeError(f"Wizard schema node at {pointer} must be an object")
+        raise TypeError(f"{contract} schema node at {pointer} must be an object")
 
     for key in value:
         if not isinstance(key, str):
-            raise TypeError(f"Wizard schema node at {pointer} contains a non-string key")
+            raise TypeError(f"{contract} schema node at {pointer} contains a non-string key")
         state = _wizard_schema_feature_state(key)
-        if state is _WizardSchemaFeatureState.SEMANTIC_UNSUPPORTED:
+        dashboard_extension = contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS
+        if state is _WizardSchemaFeatureState.SEMANTIC_UNSUPPORTED and not dashboard_extension:
             raise ValueError(
-                f"Unsupported behavior-bearing Wizard schema feature at {_schema_pointer(pointer, key)}: {key}"
+                f"Unsupported behavior-bearing {contract} schema feature at {_schema_pointer(pointer, key)}: {key}"
             )
 
     ref = value.get("$ref")
     if "$ref" in value and not isinstance(ref, str):
-        raise ValueError(f"Wizard schema feature at {_schema_pointer(pointer, '$ref')} must be a string")
+        raise ValueError(f"{contract} schema feature at {_schema_pointer(pointer, '$ref')} must be a string")
     raw_type = value.get("type")
     schema_types = raw_type if isinstance(raw_type, list) else [raw_type]
     if "type" in value and (
@@ -374,11 +395,11 @@ def _audit_wizard_schema_features(value: object, *, pointer: str) -> None:
         )
     ):
         raise ValueError(
-            f"Wizard schema feature at {_schema_pointer(pointer, 'type')} must contain supported JSON Schema types"
+            f"{contract} schema feature at {_schema_pointer(pointer, 'type')} must contain supported JSON Schema types"
         )
     required = value.get("required")
     if "required" in value and (not isinstance(required, list) or any(not isinstance(name, str) for name in required)):
-        raise ValueError(f"Wizard schema feature at {_schema_pointer(pointer, 'required')} must be a string list")
+        raise ValueError(f"{contract} schema feature at {_schema_pointer(pointer, 'required')} must be a string list")
 
     enum = value.get("enum")
     if "enum" in value and (
@@ -386,17 +407,47 @@ def _audit_wizard_schema_features(value: object, *, pointer: str) -> None:
         or not enum
         or any(item is not None and not isinstance(item, (str, bool, int, float)) for item in enum)
     ):
-        raise ValueError(f"Wizard schema enum at {_schema_pointer(pointer, 'enum')} must contain JSON scalars")
+        raise ValueError(f"{contract} schema enum at {_schema_pointer(pointer, 'enum')} must contain JSON scalars")
+
+    for constraint in ("minItems", "minLength"):
+        constraint_value = value.get(constraint)
+        if constraint in value and (
+            not isinstance(constraint_value, int) or isinstance(constraint_value, bool) or constraint_value < 0
+        ):
+            raise ValueError(
+                f"{contract} schema feature at {_schema_pointer(pointer, constraint)} must be a non-negative integer"
+            )
+    minimum = value.get("minimum")
+    if "minimum" in value and (not isinstance(minimum, (int, float)) or isinstance(minimum, bool)):
+        raise ValueError(f"{contract} schema feature at {_schema_pointer(pointer, 'minimum')} must be a number")
+
+    discriminator = value.get("discriminator")
+    if "discriminator" in value:
+        if not isinstance(discriminator, Mapping) or not isinstance(discriminator.get("propertyName"), str):
+            raise ValueError(
+                f"{contract} schema feature at {_schema_pointer(pointer, 'discriminator')} "
+                "must contain a string propertyName"
+            )
+        mapping = discriminator.get("mapping")
+        if mapping is not None and (
+            not isinstance(mapping, Mapping)
+            or any(not isinstance(tag, str) or not isinstance(ref_value, str) for tag, ref_value in mapping.items())
+        ):
+            raise ValueError(
+                f"{contract} schema feature at {_schema_pointer(pointer, 'discriminator')}/mapping "
+                "must map strings to schema references"
+            )
 
     additional = value.get("additionalProperties")
     if "additionalProperties" in value and not isinstance(additional, (bool, Mapping)):
         raise ValueError(
-            f"Wizard schema feature at {_schema_pointer(pointer, 'additionalProperties')} must be a boolean or schema"
+            f"{contract} schema feature at {_schema_pointer(pointer, 'additionalProperties')} "
+            "must be a boolean or schema"
         )
     properties = value.get("properties")
     if isinstance(additional, Mapping) and isinstance(properties, Mapping) and properties:
         raise ValueError(
-            "Unsupported behavior-bearing Wizard schema feature at "
+            f"Unsupported behavior-bearing {contract} schema feature at "
             f"{_schema_pointer(pointer, 'additionalProperties')}: typed extras on an object with named properties"
         )
 
@@ -405,25 +456,39 @@ def _audit_wizard_schema_features(value: object, *, pointer: str) -> None:
         if map_key not in value:
             continue
         if not isinstance(children, Mapping):
-            raise ValueError(f"Wizard schema feature at {_schema_pointer(pointer, map_key)} must be an object")
+            raise ValueError(f"{contract} schema feature at {_schema_pointer(pointer, map_key)} must be an object")
         for name, child in children.items():
             if not isinstance(name, str):
-                raise TypeError(f"Wizard schema map at {_schema_pointer(pointer, map_key)} contains a non-string key")
-            _audit_wizard_schema_features(child, pointer=_schema_pointer(_schema_pointer(pointer, map_key), name))
+                raise TypeError(
+                    f"{contract} schema map at {_schema_pointer(pointer, map_key)} contains a non-string key"
+                )
+            _audit_pydantic_schema_features(
+                child,
+                pointer=_schema_pointer(_schema_pointer(pointer, map_key), name),
+                contract=contract,
+                require_provably_disjoint_one_of=require_provably_disjoint_one_of,
+            )
 
     items = value.get("items")
     if "items" not in value:
         pass
     elif isinstance(items, Mapping):
-        _audit_wizard_schema_features(items, pointer=_schema_pointer(pointer, "items"))
+        _audit_pydantic_schema_features(
+            items,
+            pointer=_schema_pointer(pointer, "items"),
+            contract=contract,
+            require_provably_disjoint_one_of=require_provably_disjoint_one_of,
+        )
     else:
-        raise ValueError(f"Wizard schema feature at {_schema_pointer(pointer, 'items')} must be a schema")
+        raise ValueError(f"{contract} schema feature at {_schema_pointer(pointer, 'items')} must be a schema")
 
     additional_schema = value.get("additionalProperties")
     if isinstance(additional_schema, Mapping):
-        _audit_wizard_schema_features(
+        _audit_pydantic_schema_features(
             additional_schema,
             pointer=_schema_pointer(pointer, "additionalProperties"),
+            contract=contract,
+            require_provably_disjoint_one_of=require_provably_disjoint_one_of,
         )
 
     for list_key in ("allOf", "anyOf", "oneOf", "prefixItems"):
@@ -431,10 +496,12 @@ def _audit_wizard_schema_features(value: object, *, pointer: str) -> None:
         if list_key not in value:
             continue
         if not isinstance(children, list) or not children:
-            raise ValueError(f"Wizard schema feature at {_schema_pointer(pointer, list_key)} must be a non-empty list")
-        if list_key == "oneOf" and not _one_of_is_provably_disjoint(children):
             raise ValueError(
-                "Unsupported behavior-bearing Wizard schema feature at "
+                f"{contract} schema feature at {_schema_pointer(pointer, list_key)} must be a non-empty list"
+            )
+        if list_key == "oneOf" and require_provably_disjoint_one_of and not _one_of_is_provably_disjoint(children):
+            raise ValueError(
+                f"Unsupported behavior-bearing {contract} schema feature at "
                 f"{_schema_pointer(pointer, list_key)}: oneOf branches are not provably disjoint"
             )
         for index, child in enumerate(children):
@@ -443,16 +510,42 @@ def _audit_wizard_schema_features(value: object, *, pointer: str) -> None:
                 unsupported_merge_keys = {
                     key
                     for key in child
-                    if _wizard_schema_feature_state(str(key)) is _WizardSchemaFeatureState.SUPPORTED
+                    if (
+                        _wizard_schema_feature_state(str(key)) is _WizardSchemaFeatureState.SUPPORTED
+                        or (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS)
+                    )
                     and key not in {"$ref", "properties", "required", "type"}
                 }
                 if unsupported_merge_keys:
                     key = min(str(item) for item in unsupported_merge_keys)
                     raise ValueError(
-                        "Unsupported behavior-bearing Wizard schema feature at "
+                        f"Unsupported behavior-bearing {contract} schema feature at "
                         f"{_schema_pointer(child_pointer, key)}: allOf constraint merging"
                     )
-            _audit_wizard_schema_features(child, pointer=child_pointer)
+            _audit_pydantic_schema_features(
+                child,
+                pointer=child_pointer,
+                contract=contract,
+                require_provably_disjoint_one_of=require_provably_disjoint_one_of,
+            )
+
+
+def _audit_wizard_schema_features(value: object, *, pointer: str) -> None:
+    _audit_pydantic_schema_features(
+        value,
+        pointer=pointer,
+        contract="Wizard",
+        require_provably_disjoint_one_of=True,
+    )
+
+
+def _audit_dashboard_schema_features(value: object, *, pointer: str) -> None:
+    _audit_pydantic_schema_features(
+        value,
+        pointer=pointer,
+        contract="Dashboard",
+        require_provably_disjoint_one_of=False,
+    )
 
 
 def _normalize_wizard_schema(value: object, *, parent_key: str | None = None) -> JsonValue:
@@ -662,6 +755,35 @@ def build_wizard_schema_meta(spec: Mapping[str, object]) -> WizardSchemaMeta:
         "geo_layer_variants": geo_layer_variants,
         "combined_layer_variants": combined_layer_variants,
         "inventory": inventory,
+    }
+
+
+def build_dashboard_contract_meta(spec: Mapping[str, object]) -> DashboardContractMeta:
+    """Extract the focused Dashboard V2 roots and their transitive schema closure."""
+
+    schemas = _schemas(spec)
+    missing_roots = sorted(set(_DASHBOARD_V2_ROOTS) - schemas.keys())
+    if missing_roots:
+        raise ValueError(f"Dashboard V2 contract is missing roots: {missing_roots}")
+
+    reached: set[str] = set()
+    queue = list(_DASHBOARD_V2_ROOTS)
+    normalized_schemas: dict[str, JsonValue] = {}
+    while queue:
+        name = queue.pop(0)
+        if name in reached:
+            continue
+        schema = schemas.get(name)
+        if schema is None:
+            raise ValueError(f"Dashboard V2 schema graph references missing component {name!r}")
+        reached.add(name)
+        _audit_dashboard_schema_features(schema, pointer=f"/schemas/{_json_pointer_token(name)}")
+        normalized_schemas[name] = _normalize_wizard_schema(schema)
+        queue.extend(sorted(_schema_refs(schema) - reached - set(queue)))
+
+    return {
+        "roots": list(_DASHBOARD_V2_ROOTS),
+        "schemas": dict(sorted(normalized_schemas.items())),
     }
 
 
@@ -1334,10 +1456,13 @@ def _chart_meta(schemas: dict[str, dict[str, object]]) -> ChartMeta:
 
 def build_metadata(installations: dict[str, Path]) -> Metadata:
     out: Metadata = {"installations": {}}
+    dashboard_contracts: list[tuple[str, DashboardContractMeta]] = []
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
         schemas = _schemas(spec)
+        dashboard_contract = build_dashboard_contract_meta(spec)
+        dashboard_contracts.append((installation, dashboard_contract))
         connection_discriminator = _string_object_dict(
             schemas["ConnectionCreate"].get("discriminator"),
             context="ConnectionCreate.discriminator",
@@ -1385,6 +1510,14 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
             _visualization_factory_methods(sorted(wizard_structure), family="Wizard").values()
         )
         out["installations"][installation] = installation_metadata
+    if dashboard_contracts:
+        canonical_installation, canonical_dashboard = dashboard_contracts[0]
+        for installation, candidate in dashboard_contracts[1:]:
+            if candidate != canonical_dashboard:
+                raise ValueError(
+                    f"Dashboard V2 schema closure differs between {canonical_installation!r} and {installation!r}"
+                )
+        out["dashboard"] = canonical_dashboard
     editor_methods_by_wire_type: dict[str, tuple[str, str]] = {}
     for installation, info in sorted(out["installations"].items()):
         for wire_type, node_meta in sorted(info["charts"]["editor_nodes"].items()):
@@ -1435,19 +1568,25 @@ def _wizard_contract(metadata: Metadata) -> WizardContractMeta | None:
     return canonical
 
 
-class _WizardPydanticEmitter:
-    """Emit the Pydantic subset needed by Wizard document schemas."""
+class _PydanticSchemaEmitter:
+    """Emit the focused Pydantic subset shared by Wizard and Dashboard schemas."""
 
     def __init__(
         self,
         schemas: Mapping[str, JsonValue],
         *,
         read: bool,
-        open_schema_refs: frozenset[str] = frozenset(),
+        contract: str,
+        open_schema_refs: Mapping[str, str] | frozenset[str] = frozenset(),
     ) -> None:
         self._schemas = schemas
         self._read = read
-        self._open_schema_refs = open_schema_refs
+        self._contract = contract
+        self._open_schema_refs = (
+            dict(open_schema_refs)
+            if isinstance(open_schema_refs, Mapping)
+            else dict.fromkeys(open_schema_refs, "dict[str, JsonValue]")
+        )
         self._lines: list[str] = []
         self._emitted: set[str] = set()
         self._emitting: set[str] = set()
@@ -1472,11 +1611,11 @@ class _WizardPydanticEmitter:
         if name in self._emitted:
             return name
         if name in self._emitting:
-            raise ValueError(f"Recursive Wizard schema {schema_name!r} is not supported")
+            raise ValueError(f"Recursive {self._contract} schema {schema_name!r} is not supported")
         raw = self._schemas.get(schema_name)
         if raw is None:
-            raise ValueError(f"Wizard manifest references missing schema {schema_name!r}")
-        schema = self._schema_object(raw, context=f"Wizard schema {schema_name}")
+            raise ValueError(f"{self._contract} contract references missing schema {schema_name!r}")
+        schema = self._schema_object(raw, context=f"{self._contract} schema {schema_name}")
         self._emitting.add(name)
         annotation = self._annotation(schema, path=(schema_name,), preferred_name=name)
         if annotation != name:
@@ -1497,7 +1636,7 @@ class _WizardPydanticEmitter:
         if isinstance(ref, str):
             schema_name = _ref_name(ref)
             if schema_name in self._open_schema_refs:
-                return "dict[str, JsonValue]"
+                return self._open_schema_refs[schema_name]
             return self._emit_named(schema_name)
 
         enum = schema.get("enum")
@@ -1507,14 +1646,72 @@ class _WizardPydanticEmitter:
         for union_key in ("oneOf", "anyOf"):
             branches = schema.get(union_key)
             if isinstance(branches, list):
-                annotations = [
-                    self._annotation(
-                        self._schema_object(branch, context=f"{'.'.join(path)}.{union_key}[{index}]"),
-                        path=(*path, f"{union_key}{index}"),
-                    )
+                branch_schemas = [
+                    self._schema_object(branch, context=f"{'.'.join(path)}.{union_key}[{index}]")
                     for index, branch in enumerate(branches)
                 ]
-                return " | ".join(dict.fromkeys(annotations))
+                constrained_nullable_index: int | None = None
+                if union_key == "anyOf":
+                    non_null_indices = [
+                        index
+                        for index, branch_schema in enumerate(branch_schemas)
+                        if branch_schema.get("type") != "null"
+                    ]
+                    if (
+                        len(non_null_indices) == 1
+                        and all(
+                            index == non_null_indices[0] or branch_schema.get("type") == "null"
+                            for index, branch_schema in enumerate(branch_schemas)
+                        )
+                        and any(
+                            key in branch_schemas[non_null_indices[0]] for key in ("minItems", "minLength", "minimum")
+                        )
+                    ):
+                        constrained_nullable_index = non_null_indices[0]
+
+                annotations: list[str] = []
+                constrained_nullable_schema: dict[str, JsonValue] | None = None
+                for index, branch_schema in enumerate(branch_schemas):
+                    emitted_schema = branch_schema
+                    if index == constrained_nullable_index:
+                        constrained_nullable_schema = branch_schema
+                        emitted_schema = {
+                            key: value
+                            for key, value in branch_schema.items()
+                            if key not in {"minItems", "minLength", "minimum"}
+                        }
+                    annotations.append(
+                        self._annotation(
+                            emitted_schema,
+                            path=(*path, f"{union_key}{index}"),
+                        )
+                    )
+                annotation = " | ".join(dict.fromkeys(annotations))
+                if constrained_nullable_schema is not None:
+                    constrained_type = constrained_nullable_schema.get("type")
+                    if constrained_type == "string":
+                        annotation = self._with_constraints(
+                            annotation,
+                            constrained_nullable_schema,
+                            length_key="minLength",
+                        )
+                    elif constrained_type == "array":
+                        annotation = self._with_constraints(
+                            annotation,
+                            constrained_nullable_schema,
+                            length_key="minItems",
+                        )
+                    elif constrained_type in {"integer", "number"}:
+                        annotation = self._with_constraints(annotation, constrained_nullable_schema, minimum=True)
+                discriminator = schema.get("discriminator")
+                discriminator_property = discriminator.get("propertyName") if isinstance(discriminator, dict) else None
+                # Pydantic 2.0 cannot reuse a discriminated type alias inside nested models.
+                # Dashboard variants already carry disjoint Literal tags, so their plain union
+                # preserves validation semantics across the supported Pydantic range.
+                if isinstance(discriminator_property, str) and self._contract != "Dashboard":
+                    property_name = _wizard_python_field_name(discriminator_property)
+                    return f"Annotated[{annotation}, Field(discriminator={property_name!r})]"
+                return annotation
 
         if isinstance(schema.get("allOf"), list):
             variants = self._all_of_variants(schema, context=".".join(path), seen=frozenset())
@@ -1542,11 +1739,11 @@ class _WizardPydanticEmitter:
             return " | ".join(dict.fromkeys(annotations)) or "JsonValue"
 
         if raw_type == "string":
-            return "str"
+            return self._with_constraints("str", schema, length_key="minLength")
         if raw_type == "integer":
-            return "int"
+            return self._with_constraints("int", schema, minimum=True)
         if raw_type == "number":
-            return "float"
+            return self._with_constraints("float", schema, minimum=True)
         if raw_type == "boolean":
             return "bool"
         if raw_type == "null":
@@ -1561,10 +1758,11 @@ class _WizardPydanticEmitter:
                     )
                     for index, item in enumerate(prefix_items)
                 ]
-                return f"Annotated[tuple[{', '.join(annotations)}], BeforeValidator(_json_array_to_tuple)]"
+                annotation = f"Annotated[tuple[{', '.join(annotations)}], BeforeValidator(_json_array_to_tuple)]"
+                return self._with_constraints(annotation, schema, length_key="minItems")
             items = schema.get("items")
             item_annotation = self._annotation(items, path=(*path, "item")) if isinstance(items, dict) else "JsonValue"
-            return f"list[{item_annotation}]"
+            return self._with_constraints(f"list[{item_annotation}]", schema, length_key="minItems")
 
         properties = schema.get("properties")
         if raw_type == "object" or isinstance(properties, dict):
@@ -1581,11 +1779,39 @@ class _WizardPydanticEmitter:
 
         return "JsonValue"
 
+    @staticmethod
+    def _with_constraints(
+        annotation: str,
+        schema: Mapping[str, JsonValue],
+        *,
+        length_key: str | None = None,
+        minimum: bool = False,
+    ) -> str:
+        constraints: list[str] = []
+        if length_key is not None and isinstance(schema.get(length_key), int):
+            constraints.append(f"min_length={schema[length_key]!r}")
+        if minimum and isinstance(schema.get("minimum"), (int, float)):
+            constraints.append(f"ge={schema['minimum']!r}")
+        if not constraints:
+            return annotation
+        return f"Annotated[{annotation}, Field({', '.join(constraints)})]"
+
     def _object_extra(self, schema: Mapping[str, JsonValue]) -> str:
         if self._read:
             return "ignore"
         additional = schema.get("additionalProperties")
         return "allow" if additional is True or isinstance(additional, dict) else "forbid"
+
+    @staticmethod
+    def _embed_field_alias(annotation: str, alias: str) -> tuple[str, bool]:
+        if not annotation.startswith("Annotated["):
+            return annotation, False
+        head, marker, tail = annotation.rpartition(", Field(")
+        if not marker or not tail.endswith(")]"):
+            return annotation, False
+        field_args = tail[:-2]
+        separator = ", " if field_args else ""
+        return f"{head}{marker}{field_args}{separator}alias={alias!r})]", True
 
     def _emit_object(
         self,
@@ -1604,7 +1830,7 @@ class _WizardPydanticEmitter:
         previous = self._definitions.get(name)
         if previous is not None:
             if previous != canonical:
-                raise ValueError(f"Wizard inline model name collision for {name}")
+                raise ValueError(f"{self._contract} inline model name collision for {name}")
             return name
         self._definitions[name] = canonical
 
@@ -1615,13 +1841,16 @@ class _WizardPydanticEmitter:
             {value for value in required_value if isinstance(value, str)} if isinstance(required_value, list) else set()
         )
 
-        fields: list[tuple[str, str, str, bool]] = []
+        fields: list[tuple[str, str, str, bool, bool]] = []
         for wire_name, raw_field_schema in sorted(properties.items()):
             if not isinstance(raw_field_schema, dict):
-                raise TypeError(f"Wizard schema {'.'.join(path)}.{wire_name} must be an object")
+                raise TypeError(f"{self._contract} schema {'.'.join(path)}.{wire_name} must be an object")
             python_name = _wizard_python_field_name(wire_name)
             annotation = self._annotation(raw_field_schema, path=(*path, wire_name))
-            fields.append((python_name, wire_name, annotation, wire_name in required))
+            alias_in_annotation = False
+            if python_name != wire_name:
+                annotation, alias_in_annotation = self._embed_field_alias(annotation, wire_name)
+            fields.append((python_name, wire_name, annotation, wire_name in required, alias_in_annotation))
 
         extra = self._object_extra(schema)
         self._lines.append(f"class {name}(BaseModel):")
@@ -1629,8 +1858,12 @@ class _WizardPydanticEmitter:
         self._lines.append("")
         if not fields:
             self._lines.append("    pass")
-        for python_name, wire_name, annotation, is_required in fields:
-            alias = f" = Field(alias={wire_name!r})" if python_name != wire_name and is_required else ""
+        for python_name, wire_name, annotation, is_required, alias_in_annotation in fields:
+            alias = (
+                f" = Field(alias={wire_name!r})"
+                if python_name != wire_name and is_required and not alias_in_annotation
+                else ""
+            )
             if is_required:
                 self._lines.append(f"    {python_name}: {annotation}{alias}")
                 continue
@@ -1638,9 +1871,13 @@ class _WizardPydanticEmitter:
             # None is validated against the annotation. Its Any annotation preserves that runtime
             # distinction without making the generated field annotation nullable.
             if python_name != wire_name:
-                self._lines.append(
-                    f"    {python_name}: {annotation} = Field(default=_UNVALIDATED_NONE_DEFAULT, alias={wire_name!r})"
-                )
+                if alias_in_annotation:
+                    self._lines.append(f"    {python_name}: {annotation} = _UNVALIDATED_NONE_DEFAULT")
+                else:
+                    self._lines.append(
+                        f"    {python_name}: {annotation} = "
+                        f"Field(default=_UNVALIDATED_NONE_DEFAULT, alias={wire_name!r})"
+                    )
             else:
                 self._lines.append(f"    {python_name}: {annotation} = _UNVALIDATED_NONE_DEFAULT")
         self._lines.append("")
@@ -1659,12 +1896,12 @@ class _WizardPydanticEmitter:
         if isinstance(ref, str):
             schema_name = _ref_name(ref)
             if schema_name in seen:
-                raise ValueError(f"Recursive Wizard allOf schema {schema_name!r} is not supported")
+                raise ValueError(f"Recursive {self._contract} allOf schema {schema_name!r} is not supported")
             raw = self._schemas.get(schema_name)
             if raw is None:
-                raise ValueError(f"Wizard manifest references missing schema {schema_name!r}")
+                raise ValueError(f"{self._contract} contract references missing schema {schema_name!r}")
             return self._object_variants(
-                self._schema_object(raw, context=f"Wizard schema {schema_name}"),
+                self._schema_object(raw, context=f"{self._contract} schema {schema_name}"),
                 context=schema_name,
                 seen=seen | {schema_name},
             )
@@ -1685,7 +1922,7 @@ class _WizardPydanticEmitter:
             return self._all_of_variants(schema, context=context, seen=seen)
         if schema.get("type") == "object" or isinstance(schema.get("properties"), dict):
             return [schema]
-        raise ValueError(f"Wizard allOf member {context} is not an object schema")
+        raise ValueError(f"{self._contract} allOf member {context} is not an object schema")
 
     def _all_of_variants(
         self,
@@ -1775,10 +2012,15 @@ def _emit_wizard_dto(metadata: Metadata) -> str:
             if result_schema is not None:
                 result_schemas.add(result_schema)
         update_request_schema = manifest["routes"]["/rpc/updateWizardChart"]["request_schema"]
-        strict_models = _WizardPydanticEmitter(manifest["schemas"], read=False).emit(request_schemas)
-        read_models = _WizardPydanticEmitter(
+        strict_models = _PydanticSchemaEmitter(
+            manifest["schemas"],
+            read=False,
+            contract="Wizard",
+        ).emit(request_schemas)
+        read_models = _PydanticSchemaEmitter(
             manifest["schemas"],
             read=True,
+            contract="Wizard",
             open_schema_refs=frozenset({"WizardV1ConfigSchema"}),
         ).emit((*result_schemas, update_request_schema, "WizardV1ConfigSchema"))
         create_request_dto = manifest["routes"]["/rpc/createWizardChart"]["request_dto"]
@@ -2445,14 +2687,57 @@ class EntryRelationsResultDTO(BaseModel):
 """
 
 
-def _emit_dashboard_dto() -> str:
-    return """
+def _emit_dashboard_dto(metadata: Metadata) -> str:
+    contract = metadata.get("dashboard")
+    if contract is None:
+        return ""
+
+    schemas = contract["schemas"]
+    create_models = _PydanticSchemaEmitter(
+        schemas,
+        read=False,
+        contract="Dashboard",
+        open_schema_refs={"EntryAnnotationArg": "EntryAnnotationArgDTO"},
+    ).emit(("CreateDashboardV2Args",))
+    update_models = _PydanticSchemaEmitter(
+        schemas,
+        read=False,
+        contract="Dashboard",
+        open_schema_refs={
+            "DashDataV2": "dict[str, JsonValue]",
+            "DashMetaV2": "dict[str, JsonValue] | None",
+            "EntryAnnotationArg": "dict[str, JsonValue]",
+            "EntryUpdateMode": "EntryUpdateModeDTO",
+        },
+    ).emit(("UpdateDashboardV2Args",))
+    args_models = _PydanticSchemaEmitter(
+        schemas,
+        read=False,
+        contract="Dashboard",
+        open_schema_refs={"EntryBranch": "EntryBranchDTO"},
+    ).emit(("DeleteDashboardArgs", "GetDashboardV2Args"))
+    read_models = _PydanticSchemaEmitter(
+        schemas,
+        read=True,
+        contract="Dashboard",
+        open_schema_refs={
+            "DashboardV2": "dict[str, JsonValue]",
+            "EntryPermissions": "dict[str, JsonValue]",
+        },
+    ).emit(("GetDashboardV2Result",))
+
+    return f"""
+
+{create_models}
+{update_models}
+{args_models}
+{read_models}
 
 class DashboardCreateDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
     data: Mapping[str, object]
-    # Required but nullable by the DashboardMeta schema: "meta": null must serialize.
+    # Required but nullable by the DashMetaV2 schema: "meta": null must serialize.
     meta: Mapping[str, object] | None
     key: str | None = None
     name: str | None = None
@@ -2460,10 +2745,10 @@ class DashboardCreateDTO(BaseModel):
     annotation: Mapping[str, object] | None = None
 
     def to_payload(self) -> dict[str, object]:
-        entry: dict[str, object] = {
+        entry: dict[str, object] = {{
             "data": dict(self.data),
             "meta": None if self.meta is None else dict(self.meta),
-        }
+        }}
         if self.annotation is not None:
             entry["annotation"] = dict(self.annotation)
         if self.key is not None:
@@ -2472,15 +2757,16 @@ class DashboardCreateDTO(BaseModel):
             entry["name"] = self.name
         if self.workbook_id is not None:
             entry["workbookId"] = self.workbook_id
-        return {"entry": entry}
+        model = CreateDashboardV2ArgsDTO.model_validate({{"entry": entry}})
+        return model.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
 
 class DashboardUpdateDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
     entry_id: str = Field(serialization_alias="entryId")
     data: Mapping[str, object]
-    # Required but nullable by the DashboardMeta schema: "meta": null must serialize.
+    # Required but nullable by the DashMetaV2 schema: "meta": null must serialize.
     meta: Mapping[str, object] | None
     mode: Literal["save", "publish"]
     rev_id: str | None = Field(default=None, serialization_alias="revId")
@@ -2488,18 +2774,19 @@ class DashboardUpdateDTO(BaseModel):
     annotation: Mapping[str, object] | None = None
 
     def to_payload(self) -> dict[str, object]:
-        entry: dict[str, object] = {
+        entry: dict[str, object] = {{
             "entryId": self.entry_id,
             "data": dict(self.data),
             "meta": None if self.meta is None else dict(self.meta),
-        }
+        }}
         if self.annotation is not None:
             entry["annotation"] = dict(self.annotation)
         if self.rev_id is not None:
             entry["revId"] = self.rev_id
-        payload: dict[str, object] = {"entry": entry, "mode": self.mode}
+        payload: dict[str, object] = {{"entry": entry, "mode": self.mode}}
         if self.lock_token is not None:
             payload["lockToken"] = self.lock_token
+        UpdateDashboardV2ArgsDTO.model_validate(payload)
         return payload
 
 
@@ -2520,12 +2807,12 @@ class DashboardReadDTO(BaseModel):
     @classmethod
     def _capture_raw(cls, value: object) -> object:
         if isinstance(value, dict) and "raw" not in value:
-            return {**value, "raw": value}
+            return {{**value, "raw": value}}
         return value
 
 
 class DashboardGetArgsDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
     dashboard_id: str = Field(serialization_alias="dashboardId")
     workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
@@ -2536,33 +2823,21 @@ class DashboardGetArgsDTO(BaseModel):
     include_permissions: bool | None = Field(default=None, serialization_alias="includePermissions")
 
     def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {"dashboardId": self.dashboard_id}
-        if self.workbook_id is not None:
-            payload["workbookId"] = self.workbook_id
-        if self.rev_id is not None:
-            payload["revId"] = self.rev_id
-        if self.branch is not None:
-            payload["branch"] = self.branch
-        if self.include_favorite is not None:
-            payload["includeFavorite"] = self.include_favorite
-        if self.include_links is not None:
-            payload["includeLinks"] = self.include_links
-        if self.include_permissions is not None:
-            payload["includePermissions"] = self.include_permissions
-        return payload
+        payload = self.model_dump(mode="json", by_alias=True, exclude_none=True)
+        model = GetDashboardV2ArgsDTO.model_validate(payload)
+        return model.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
 
 class DashboardDeleteArgsDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
     dashboard_id: str = Field(serialization_alias="dashboardId")
     lock_token: str | None = Field(default=None, serialization_alias="lockToken")
 
     def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {"dashboardId": self.dashboard_id}
-        if self.lock_token is not None:
-            payload["lockToken"] = self.lock_token
-        return payload
+        payload = self.model_dump(mode="json", by_alias=True, exclude_none=True)
+        model = DeleteDashboardArgsDTO.model_validate(payload)
+        return model.model_dump(mode="json", by_alias=True, exclude_unset=True)
 """
 
 
@@ -2576,7 +2851,7 @@ def emit_dto(metadata: Metadata) -> str:
     }
     sources = {name: sorted(info["dataset_sources"]) for name, info in sorted(installations.items())}
     chart_dto_block = _emit_chart_dto(metadata)
-    dashboard_dto_block = _emit_dashboard_dto()
+    dashboard_dto_block = _emit_dashboard_dto(metadata)
     navigation_dto_block = _emit_navigation_dto()
     return f"""# AUTOGENERATED by scripts/generate_sdk.py. Do not edit by hand.
 # ruff: noqa
@@ -3859,7 +4134,8 @@ def write_outputs(output_root: Path, metadata: Metadata) -> None:
     builders.mkdir(parents=True, exist_ok=True)
     (generated / "__init__.py").write_text("")
     (builders / "__init__.py").write_text("")
-    (generated / "installations.json").write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n")
+    persisted_metadata = {"installations": metadata["installations"]}
+    (generated / "installations.json").write_text(json.dumps(persisted_metadata, indent=2, sort_keys=True) + "\n")
     (generated / "dto.py").write_text(emit_dto(metadata))
     for installation, info in metadata["installations"].items():
         (builders / f"{installation}.py").write_text(emit_builder_module(installation, info))

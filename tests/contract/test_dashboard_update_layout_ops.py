@@ -64,7 +64,7 @@ def _tab(
 
 
 def _dashboard(tabs: list[dict[str, object]]) -> Dashboard:
-    data: dict[str, object] = {"counter": 1, "salt": "s", "schemeVersion": 8, "settings": {}, "tabs": tabs}
+    data: dict[str, object] = {"counter": 1, "salt": "s", "settings": {}, "tabs": tabs}
     return Dashboard(id="d", installation="yacloud", data=data, raw={"entryId": "d", "data": data})
 
 

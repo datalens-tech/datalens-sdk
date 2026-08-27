@@ -30,6 +30,7 @@ from datalens_sdk.serialization.json_types import JsonValue
 def _dashboard_snapshot() -> dict[str, JsonValue]:
     return {
         "entry": {
+            "version": 2,
             "entryId": "dashboard-1",
             "key": "/Dash",
             "data": {

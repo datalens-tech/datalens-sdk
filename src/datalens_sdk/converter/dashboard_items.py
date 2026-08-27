@@ -30,7 +30,10 @@ _ITEM_NAMESPACE_VALUE = "default"
 def _wire_color(value: str | ThemedColor) -> object:
     if isinstance(value, ThemedColor):
         return {"light": value.light, "dark": value.dark}
-    return value
+    # Ordinary Dashboard V2 tab items require theme-aware colors. Dashboard,
+    # control, and group-control contexts that still accept strings do not use
+    # this item-only helper.
+    return {"light": value, "dark": value}
 
 
 def _apply_styling(

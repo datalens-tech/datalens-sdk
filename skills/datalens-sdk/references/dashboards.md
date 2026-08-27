@@ -102,8 +102,8 @@ Default sizes per item type — `datalens_sdk.DEFAULT_ITEM_SIZES`:
 | `text` | (12, 6) |
 | `widget` (chart / chart group) | (12, 12) |
 | `image` | (12, 12) |
-| `control` (external selector) | (2, 2) |
-| `group_control` (selectors) | (36, 2) |
+| `control` (standalone/external selector) | (9, 2) |
+| `group_control` (assembled selector group) | (36, 2) |
 
 ### Reposition after adding: `apply_layout` + `Layout`
 
@@ -260,6 +260,7 @@ overview = (
     DashboardTab("Overview")
     .add_title("Ride metrics", item_id="hdr", show_in_toc=True, pinned="fixed")
     .add_selector(item_id="flt_date", dataset=ds, field=ds.fields.by_name("Date"), show_on_tabs="all")
+    .start_row()  # author the next auto item at x=0 on the following row
     .add_chart(trips_chart, item_id="trips", description="Daily trips")  # 12x12, auto-flow
     .add_chart_group(
         [

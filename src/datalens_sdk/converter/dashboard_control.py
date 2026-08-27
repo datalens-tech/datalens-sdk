@@ -110,10 +110,15 @@ def _member_source_wire(member: SelectorMemberSpec) -> tuple[str, str, str, dict
                 "datasetId": spec.dataset_id,
                 "datasetFieldId": spec.field_guid,
                 "datasetFieldType": spec.dataset_field_type,
-                "fieldType": spec.field_type,
                 "elementType": spec.element,
             }
         )
+        # Dashboard V2 no longer accepts the legacy ``datetime`` enum value.
+        # Keep it as the interval-encoding signal returned from this helper,
+        # but omit it from the wire. ``genericdatetime`` and ``datetimetz``
+        # are distinct V2 values and remain explicit.
+        if spec.field_type != "datetime":
+            source["fieldType"] = spec.field_type
     elif isinstance(spec, ManualSelectorSource):
         source_type = "manual"
         defaults_key = spec.param_name
@@ -204,16 +209,7 @@ def _group_control_data(item: GroupControlItem) -> dict[str, object]:
     }
     group_impact = _impact_fields(item.show_on_tabs)
     if group_impact:
-        if len(members_wire) == 1:
-            # single-member quirk: impact fields live in data.group[0], not
-            # data — otherwise the UI hides the group settings dialog. A member
-            # with its own explicit ``affects`` already occupies group[0]; only
-            # fall back to the group scope when it did not (avoids leaving a
-            # stale impactTabsIds behind a bare dict.update override).
-            if "impactType" not in members_wire[0]:
-                members_wire[0].update(group_impact)
-        else:
-            data.update(group_impact)
+        data.update(group_impact)
     if item.border_radius is not None:
         data["borderRadius"] = item.border_radius
     return data

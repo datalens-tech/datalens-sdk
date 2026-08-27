@@ -60,8 +60,9 @@ def test_empty_update_applies_to_verbatim_data(path: Path) -> None:
     # named load-bearing keys survive untouched
     data = cast(dict[str, object], entry["data"])
     assert applied["salt"] == data["salt"]
-    assert applied["schemeVersion"] == data["schemeVersion"]
     assert applied["counter"] == data["counter"]
+    assert "schemeVersion" not in applied
+    assert "description" not in applied
 
 
 def test_applied_result_is_isolated_from_snapshot() -> None:
@@ -85,6 +86,22 @@ def test_settings_patch_preserves_unknown_keys_and_sets_values() -> None:
     assert applied_settings["hideTabs"] is True
     assert applied_settings["maxConcurrentRequests"] == 3
     assert applied_settings["someFutureFlag"] == "keep-me"
+
+
+def test_noop_and_targeted_update_preserve_unknown_sibling_fields() -> None:
+    entry = _load_entry(_FIXTURES_DIR / "simple.json")
+    data = cast(dict[str, object], entry["data"])
+    data["futureDashboardState"] = {"nested": [1, {"kept": True}]}
+    tabs = cast(list[dict[str, object]], data["tabs"])
+    tabs[0]["futureTabState"] = {"also": "kept"}
+
+    dashboard = _dashboard_from(entry)
+    assert _apply_update(dashboard.update.to_spec()) == data
+
+    updated = _apply_update(dashboard.update.hide_tab(cast(str, tabs[0]["id"])).to_spec())
+    assert updated["futureDashboardState"] == data["futureDashboardState"]
+    updated_tabs = cast(list[dict[str, object]], updated["tabs"])
+    assert updated_tabs[0]["futureTabState"] == tabs[0]["futureTabState"]
 
 
 def test_settings_clear_resets_to_canon() -> None:
@@ -155,13 +172,14 @@ def test_description_tri_state() -> None:
     untouched = _apply_update(_dashboard_from(entry).update.to_spec())
     assert untouched["accessDescription"] == "old access"
 
-    # "" -> cleared via key removal (live-verified true clearing form, P0.1)
+    # access/support remain data fields; the primary description is now an
+    # annotation update and the opaque legacy data field stays verbatim.
     cleared = _apply_update(
         _dashboard_from(entry).update.access_description("").support_description("").description("").to_spec()
     )
     assert "accessDescription" not in cleared
     assert "supportDescription" not in cleared
-    assert "description" not in cleared
+    assert cleared["description"] == "old description"
 
     # value -> set
     updated = _apply_update(_dashboard_from(entry).update.access_description("new access").to_spec())
@@ -228,7 +246,7 @@ def _alias_stand() -> Dashboard:
             "aliases": {"default": [["field_a", "field_b"], ["field_b", "field_x", "field_a"]]},
         }
     ]
-    data: dict[str, object] = {"counter": 1, "salt": "s", "schemeVersion": 8, "settings": {}, "tabs": tabs}
+    data: dict[str, object] = {"counter": 1, "salt": "s", "settings": {}, "tabs": tabs}
     return Dashboard(id="dash-1", installation="yacloud", data=data, raw={"entryId": "dash-1", "data": data})
 
 
@@ -422,7 +440,7 @@ def test_update_selector_rejects_element_incompatible_defaults_on_apply() -> Non
         _apply_update(interval_update.to_spec())
 
 
-def test_remove_member_shrinking_shared_group_to_one_moves_impact_into_member() -> None:
+def test_remove_member_shrinking_shared_group_keeps_group_impact() -> None:
     dashboard = _alias_stand()
     shared_group: dict[str, object] = {
         "id": "g_sh",
@@ -470,6 +488,5 @@ def test_remove_member_shrinking_shared_group_to_one_moves_impact_into_member() 
     item_data = _as_dict(item["data"])
     group = cast("list[dict[str, object]]", item_data["group"])
     assert len(group) == 1
-    # single-member quirk: the impact fields moved into data.group[0]
-    assert "impactType" not in item_data
-    assert group[0]["impactType"] == "allTabs"
+    assert item_data["impactType"] == "allTabs"
+    assert "impactType" not in group[0]

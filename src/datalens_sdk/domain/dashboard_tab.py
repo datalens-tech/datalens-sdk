@@ -34,7 +34,6 @@ from datalens_sdk.domain.dashboard_tab_layout import apply_layout as _apply_pend
 from datalens_sdk.domain.dashboard_tab_selectors import (
     _derived_selector_title,
     _normalized_show_on_tabs,
-    _reject_conflicting_singleton_scope,
     _resolved_selector_source,
     _validated_member_scope,
     _validated_selector_default,
@@ -534,7 +533,6 @@ class DashboardTab(TabLayoutFlow):
             )
         wrapper_id = self._validated_item_id(item_id)
         group_show_on_tabs = _normalized_show_on_tabs(show_on_tabs)
-        _reject_conflicting_singleton_scope(members, group_show_on_tabs)
         effective_auto_height = auto_height if auto_height is not None else (at is None)
         wrapper = GroupControlItem(
             id=_PENDING_ID,

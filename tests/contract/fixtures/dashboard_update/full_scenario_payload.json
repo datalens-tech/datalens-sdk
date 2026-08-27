@@ -4,7 +4,6 @@
     "data": {
       "counter": 35,
       "salt": "0.8381110385971706",
-      "schemeVersion": 8,
       "settings": {
         "autoupdateInterval": null,
         "dependentSelectors": true,
@@ -429,7 +428,10 @@
                   }
                 ],
                 "backgroundSettings": {
-                  "color": "#11223344"
+                  "color": {
+                    "light": "#11223344",
+                    "dark": "#11223344"
+                  }
                 }
               }
             }
@@ -582,14 +584,13 @@
           "hidden": true
         }
       ],
-      "description": "Updated by the golden scenario",
       "supportDescription": "New support text"
     },
     "meta": {
       "is_release": true
     },
     "annotation": {
-      "description": ""
+      "description": "Updated by the golden scenario"
     }
   },
   "mode": "publish"

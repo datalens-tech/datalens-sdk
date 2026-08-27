@@ -80,38 +80,24 @@ def _iter_mappings_or_lists(value: object) -> list[object]:
 
 def _display_pinned_to_current_tabs(item: Mapping[str, object], tab_ids: set[object]) -> bool:
     """True when the item's DISPLAY scope is an explicit tab list (it must not
-    follow new tabs). Group-level ``data.impactType == "selectedTabs"`` is
-    unambiguous. In the single-member quirk the ``data.group[0]`` slot holds
-    either the group's display pin or the member's influence — treat it as a
-    display pin only when its tab list covers the whole current tab set (the
-    shape this SDK emits for ``show_on_tabs=(all current tabs)``; a SUPERSET is
-    the same pin with the trace of a removed tab — ``remove_tab`` does not
-    rewrite ``impactTabsIds``, and this SDK never emits a member influence
-    listing every tab in a singleton, ``_reject_conflicting_singleton_scope``)."""
+    follow new tabs). Dashboard V2 keeps display scope on the group itself;
+    member-level impact fields only describe that member's influence."""
+    del tab_ids
     item_data = _mapping_or_none(item.get("data"))
     if item_data is None:
         return False
-    if item_data.get("impactType") == "selectedTabs":
-        return True
-    group = _iter_mappings(item_data.get("group"))
-    if len(group) == 1:
-        slot = group[0]
-        ids = slot.get("impactTabsIds")
-        if slot.get("impactType") == "selectedTabs" and isinstance(ids, list) and set(ids) >= tab_ids:
-            return True
-    return False
+    return item_data.get("impactType") == "selectedTabs"
 
 
 def _shared_ids_displayed_on_all_tabs(tabs: Sequence[Mapping[str, object]]) -> list[str]:
     """Ids of shared items a freshly added tab inherits, in first-seen order.
 
     DISPLAY on the wire is globalItems membership — a selector shows on all tabs
-    iff EVERY existing tab carries it. ``impactType`` is INFLUENCE and must not
-    drive this decision: in the single-member quirk the ``data.group[0]`` slot
-    may hold the member's ``affects`` scope, which says nothing about display.
-    Explicit ``selectedTabs`` display pins stay pinned to their list. This is
-    the single source of truth for the decision, shared by the update builder's
-    shadow index and the converter applier (they must never diverge)."""
+    iff EVERY existing tab carries it. Member ``impactType`` is influence and
+    must not drive this decision. Explicit group-level ``selectedTabs`` display
+    pins stay pinned to their list. This is the single source of truth for the
+    decision, shared by the update builder's shadow index and the converter
+    applier (they must never diverge)."""
     if not tabs:
         return []
     tab_ids = {tab.get("id") for tab in tabs}

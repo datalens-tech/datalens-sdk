@@ -30,6 +30,7 @@ from datalens_sdk.converter.dashboard_apply_layout import (
     _overlap_pairs,
     _resolve_auto_layout,
 )
+from datalens_sdk.converter.dashboard_contract import DashboardGeneratedContract
 from datalens_sdk.converter.dashboard_control import (
     _drop_dangling_aliases,
     _prefixed_defaults_wire,
@@ -105,6 +106,41 @@ _SETTINGS_WIRE_KEYS: dict[str, str] = {
     "max_concurrent_requests": "maxConcurrentRequests",
     "load_priority": "loadPriority",
 }
+
+
+def _serialize_tab(
+    contract: DashboardGeneratedContract | None,
+    value: dict[str, object],
+) -> dict[str, object]:
+    return value if contract is None else contract.serialize_tab(value)
+
+
+def _serialize_item(
+    contract: DashboardGeneratedContract | None,
+    value: dict[str, object],
+) -> dict[str, object]:
+    return value if contract is None else contract.serialize_item(value)
+
+
+def _serialize_layout(
+    contract: DashboardGeneratedContract | None,
+    value: dict[str, object],
+) -> dict[str, object]:
+    return value if contract is None else contract.serialize_layout(value)
+
+
+def _serialize_connection(
+    contract: DashboardGeneratedContract | None,
+    value: dict[str, object],
+) -> dict[str, object]:
+    return value if contract is None else contract.serialize_connection(value)
+
+
+def _serialize_alias(
+    contract: DashboardGeneratedContract | None,
+    fields: tuple[str, ...],
+) -> list[str]:
+    return list(fields) if contract is None else contract.serialize_alias(fields)
 
 
 def _apply_global_params(data: dict[str, object], op: GlobalParamsOp) -> None:
@@ -341,20 +377,28 @@ def _validate_merged_tab(tab: dict[str, object]) -> None:
         )
 
 
-def _apply_add_connection(data: dict[str, object], op: AddConnectionOp) -> None:
+def _apply_add_connection(
+    data: dict[str, object],
+    op: AddConnectionOp,
+    contract: DashboardGeneratedContract | None,
+) -> None:
     tab = _find_tab(data, op.tab_id)
     connections = tab.get("connections")
     if not isinstance(connections, list):
         raise DataLensValidationError(f"Tab {op.tab_id!r} connections is not a list")
-    edge = {"from": op.from_id, "to": op.to_id, "kind": "ignore"}
+    edge: dict[str, object] = {"from": op.from_id, "to": op.to_id, "kind": "ignore"}
     if not any(
         isinstance(entry, dict) and entry.get("from") == op.from_id and entry.get("to") == op.to_id
         for entry in connections
     ):
-        connections.append(edge)
+        connections.append(_serialize_connection(contract, edge))
 
 
-def _apply_add_alias(data: dict[str, object], op: AddAliasOp) -> None:
+def _apply_add_alias(
+    data: dict[str, object],
+    op: AddAliasOp,
+    contract: DashboardGeneratedContract | None,
+) -> None:
     tab = _find_tab(data, op.tab_id)
     aliases = tab.get("aliases")
     if not isinstance(aliases, dict):
@@ -366,7 +410,7 @@ def _apply_add_alias(data: dict[str, object], op: AddAliasOp) -> None:
     if not any(
         isinstance(entry, list) and {value for value in entry if isinstance(value, str)} == wanted for entry in default
     ):
-        default.append(list(op.fields))
+        default.append(_serialize_alias(contract, op.fields))
 
 
 def _inherited_shared_items(data: dict[str, object], *, exclude: dict[str, object] | None = None) -> list[str]:
@@ -442,7 +486,12 @@ def _existing_all_tabs_layout(data: dict[str, object]) -> list[object]:
     return entries
 
 
-def _apply_add_tab(data: dict[str, object], op: AddTabOp, affected: set[tuple[str, str]]) -> None:
+def _apply_add_tab(
+    data: dict[str, object],
+    op: AddTabOp,
+    affected: set[tuple[str, str]],
+    contract: DashboardGeneratedContract | None,
+) -> None:
     tabs = data.get("tabs")
     if not isinstance(tabs, list):
         raise DataLensValidationError("Dashboard data tabs is not a list; cannot append a tab")
@@ -454,7 +503,9 @@ def _apply_add_tab(data: dict[str, object], op: AddTabOp, affected: set[tuple[st
     resolved_tab = replace(op.tab, layout=resolved_layout)
     _validate_grid(resolved_tab)
     _validate_items_layout_bijection(resolved_tab)
-    wire = _wire_tab(resolved_tab)
+    # Serialize the entirely SDK-owned tab before inherited raw globalItems
+    # and layout fragments are spliced in below.
+    wire = _serialize_tab(contract, _wire_tab(resolved_tab))
     tabs.append(wire)
     _validate_member_affects_targets(resolved_tab.items, data)
     # pull the document's existing all-tabs selectors INTO the new tab FIRST, so
@@ -475,6 +526,7 @@ def _apply_add_tab(data: dict[str, object], op: AddTabOp, affected: set[tuple[st
                 item,
                 orig_spec_by_item[item.id],
                 affected,
+                contract,
                 source_entry=resolved_by_item[item.id],
             )
     # a freshly added tab has no create-side overlap check: mark every item it
@@ -490,6 +542,7 @@ def _propagate_shared_group(
     item: object,
     layout_spec: LayoutItemSpec | AutoLayoutItemSpec,
     affected: set[tuple[str, str]],
+    contract: DashboardGeneratedContract | None,
     *,
     source_entry: LayoutItemSpec | None = None,
 ) -> None:
@@ -510,7 +563,7 @@ def _propagate_shared_group(
         unknown = sorted(set(targets) - set(known_ids))
         if unknown:
             raise DataLensValidationError(f"Selector {item.id!r} show_on_tabs references unknown tab ids {unknown!r}")
-    item_wire = _wire_item(staged, item)
+    item_wire = _serialize_item(contract, _wire_item(staged, item))
     for tab in tabs:
         if tab.get("id") not in targets:
             continue
@@ -527,7 +580,7 @@ def _propagate_shared_group(
             # resolve the position against THIS tab's content (a no-op for a concrete spec)
             (resolved_entry,) = _resolve_auto_layout((layout_spec,), layout)
         global_items.append(json.loads(json.dumps(item_wire)))
-        layout.append(_wire_layout_entry(resolved_entry))
+        layout.append(_serialize_layout(contract, _wire_layout_entry(resolved_entry)))
         _mark(affected, tab, item.id)
         _validate_merged_tab(tab)
 
@@ -551,7 +604,12 @@ def _validate_member_affects_targets(items: Iterable[object], data: dict[str, ob
                     raise DataLensValidationError(f"Selector {member.id!r} references unknown tab ids {unknown!r}")
 
 
-def _apply_add_items(data: dict[str, object], op: AddItemsOp, affected: set[tuple[str, str]]) -> None:
+def _apply_add_items(
+    data: dict[str, object],
+    op: AddItemsOp,
+    affected: set[tuple[str, str]],
+    contract: DashboardGeneratedContract | None,
+) -> None:
     # grid bounds are checked on the NEW entries only; the merged tab is then
     # checked for id uniqueness and layout<->items consistency
     tab = _find_tab(data, op.tab_id)
@@ -570,11 +628,17 @@ def _apply_add_items(data: dict[str, object], op: AddItemsOp, affected: set[tupl
             # shared groups resolve per target tab; the source tab keeps the
             # jointly resolved slot so mixed local/shared autos keep row-flow
             _propagate_shared_group(
-                data, staged, item, orig_spec_by_item[item.id], affected, source_entry=layout_by_item[item.id]
+                data,
+                staged,
+                item,
+                orig_spec_by_item[item.id],
+                affected,
+                contract,
+                source_entry=layout_by_item[item.id],
             )
             continue
-        items.append(_wire_item(staged, item))
-        layout.append(_wire_layout_entry(layout_by_item[item.id]))
+        items.append(_serialize_item(contract, _wire_item(staged, item)))
+        layout.append(_serialize_layout(contract, _wire_layout_entry(layout_by_item[item.id])))
         # every added occurrence joins the affected set so the final overlap gate covers it
         _mark(affected, tab, item.id)
     _validate_merged_tab(tab)
@@ -672,12 +736,6 @@ def _apply_remove_selector_member(data: dict[str, object], op: RemoveSelectorMem
         before = len(group)
         group[:] = [member for member in group if not (isinstance(member, dict) and member.get("id") == op.member_id)]
         removed = removed or len(group) != before
-        if len(group) != before and len(group) == 1 and isinstance(group[0], dict):
-            # single-member quirk: a shared group shrunk to one member carries
-            # its impact fields in data.group[0], not data (fixture canon)
-            for impact_key in ("impactType", "impactTabsIds"):
-                if impact_key in item_data:
-                    group[0][impact_key] = item_data.pop(impact_key)
     if not removed:
         raise DataLensValidationError(f"Group {op.item_id!r} has no member {op.member_id!r}")
     # cascade: connections referencing the removed member id + alias cleanup,
@@ -701,7 +759,12 @@ def _apply_remove_selector_member(data: dict[str, object], op: RemoveSelectorMem
             _drop_dangling_aliases(tab, used_before=used_before)
 
 
-def _apply_add_group_selector(data: dict[str, object], op: AddGroupSelectorOp, affected: set[tuple[str, str]]) -> None:
+def _apply_add_group_selector(
+    data: dict[str, object],
+    op: AddGroupSelectorOp,
+    affected: set[tuple[str, str]],
+    contract: DashboardGeneratedContract | None,
+) -> None:
     """Assemble a group on update, absorbing existing selectors verbatim."""
     tab = _find_tab(data, op.tab_id)
     _validate_member_affects_targets((op.item,), data)
@@ -746,14 +809,16 @@ def _apply_add_group_selector(data: dict[str, object], op: AddGroupSelectorOp, a
     (resolved_entry,) = _resolve_auto_layout((op.layout,), layout)
     staged = TabSpec(id=op.tab_id, title="", items=(op.item,), layout=(resolved_entry,))
     _validate_grid(staged)
-    wire = _wire_item(staged, op.item)
+    # The new wrapper and its new members are SDK-owned and serialized now;
+    # absorbed raw members are appended verbatim afterward.
+    wire = _serialize_item(contract, _wire_item(staged, op.item))
     wire_data = wire.get("data")
     assert isinstance(wire_data, dict)
     wire_group = wire_data.get("group")
     assert isinstance(wire_group, list)
     wire_group.extend(absorbed_members)
     items.append(wire)
-    layout.append(_wire_layout_entry(resolved_entry))
+    layout.append(_serialize_layout(contract, _wire_layout_entry(resolved_entry)))
     _mark(affected, tab, op.item.id)
     _validate_merged_tab(tab)
 
@@ -800,7 +865,12 @@ def _bump_counter(data: dict[str, object], spec: DashboardUpdateSpec) -> None:
     data["counter"] = max(existing_int, _id_high_water(data)) + max(spec.generated_id_count, 1)
 
 
-def _apply_op(data: dict[str, object], op: DashboardUpdateOp, affected: set[tuple[str, str]]) -> None:
+def _apply_op(
+    data: dict[str, object],
+    op: DashboardUpdateOp,
+    affected: set[tuple[str, str]],
+    contract: DashboardGeneratedContract | None,
+) -> None:
     if isinstance(op, GlobalParamsOp):
         _apply_global_params(data, op)
     elif isinstance(op, UpdateTabOp):
@@ -820,19 +890,19 @@ def _apply_op(data: dict[str, object], op: DashboardUpdateOp, affected: set[tupl
     elif isinstance(op, RemoveAliasOp):
         _apply_remove_alias(data, op)
     elif isinstance(op, AddTabOp):
-        _apply_add_tab(data, op, affected)
+        _apply_add_tab(data, op, affected, contract)
     elif isinstance(op, AddItemsOp):
-        _apply_add_items(data, op, affected)
+        _apply_add_items(data, op, affected, contract)
     elif isinstance(op, AddGroupSelectorOp):
-        _apply_add_group_selector(data, op, affected)
+        _apply_add_group_selector(data, op, affected, contract)
     elif isinstance(op, UpdateSelectorOp):
         _apply_update_selector(data, op)
     elif isinstance(op, RemoveSelectorMemberOp):
         _apply_remove_selector_member(data, op)
     elif isinstance(op, AddConnectionOp):
-        _apply_add_connection(data, op)
+        _apply_add_connection(data, op, contract)
     elif isinstance(op, AddAliasOp):
-        _apply_add_alias(data, op)
+        _apply_add_alias(data, op, contract)
     elif isinstance(op, ApplyLayoutOp):
         _apply_apply_layout(data, op, affected)
     elif isinstance(op, MoveItemOp):
@@ -893,17 +963,20 @@ def _apply_description(data: dict[str, object], key: str, value: str | None) -> 
         data[key] = value
 
 
-def _apply_update(spec: DashboardUpdateSpec) -> dict[str, object]:
+def _apply_update(
+    spec: DashboardUpdateSpec,
+    *,
+    contract: DashboardGeneratedContract | None = None,
+) -> dict[str, object]:
     """Apply the op queue to a deep copy of the raw data snapshot."""
     data: dict[str, object] = json.loads(json.dumps(spec.data))
     affected: set[tuple[str, str]] = set()
     overlaps_before = _overlap_pairs(data)
     for op in spec.ops:
-        _apply_op(data, op, affected)
+        _apply_op(data, op, affected, contract)
     _check_final_overlaps(data, affected, overlaps_before)
     _bump_counter(data, spec)
     _apply_settings_patch(data, spec)
-    _apply_description(data, "description", spec.description)
     _apply_description(data, "accessDescription", spec.access_description)
     _apply_description(data, "supportDescription", spec.support_description)
     return data

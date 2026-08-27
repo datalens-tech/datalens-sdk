@@ -41,7 +41,7 @@ def _dashboard(stem: str = "simple") -> Dashboard:
 
 
 def _synthetic(tabs: list[dict[str, object]]) -> Dashboard:
-    data: dict[str, object] = {"counter": 1, "salt": "s", "schemeVersion": 8, "settings": {}, "tabs": tabs}
+    data: dict[str, object] = {"counter": 1, "salt": "s", "settings": {}, "tabs": tabs}
     return Dashboard(id="dash-1", installation="yacloud", data=data, raw={"entryId": "dash-1", "data": data})
 
 

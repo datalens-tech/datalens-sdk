@@ -8,6 +8,7 @@ from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.converter._navigation import name_from_key
 from datalens_sdk.converter._utils import _optional_str
 from datalens_sdk.converter.dashboard_apply import _apply_update
+from datalens_sdk.converter.dashboard_contract import DashboardGeneratedContract
 from datalens_sdk.converter.dashboard_items import (
     _CANONICAL_SETTINGS,
     _concrete_layout,
@@ -47,7 +48,6 @@ from datalens_sdk.errors import DataLensValidationError, translate_invalid_respo
 from datalens_sdk.serialization.artifacts import DashboardSnapshotView
 from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object
 
-_SCHEME_VERSION = 8
 _SALT = "0.13371337"
 _ITEM_NAMESPACE_VALUE = "default"
 
@@ -141,6 +141,20 @@ def _dict_with_string_keys(value: object) -> dict[str, object]:
     if not isinstance(value, Mapping):
         return {}
     return {key: item for key, item in value.items() if isinstance(key, str)}
+
+
+def _annotation_with_description(
+    annotation: Mapping[str, object] | None,
+    description: str | None,
+) -> Mapping[str, object] | None:
+    if description is None:
+        return annotation
+    updated = {} if annotation is None else dict(annotation)
+    if description:
+        updated["description"] = description
+    else:
+        updated.pop("description", None)
+    return updated
 
 
 def _wire_endpoint_map(spec: DashboardCreateSpec) -> dict[str, set[str]]:
@@ -319,14 +333,11 @@ class DashboardConverter:
         wire_tabs = _wire_tabs_with_shared(spec)
         _validate_no_overlaps(wire_tabs)
         data: dict[str, object] = {
-            "schemeVersion": _SCHEME_VERSION,
             "salt": _SALT,
             "counter": max(1, spec.generated_id_count),
             "settings": _merged_settings(spec),
             "tabs": wire_tabs,
         }
-        if spec.description is not None:
-            data["description"] = spec.description
         if spec.access_description is not None:
             data["accessDescription"] = spec.access_description
         if spec.support_description is not None:
@@ -339,6 +350,7 @@ class DashboardConverter:
             key=key,
             name=None if key else spec.name,
             workbook_id=workbook_id_from_location(spec.location),
+            annotation={"description": spec.description} if spec.description is not None else None,
         )
 
     @staticmethod
@@ -351,14 +363,15 @@ class DashboardConverter:
     ) -> DashboardArgsDTOProtocol:
         """One-phase update: publish WITHOUT revId persists entry.data."""
         generated = _dto_module(dto_module)
-        data = _apply_update(spec)
+        contract = DashboardGeneratedContract.from_module(generated)
+        data = _apply_update(spec, contract=contract)
         return generated.DashboardUpdateDTO(
             entry_id=spec.dashboard_id,
             data=data,
             meta=spec.meta,
             mode="publish" if publish else "save",
             lock_token=lock_token,
-            annotation=spec.annotation,
+            annotation=_annotation_with_description(spec.annotation, spec.description),
         )
 
     @staticmethod
@@ -496,7 +509,7 @@ class DashboardConverter:
         else:
             read_dto = raw
             entry_raw = read_dto.raw or {}
-        # GetDashboardV1Result requires entry; DashboardV1 requires entryId and data.
+        # GetDashboardV2Result requires entry; DashboardV2 requires entryId and data.
         # Unknown fields and item types stay tolerant, but identity must come from
         # the canonical wire field, checked against the raw payload: the DTO's
         # populate_by_name would also accept a pythonic entry_id, and a generic

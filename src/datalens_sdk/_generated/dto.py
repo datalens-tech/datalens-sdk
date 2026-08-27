@@ -3975,11 +3975,568 @@ class EditorChartDeleteArgsDTO(BaseModel):
         return {"entryId": self.entry_id}
 
 
+class DashColorByThemeV2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    dark: str = _UNVALIDATED_NONE_DEFAULT
+    light: str = _UNVALIDATED_NONE_DEFAULT
+
+class DashDataV2SettingsBackgroundSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    color: DashColorByThemeV2DTO | str = _UNVALIDATED_NONE_DEFAULT
+
+class DashDataV2SettingsWidgetsSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    background_settings: DashDataV2SettingsBackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    border_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='borderRadius')
+
+class DashDataV2SettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    ai_chat_history_enabled: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='aiChatHistoryEnabled')
+    autoupdate_interval: Annotated[float | None, Field(ge=30, alias='autoupdateInterval')]
+    background_settings: DashDataV2SettingsBackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    dependent_selectors: bool = Field(alias='dependentSelectors')
+    enable_assistant: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='enableAssistant')
+    expand_toc: bool = Field(alias='expandTOC')
+    global_params: dict[str, list[str] | str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='globalParams')
+    hide_dash_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideDashTitle')
+    hide_tabs: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideTabs')
+    load_only_visible_charts: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='loadOnlyVisibleCharts')
+    load_priority: Literal['charts', 'selectors'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='loadPriority')
+    margins: Annotated[tuple[float, float], BeforeValidator(_json_array_to_tuple)] = _UNVALIDATED_NONE_DEFAULT
+    max_concurrent_requests: Annotated[float | None, Field(ge=1, alias='maxConcurrentRequests')]
+    signed_global_params: dict[str, list[str] | str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='signedGlobalParams')
+    silent_loading: bool = Field(alias='silentLoading')
+    widgets_settings: DashDataV2SettingsWidgetsSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='widgetsSettings')
+
+class DashTabV2AliasesDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    default: list[Annotated[list[Annotated[str, Field(min_length=1)]], Field(min_length=2)]] = _UNVALIDATED_NONE_DEFAULT
+
+class DashConnectionV2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    from_: Annotated[str, Field(min_length=1, alias='from')]
+    kind: Literal['ignore']
+    to: Annotated[str, Field(min_length=1)]
+
+class DashControlSourceDatasetV2AllOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    accent_type: Literal['info'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='accentType')
+    dataset_field_id: Annotated[str, Field(min_length=1, alias='datasetFieldId')]
+    dataset_field_type: Literal['DIMENSION', 'MEASURE', 'PARAMETER', 'PSEUDO'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='datasetFieldType')
+    dataset_id: Annotated[str, Field(min_length=1, alias='datasetId')]
+    default_value: list[str] | str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultValue')
+    element_type: Literal['select'] = Field(alias='elementType')
+    field_type: Literal['array_float', 'array_int', 'array_str', 'boolean', 'date', 'datetimetz', 'float', 'genericdatetime', 'geopoint', 'geopolygon', 'heatmap', 'hierarchy', 'integer', 'markup', 'string', 'tree_float', 'tree_int', 'tree_str', 'uinteger', 'unsupported'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldType')
+    hint: str = _UNVALIDATED_NONE_DEFAULT
+    inner_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='innerTitle')
+    multiselectable: bool = _UNVALIDATED_NONE_DEFAULT
+    operation: Literal['BETWEEN', 'CONTAINS', 'ENDSWITH', 'EQ', 'GT', 'GTE', 'ICONTAINS', 'IENDSWITH', 'IN', 'ISNOTNULL', 'ISNULL', 'ISTARTSWITH', 'LENEQ', 'LENGT', 'LENGTE', 'LENLT', 'LENLTE', 'LT', 'LTE', 'NE', 'NIN', 'NOTCONTAINS', 'NOTICONTAINS', 'NO_SELECTED_VALUES', 'STARTSWITH'] = _UNVALIDATED_NONE_DEFAULT
+    required: bool = _UNVALIDATED_NONE_DEFAULT
+    show_hint: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showHint')
+    show_inner_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showInnerTitle')
+    show_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showTitle')
+    title_placement: Literal['hide', 'left', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titlePlacement')
+
+class DashControlSourceDatasetV2AllOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    accent_type: Literal['info'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='accentType')
+    dataset_field_id: Annotated[str, Field(min_length=1, alias='datasetFieldId')]
+    dataset_field_type: Literal['DIMENSION', 'MEASURE', 'PARAMETER', 'PSEUDO'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='datasetFieldType')
+    dataset_id: Annotated[str, Field(min_length=1, alias='datasetId')]
+    default_value: str = Field(alias='defaultValue')
+    element_type: Literal['checkbox'] = Field(alias='elementType')
+    field_type: Literal['array_float', 'array_int', 'array_str', 'boolean', 'date', 'datetimetz', 'float', 'genericdatetime', 'geopoint', 'geopolygon', 'heatmap', 'hierarchy', 'integer', 'markup', 'string', 'tree_float', 'tree_int', 'tree_str', 'uinteger', 'unsupported'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldType')
+    hint: str = _UNVALIDATED_NONE_DEFAULT
+    inner_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='innerTitle')
+    operation: Literal['BETWEEN', 'CONTAINS', 'ENDSWITH', 'EQ', 'GT', 'GTE', 'ICONTAINS', 'IENDSWITH', 'IN', 'ISNOTNULL', 'ISNULL', 'ISTARTSWITH', 'LENEQ', 'LENGT', 'LENGTE', 'LENLT', 'LENLTE', 'LT', 'LTE', 'NE', 'NIN', 'NOTCONTAINS', 'NOTICONTAINS', 'NO_SELECTED_VALUES', 'STARTSWITH'] = _UNVALIDATED_NONE_DEFAULT
+    required: bool = _UNVALIDATED_NONE_DEFAULT
+    show_hint: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showHint')
+    show_inner_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showInnerTitle')
+    show_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showTitle')
+    title_placement: Literal['hide', 'left', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titlePlacement')
+
+class DashControlSourceDatasetV2AllOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    accent_type: Literal['info'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='accentType')
+    dataset_field_id: Annotated[str, Field(min_length=1, alias='datasetFieldId')]
+    dataset_field_type: Literal['DIMENSION', 'MEASURE', 'PARAMETER', 'PSEUDO'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='datasetFieldType')
+    dataset_id: Annotated[str, Field(min_length=1, alias='datasetId')]
+    default_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultValue')
+    element_type: Literal['date'] = Field(alias='elementType')
+    field_type: Literal['array_float', 'array_int', 'array_str', 'boolean', 'date', 'datetimetz', 'float', 'genericdatetime', 'geopoint', 'geopolygon', 'heatmap', 'hierarchy', 'integer', 'markup', 'string', 'tree_float', 'tree_int', 'tree_str', 'uinteger', 'unsupported'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldType')
+    hint: str = _UNVALIDATED_NONE_DEFAULT
+    inner_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='innerTitle')
+    is_range: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='isRange')
+    operation: Literal['BETWEEN', 'CONTAINS', 'ENDSWITH', 'EQ', 'GT', 'GTE', 'ICONTAINS', 'IENDSWITH', 'IN', 'ISNOTNULL', 'ISNULL', 'ISTARTSWITH', 'LENEQ', 'LENGT', 'LENGTE', 'LENLT', 'LENLTE', 'LT', 'LTE', 'NE', 'NIN', 'NOTCONTAINS', 'NOTICONTAINS', 'NO_SELECTED_VALUES', 'STARTSWITH'] = _UNVALIDATED_NONE_DEFAULT
+    required: bool = _UNVALIDATED_NONE_DEFAULT
+    show_hint: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showHint')
+    show_inner_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showInnerTitle')
+    show_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showTitle')
+    title_placement: Literal['hide', 'left', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titlePlacement')
+
+class DashControlSourceDatasetV2AllOf3DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    accent_type: Literal['info'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='accentType')
+    dataset_field_id: Annotated[str, Field(min_length=1, alias='datasetFieldId')]
+    dataset_field_type: Literal['DIMENSION', 'MEASURE', 'PARAMETER', 'PSEUDO'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='datasetFieldType')
+    dataset_id: Annotated[str, Field(min_length=1, alias='datasetId')]
+    default_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultValue')
+    element_type: Literal['input'] = Field(alias='elementType')
+    field_type: Literal['array_float', 'array_int', 'array_str', 'boolean', 'date', 'datetimetz', 'float', 'genericdatetime', 'geopoint', 'geopolygon', 'heatmap', 'hierarchy', 'integer', 'markup', 'string', 'tree_float', 'tree_int', 'tree_str', 'uinteger', 'unsupported'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldType')
+    hint: str = _UNVALIDATED_NONE_DEFAULT
+    inner_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='innerTitle')
+    operation: Literal['BETWEEN', 'CONTAINS', 'ENDSWITH', 'EQ', 'GT', 'GTE', 'ICONTAINS', 'IENDSWITH', 'IN', 'ISNOTNULL', 'ISNULL', 'ISTARTSWITH', 'LENEQ', 'LENGT', 'LENGTE', 'LENLT', 'LENLTE', 'LT', 'LTE', 'NE', 'NIN', 'NOTCONTAINS', 'NOTICONTAINS', 'NO_SELECTED_VALUES', 'STARTSWITH'] = _UNVALIDATED_NONE_DEFAULT
+    required: bool = _UNVALIDATED_NONE_DEFAULT
+    show_hint: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showHint')
+    show_inner_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showInnerTitle')
+    show_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showTitle')
+    title_placement: Literal['hide', 'left', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titlePlacement')
+
+DashControlSourceDatasetV2DTO = DashControlSourceDatasetV2AllOf0DTO | DashControlSourceDatasetV2AllOf1DTO | DashControlSourceDatasetV2AllOf2DTO | DashControlSourceDatasetV2AllOf3DTO
+
+class DashControlV2OneOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    auto_height: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='autoHeight')
+    background_settings: DashDataV2SettingsBackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    border_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='borderRadius')
+    impact_tabs_ids: list[str] | None = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='impactTabsIds')
+    impact_type: Literal['allTabs', 'asGroup', 'currentTab', 'selectedTabs'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='impactType')
+    source: DashControlSourceDatasetV2DTO
+    source_type: Literal['dataset'] = Field(alias='sourceType')
+    title: Annotated[str, Field(min_length=1)]
+
+class DashControlSourceExternalV2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_id: Annotated[str, Field(min_length=1, alias='chartId')]
+
+class DashControlV2OneOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    auto_height: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='autoHeight')
+    background_settings: DashDataV2SettingsBackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    border_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='borderRadius')
+    impact_tabs_ids: list[str] | None = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='impactTabsIds')
+    impact_type: Literal['allTabs', 'asGroup', 'currentTab', 'selectedTabs'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='impactType')
+    source: DashControlSourceExternalV2DTO
+    source_type: Literal['external'] = Field(alias='sourceType')
+    title: Annotated[str, Field(min_length=1)]
+
+class DashControlSourceManualV2AllOf0AcceptableValuesAnyOf0ItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    title: str
+    value: str
+
+class DashControlSourceManualV2AllOf0AcceptableValuesAnyOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    from_: str = Field(alias='from')
+    to: str
+
+class DashControlSourceManualV2AllOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    accent_type: Literal['info'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='accentType')
+    acceptable_values: list[DashControlSourceManualV2AllOf0AcceptableValuesAnyOf0ItemDTO] | DashControlSourceManualV2AllOf0AcceptableValuesAnyOf1DTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='acceptableValues')
+    default_value: list[str] | str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultValue')
+    element_type: Literal['select'] = Field(alias='elementType')
+    field_name: Annotated[str, Field(min_length=1, alias='fieldName')]
+    hint: str = _UNVALIDATED_NONE_DEFAULT
+    inner_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='innerTitle')
+    multiselectable: bool = _UNVALIDATED_NONE_DEFAULT
+    operation: Literal['BETWEEN', 'CONTAINS', 'ENDSWITH', 'EQ', 'GT', 'GTE', 'ICONTAINS', 'IENDSWITH', 'IN', 'ISNOTNULL', 'ISNULL', 'ISTARTSWITH', 'LENEQ', 'LENGT', 'LENGTE', 'LENLT', 'LENLTE', 'LT', 'LTE', 'NE', 'NIN', 'NOTCONTAINS', 'NOTICONTAINS', 'NO_SELECTED_VALUES', 'STARTSWITH'] = _UNVALIDATED_NONE_DEFAULT
+    required: bool = _UNVALIDATED_NONE_DEFAULT
+    show_hint: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showHint')
+    show_inner_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showInnerTitle')
+    show_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showTitle')
+    title_placement: Literal['hide', 'left', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titlePlacement')
+
+class DashControlSourceManualV2AllOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    accent_type: Literal['info'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='accentType')
+    acceptable_values: list[DashControlSourceManualV2AllOf0AcceptableValuesAnyOf0ItemDTO] | DashControlSourceManualV2AllOf0AcceptableValuesAnyOf1DTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='acceptableValues')
+    default_value: str = Field(alias='defaultValue')
+    element_type: Literal['checkbox'] = Field(alias='elementType')
+    field_name: Annotated[str, Field(min_length=1, alias='fieldName')]
+    hint: str = _UNVALIDATED_NONE_DEFAULT
+    inner_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='innerTitle')
+    operation: Literal['BETWEEN', 'CONTAINS', 'ENDSWITH', 'EQ', 'GT', 'GTE', 'ICONTAINS', 'IENDSWITH', 'IN', 'ISNOTNULL', 'ISNULL', 'ISTARTSWITH', 'LENEQ', 'LENGT', 'LENGTE', 'LENLT', 'LENLTE', 'LT', 'LTE', 'NE', 'NIN', 'NOTCONTAINS', 'NOTICONTAINS', 'NO_SELECTED_VALUES', 'STARTSWITH'] = _UNVALIDATED_NONE_DEFAULT
+    required: bool = _UNVALIDATED_NONE_DEFAULT
+    show_hint: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showHint')
+    show_inner_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showInnerTitle')
+    show_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showTitle')
+    title_placement: Literal['hide', 'left', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titlePlacement')
+
+class DashControlSourceManualV2AllOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    accent_type: Literal['info'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='accentType')
+    acceptable_values: list[DashControlSourceManualV2AllOf0AcceptableValuesAnyOf0ItemDTO] | DashControlSourceManualV2AllOf0AcceptableValuesAnyOf1DTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='acceptableValues')
+    default_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultValue')
+    element_type: Literal['date'] = Field(alias='elementType')
+    field_name: Annotated[str, Field(min_length=1, alias='fieldName')]
+    field_type: Literal['array_float', 'array_int', 'array_str', 'boolean', 'date', 'datetimetz', 'float', 'genericdatetime', 'geopoint', 'geopolygon', 'heatmap', 'hierarchy', 'integer', 'markup', 'string', 'tree_float', 'tree_int', 'tree_str', 'uinteger', 'unsupported'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldType')
+    hint: str = _UNVALIDATED_NONE_DEFAULT
+    inner_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='innerTitle')
+    is_range: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='isRange')
+    operation: Literal['BETWEEN', 'CONTAINS', 'ENDSWITH', 'EQ', 'GT', 'GTE', 'ICONTAINS', 'IENDSWITH', 'IN', 'ISNOTNULL', 'ISNULL', 'ISTARTSWITH', 'LENEQ', 'LENGT', 'LENGTE', 'LENLT', 'LENLTE', 'LT', 'LTE', 'NE', 'NIN', 'NOTCONTAINS', 'NOTICONTAINS', 'NO_SELECTED_VALUES', 'STARTSWITH'] = _UNVALIDATED_NONE_DEFAULT
+    required: bool = _UNVALIDATED_NONE_DEFAULT
+    show_hint: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showHint')
+    show_inner_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showInnerTitle')
+    show_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showTitle')
+    title_placement: Literal['hide', 'left', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titlePlacement')
+
+class DashControlSourceManualV2AllOf3DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    accent_type: Literal['info'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='accentType')
+    acceptable_values: list[DashControlSourceManualV2AllOf0AcceptableValuesAnyOf0ItemDTO] | DashControlSourceManualV2AllOf0AcceptableValuesAnyOf1DTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='acceptableValues')
+    default_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultValue')
+    element_type: Literal['input'] = Field(alias='elementType')
+    field_name: Annotated[str, Field(min_length=1, alias='fieldName')]
+    hint: str = _UNVALIDATED_NONE_DEFAULT
+    inner_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='innerTitle')
+    operation: Literal['BETWEEN', 'CONTAINS', 'ENDSWITH', 'EQ', 'GT', 'GTE', 'ICONTAINS', 'IENDSWITH', 'IN', 'ISNOTNULL', 'ISNULL', 'ISTARTSWITH', 'LENEQ', 'LENGT', 'LENGTE', 'LENLT', 'LENLTE', 'LT', 'LTE', 'NE', 'NIN', 'NOTCONTAINS', 'NOTICONTAINS', 'NO_SELECTED_VALUES', 'STARTSWITH'] = _UNVALIDATED_NONE_DEFAULT
+    required: bool = _UNVALIDATED_NONE_DEFAULT
+    show_hint: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showHint')
+    show_inner_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showInnerTitle')
+    show_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showTitle')
+    title_placement: Literal['hide', 'left', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titlePlacement')
+
+DashControlSourceManualV2DTO = DashControlSourceManualV2AllOf0DTO | DashControlSourceManualV2AllOf1DTO | DashControlSourceManualV2AllOf2DTO | DashControlSourceManualV2AllOf3DTO
+
+class DashControlV2OneOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    auto_height: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='autoHeight')
+    background_settings: DashDataV2SettingsBackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    border_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='borderRadius')
+    impact_tabs_ids: list[str] | None = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='impactTabsIds')
+    impact_type: Literal['allTabs', 'asGroup', 'currentTab', 'selectedTabs'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='impactType')
+    source: DashControlSourceManualV2DTO
+    source_type: Literal['manual'] = Field(alias='sourceType')
+    title: Annotated[str, Field(min_length=1)]
+
+DashControlV2DTO = DashControlV2OneOf0DTO | DashControlV2OneOf1DTO | DashControlV2OneOf2DTO
+
+DashStringDefaultValueV2DTO = list[str] | str
+
+class DashTabControlItemV2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    data: DashControlV2DTO
+    default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
+    defaults: dict[str, DashStringDefaultValueV2DTO]
+    id: Annotated[str, Field(min_length=1)]
+    namespace: Literal['default']
+    order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
+    type: Literal['control']
+
+class DashGroupControlItemV2OneOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    defaults: dict[str, DashStringDefaultValueV2DTO] = _UNVALIDATED_NONE_DEFAULT
+    id: Annotated[str, Field(min_length=1)]
+    impact_tabs_ids: list[str] | None = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='impactTabsIds')
+    impact_type: Literal['allTabs', 'asGroup', 'currentTab', 'selectedTabs'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='impactType')
+    namespace: Literal['default']
+    placement_mode: Literal['%', 'auto', 'px'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='placementMode')
+    source: DashControlSourceDatasetV2DTO
+    source_type: Literal['dataset'] = Field(alias='sourceType')
+    title: Annotated[str, Field(min_length=1)]
+    width: str = _UNVALIDATED_NONE_DEFAULT
+
+class DashGroupControlItemV2OneOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    defaults: dict[str, DashStringDefaultValueV2DTO] = _UNVALIDATED_NONE_DEFAULT
+    id: Annotated[str, Field(min_length=1)]
+    impact_tabs_ids: list[str] | None = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='impactTabsIds')
+    impact_type: Literal['allTabs', 'asGroup', 'currentTab', 'selectedTabs'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='impactType')
+    namespace: Literal['default']
+    placement_mode: Literal['%', 'auto', 'px'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='placementMode')
+    source: DashControlSourceManualV2DTO
+    source_type: Literal['manual'] = Field(alias='sourceType')
+    title: Annotated[str, Field(min_length=1)]
+    width: str = _UNVALIDATED_NONE_DEFAULT
+
+DashGroupControlItemV2DTO = DashGroupControlItemV2OneOf0DTO | DashGroupControlItemV2OneOf1DTO
+
+class DashGroupControlV2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    auto_height: bool = Field(alias='autoHeight')
+    background_settings: DashDataV2SettingsBackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    border_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='borderRadius')
+    button_apply: bool = Field(alias='buttonApply')
+    button_reset: bool = Field(alias='buttonReset')
+    group: list[DashGroupControlItemV2DTO]
+    group_name: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='groupName')
+    impact_tabs_ids: list[str] | None = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='impactTabsIds')
+    impact_type: Literal['allTabs', 'currentTab', 'selectedTabs'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='impactType')
+    show_group_name: bool = Field(alias='showGroupName')
+    update_controls_on_change: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='updateControlsOnChange')
+
+class DashTabGroupControlItemV2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    data: DashGroupControlV2DTO
+    default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
+    id: Annotated[str, Field(min_length=1)]
+    namespace: Literal['default']
+    order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
+    type: Literal['group_control']
+
+DashGlobalItemV2DTO = DashTabControlItemV2DTO | DashTabGroupControlItemV2DTO
+
+class DashTabItemV2OneOf2DataBackgroundSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    color: DashColorByThemeV2DTO = _UNVALIDATED_NONE_DEFAULT
+
+class DashTabItemV2OneOf2DataDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    alt: str = _UNVALIDATED_NONE_DEFAULT
+    background_settings: DashTabItemV2OneOf2DataBackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    border_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='borderRadius')
+    preserve_aspect_ratio: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='preserveAspectRatio')
+    src: str
+
+class DashTabItemV2OneOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    data: DashTabItemV2OneOf2DataDTO
+    default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
+    id: Annotated[str, Field(min_length=1)]
+    namespace: Literal['default']
+    order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
+    type: Literal['image']
+
+class DashTabItemV2OneOf3DataHintDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    enabled: bool = _UNVALIDATED_NONE_DEFAULT
+    text: str = _UNVALIDATED_NONE_DEFAULT
+
+class DashTabItemV2OneOf3DataSizeAnyOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    font_size: float = Field(alias='fontSize')
+    line_height: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineHeight')
+
+class DashTabItemV2OneOf3DataDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    auto_height: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='autoHeight')
+    background_settings: DashTabItemV2OneOf2DataBackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    border_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='borderRadius')
+    hint: DashTabItemV2OneOf3DataHintDTO = _UNVALIDATED_NONE_DEFAULT
+    internal_margins_enabled: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='internalMarginsEnabled')
+    show_in_toc: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showInTOC')
+    size: Literal['l', 'm', 's', 'xl', 'xs'] | DashTabItemV2OneOf3DataSizeAnyOf1DTO
+    text: str
+    text_settings: DashTabItemV2OneOf2DataBackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='textSettings')
+
+class DashTabItemV2OneOf3DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    data: DashTabItemV2OneOf3DataDTO
+    default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
+    id: Annotated[str, Field(min_length=1)]
+    namespace: Literal['default']
+    order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
+    type: Literal['title']
+
+class DashTabItemV2OneOf4DataDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    auto_height: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='autoHeight')
+    background_settings: DashTabItemV2OneOf2DataBackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    border_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='borderRadius')
+    text: str
+
+class DashTabItemV2OneOf4DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    data: DashTabItemV2OneOf4DataDTO
+    default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
+    id: Annotated[str, Field(min_length=1)]
+    namespace: Literal['default']
+    order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
+    type: Literal['text']
+
+class DashTabItemV2OneOf5DataDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    background_settings: DashTabItemV2OneOf2DataBackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    border_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='borderRadius')
+    hide_actions: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hideActions')
+    hide_title: bool = Field(alias='hideTitle')
+    prompt: Annotated[str, Field(min_length=1)]
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    widget_tab_id: Annotated[str, Field(min_length=1, alias='widgetTabId')]
+
+class DashTabItemV2OneOf5DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    data: DashTabItemV2OneOf5DataDTO
+    default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
+    id: Annotated[str, Field(min_length=1)]
+    namespace: Literal['default']
+    order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
+    type: Literal['neuro_widget']
+
+class DashTabItemV2OneOf6DataTabsItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    auto_height: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='autoHeight')
+    chart_id: Annotated[str, Field(min_length=1, alias='chartId')]
+    description: str = _UNVALIDATED_NONE_DEFAULT
+    enable_action_params: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='enableActionParams')
+    enable_description: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='enableDescription')
+    enable_hint: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='enableHint')
+    hint: str = _UNVALIDATED_NONE_DEFAULT
+    id: Annotated[str, Field(min_length=1)]
+    is_default: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='isDefault')
+    params: dict[str, DashStringDefaultValueV2DTO]
+    title: Annotated[str, Field(min_length=1)]
+
+class DashTabItemV2OneOf6DataDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    background_settings: DashTabItemV2OneOf2DataBackgroundSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='backgroundSettings')
+    border_radius: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='borderRadius')
+    hide_title: bool = Field(alias='hideTitle')
+    tabs: list[DashTabItemV2OneOf6DataTabsItemDTO]
+
+class DashTabItemV2OneOf6DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    data: DashTabItemV2OneOf6DataDTO
+    default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
+    id: Annotated[str, Field(min_length=1)]
+    namespace: Literal['default']
+    order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
+    type: Literal['widget']
+
+DashTabItemV2DTO = DashTabControlItemV2DTO | DashTabGroupControlItemV2DTO | DashTabItemV2OneOf2DTO | DashTabItemV2OneOf3DTO | DashTabItemV2OneOf4DTO | DashTabItemV2OneOf5DTO | DashTabItemV2OneOf6DTO
+
+class DashLayoutItemV2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    h: float
+    i: Annotated[str, Field(min_length=1)]
+    parent: str = _UNVALIDATED_NONE_DEFAULT
+    w: float
+    x: float
+    y: float
+
+class DashTabV2SettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    fixed_header_collapsed_default: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fixedHeaderCollapsedDefault')
+    is_goldenset: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='isGoldenset')
+
+class DashTabV2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    aliases: DashTabV2AliasesDTO
+    connections: list[DashConnectionV2DTO]
+    global_items: list[DashGlobalItemV2DTO] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='globalItems')
+    hidden: bool = _UNVALIDATED_NONE_DEFAULT
+    id: Annotated[str, Field(min_length=1)]
+    items: list[DashTabItemV2DTO]
+    layout: list[DashLayoutItemV2DTO]
+    settings: DashTabV2SettingsDTO = _UNVALIDATED_NONE_DEFAULT
+    title: Annotated[str, Field(min_length=1)]
+
+class DashDataV2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    access_description: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='accessDescription')
+    counter: Annotated[int, Field(ge=1)]
+    salt: Annotated[str, Field(min_length=1)]
+    settings: DashDataV2SettingsDTO
+    support_description: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='supportDescription')
+    tabs: list[DashTabV2DTO]
+
+DashMetaV2DTO = None | dict[str, bool | str]
+
+class CreateDashboardV2ArgsEntryDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    annotation: EntryAnnotationArgDTO = _UNVALIDATED_NONE_DEFAULT
+    data: DashDataV2DTO
+    key: str = _UNVALIDATED_NONE_DEFAULT
+    meta: DashMetaV2DTO
+    name: str = _UNVALIDATED_NONE_DEFAULT
+    workbook_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='workbookId')
+
+class CreateDashboardV2ArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    entry: CreateDashboardV2ArgsEntryDTO
+
+class UpdateDashboardV2ArgsEntryDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    annotation: dict[str, JsonValue] = _UNVALIDATED_NONE_DEFAULT
+    data: dict[str, JsonValue]
+    entry_id: str = Field(alias='entryId')
+    meta: dict[str, JsonValue] | None
+    rev_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revId')
+
+class UpdateDashboardV2ArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    entry: UpdateDashboardV2ArgsEntryDTO
+    lock_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lockToken')
+    mode: EntryUpdateModeDTO
+
+class DeleteDashboardArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    dashboard_id: str = Field(alias='dashboardId')
+    lock_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lockToken')
+
+class GetDashboardV2ArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    branch: EntryBranchDTO = _UNVALIDATED_NONE_DEFAULT
+    dashboard_id: str = Field(alias='dashboardId')
+    include_favorite: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includeFavorite')
+    include_links: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includeLinks')
+    include_permissions: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includePermissions')
+    rev_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revId')
+    workbook_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='workbookId')
+
+class GetDashboardV2ResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    entry: dict[str, JsonValue]
+    is_favorite: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='isFavorite')
+    permissions: dict[str, JsonValue] = _UNVALIDATED_NONE_DEFAULT
+
+
 class DashboardCreateDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
     data: Mapping[str, object]
-    # Required but nullable by the DashboardMeta schema: "meta": null must serialize.
+    # Required but nullable by the DashMetaV2 schema: "meta": null must serialize.
     meta: Mapping[str, object] | None
     key: str | None = None
     name: str | None = None
@@ -3999,15 +4556,16 @@ class DashboardCreateDTO(BaseModel):
             entry["name"] = self.name
         if self.workbook_id is not None:
             entry["workbookId"] = self.workbook_id
-        return {"entry": entry}
+        model = CreateDashboardV2ArgsDTO.model_validate({"entry": entry})
+        return model.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
 
 class DashboardUpdateDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
     entry_id: str = Field(serialization_alias="entryId")
     data: Mapping[str, object]
-    # Required but nullable by the DashboardMeta schema: "meta": null must serialize.
+    # Required but nullable by the DashMetaV2 schema: "meta": null must serialize.
     meta: Mapping[str, object] | None
     mode: Literal["save", "publish"]
     rev_id: str | None = Field(default=None, serialization_alias="revId")
@@ -4027,6 +4585,7 @@ class DashboardUpdateDTO(BaseModel):
         payload: dict[str, object] = {"entry": entry, "mode": self.mode}
         if self.lock_token is not None:
             payload["lockToken"] = self.lock_token
+        UpdateDashboardV2ArgsDTO.model_validate(payload)
         return payload
 
 
@@ -4052,7 +4611,7 @@ class DashboardReadDTO(BaseModel):
 
 
 class DashboardGetArgsDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
     dashboard_id: str = Field(serialization_alias="dashboardId")
     workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
@@ -4063,30 +4622,18 @@ class DashboardGetArgsDTO(BaseModel):
     include_permissions: bool | None = Field(default=None, serialization_alias="includePermissions")
 
     def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {"dashboardId": self.dashboard_id}
-        if self.workbook_id is not None:
-            payload["workbookId"] = self.workbook_id
-        if self.rev_id is not None:
-            payload["revId"] = self.rev_id
-        if self.branch is not None:
-            payload["branch"] = self.branch
-        if self.include_favorite is not None:
-            payload["includeFavorite"] = self.include_favorite
-        if self.include_links is not None:
-            payload["includeLinks"] = self.include_links
-        if self.include_permissions is not None:
-            payload["includePermissions"] = self.include_permissions
-        return payload
+        payload = self.model_dump(mode="json", by_alias=True, exclude_none=True)
+        model = GetDashboardV2ArgsDTO.model_validate(payload)
+        return model.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
 
 class DashboardDeleteArgsDTO(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
     dashboard_id: str = Field(serialization_alias="dashboardId")
     lock_token: str | None = Field(default=None, serialization_alias="lockToken")
 
     def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {"dashboardId": self.dashboard_id}
-        if self.lock_token is not None:
-            payload["lockToken"] = self.lock_token
-        return payload
+        payload = self.model_dump(mode="json", by_alias=True, exclude_none=True)
+        model = DeleteDashboardArgsDTO.model_validate(payload)
+        return model.model_dump(mode="json", by_alias=True, exclude_unset=True)

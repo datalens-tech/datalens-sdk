@@ -47,6 +47,7 @@ def _snapshot(
 ) -> dict[str, object]:
     return {
         "entry": {
+            "version": 2,
             "entryId": dashboard_id,
             "key": "/source/Source",
             "revId": "source-revision",
@@ -55,12 +56,11 @@ def _snapshot(
             "permissions": {"edit": True},
             "future_outer": {"must_not_be_written": True},
             "data": {
-                "description": description,
                 "tabs": [],
                 "future_data": {"preserved": True},
             },
             "meta": {"future_meta": {"preserved": True}},
-            "annotation": {"description": "Annotation", "future_annotation": True},
+            "annotation": {"description": description, "future_annotation": True},
         },
         "permissions": {"execute": True},
         "future_response": {"inspection_only": True},
@@ -335,7 +335,7 @@ def test_raw_dashboard_create_uses_new_identity_and_preserves_only_mutable_conte
     assert not ({"entryId", "revId", "savedId", "publishedId", "permissions", "future_outer"} & entry.keys())
     assert cast(dict[str, object], cast(dict[str, object], entry["data"])["future_data"])["preserved"] is True
     assert entry["meta"] == {"future_meta": {"preserved": True}}
-    assert entry["annotation"] == {"description": "Annotation", "future_annotation": True}
+    assert entry["annotation"] == {"description": "Original", "future_annotation": True}
 
 
 def test_raw_dashboard_create_from_file_reads_only_main_snapshot_eagerly(tmp_path: Path) -> None:
@@ -354,13 +354,13 @@ def test_raw_dashboard_create_from_file_reads_only_main_snapshot_eagerly(tmp_pat
         location=dl.EntryLocation.path("/target"),
     )
     stored = cast(dict[str, object], json.loads((artifact / "dashboard.json").read_text(encoding="utf-8")))
-    cast(dict[str, object], cast(dict[str, object], stored["entry"])["data"])["description"] = "Changed"
+    cast(dict[str, object], cast(dict[str, object], stored["entry"])["annotation"])["description"] = "Changed"
     (artifact / "dashboard.json").write_text(json.dumps(stored), encoding="utf-8")
 
     operation.build()
 
     entry = cast(dict[str, object], recorder.request_json(0)["entry"])
-    assert cast(dict[str, object], entry["data"])["description"] == "Original"
+    assert cast(dict[str, object], entry["annotation"])["description"] == "Original"
 
 
 def test_raw_dashboard_replace_uses_target_identity_publish_and_lock_without_revision() -> None:
@@ -396,7 +396,7 @@ def test_raw_dashboard_replace_uses_target_identity_publish_and_lock_without_rev
     assert payload["lockToken"] == "lock-1"
     entry = cast(dict[str, object], payload["entry"])
     assert entry["entryId"] == "target-id"
-    assert cast(dict[str, object], entry["data"])["description"] == "Original"
+    assert cast(dict[str, object], entry["annotation"])["description"] == "Original"
     assert "revId" not in entry
     assert not ({"key", "savedId", "publishedId", "permissions", "future_outer"} & entry.keys())
 
@@ -447,7 +447,7 @@ def test_raw_dashboard_replace_from_file_reads_snapshot_eagerly(tmp_path: Path) 
     )
     operation = client.raw.replace.dashboard.from_file(artifact, target=target)
     stored = cast(dict[str, object], json.loads((artifact / "dashboard.json").read_text(encoding="utf-8")))
-    cast(dict[str, object], cast(dict[str, object], stored["entry"])["data"])["description"] = "Changed"
+    cast(dict[str, object], cast(dict[str, object], stored["entry"])["annotation"])["description"] = "Changed"
     (artifact / "dashboard.json").write_text(json.dumps(stored), encoding="utf-8")
 
     operation.execute(publish=False)
@@ -455,7 +455,7 @@ def test_raw_dashboard_replace_from_file_reads_snapshot_eagerly(tmp_path: Path) 
     payload = recorder.request_json(0)
     assert payload["mode"] == "save"
     entry = cast(dict[str, object], payload["entry"])
-    assert cast(dict[str, object], entry["data"])["description"] == "Original"
+    assert cast(dict[str, object], entry["annotation"])["description"] == "Original"
 
 
 def test_raw_dashboard_namespace_defers_and_captures_create_and_replace_inputs() -> None:
@@ -492,7 +492,7 @@ def test_raw_dashboard_namespace_defers_and_captures_create_and_replace_inputs()
     assert isinstance(replace, RawDashboardReplace)
     assert recorder.requests == []
 
-    cast(dict[str, object], cast(dict[str, object], source["entry"])["data"])["description"] = "Changed"
+    cast(dict[str, object], cast(dict[str, object], source["entry"])["annotation"])["description"] = "Changed"
     target.id = "mutated-id"
     target.name = "Mutated"
     target.location = dl.EntryLocation.path("/mutated")
@@ -511,8 +511,8 @@ def test_raw_dashboard_namespace_defers_and_captures_create_and_replace_inputs()
     create_entry = cast(dict[str, object], recorder.request_json(0)["entry"])
     replace_payload = recorder.request_json(1)
     replace_entry = cast(dict[str, object], replace_payload["entry"])
-    assert cast(dict[str, object], create_entry["data"])["description"] == "Original"
-    assert cast(dict[str, object], replace_entry["data"])["description"] == "Original"
+    assert cast(dict[str, object], create_entry["annotation"])["description"] == "Original"
+    assert cast(dict[str, object], replace_entry["annotation"])["description"] == "Original"
     assert replace_entry["entryId"] == "target-id"
     assert replace_payload["mode"] == "publish"
     assert replace_payload["lockToken"] == "lock-1"
@@ -544,14 +544,14 @@ def test_raw_dashboard_builder_owns_prevalidated_snapshot_view(boundary: str) ->
             publish=False,
         )
 
-    snapshot.data["description"] = "Changed after builder creation"
+    cast(dict[str, dl.JsonValue], snapshot.entry["annotation"])["description"] = "Changed after builder creation"
     cast(dict[str, dl.JsonValue], snapshot.data["future_data"])["preserved"] = False
 
     terminal()
 
     entry = cast(dict[str, object], recorder.request_json(0)["entry"])
     data = cast(dict[str, object], entry["data"])
-    assert data["description"] == "Original"
+    assert cast(dict[str, object], entry["annotation"])["description"] == "Original"
     assert data["future_data"] == {"preserved": True}
 
 

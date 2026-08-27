@@ -74,7 +74,7 @@ def _tab(tab_id: str, items: list[str], layout: list[dict[str, object]]) -> dict
 
 
 def _dashboard(tabs: list[dict[str, object]]) -> Dashboard:
-    data: dict[str, object] = {"counter": 1, "salt": "s", "schemeVersion": 8, "settings": {}, "tabs": tabs}
+    data: dict[str, object] = {"counter": 1, "salt": "s", "settings": {}, "tabs": tabs}
     return Dashboard(id="d", installation="yacloud", data=data, raw={"entryId": "d", "data": data})
 
 
@@ -128,7 +128,7 @@ def test_compact_layout_scoped_to_one_tab() -> None:
 
 
 def _validate_data(tabs: list[dict[str, object]]) -> list[str]:
-    data = {"counter": 1, "salt": "s", "schemeVersion": 8, "settings": {}, "tabs": tabs}
+    data = {"counter": 1, "salt": "s", "settings": {}, "tabs": tabs}
     return [i.kind for i in validate_dashboard(data) if i.kind == "layout_reflow"]
 
 

@@ -43,7 +43,6 @@ _UNKNOWN_ITEM = {
 _SYNTHETIC_DATA = {
     "counter": 12,
     "salt": "0.42",
-    "schemeVersion": 8,
     "settings": {"hideTabs": False},
     "tabs": [
         {

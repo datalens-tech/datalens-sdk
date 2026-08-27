@@ -1,9 +1,9 @@
 """Smoke checks for the anonymized dashboard golden fixtures (D0.2).
 
-Each fixture is a live /rpc/getDashboard v2 response (published branch,
-entry envelope removed, anonymized). The smoke gate asserts every fixture
-flows through the public read path without loss; full golden round-trip
-contract tests are a separate work item (D1.5).
+Each fixture is an anonymized live inventory migrated in place to the API v3
+Dashboard V2 document contract (entry envelope removed). The smoke gate
+asserts every fixture flows through the public read path without loss; full
+golden round-trip contract tests are a separate work item (D1.5).
 """
 
 from __future__ import annotations
@@ -48,6 +48,10 @@ def test_fixture_parses_through_read_path(path: Path) -> None:
     assert dashboard.saved_id == entry["savedId"]
     assert dashboard.published_id == entry["publishedId"]
     assert dashboard.location is not None
+    assert entry["version"] == 2
+    data = cast(dict[str, object], entry["data"])
+    assert "schemeVersion" not in data
+    assert "description" not in data
     tabs = dashboard.data.get("tabs")
     assert isinstance(tabs, list)
     assert tabs
