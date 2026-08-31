@@ -41,8 +41,7 @@ def build_minimal(client, *, location: EntryLocation):
 `prepare` exports an object containing `markdown`, not a bare string. This
 dependency-free smoke test omits `meta`. See the authoritative
 [Prepare contract](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/markdown#prepare);
-for linked data follow [Meta](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#meta)
-and [Sources](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources).
+for linked data follow the index's Meta → Sources flow.
 
 Every setter replaces a complete tab. Re-fetching proves persistence, not
 rendering. See [_index.md](_index.md) and

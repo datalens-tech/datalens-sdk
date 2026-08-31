@@ -46,9 +46,8 @@ def build_minimal(client, *, location: EntryLocation):
 This dependency-free smoke test omits `meta`. For real option shapes use
 [Prepare](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/gravity-ui#prepare)
 and [Config](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/gravity-ui#config).
-For linked data follow [Meta](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#meta),
-[Sources](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources), and
-[`Editor.getLoadedData()`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-loaded-data).
+For linked data follow the index's Meta → Sources → `Editor.getLoadedData()`
+flow.
 
 Every setter replaces a complete tab. Re-fetching proves persistence, not
 rendering. See [_index.md](_index.md) and

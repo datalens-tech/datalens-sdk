@@ -216,19 +216,15 @@ def test_public_editor_routes_runtime_details_to_section_links() -> None:
         "tabs#relative-date",
         "tabs#interval",
         "tabs#params-restrictions",
-        "methods#get-current-page",
-        "methods#get-id",
-        "methods#get-lang",
-        "methods#get-param",
-        "methods#get-sort-params",
-        "methods#get-user-id",
-        "methods#get-user-login",
-        "methods#resolve-interval",
-        "methods#resolve-oper",
-        "methods#resolve-relative",
-        "methods#set-insights",
+        "tabs#sources-dataset",
+        "tabs#sources-database",
+        "tabs#sources-api-connector",
     ):
         assert anchor in advanced
+    assert "charts/editor/methods)" in advanced
+    assert "charts/editor/methods#" not in advanced
+    for method in ("getId", "getLoadedData", "getParams", "generateHtml", "wrapFn"):
+        assert f"Editor.{method}()" in advanced
 
 
 def test_public_editor_routing_defers_to_overlays_and_describes_the_full_family() -> None:

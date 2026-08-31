@@ -139,43 +139,24 @@ persistence, not rendering.
 
 ### Inputs and execution stages
 
-- [How tabs execute](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#how-tabs-works)
-- [Meta aliases](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#meta)
-- [Params and override precedence](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#params)
+Use the index's [runtime documentation router](_index.md#runtime-documentation-router)
+for the common tab contracts and execution limits. Advanced variants often
+need these narrower sections:
+
 - [Special parameters](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#special-parameters):
   [relative dates](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#relative-date),
   [intervals](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#interval),
   [restrictions](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#params-restrictions)
-- [Sources](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources):
-  [dataset](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources-dataset),
+- Source variants: [dataset](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources-dataset),
   [SQL connection](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources-database),
   [API Connector](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources-api-connector)
-- [Prepare](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#prepare)
-- [Controls](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#controls)
-- [Source and execution limits](https://yandex.cloud/ru/docs/datalens/charts/editor/sources#limits)
 
 ### Relevant `Editor.*` methods
 
-- [`Editor.generateHtml`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#gen-html)
-- [`Editor.getActionParams`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-action-params)
-- [`Editor.getCurrentPage`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-current-page)
-- [`Editor.getId`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-id)
-- [`Editor.getLang`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-lang)
-- [`Editor.getLoadedData`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-loaded-data)
-- [`Editor.getParam`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-param)
-- [`Editor.getParams`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-params)
-- [`Editor.getSortParams`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-sort-params)
-- [`Editor.getUserId`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-user-id)
-- [`Editor.getUserLogin`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-user-login)
-- [`Editor.getWidgetConfig`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-widget-config)
-- [`Editor.resolveInterval`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#resolve-interval)
-- [`Editor.resolveOperation`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#resolve-oper)
-- [`Editor.resolveRelative`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#resolve-relative)
-- [`Editor.setChartsInsights`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#set-insights)
-- [`Editor.setRawData`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#set-raw-data)
-- [`Editor.updateActionParams`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#update-action-params)
-- [`Editor.updateParams`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#update-params)
-- [`Editor.wrapFn`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#wrap)
+Use the complete [Editor methods reference](https://yandex.cloud/ru/docs/datalens/charts/editor/methods)
+for signatures, renderer support, examples, and restrictions. The core public
+Advanced bridge uses `Editor.getId()`, `Editor.getLoadedData()`,
+`Editor.getParams()`, `Editor.generateHtml()`, and `Editor.wrapFn()`.
 
 The current public SDK exposes no `activities` setter for Advanced charts. Do
 not infer one from newer runtime documentation.

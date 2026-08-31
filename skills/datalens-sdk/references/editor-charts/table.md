@@ -49,8 +49,7 @@ def build_minimal(client, *, location: EntryLocation):
 This dependency-free smoke test omits `meta`. Route column and row variants to
 [Prepare](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/table#prepare)
 and display options to [Config](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/table#config).
-For linked data follow [Meta](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#meta)
-and [Sources](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources).
+For linked data follow the index's Meta → Sources flow.
 
 Every setter replaces a complete tab. Re-fetching proves persistence, not
 rendering. See [_index.md](_index.md) and

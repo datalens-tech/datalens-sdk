@@ -43,8 +43,7 @@ def build_minimal(client, *, location: EntryLocation):
 Literal values need no linked object, so this smoke test omits `meta`. Route
 control variants to [Controls](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/controls#controls)
 and [common fields](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/controls#common-fields).
-For dataset-backed controls also read [Meta](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#meta)
-and [Sources](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources).
+For dataset-backed controls follow the index's Meta → Sources flow.
 
 Every setter replaces a complete tab. Re-fetching proves persistence, not
 rendering. See [_index.md](_index.md) and
