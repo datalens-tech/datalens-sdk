@@ -46,25 +46,24 @@ validation boundary.
 ## Read
 
 ```python
-saved = client.get.editor_chart(
-    by_id=chart.id,
-    workbook_id=chart.workbook_id,
-    branch="saved",
-)
-published = client.get.editor_chart(
-    by_id=chart.id,
-    workbook_id=chart.workbook_id,
-    branch="published",
-)
-revision = client.get.editor_chart(
-    by_id=chart.id,
-    workbook_id=chart.workbook_id,
-    rev_id="revision-id",
-)
-generic = client.get.chart(
-    by_id=chart.id,
-    workbook_id=chart.workbook_id,
-)
+def read_chart_versions(client, *, chart_id: str, workbook_id: str | None):
+    saved = client.get.editor_chart(
+        by_id=chart_id,
+        workbook_id=workbook_id,
+        branch="saved",
+    )
+    published = client.get.editor_chart(
+        by_id=chart_id,
+        workbook_id=workbook_id,
+        branch="published",
+    )
+    revision = client.get.editor_chart(
+        by_id=chart_id,
+        workbook_id=workbook_id,
+        rev_id="revision-id",
+    )
+    generic = client.get.chart(by_id=chart_id, workbook_id=workbook_id)
+    return saved, published, revision, generic
 ```
 
 Omit `workbook_id` when the chart is path-based. Prefer
@@ -89,54 +88,64 @@ Fetch the saved branch before editing. Each setter replaces the complete
 tab:
 
 ```python
-saved = client.get.editor_chart(
-    by_id=chart.id,
-    workbook_id=chart.workbook_id,
-    branch="saved",
-)
-
-updated = (
-    saved.update.prepare("module.exports = {markdown: '# Updated Editor chart'};\n")
-    .description("Updated with datalens_sdk")
-    .mode("publish")
-    .execute()
-)
+def update_prepare(client, *, chart_id: str, workbook_id: str | None, prepare_source: str):
+    saved = client.get.editor_chart(
+        by_id=chart_id,
+        workbook_id=workbook_id,
+        branch="saved",
+    )
+    return saved.update.prepare(prepare_source).description("Updated with datalens_sdk").mode("publish").execute()
 ```
 
 Update defaults to `.mode("save")`. Use `.mode("publish")` only when the
 result must be published. Use only the tab methods listed for the current
 renderer in [the public Editor index](_index.md). A successful `.execute()`
 confirms persistence, not JavaScript execution. Re-fetch the desired branch
-after `.execute()` before checking persisted tab content.
+after `.execute()` before checking persisted tab content. Untouched tabs remain
+preserved; do not resend or reconstruct them. A setter replaces only the
+complete source of the tab it targets.
 
 Editor secrets are managed outside the Editor RPC surface. The SDK exposes no
 create, read, or update field for them; use the DataLens UI for secret bindings.
 For compatibility with legacy snapshots and unexpected backend drift, the SDK
 still discards an unknown `data.secrets` block before domain or raw state.
 
-## Rename, Relations, and Delete
+## Rename
 
 ```python
-chart = client.get.editor_chart(by_id=chart_id, workbook_id=workbook_id)
-renamed = chart.rename("New name")
-
-for relation in renamed.get_relations(
-    include_permissions_info=True,
-    link_direction="to",
-    page_size=100,
-    scope="dash",
-):
-    print(relation)
-
-renamed.delete()
+def rename_chart(client, *, chart_id: str, workbook_id: str | None, new_name: str):
+    chart = client.get.editor_chart(by_id=chart_id, workbook_id=workbook_id)
+    return chart.rename(new_name)
 ```
 
-`get_relations()` is lazy. Iterate it or call `.pages()` to perform the
-request. Its optional arguments are `include_permissions_info`,
-`link_direction` (`"from"` or `"to"`), `page_size` (default `100`), and
-`scope` (`"dash"`, `"report"`, `"widget"`, `"dataset"`, `"folder"`, or
-`"connection"`). Deletion is immediate, so obtain confirmation before
-deleting an existing user chart.
+## Relations
+
+```python
+def dashboard_relations(chart):
+    return chart.get_relations(
+        include_permissions_info=True,
+        link_direction="to",
+        page_size=100,
+        scope="dash",
+    )
+```
+
+`get_relations()` is lazy. Iterate it or call `.pages()` only when the user has
+requested or permitted handling the returned relation data. Its optional
+arguments are `include_permissions_info`, `link_direction` (`"from"` or
+`"to"`), `page_size` (default `100`), and `scope` (`"dash"`, `"report"`,
+`"widget"`, `"dataset"`, `"folder"`, or `"connection"`).
+
+## Delete
+
+Deletion is immediate. Obtain explicit confirmation for the exact chart before
+running a delete call. After that confirmation:
+
+```python
+def delete_confirmed_chart(client, *, chart_id: str, workbook_id: str | None):
+    chart = client.get.editor_chart(by_id=chart_id, workbook_id=workbook_id)
+    chart.delete()
+```
 
 ## Related references
 

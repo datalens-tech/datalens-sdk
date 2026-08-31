@@ -236,6 +236,11 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 
 Read this file plus the one reference the task needs — not everything.
 
+If an installation overlay is loaded, use its replacement route instead of
+opening the corresponding public environment-specific reference. In
+particular, an overlay-provided Editor index replaces the public Editor
+subtree for that installation.
+
 | Task involves                                                              | Read                                                                     |
 |----------------------------------------------------------------------------|--------------------------------------------------------------------------|
 | Installation configuration, auth, tokens, preflight states                | [references/setup.md](references/setup.md)                               |
@@ -295,9 +300,9 @@ list for the configured client, where `family` is `"wizard"`, `"ql"`, or
   (or can be) in a dataset, use wizard.
 - **QL** — chart directly over a SQL query against a connection, bypassing
   datasets. For ad-hoc / one-off charts where building a dataset is overkill.
-- **Editor** — custom JavaScript chart using d3js. Last resort, only when wizard
-  cannot express the requirement or on explicit ask; renderer availability differs between
-  installations (see the editor index).
+- **Editor** — custom-code and specialized Editor renderers. Last resort, only
+  when wizard cannot express the requirement or on explicit ask; renderer
+  availability differs between installations (see the editor index).
 
 Each chart-family directory has an `_index.md` routing table — read the
 index first, then exactly the one per-type file it points to.

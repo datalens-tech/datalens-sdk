@@ -158,3 +158,23 @@ def test_public_editor_python_snippets_compile_and_local_links_resolve() -> None
             if target.startswith(("http://", "https://", "#")):
                 continue
             assert (path.parent / target.split("#", 1)[0]).is_file(), f"{path}: {target}"
+
+
+def test_public_editor_common_operations_separate_destructive_steps() -> None:
+    text = (EDITOR_DIR / "common-operations.md").read_text()
+    rename = text.split("## Rename\n", 1)[1].split("## Relations\n", 1)[0]
+    relations = text.split("## Relations\n", 1)[1].split("## Delete\n", 1)[0]
+    delete = text.split("## Delete\n", 1)[1].split("## Related references\n", 1)[0]
+
+    assert ".delete(" not in rename
+    assert ".delete(" not in relations
+    assert delete.index("explicit confirmation") < delete.index(".delete(")
+
+
+def test_public_editor_routing_defers_to_overlays_and_describes_the_full_family() -> None:
+    text = (SKILL_DIR / "SKILL.md").read_text()
+    normalized = " ".join(text.split())
+
+    assert "an overlay-provided Editor index replaces the public Editor subtree" in normalized
+    assert "custom-code and specialized Editor renderers" in text
+    assert "custom JavaScript chart using d3js" not in text

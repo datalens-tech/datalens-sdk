@@ -7,6 +7,9 @@
 - Align Enterprise and Yandex Cloud Editor reads with the current API
   contracts: Editor CRUD no longer exposes UI-managed `secrets`. Defensive
   stripping remains for legacy snapshots and unexpected backend drift.
+- Make the bundled Editor guidance safer for agents by separating destructive
+  deletion from rename and relation recipes, deferring to installation
+  overlays, and documenting incremental tab preservation.
 
 ## 3.0.0rc1 - 2026-08-27
 
