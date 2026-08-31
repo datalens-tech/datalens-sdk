@@ -9,7 +9,6 @@ files:
   - datalens-sdk/references/editor-charts/markdown.md
   - datalens-sdk/references/editor-charts/selector.md
   - datalens-sdk/references/editor-charts/table.md
-  - datalens-sdk/references/editor-charts/troubleshooting.md
   - datalens-sdk/references/setup.md
   - datalens-sdk/references/*/_index.md
   - datalens-sdk/scripts/preflight.sh

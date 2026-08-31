@@ -1,22 +1,18 @@
-# Public Gravity Charts
+# Public Gravity UI Charts
 
-This reference applies only to public Yandex Cloud and Enterprise clients from
-`datalens-sdk`.
+Use this leaf only with public Yandex Cloud and Enterprise clients.
 
 Factory: `client.create.editor_chart.gravity_charts`.
 `chart.wire_type`: `d3_node`.
 Supported create/update tab methods: `config(str)`, `controls(str)`,
 `meta(str)`, `params(str)`, `prepare(str)`, `sources(str)`.
 
-`prepare` exports the complete Gravity Charts configuration:
+## Minimal payload
 
 ```python
 from datalens_sdk import EntryLocation
 
-SOURCES = "module.exports = {};\n"
-PARAMS = "module.exports = {};\n"
-CONTROLS = "module.exports = {};\n"
-CONFIG = "module.exports = {};\n"
+EMPTY = "module.exports = {};\n"
 PREPARE = """\
 module.exports = {
     chart: {margin: {left: 10, right: 10, top: 10, bottom: 10}},
@@ -34,28 +30,26 @@ module.exports = {
 """
 
 
-def build_chart(client, *, location: EntryLocation):
+def build_minimal(client, *, location: EntryLocation):
     return (
-        client.create.editor_chart.gravity_charts(
-            name="SDK Gravity Charts",
-            location=location,
-        )
-        .sources(SOURCES)
-        .params(PARAMS)
-        .controls(CONTROLS)
-        .config(CONFIG)
+        client.create.editor_chart.gravity_charts(name="Gravity", location=location)
+        .sources(EMPTY)
+        .params(EMPTY)
+        .controls(EMPTY)
+        .config(EMPTY)
         .prepare(PREPARE)
         .description("Gravity Charts Editor chart")
         .build()
     )
 ```
 
-Leave `meta` unset. Re-fetch the intended branch and verify the stored tab
-strings before checking rendering in DataLens.
+This dependency-free smoke test omits `meta`. For real option shapes use
+[Prepare](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/gravity-ui#prepare)
+and [Config](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/gravity-ui#config).
+For linked data follow [Meta](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#meta),
+[Sources](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources), and
+[`Editor.getLoadedData()`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-loaded-data).
 
-## Related references
-
-- [_index.md](_index.md) — public renderer routing and supported tab methods
-- [common-operations.md](common-operations.md) — lifecycle operations
-- [troubleshooting.md](troubleshooting.md) — persistence and render failures
-- [Gravity UI Charts documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/gravity-ui)
+Every setter replaces a complete tab. Re-fetching proves persistence, not
+rendering. See [_index.md](_index.md) and
+[common-operations.md](common-operations.md).

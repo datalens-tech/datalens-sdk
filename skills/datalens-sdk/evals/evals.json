@@ -184,8 +184,8 @@
     {
       "id": 12,
       "name": "public-editor-advanced-create",
-      "prompt": "Create a public DataLens Advanced Editor chart in workbook wb-public with a wrapped HTML render function.",
-      "expected_output": "Uses the public Editor index and Advanced renderer reference, checks capabilities, creates through advanced_chart with only public writable tabs, leaves meta unset, and does not add shared or internal documentation links.",
+      "prompt": "Create a public DataLens Advanced Editor chart in workbook wb-public with a wrapped HTML render function and no linked DataLens objects.",
+      "expected_output": "Uses the public Editor index and Advanced SDK bridge, checks capabilities, creates through advanced_chart with only public writable tabs, leaves meta unset because there are no linked objects, and does not add shared or internal documentation links.",
       "files": [],
       "assertions": [
         {"text": "Checks client.capabilities['chart_factories']['editor'] for advanced_chart before building", "type": "code"},
@@ -223,13 +223,27 @@
       "id": 15,
       "name": "public-editor-selector-exact-surface",
       "prompt": "Create a public DataLens Editor selector with literal North, West, South, and East values and North selected initially. Also add a prepare script for the options.",
-      "expected_output": "Uses the public Selector reference and its complete public recipe. It puts literal control values in controls, the initial selection in params, keeps sources as an empty exported object, and does not call prepare because control_node has no such method.",
+      "expected_output": "Uses the public Editor index, Selector leaf, and its linked runtime sections. It puts literal control values in controls, the initial selection in params, keeps sources as an empty exported object, and does not call prepare because control_node has no such method.",
       "files": [],
       "assertions": [
         {"text": "Checks client.capabilities['chart_factories']['editor'] for selector", "type": "code"},
         {"text": "Uses client.create.editor_chart.selector(...) with sources(...), params(...), and controls(...)", "type": "code"},
         {"text": "Does NOT call prepare(...), shared(...), activities(...), or meta(...)", "type": "code"},
         {"text": "Re-fetches the selector and verifies sources, params, and controls without claiming persistence proves rendering", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 16,
+      "name": "public-editor-linked-source-meta",
+      "prompt": "Create a public Advanced Editor chart backed by dataset ds-sales. The Sources tab should refer to it as sales.",
+      "expected_output": "Uses the public Advanced SDK bridge and official Meta/Sources documentation. It declares the dataset link in meta, resolves the sales alias from Sources, and keeps runtime payload details sourced from the documentation rather than inventing or copying an unrelated recipe.",
+      "files": [],
+      "assertions": [
+        {"text": "Checks client.capabilities['chart_factories']['editor'] for advanced_chart", "type": "code"},
+        {"text": "Calls .meta(...) because the chart links a DataLens dataset", "type": "code"},
+        {"text": "Uses the same sales alias in Meta and Sources via Editor.getId(...) according to the official sections", "type": "workflow"},
+        {"text": "Uses Editor.getLoadedData() from Prepare and does not claim persistence proves rendering", "type": "workflow"},
+        {"text": "Does NOT use shared(...), raw HTTP, or private imports", "type": "code"}
       ]
     }
   ]

@@ -1,44 +1,38 @@
 # Public Selector
 
-This reference applies only to public Yandex Cloud and Enterprise clients from
-`datalens-sdk`.
+Use this leaf only with public Yandex Cloud and Enterprise clients.
 
 Factory: `client.create.editor_chart.selector`.
 `chart.wire_type`: `control_node`.
 Supported create/update tab methods: `controls(str)`, `meta(str)`,
-`params(str)`, `sources(str)`. There is no `prepare` method for this renderer.
+`params(str)`, `sources(str)`. There is no `prepare` setter.
 
-`sources` exports the data-source definitions used by controls; an empty object
-is valid when the selector uses literal values. `params` exports the initial
-parameter values. `controls` exports an object whose `controls` member is an
-array of control definitions.
+## Minimal payload
 
 ```python
 from datalens_sdk import EntryLocation
 
-SOURCES = "module.exports = {};\n"
+EMPTY = "module.exports = {};\n"
 PARAMS = "module.exports = {region: ['North']};\n"
 CONTROLS = """\
-module.exports = {
-    controls: [{
-        type: 'select',
-        param: 'region',
-        label: 'Region',
-        content: ['North', 'West', 'South', 'East'].map(
-            (value) => ({title: value, value})
-        ),
-        multiselect: false,
-        searchable: false,
-        width: '100%',
-    }],
-};
+module.exports = {controls: [{
+    type: 'select',
+    param: 'region',
+    label: 'Region',
+    content: ['North', 'West', 'South', 'East'].map(
+        (value) => ({title: value, value})
+    ),
+    multiselect: false,
+    searchable: false,
+    width: '100%',
+}]};
 """
 
 
-def build_chart(client, *, location: EntryLocation):
+def build_minimal(client, *, location: EntryLocation):
     return (
-        client.create.editor_chart.selector(name="SDK Selector", location=location)
-        .sources(SOURCES)
+        client.create.editor_chart.selector(name="Selector", location=location)
+        .sources(EMPTY)
         .params(PARAMS)
         .controls(CONTROLS)
         .description("Selector Editor chart")
@@ -46,12 +40,12 @@ def build_chart(client, *, location: EntryLocation):
     )
 ```
 
-Leave `meta` unset. Re-fetch the intended branch and verify `sources`, `params`,
-and `controls`.
+Literal values need no linked object, so this smoke test omits `meta`. Route
+control variants to [Controls](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/controls#controls)
+and [common fields](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/controls#common-fields).
+For dataset-backed controls also read [Meta](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#meta)
+and [Sources](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources).
 
-## Related references
-
-- [_index.md](_index.md) — public renderer routing and supported tab methods
-- [common-operations.md](common-operations.md) — lifecycle operations
-- [troubleshooting.md](troubleshooting.md) — persistence and render failures
-- [Controls documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/controls)
+Every setter replaces a complete tab. Re-fetching proves persistence, not
+rendering. See [_index.md](_index.md) and
+[common-operations.md](common-operations.md).

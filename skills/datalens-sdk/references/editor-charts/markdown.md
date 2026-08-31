@@ -1,21 +1,18 @@
 # Public Markdown
 
-This reference applies only to public Yandex Cloud and Enterprise clients from
-`datalens-sdk`.
+Use this leaf only with public Yandex Cloud and Enterprise clients.
 
 Factory: `client.create.editor_chart.markdown`.
 `chart.wire_type`: `markdown_node`.
 Supported create/update tab methods: `controls(str)`, `meta(str)`,
 `params(str)`, `prepare(str)`, `sources(str)`.
 
-`prepare` exports an object containing `markdown`, not a bare string:
+## Minimal payload
 
 ```python
 from datalens_sdk import EntryLocation
 
-SOURCES = "module.exports = {};\n"
-PARAMS = "module.exports = {};\n"
-CONTROLS = "module.exports = {};\n"
+EMPTY = "module.exports = {};\n"
 PREPARE = """\
 const markdown = `
 # Markdown created with datalens_sdk
@@ -29,24 +26,24 @@ module.exports = {markdown};
 """
 
 
-def build_chart(client, *, location: EntryLocation):
+def build_minimal(client, *, location: EntryLocation):
     return (
-        client.create.editor_chart.markdown(name="SDK Markdown", location=location)
-        .sources(SOURCES)
-        .params(PARAMS)
-        .controls(CONTROLS)
+        client.create.editor_chart.markdown(name="Markdown", location=location)
+        .sources(EMPTY)
+        .params(EMPTY)
+        .controls(EMPTY)
         .prepare(PREPARE)
         .description("Markdown Editor chart")
         .build()
     )
 ```
 
-Leave `meta` unset. Re-fetch the intended branch and verify the stored tab
-strings before checking rendering in DataLens.
+`prepare` exports an object containing `markdown`, not a bare string. This
+dependency-free smoke test omits `meta`. See the authoritative
+[Prepare contract](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/markdown#prepare);
+for linked data follow [Meta](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#meta)
+and [Sources](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources).
 
-## Related references
-
-- [_index.md](_index.md) — public renderer routing and supported tab methods
-- [common-operations.md](common-operations.md) — lifecycle operations
-- [troubleshooting.md](troubleshooting.md) — persistence and render failures
-- [Markdown documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/markdown)
+Every setter replaces a complete tab. Re-fetching proves persistence, not
+rendering. See [_index.md](_index.md) and
+[common-operations.md](common-operations.md).

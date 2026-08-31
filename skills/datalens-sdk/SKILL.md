@@ -304,8 +304,12 @@ list for the configured client, where `family` is `"wizard"`, `"ql"`, or
   when wizard cannot express the requirement or on explicit ask; renderer
   availability differs between installations (see the editor index).
 
-Each chart-family directory has an `_index.md` routing table — read the
-index first, then exactly the one per-type file it points to.
+Each chart-family directory has an `_index.md` routing table. For every Editor
+task, read the index; add the common lifecycle reference when reading or
+mutating an existing chart, and exactly one renderer leaf when creating a chart
+or touching tabs. Every leaf keeps the exact SDK contract and one minimal
+payload while routing variants to runtime documentation; the Advanced leaf
+additionally expands the SDK/runtime bridge.
 
 ## Errors in brief
 
@@ -361,16 +365,18 @@ from [references/setup.md](references/setup.md).
 | `references/ql-charts/_index.md`                | routing to one of the types of QL visualizations                                                   |
 | `references/ql-charts/common-operations.md`     | QL lifecycle: queries, params, columns                                                             |
 | `references/ql-charts/chart-<type>.md`          | the one QL visualization at hand                                                                   |
-| `references/editor-charts/_index.md`            | routing to the editor renderer types; read before any editor work                                  |
-| `references/editor-charts/common-operations.md` | editor chart lifecycle and tab semantics                                                           |
-| `references/editor-charts/troubleshooting.md`   | an editor chart persists but fails to render                                                       |
-| `references/editor-charts/<renderer>.md`        | the one renderer you are targeting                                                                 |
+| `references/editor-charts/_index.md`            | Editor mental model, exact SDK surface, and renderer routing                                         |
+| `references/editor-charts/common-operations.md` | Editor lifecycle, tab replacement, serialization, and persisted-but-not-rendered diagnosis          |
+| `references/editor-charts/<renderer>.md`        | one minimal working payload, the renderer's SDK contract, and exact runtime-documentation sections  |
 | `references/parameters.md`                      | parameter definitions, override precedence, selectors, global/widget/action params                 |
 | `references/dashboards.md`                      | building or editing dashboards; discovering existing item, selector, and chart-tab ids             |
 | `references/navigation.md`                      | listing/finding/moving entities; collections, workbooks, folders                                   |
 | `references/serialization.md`                   | export/import/clone via `to_file` and `client.raw`                                                 |
 | `references/troubleshooting.md`                 | any API error; before retrying anything                                                            |
 | `references/design-guide.md`                    | choosing visual encodings or polishing look and feel                                               |
+
+Keep one routed leaf per Editor renderer. Ordinary leaves are intentionally
+thin; `advanced-chart.md` additionally carries the expanded SDK/runtime bridge.
 
 ## Bundled examples
 
