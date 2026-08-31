@@ -109,10 +109,10 @@ renderer in [the public Editor index](_index.md). A successful `.execute()`
 confirms persistence, not JavaScript execution. Re-fetch the desired branch
 after `.execute()` before checking persisted tab content.
 
-Editor secrets are UI-managed, read-only API v3 state. The SDK does not expose
-a create or update setter for them and removes the returned block before it can
-enter domain state, artifacts, or raw mutation payloads. Ordinary updates
-preserve the server-side binding.
+Editor secrets are managed outside the Editor RPC surface. The SDK exposes no
+create, read, or update field for them; use the DataLens UI for secret bindings.
+For compatibility with legacy snapshots and unexpected backend drift, the SDK
+still discards an unknown `data.secrets` block before domain or raw state.
 
 ## Rename, Relations, and Delete
 

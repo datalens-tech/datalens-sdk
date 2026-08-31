@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+
+- Align Enterprise and Yandex Cloud Editor reads with the current API
+  contracts: Editor CRUD no longer exposes UI-managed `secrets`. Defensive
+  stripping remains for legacy snapshots and unexpected backend drift.
+
 ## 3.0.0rc1 - 2026-08-27
 
 ### Breaking changes

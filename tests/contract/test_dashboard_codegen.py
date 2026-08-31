@@ -283,6 +283,7 @@ def _dashboard_schemas() -> dict[str, object]:
                         "default": {
                             "items": {
                                 "items": {"minLength": 1, "type": "string"},
+                                "maxItems": 2,
                                 "minItems": 2,
                                 "type": "array",
                             },
@@ -606,6 +607,7 @@ def test_dashboard_get_and_delete_facades_accept_explicit_none_optionals(
         "minimum",
         "min-length",
         "min-items",
+        "max-items",
     ],
 )
 def test_dashboard_create_facade_rejects_invalid_schema_features(
@@ -631,6 +633,9 @@ def test_dashboard_create_facade_rejects_invalid_schema_features(
     elif case == "min-items":
         aliases = cast(dict[str, object], tab["aliases"])
         aliases["default"] = [["country"]]
+    elif case == "max-items":
+        aliases = cast(dict[str, object], tab["aliases"])
+        aliases["default"] = [["country", "region", "city"]]
     else:  # pragma: no cover - the parametrization is exhaustive
         raise AssertionError(case)
 

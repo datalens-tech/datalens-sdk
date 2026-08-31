@@ -53,8 +53,8 @@ method below accepts `str`.
 
 The recipes leave `meta` unset because no non-empty public payload is verified;
 the converter supplies the required empty value. Do not call tab methods
-outside the selected row. Editor `secrets` is read-only server state and has no
-create or update method.
+outside the selected row. Editor secrets are managed outside the Editor RPC
+surface and have no create, read, or update field in the SDK.
 
 ## Shared operations
 
