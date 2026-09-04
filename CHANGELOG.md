@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 3.0.0rc2 - 2026-09-04
+
 ### Changed
 
 - Align Enterprise and Yandex Cloud Editor reads with the current API
