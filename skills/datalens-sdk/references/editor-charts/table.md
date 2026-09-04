@@ -1,7 +1,5 @@
 # Public Table
 
-Use this leaf only with public Yandex Cloud and Enterprise clients.
-
 Factory: `client.create.editor_chart.table`.
 `chart.wire_type`: `table_node`.
 Supported create/update tab methods: `config(str)`, `controls(str)`,

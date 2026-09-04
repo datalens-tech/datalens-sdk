@@ -4,7 +4,7 @@ Read this when you need to export an entity to files, import one from an artifac
 
 ## The snapshot is the unit of exchange
 
-Every fetched entity carries `response_snapshot` — an owned snapshot of the JSON object the server returned. `to_file()` writes it to disk; `client.raw` consumes it (in memory or from disk). Editor RPCs no longer expose `entry.data.secrets`; as a defensive compatibility measure, the SDK still removes that block if a legacy snapshot or unexpected response contains it. Two consequences:
+Every fetched entity carries `response_snapshot` — an owned snapshot of the JSON object the server returned. `to_file()` writes it to disk; `client.raw` consumes it (in memory or from disk). As a defensive compatibility measure, the SDK removes an unexpected or legacy Editor `entry.data.secrets` block before exposing or exporting a snapshot. Two consequences:
 
 - **Only a `client.get.*` result is complete enough.** Snapshots are validated on capture: a chart snapshot must contain full `data`, an id, and a wire type; a dataset snapshot must contain the full `dataset` content. Objects returned by `create` builders fail this validation (the create response omits content) with a message telling you to fetch via `client.get.<resource>(...)` first.
 - **The snapshot is opaque and transport-oriented.** Do not build one by hand; fetch, optionally patch (see the cross-workbook recipe), and feed it back. Revisions, counters, service metadata, and representation details may change after a create or update, so snapshots are not stable byte-for-byte equality targets.

@@ -140,6 +140,8 @@ def check_artifact_contract(
         "datalens_sdk/skills/datalens-sdk/SKILL.md",
         "--required-wheel-member",
         "datalens_sdk/skills/datalens-sdk/scripts/preflight.sh",
+        "--required-wheel-member",
+        "datalens_sdk/skills/env-specific.yaml",
         "--required-sdist-path",
         "LICENSE",
         "--required-sdist-path",
@@ -209,6 +211,7 @@ def validate_artifacts(session: nox.Session, wheel: Path, sdist: Path, temp_dir:
             "assert sdk.EnterpriseServiceAccountCredentialsAuthProvider; "
             "assert r.files('datalens_sdk._generated').joinpath('installations.json').is_file(); "
             "assert sdk.agent_skill_paths() == [str(skill)]; "
+            "assert skill.parent.joinpath('env-specific.yaml').is_file(); "
             "assert skill.joinpath('SKILL.md').is_file(); "
             "assert skill.joinpath('scripts', 'preflight.sh').is_file()"
         ),

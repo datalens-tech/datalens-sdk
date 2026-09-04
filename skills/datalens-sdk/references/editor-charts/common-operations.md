@@ -63,6 +63,14 @@ def update_prepare(
 Use `prepare` only for a renderer whose matrix row exposes it; the same pattern
 applies to every documented tab setter.
 
+The shared update object exposes several setters used by other installations,
+including `activities`, `shared`, `graph`, `statface_graph`, `ymap`,
+`documentation_en`, and `documentation_ru`. Their presence does not make them
+available to a public client. Use only the methods in the selected public
+renderer matrix row. Public runtime documentation already describes
+Activities for Selector, Table, and Gravity UI Charts, but typed public SDK
+support has not been implemented yet.
+
 Update defaults to `save`; publish only when requested. Re-fetch the selected
 branch and compare the intended stored values. Never repeat a successful write
 because later verification code failed.
@@ -106,8 +114,6 @@ interchangeable—start from that renderer leaf's minimal payload.
 Runtime errors are visible in the Editor Console. `console.log(...)` in code
 wrapped with `Editor.wrapFn` appears in the browser console; see
 [Editor debugging](https://yandex.cloud/ru/docs/datalens/charts/editor/debug).
-
-Editor secrets are outside the typed RPC surface and must be managed in the UI.
 
 ## Related SDK references
 

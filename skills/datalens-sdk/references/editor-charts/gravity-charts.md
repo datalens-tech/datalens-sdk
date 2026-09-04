@@ -1,7 +1,5 @@
 # Public Gravity UI Charts
 
-Use this leaf only with public Yandex Cloud and Enterprise clients.
-
 Factory: `client.create.editor_chart.gravity_charts`.
 `chart.wire_type`: `d3_node`.
 Supported create/update tab methods: `config(str)`, `controls(str)`,

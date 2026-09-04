@@ -7,9 +7,38 @@
 - Align Enterprise and Yandex Cloud Editor reads with the current API
   contracts: Editor CRUD no longer exposes UI-managed `secrets`. Defensive
   stripping remains for legacy snapshots and unexpected backend drift.
-- Make the bundled Editor guidance safer for agents by separating destructive
-  deletion from rename and relation recipes, deferring to installation
-  overlays, and documenting incremental tab preservation.
+- Preserve Dashboard array upper bounds from OpenAPI `maxItems` constraints in
+  generated Pydantic DTOs.
+- Rework the bundled Editor guidance around the installed typed contract:
+  distinguish documented runtime behavior from writable SDK setters, preserve
+  untouched tabs during read-modify-write operations, separate destructive
+  deletion from rename and relation recipes, and route renderer-specific work
+  through the active installation index.
+- Clarify that public Editor `meta` aliases are required for linked DataLens
+  objects but may be omitted by dependency-free charts; the converter keeps
+  filling an omitted required tab with an empty string for transport.
+- Bundle the `env-specific.yaml` overlay manifest in wheels next to the public
+  skill and verify that installed artifacts expose it at the documented path.
+- Make the authentication troubleshooting probe explicit and valid by listing
+  entries with `scope="dataset"` when distinguishing 401 from 403 failures.
+- Document the current public Activities gap: runtime documentation supports
+  Activities for Selector, Table, and Gravity UI Charts, while the generated
+  public create and update DTOs do not expose that tab yet. The skill reports
+  the limitation and does not invent a setter or raw-request workaround.
+
+### Known limitations and follow-up
+
+- The Activities discrepancies between the DataLens documentation and public
+  OpenAPI specifications have been reported to the DataLens team. Typed public
+  support remains pending an upstream specification fix and regeneration.
+- Editor create builders are installation- and renderer-specific, while the
+  shared update facade can expose setters outside the selected generated
+  update contract. Full create/update synchronization is deferred to
+  `TAXIREPORTING-3130` (`[SDK] Техдолг по advanced чартам`); generated DTO
+  validation remains the final guard in the current release.
+- `scripts/update_specs.py yacloud` currently downloads an API v2 source and
+  therefore cannot reproduce the checked-in API v3 specification. Refresh is
+  limited until an authoritative API v3 source is configured.
 
 ## 3.0.0rc1 - 2026-08-27
 

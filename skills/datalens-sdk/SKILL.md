@@ -234,12 +234,15 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 
 ## Task routing
 
-Read this file plus the one reference the task needs — not everything.
+Read this file, then follow only the references routed for the task. Chart
+families may require an index, one renderer reference, and a shared lifecycle
+reference; do not read unrelated files.
 
-If an installation overlay is loaded, use its replacement route instead of
-opening the corresponding public environment-specific reference. In
-particular, an overlay-provided Editor index replaces the public Editor
-subtree for that installation.
+The packaged [`../env-specific.yaml`](../env-specific.yaml) manifest marks the
+public skill files that an installation-specific skill may replace. If the
+active agent installation loads such a replacement, use its route instead of
+opening the corresponding public reference. In particular, an overlay-provided
+Editor index replaces the public Editor subtree for that installation.
 
 | Task involves                                                              | Read                                                                     |
 |----------------------------------------------------------------------------|--------------------------------------------------------------------------|
@@ -305,11 +308,9 @@ list for the configured client, where `family` is `"wizard"`, `"ql"`, or
   availability differs between installations (see the editor index).
 
 Each chart-family directory has an `_index.md` routing table. For every Editor
-task, read the index; add the common lifecycle reference when reading or
-mutating an existing chart, and exactly one renderer leaf when creating a chart
-or touching tabs. Every leaf keeps the exact SDK contract and one minimal
-payload while routing variants to runtime documentation; the Advanced leaf
-additionally expands the SDK/runtime bridge.
+task, read the index. Read one renderer leaf when creating a chart or touching
+its tabs; also read the common lifecycle reference when reading or mutating an
+existing chart.
 
 ## Errors in brief
 
@@ -374,9 +375,6 @@ from [references/setup.md](references/setup.md).
 | `references/serialization.md`                   | export/import/clone via `to_file` and `client.raw`                                                 |
 | `references/troubleshooting.md`                 | any API error; before retrying anything                                                            |
 | `references/design-guide.md`                    | choosing visual encodings or polishing look and feel                                               |
-
-Keep one routed leaf per Editor renderer. Ordinary leaves are intentionally
-thin; `advanced-chart.md` additionally carries the expanded SDK/runtime bridge.
 
 ## Bundled examples
 

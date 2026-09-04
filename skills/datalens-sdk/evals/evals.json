@@ -198,13 +198,13 @@
     {
       "id": 13,
       "name": "public-editor-gravity-no-activities",
-      "prompt": "Create a public Gravity UI Editor chart and add an Activities handler described by the newest Editor documentation.",
-      "expected_output": "Uses the installed public capability and builder surface as authoritative. It creates the Gravity chart without Activities because the public factory has no activities setter, and explains that runtime documentation cannot extend the SDK surface.",
+      "prompt": "Update the existing public Gravity UI Editor chart chart-id by adding an Activities handler described by the newest Editor documentation.",
+      "expected_output": "Fetches the chart and treats the runtime documentation as authoritative that Gravity supports Activities, but explains that the installed typed public SDK has not implemented the tab yet. It does not call the misleading shared update setter, mutate the chart, or bypass the typed SDK.",
       "files": [],
       "assertions": [
-        {"text": "Uses client.create.editor_chart.gravity_charts(...) with the public writable tab set", "type": "code"},
-        {"text": "Does NOT invent or call .activities(...) when the installed public factory lacks that setter", "type": "code"},
-        {"text": "Treats the documentation as a runtime source rather than an SDK capability source", "type": "workflow"}
+        {"text": "Fetches chart-id, confirms wire_type d3_node, and checks the public writable tab matrix before attempting an update", "type": "workflow"},
+        {"text": "Does NOT call saved.update.activities(...), use raw HTTP, hand-build a mutation, or execute an unrelated update while typed public support is unavailable", "type": "code"},
+        {"text": "States that the documentation supports Activities for Gravity but the installed typed SDK does not yet implement it", "type": "workflow"}
       ]
     },
     {

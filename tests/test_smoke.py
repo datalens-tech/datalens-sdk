@@ -17,4 +17,5 @@ def test_agent_skill_paths_point_to_bundled_skills() -> None:
     skill_path = Path(skill_paths[0])
     assert skill_path.is_absolute()
     assert skill_path.name == "datalens-sdk"
+    assert skill_path.parent.joinpath("env-specific.yaml").is_file()
     assert skill_path.joinpath("SKILL.md").is_file()

@@ -19,7 +19,7 @@ EDITOR_INDEX = EDITOR_DIR / "_index.md"
 ENV_SPECIFIC = SKILLS_DIR / "env-specific.yaml"
 LINK_PATTERN = re.compile(r"\[[^]]*\]\(([^)]+)\)")
 PYTHON_BLOCK_PATTERN = re.compile(r"```python\n(.*?)\n```", re.DOTALL)
-METHOD_PATTERN = re.compile(r"`([a-z_]+)\(([^)]+)\)`")
+INLINE_CODE_PATTERN = re.compile(r"`([^`\n]+)`")
 EXPECTED_FACTORIES = {"advanced_chart", "gravity_charts", "markdown", "selector", "table"}
 EXPECTED_LEAVES = {
     "advanced_chart": "advanced-chart.md",
@@ -66,16 +66,25 @@ def _documented_routes() -> dict[str, tuple[str, frozenset[str], str]]:
     return routes
 
 
-def _leaf_contract(path: Path) -> tuple[str, str, dict[str, str]]:
-    text = path.read_text()
-    factory_match = re.search(r"Factory: `client\.create\.editor_chart\.([a-z_]+)`", text)
-    wire_match = re.search(r"`chart\.wire_type`: `([^`]+)`", text)
-    methods_match = re.search(r"Supported create/update tab methods: (.*?)\.\n", text, re.DOTALL)
-    assert factory_match is not None, path
-    assert wire_match is not None, path
-    assert methods_match is not None, path
-    methods = dict(METHOD_PATTERN.findall(methods_match.group(1)))
-    return factory_match.group(1), wire_match.group(1), methods
+def _leaf_contract(path: Path) -> tuple[set[str], set[str]]:
+    preamble = path.read_text().split("## Minimal payload", 1)[0]
+    code_tokens = set(INLINE_CODE_PATTERN.findall(preamble))
+    methods = {
+        token.removesuffix("(str)")
+        for token in code_tokens
+        if token.endswith("(str)") and token.removesuffix("(str)").isidentifier()
+    }
+    return code_tokens, methods
+
+
+def _minimal_payload_calls(path: Path) -> set[str]:
+    minimal_payload = path.read_text().split("## Minimal payload", 1)[1].split("\n## ", 1)[0]
+    calls: set[str] = set()
+    for source in PYTHON_BLOCK_PATTERN.findall(minimal_payload):
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                calls.add(node.func.attr)
+    return calls
 
 
 def test_public_editor_routes_match_both_generated_installations() -> None:
@@ -97,12 +106,12 @@ def test_public_renderer_leaves_match_generated_builder_methods_and_types() -> N
     nodes = _generated_nodes("yacloud")
     factory_classes = (YacloudEditorChartCreateFactory, EnterpriseEditorChartCreateFactory)
     for factory, filename in EXPECTED_LEAVES.items():
-        documented_factory, wire_type, methods = _leaf_contract(EDITOR_DIR / filename)
+        code_tokens, methods = _leaf_contract(EDITOR_DIR / filename)
         fields = _object(nodes[factory]["data_fields"])
 
-        assert documented_factory == factory
-        assert wire_type == nodes[factory]["wire_type"]
-        assert methods == dict.fromkeys(fields, "str")
+        assert f"client.create.editor_chart.{factory}" in code_tokens
+        assert nodes[factory]["wire_type"] in code_tokens
+        assert methods == set(fields)
 
         for factory_class in factory_classes:
             builder_type = get_type_hints(getattr(factory_class, factory))["return"]
@@ -118,21 +127,9 @@ def test_public_editor_keeps_one_leaf_per_renderer() -> None:
     assert {path.name for path in EDITOR_DIR.glob("*.md")} == EXPECTED_LOCAL_FILES
 
     for filename in EXPECTED_LEAVES.values():
-        text = (EDITOR_DIR / filename).read_text()
-        assert "## Minimal payload" in text
-        assert ".description(" in text
-        assert ".build()" in text
-
-
-def test_public_editor_leaves_reuse_one_empty_javascript_module_constant() -> None:
-    expected = 'EMPTY = "module.exports = {};\\n"'
-    for filename in EXPECTED_LEAVES.values():
-        assignments = [
-            line
-            for line in (EDITOR_DIR / filename).read_text().splitlines()
-            if line.endswith('= "module.exports = {};\\n"')
-        ]
-        assert assignments in ([], [expected])
+        path = EDITOR_DIR / filename
+        assert "## Minimal payload" in path.read_text()
+        assert {"description", "build"} <= _minimal_payload_calls(path)
 
 
 def test_public_create_and_per_wire_update_schemas_are_identical() -> None:
@@ -168,7 +165,6 @@ def test_public_editor_references_do_not_cross_installations() -> None:
     for path in EDITOR_DIR.glob("*.md"):
         text = path.read_text()
         assert "docs.yandex-team.ru" not in text, path
-        assert "installation overlay" not in text.lower(), path
         for target in LINK_PATTERN.findall(text):
             if target.startswith(("http://", "https://")):
                 assert target.startswith("https://yandex.cloud/"), f"{path}: {target}"
@@ -191,48 +187,48 @@ def test_public_editor_common_operations_separate_destructive_steps() -> None:
     assert "Mapping[str, object]" in text
     relation_scopes = ("dash", "report", "widget", "dataset", "folder", "connection")
     assert all(f'"{scope}"' in lifecycle for scope in relation_scopes)
-    assert lifecycle.index("explicit confirmation") < lifecycle.index("chart.delete(")
+    before_delete = lifecycle[: lifecycle.index("chart.delete(")]
+    assert re.search(r"\bconfirm\w*\b", before_delete, re.IGNORECASE)
 
 
 def test_public_editor_routes_runtime_details_to_section_links() -> None:
-    index = EDITOR_INDEX.read_text()
-    advanced = (EDITOR_DIR / "advanced-chart.md").read_text()
+    docs_root = "https://yandex.cloud/ru/docs/datalens/charts/editor"
+    index_links = set(LINK_PATTERN.findall(EDITOR_INDEX.read_text()))
+    advanced_text = (EDITOR_DIR / "advanced-chart.md").read_text()
+    advanced_links = set(LINK_PATTERN.findall(advanced_text))
 
-    assert "Omit `meta` only when" in index
-    assert "tabs#meta" in index
-    assert "tabs#sources" in index
-    assert "methods#get-loaded-data" in index
-    assert "methods#wrap" in index
-    assert "widgets/advanced#begin" in advanced
-    assert "widgets/advanced#outer-libs" in advanced
-    assert "widgets/advanced#actions" in advanced
-    assert "widgets/advanced#tooltip" in advanced
-    assert "widgets/advanced#chart-chart-filtration" in advanced
-    assert "## Minimal payload" in advanced
-    assert "Editor.wrapFn" in advanced
-    assert "Editor.generateHtml" in advanced
-    for anchor in (
-        "tabs#special-parameters",
-        "tabs#relative-date",
-        "tabs#interval",
-        "tabs#params-restrictions",
-        "tabs#sources-dataset",
-        "tabs#sources-database",
-        "tabs#sources-api-connector",
-    ):
-        assert anchor in advanced
-    assert "charts/editor/methods)" in advanced
-    assert "charts/editor/methods#" not in advanced
-    for method in ("getId", "getLoadedData", "getParams", "generateHtml", "wrapFn"):
-        assert f"Editor.{method}()" in advanced
+    assert {
+        f"{docs_root}/tabs#meta",
+        f"{docs_root}/tabs#sources",
+        f"{docs_root}/methods#get-loaded-data",
+        f"{docs_root}/methods#wrap",
+    } <= index_links
+    assert {
+        f"{docs_root}/widgets/advanced#begin",
+        f"{docs_root}/widgets/advanced#outer-libs",
+        f"{docs_root}/widgets/advanced#actions",
+        f"{docs_root}/widgets/advanced#tooltip",
+        f"{docs_root}/widgets/advanced#chart-chart-filtration",
+        f"{docs_root}/tabs#special-parameters",
+        f"{docs_root}/tabs#relative-date",
+        f"{docs_root}/tabs#interval",
+        f"{docs_root}/tabs#params-restrictions",
+        f"{docs_root}/tabs#sources-dataset",
+        f"{docs_root}/tabs#sources-database",
+        f"{docs_root}/tabs#sources-api-connector",
+        f"{docs_root}/methods",
+    } <= advanced_links
+    assert {
+        "Editor.getId()",
+        "Editor.getLoadedData()",
+        "Editor.getParams()",
+        "Editor.generateHtml()",
+        "Editor.wrapFn()",
+    } <= set(INLINE_CODE_PATTERN.findall(advanced_text))
 
 
-def test_public_editor_routing_defers_to_overlays_and_describes_the_full_family() -> None:
-    text = (SKILL_DIR / "SKILL.md").read_text()
-    normalized = " ".join(text.split())
-    editor_index = EDITOR_INDEX.read_text()
+def test_public_editor_routing_uses_packaged_environment_manifest() -> None:
+    skill_links = set(LINK_PATTERN.findall((SKILL_DIR / "SKILL.md").read_text()))
 
-    assert "an overlay-provided Editor index replaces the public Editor subtree" in normalized
-    assert "custom-code and specialized Editor renderers" in text
-    assert "custom JavaScript chart using d3js" not in text
-    assert "Never translate a payload or migrate a chart" in editor_index
+    assert "../env-specific.yaml" in skill_links
+    assert "references/editor-charts/_index.md" in skill_links

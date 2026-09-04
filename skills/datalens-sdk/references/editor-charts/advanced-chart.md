@@ -1,8 +1,7 @@
 # Public Advanced Editor chart
 
-This is the expanded public renderer reference. It keeps the Python
-translation and stable execution model locally; use the linked official
-sections for payload variants, fields, libraries, examples, and limits.
+Use the linked official sections for payload variants, fields, libraries,
+examples, and limits.
 
 Factory: `client.create.editor_chart.advanced_chart`.
 `chart.wire_type`: `advanced-chart_node`.
@@ -158,8 +157,11 @@ for signatures, renderer support, examples, and restrictions. The core public
 Advanced bridge uses `Editor.getId()`, `Editor.getLoadedData()`,
 `Editor.getParams()`, `Editor.generateHtml()`, and `Editor.wrapFn()`.
 
-The current public SDK exposes no `activities` setter for Advanced charts. Do
-not infer one from newer runtime documentation.
+The runtime documentation does not list Advanced among the renderers that
+support Activities. In addition, the current typed public SDK has not yet
+implemented Activities for any renderer. The shared update object may display
+an `activities(...)` method used by other installations; do not call it for a
+public Advanced chart.
 
 For lifecycle, export/import, and persisted-but-not-rendering diagnosis, read
 [common-operations.md](common-operations.md).

@@ -1,7 +1,5 @@
 # Public Markdown
 
-Use this leaf only with public Yandex Cloud and Enterprise clients.
-
 Factory: `client.create.editor_chart.markdown`.
 `chart.wire_type`: `markdown_node`.
 Supported create/update tab methods: `controls(str)`, `meta(str)`,

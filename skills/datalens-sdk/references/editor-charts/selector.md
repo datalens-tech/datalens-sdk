@@ -1,7 +1,5 @@
 # Public Selector
 
-Use this leaf only with public Yandex Cloud and Enterprise clients.
-
 Factory: `client.create.editor_chart.selector`.
 `chart.wire_type`: `control_node`.
 Supported create/update tab methods: `controls(str)`, `meta(str)`,
