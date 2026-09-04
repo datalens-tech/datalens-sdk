@@ -1,18 +1,16 @@
-# Gravity Charts
+# Public Gravity UI Charts
 
-Factory: `client.create.editor_chart.gravity_charts`. `chart.wire_type`:
-`d3_node`.
+Factory: `client.create.editor_chart.gravity_charts`.
+`chart.wire_type`: `d3_node`.
+Supported create/update tab methods: `config(str)`, `controls(str)`,
+`meta(str)`, `params(str)`, `prepare(str)`, `sources(str)`.
 
-Tabs: `config`, `controls`, `meta`, `params`, `prepare`, `sources`.
-
-`prepare` exports the complete Gravity Charts configuration.
+## Minimal payload
 
 ```python
 from datalens_sdk import EntryLocation
 
-SOURCES = "module.exports = {};\n"
-PARAMS = "module.exports = {};\n"
-CONFIG = "module.exports = {};\n"
+EMPTY = "module.exports = {};\n"
 PREPARE = """\
 module.exports = {
     chart: {margin: {left: 10, right: 10, top: 10, bottom: 10}},
@@ -24,35 +22,31 @@ module.exports = {
         }],
     },
     title: {text: 'Gravity Charts created with datalens_sdk'},
-    xAxis: {
-        type: 'category',
-        categories: ['Apples', 'Oranges', 'Grapes'],
-    },
+    xAxis: {type: 'category', categories: ['Apples', 'Oranges', 'Grapes']},
     yAxis: [{title: {text: 'Value'}}],
 };
 """
 
 
-def build_chart(client, *, location: EntryLocation):
+def build_minimal(client, *, location: EntryLocation):
     return (
-        client.create.editor_chart.gravity_charts(
-            name="SDK Gravity Charts",
-            location=location,
-        )
-        .sources(SOURCES)
-        .params(PARAMS)
-        .config(CONFIG)
+        client.create.editor_chart.gravity_charts(name="Gravity", location=location)
+        .sources(EMPTY)
+        .params(EMPTY)
+        .controls(EMPTY)
+        .config(EMPTY)
         .prepare(PREPARE)
         .description("Gravity Charts Editor chart")
         .build()
     )
 ```
 
-Leave `meta` unset.
+This dependency-free smoke test omits `meta`. For real option shapes use
+[Prepare](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/gravity-ui#prepare)
+and [Config](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/gravity-ui#config).
+For linked data follow the index's Meta → Sources → `Editor.getLoadedData()`
+flow.
 
-## Related references
-
-- [_index.md](_index.md) — routing, exact tab matrix
-- [common-operations.md](common-operations.md) — read, update, publish, delete
-- [troubleshooting.md](troubleshooting.md) — chart persists but does not render
-- [Official Gravity UI Charts documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/gravity-ui)
+Every setter replaces a complete tab. Re-fetching proves persistence, not
+rendering. See [_index.md](_index.md) and
+[common-operations.md](common-operations.md).

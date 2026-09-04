@@ -102,7 +102,7 @@ _SCHEMA_SUPPORTED_KEYS = frozenset(
         "type",
     }
 )
-_DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "minItems", "minLength", "minimum"})
+_DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "maxItems", "minItems", "minLength", "minimum"})
 _DATASET_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"maximum", "minItems", "minLength", "minimum"})
 
 
@@ -419,7 +419,7 @@ def _audit_pydantic_schema_features(
     ):
         raise ValueError(f"{contract} schema enum at {_schema_pointer(pointer, 'enum')} must contain JSON scalars")
 
-    for constraint in ("minItems", "minLength"):
+    for constraint in ("maxItems", "minItems", "minLength"):
         constraint_value = value.get(constraint)
         if constraint in value and (
             not isinstance(constraint_value, int) or isinstance(constraint_value, bool) or constraint_value < 0
@@ -1844,7 +1844,8 @@ class _PydanticSchemaEmitter:
                             for index, branch_schema in enumerate(branch_schemas)
                         )
                         and any(
-                            key in branch_schemas[non_null_indices[0]] for key in ("minItems", "minLength", "minimum")
+                            key in branch_schemas[non_null_indices[0]]
+                            for key in ("maxItems", "minItems", "minLength", "minimum")
                         )
                     ):
                         constrained_nullable_index = non_null_indices[0]
@@ -1858,7 +1859,7 @@ class _PydanticSchemaEmitter:
                         emitted_schema = {
                             key: value
                             for key, value in branch_schema.items()
-                            if key not in {"minItems", "minLength", "minimum"}
+                            if key not in {"maxItems", "minItems", "minLength", "minimum"}
                         }
                     annotations.append(
                         self._annotation(
@@ -1880,6 +1881,7 @@ class _PydanticSchemaEmitter:
                             annotation,
                             constrained_nullable_schema,
                             length_key="minItems",
+                            max_length_key="maxItems",
                         )
                     elif constrained_type in {"integer", "number"}:
                         annotation = self._with_constraints(annotation, constrained_nullable_schema, minimum=True)
@@ -1939,10 +1941,20 @@ class _PydanticSchemaEmitter:
                     for index, item in enumerate(prefix_items)
                 ]
                 annotation = f"Annotated[tuple[{', '.join(annotations)}], BeforeValidator(_json_array_to_tuple)]"
-                return self._with_constraints(annotation, schema, length_key="minItems")
+                return self._with_constraints(
+                    annotation,
+                    schema,
+                    length_key="minItems",
+                    max_length_key="maxItems",
+                )
             items = schema.get("items")
             item_annotation = self._annotation(items, path=(*path, "item")) if isinstance(items, dict) else "JsonValue"
-            return self._with_constraints(f"list[{item_annotation}]", schema, length_key="minItems")
+            return self._with_constraints(
+                f"list[{item_annotation}]",
+                schema,
+                length_key="minItems",
+                max_length_key="maxItems",
+            )
 
         properties = schema.get("properties")
         if raw_type == "object" or isinstance(properties, dict):
@@ -1965,11 +1977,14 @@ class _PydanticSchemaEmitter:
         schema: Mapping[str, JsonValue],
         *,
         length_key: str | None = None,
+        max_length_key: str | None = None,
         minimum: bool = False,
     ) -> str:
         constraints: list[str] = []
         if length_key is not None and isinstance(schema.get(length_key), int):
             constraints.append(f"min_length={schema[length_key]!r}")
+        if max_length_key is not None and isinstance(schema.get(max_length_key), int):
+            constraints.append(f"max_length={schema[max_length_key]!r}")
         if minimum and isinstance(schema.get("minimum"), (int, float)):
             constraints.append(f"ge={schema['minimum']!r}")
         if minimum and isinstance(schema.get("maximum"), (int, float)):

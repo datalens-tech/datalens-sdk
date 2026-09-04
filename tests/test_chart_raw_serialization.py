@@ -278,7 +278,7 @@ def test_editor_split_tabs_is_export_only_and_preserves_main_document(tmp_path: 
 
 
 @pytest.mark.parametrize("split_tabs", [False, True])
-def test_editor_artifacts_redact_read_only_secrets(tmp_path: Path, split_tabs: bool) -> None:
+def test_editor_artifacts_redact_legacy_secrets(tmp_path: Path, split_tabs: bool) -> None:
     sentinel = "must-not-leak-editor-token"
     snapshot = _editor_snapshot()
     entry = cast(dict[str, object], snapshot["entry"])

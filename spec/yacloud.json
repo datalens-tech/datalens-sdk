@@ -8603,57 +8603,6 @@
                 "description": "Configuration from the Prepare tab.",
                 "type": "string"
               },
-              "secrets": {
-                "description": "Secrets bound to the Editor chart. Read-only: managed via the Editor Secrets dialog and ignored on create/update (preserved server-side).",
-                "items": {
-                  "properties": {
-                    "addedBy": {
-                      "description": "Login of the user who added the secret.",
-                      "type": "string"
-                    },
-                    "alias": {
-                      "description": "Alias the key is exposed under via ChartEditor.getSecrets().",
-                      "type": "string"
-                    },
-                    "entryId": {
-                      "description": "Identifier of the entry the secret is bound to.",
-                      "type": "string"
-                    },
-                    "key": {
-                      "description": "Key inside the YAV secret version.",
-                      "type": "string"
-                    },
-                    "name": {
-                      "description": "Name of the YAV secret.",
-                      "type": "string"
-                    },
-                    "secretId": {
-                      "description": "Identifier of the YAV secret.",
-                      "type": "string"
-                    },
-                    "token": {
-                      "description": "YAV delegation token issued for this entry and key.",
-                      "type": "string"
-                    },
-                    "tokenId": {
-                      "description": "Identifier of the YAV delegation token.",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "addedBy",
-                    "alias",
-                    "entryId",
-                    "key",
-                    "name",
-                    "secretId",
-                    "token",
-                    "tokenId"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
               "sources": {
                 "description": "Configuration from the Sources tab.",
                 "type": "string"
@@ -8841,57 +8790,6 @@
                 "description": "Configuration from the Prepare tab.",
                 "type": "string"
               },
-              "secrets": {
-                "description": "Secrets bound to the Editor chart. Read-only: managed via the Editor Secrets dialog and ignored on create/update (preserved server-side).",
-                "items": {
-                  "properties": {
-                    "addedBy": {
-                      "description": "Login of the user who added the secret.",
-                      "type": "string"
-                    },
-                    "alias": {
-                      "description": "Alias the key is exposed under via ChartEditor.getSecrets().",
-                      "type": "string"
-                    },
-                    "entryId": {
-                      "description": "Identifier of the entry the secret is bound to.",
-                      "type": "string"
-                    },
-                    "key": {
-                      "description": "Key inside the YAV secret version.",
-                      "type": "string"
-                    },
-                    "name": {
-                      "description": "Name of the YAV secret.",
-                      "type": "string"
-                    },
-                    "secretId": {
-                      "description": "Identifier of the YAV secret.",
-                      "type": "string"
-                    },
-                    "token": {
-                      "description": "YAV delegation token issued for this entry and key.",
-                      "type": "string"
-                    },
-                    "tokenId": {
-                      "description": "Identifier of the YAV delegation token.",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "addedBy",
-                    "alias",
-                    "entryId",
-                    "key",
-                    "name",
-                    "secretId",
-                    "token",
-                    "tokenId"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
               "sources": {
                 "description": "Configuration from the Sources tab.",
                 "type": "string"
@@ -9076,57 +8974,6 @@
                 "description": "Configuration from the Prepare tab.",
                 "type": "string"
               },
-              "secrets": {
-                "description": "Secrets bound to the Editor chart. Read-only: managed via the Editor Secrets dialog and ignored on create/update (preserved server-side).",
-                "items": {
-                  "properties": {
-                    "addedBy": {
-                      "description": "Login of the user who added the secret.",
-                      "type": "string"
-                    },
-                    "alias": {
-                      "description": "Alias the key is exposed under via ChartEditor.getSecrets().",
-                      "type": "string"
-                    },
-                    "entryId": {
-                      "description": "Identifier of the entry the secret is bound to.",
-                      "type": "string"
-                    },
-                    "key": {
-                      "description": "Key inside the YAV secret version.",
-                      "type": "string"
-                    },
-                    "name": {
-                      "description": "Name of the YAV secret.",
-                      "type": "string"
-                    },
-                    "secretId": {
-                      "description": "Identifier of the YAV secret.",
-                      "type": "string"
-                    },
-                    "token": {
-                      "description": "YAV delegation token issued for this entry and key.",
-                      "type": "string"
-                    },
-                    "tokenId": {
-                      "description": "Identifier of the YAV delegation token.",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "addedBy",
-                    "alias",
-                    "entryId",
-                    "key",
-                    "name",
-                    "secretId",
-                    "token",
-                    "tokenId"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
               "sources": {
                 "description": "Configuration from the Sources tab.",
                 "type": "string"
@@ -9305,57 +9152,6 @@
               "params": {
                 "description": "Configuration from the Params tab.",
                 "type": "string"
-              },
-              "secrets": {
-                "description": "Secrets bound to the Editor chart. Read-only: managed via the Editor Secrets dialog and ignored on create/update (preserved server-side).",
-                "items": {
-                  "properties": {
-                    "addedBy": {
-                      "description": "Login of the user who added the secret.",
-                      "type": "string"
-                    },
-                    "alias": {
-                      "description": "Alias the key is exposed under via ChartEditor.getSecrets().",
-                      "type": "string"
-                    },
-                    "entryId": {
-                      "description": "Identifier of the entry the secret is bound to.",
-                      "type": "string"
-                    },
-                    "key": {
-                      "description": "Key inside the YAV secret version.",
-                      "type": "string"
-                    },
-                    "name": {
-                      "description": "Name of the YAV secret.",
-                      "type": "string"
-                    },
-                    "secretId": {
-                      "description": "Identifier of the YAV secret.",
-                      "type": "string"
-                    },
-                    "token": {
-                      "description": "YAV delegation token issued for this entry and key.",
-                      "type": "string"
-                    },
-                    "tokenId": {
-                      "description": "Identifier of the YAV delegation token.",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "addedBy",
-                    "alias",
-                    "entryId",
-                    "key",
-                    "name",
-                    "secretId",
-                    "token",
-                    "tokenId"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
               },
               "sources": {
                 "description": "Configuration from the Sources tab.",
@@ -9542,57 +9338,6 @@
               "prepare": {
                 "description": "Configuration from the Prepare tab.",
                 "type": "string"
-              },
-              "secrets": {
-                "description": "Secrets bound to the Editor chart. Read-only: managed via the Editor Secrets dialog and ignored on create/update (preserved server-side).",
-                "items": {
-                  "properties": {
-                    "addedBy": {
-                      "description": "Login of the user who added the secret.",
-                      "type": "string"
-                    },
-                    "alias": {
-                      "description": "Alias the key is exposed under via ChartEditor.getSecrets().",
-                      "type": "string"
-                    },
-                    "entryId": {
-                      "description": "Identifier of the entry the secret is bound to.",
-                      "type": "string"
-                    },
-                    "key": {
-                      "description": "Key inside the YAV secret version.",
-                      "type": "string"
-                    },
-                    "name": {
-                      "description": "Name of the YAV secret.",
-                      "type": "string"
-                    },
-                    "secretId": {
-                      "description": "Identifier of the YAV secret.",
-                      "type": "string"
-                    },
-                    "token": {
-                      "description": "YAV delegation token issued for this entry and key.",
-                      "type": "string"
-                    },
-                    "tokenId": {
-                      "description": "Identifier of the YAV delegation token.",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "addedBy",
-                    "alias",
-                    "entryId",
-                    "key",
-                    "name",
-                    "secretId",
-                    "token",
-                    "tokenId"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
               },
               "sources": {
                 "description": "Configuration from the Sources tab.",

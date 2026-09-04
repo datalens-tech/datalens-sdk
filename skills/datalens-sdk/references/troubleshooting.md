@@ -66,7 +66,7 @@ exception, classify that exception below.
 **How to tell apart in one probe:** run a harmless listing —
 
 ```python
-next(iter(client.navigation.get_entries(page_size=1)), None)
+next(iter(client.navigation.get_entries(scope="dataset", page_size=1)), None)
 ```
 
 If that also raises 401, the token is the problem (route to [setup.md](setup.md); note IAM tokens expire — the default `yc`-CLI provider refreshes them, a `StaticYCIAMAuthProvider` token goes stale). If the listing works but your target call raises 403, it is permissions: tell the user which entity and which operation was denied (from `e.context.request_url` and `message`) and that they need access granted in DataLens — the SDK cannot grant it.

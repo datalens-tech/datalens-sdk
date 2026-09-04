@@ -1,26 +1,39 @@
-# Advanced Chart
+# Public Advanced Editor chart
 
-Factory: `client.create.editor_chart.advanced_chart`. `chart.wire_type`:
-`advanced-chart_node`.
+Use the linked official sections for payload variants, fields, libraries,
+examples, and limits.
 
-Tabs: `controls`, `meta`, `params`, `prepare`, `sources`.
+Factory: `client.create.editor_chart.advanced_chart`.
+`chart.wire_type`: `advanced-chart_node`.
+Supported create/update tab methods: `controls(str)`, `meta(str)`,
+`params(str)`, `prepare(str)`, `sources(str)`.
 
-`prepare` must export an object whose `render` member is an
-`Editor.wrapFn(...)` result. Any returned HTML or SVG must be passed through
-`Editor.generateHtml(...)`; a raw string is escaped instead of rendered.
-The renderer's built-in `options` argument comes first, followed by values
-from `args`.
+## Stable contract
+
+- `Meta` is JSON text shaped as `{"links": {...}}`; unlike code tabs it is not
+  a JavaScript module. It declares aliases for linked DataLens datasets or
+  connections. Omit it only when the chart has no linked DataLens objects.
+- `Sources` loads data, `Params` supplies defaults, and `Prepare` transforms
+  the current inputs for rendering.
+- `Prepare` exports an object whose `render` member is an `Editor.wrapFn(...)`
+  result. The built-in chart options precede explicit `args`.
+- Wrapped functions cannot close over server-side variables. Pass only the
+  smallest serializable values they need through `args`.
+- Return HTML or SVG through `Editor.generateHtml(...)`; a raw string is
+  escaped.
+
+## Minimal payload
+
+Dependency-free smoke test:
 
 ```python
 from datalens_sdk import EntryLocation
 
-SOURCES = "module.exports = {};\n"
-CONTROLS = "module.exports = {};\n"
+EMPTY = "module.exports = {};\n"
 PARAMS = "module.exports = {backgroundColor: ['var(--g-color-base-info-light)']};\n"
 PREPARE = """\
 const params = Editor.getParams();
-const background =
-    params.backgroundColor?.[0] ?? 'var(--g-color-base-info-light)';
+const background = params.backgroundColor?.[0] ?? 'var(--g-color-base-info-light)';
 
 module.exports = {
     render: Editor.wrapFn({
@@ -37,26 +50,118 @@ module.exports = {
 """
 
 
-def build_chart(client, *, location: EntryLocation):
+def build_minimal(client, *, location: EntryLocation):
     return (
-        client.create.editor_chart.advanced_chart(
-            name="SDK Advanced chart",
-            location=location,
-        )
-        .sources(SOURCES)
+        client.create.editor_chart.advanced_chart(name="Advanced", location=location)
+        .sources(EMPTY)
         .params(PARAMS)
-        .controls(CONTROLS)
+        .controls(EMPTY)
         .prepare(PREPARE)
         .description("Advanced Editor chart")
         .build()
     )
 ```
 
-Leave `meta` unset.
+This smoke-test shape intentionally omits `meta` because it has no linked
+DataLens objects. It is not a catalog of Advanced options.
 
-## Related references
+## SDK translation
 
-- [_index.md](_index.md) — routing, exact tab matrix
-- [common-operations.md](common-operations.md) — read, update, publish, delete
-- [troubleshooting.md](troubleshooting.md) — chart persists but does not render
-- [Official Advanced chart documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced)
+The runtime sources come from the documentation or the user's existing chart;
+the SDK passes each complete source string to its matching tab setter:
+
+```python
+from datalens_sdk import EntryLocation
+
+
+def build_advanced_chart(
+    client,
+    *,
+    location: EntryLocation,
+    sources_source: str,
+    params_source: str,
+    controls_source: str,
+    prepare_source: str,
+    meta_source: str | None = None,
+):
+    builder = (
+        client.create.editor_chart.advanced_chart(
+            name="Advanced Editor chart",
+            location=location,
+        )
+        .sources(sources_source)
+        .params(params_source)
+        .controls(controls_source)
+        .prepare(prepare_source)
+        .description("Advanced Editor chart")
+    )
+    if meta_source is not None:
+        builder.meta(meta_source)
+    return builder.build()
+```
+
+For an existing chart, fetch the saved branch, confirm
+`chart.wire_type == "advanced-chart_node"`, replace only the intended complete
+tabs, and default to save:
+
+```python
+def update_advanced_prepare(
+    client,
+    *,
+    chart_id: str,
+    workbook_id: str | None,
+    prepare_source: str,
+    publish: bool = False,
+):
+    chart = client.get.editor_chart(
+        by_id=chart_id,
+        workbook_id=workbook_id,
+        branch="saved",
+    )
+    return chart.update.prepare(prepare_source).mode("publish" if publish else "save").execute()
+```
+
+Re-fetch the selected branch and compare the changed tab strings. This proves
+persistence, not rendering.
+
+## Advanced runtime documentation
+
+### Build and render
+
+- [Getting started with Advanced charts](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced#begin)
+- [Connecting third-party libraries](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced#outer-libs)
+- [Advanced-specific methods and sandbox](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced#methods)
+- [Events](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced#actions)
+- [Tooltips](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced#tooltip)
+- [Chart-to-chart filtering](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced#chart-chart-filtration)
+- [Examples](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/advanced#examples)
+
+### Inputs and execution stages
+
+Use the index's [runtime documentation router](_index.md#runtime-documentation-router)
+for the common tab contracts and execution limits. Advanced variants often
+need these narrower sections:
+
+- [Special parameters](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#special-parameters):
+  [relative dates](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#relative-date),
+  [intervals](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#interval),
+  [restrictions](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#params-restrictions)
+- Source variants: [dataset](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources-dataset),
+  [SQL connection](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources-database),
+  [API Connector](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources-api-connector)
+
+### Relevant `Editor.*` methods
+
+Use the complete [Editor methods reference](https://yandex.cloud/ru/docs/datalens/charts/editor/methods)
+for signatures, renderer support, examples, and restrictions. The core public
+Advanced bridge uses `Editor.getId()`, `Editor.getLoadedData()`,
+`Editor.getParams()`, `Editor.generateHtml()`, and `Editor.wrapFn()`.
+
+The runtime documentation does not list Advanced among the renderers that
+support Activities. In addition, the current typed public SDK has not yet
+implemented Activities for any renderer. The shared update object may display
+an `activities(...)` method used by other installations; do not call it for a
+public Advanced chart.
+
+For lifecycle, export/import, and persisted-but-not-rendering diagnosis, read
+[common-operations.md](common-operations.md).

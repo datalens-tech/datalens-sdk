@@ -234,7 +234,15 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 
 ## Task routing
 
-Read this file plus the one reference the task needs — not everything.
+Read this file, then follow only the references routed for the task. Chart
+families may require an index, one renderer reference, and a shared lifecycle
+reference; do not read unrelated files.
+
+The packaged [`../env-specific.yaml`](../env-specific.yaml) manifest marks the
+public skill files that an installation-specific skill may replace. If the
+active agent installation loads such a replacement, use its route instead of
+opening the corresponding public reference. In particular, an overlay-provided
+Editor index replaces the public Editor subtree for that installation.
 
 | Task involves                                                              | Read                                                                     |
 |----------------------------------------------------------------------------|--------------------------------------------------------------------------|
@@ -295,12 +303,14 @@ list for the configured client, where `family` is `"wizard"`, `"ql"`, or
   (or can be) in a dataset, use wizard.
 - **QL** — chart directly over a SQL query against a connection, bypassing
   datasets. For ad-hoc / one-off charts where building a dataset is overkill.
-- **Editor** — custom JavaScript chart using d3js. Last resort, only when wizard
-  cannot express the requirement or on explicit ask; renderer availability differs between
-  installations (see the editor index).
+- **Editor** — custom-code and specialized Editor renderers. Last resort, only
+  when wizard cannot express the requirement or on explicit ask; renderer
+  availability differs between installations (see the editor index).
 
-Each chart-family directory has an `_index.md` routing table — read the
-index first, then exactly the one per-type file it points to.
+Each chart-family directory has an `_index.md` routing table. For every Editor
+task, read the index. Read one renderer leaf when creating a chart or touching
+its tabs; also read the common lifecycle reference when reading or mutating an
+existing chart.
 
 ## Errors in brief
 
@@ -356,10 +366,9 @@ from [references/setup.md](references/setup.md).
 | `references/ql-charts/_index.md`                | routing to one of the types of QL visualizations                                                   |
 | `references/ql-charts/common-operations.md`     | QL lifecycle: queries, params, columns                                                             |
 | `references/ql-charts/chart-<type>.md`          | the one QL visualization at hand                                                                   |
-| `references/editor-charts/_index.md`            | routing to the editor renderer types; read before any editor work                                  |
-| `references/editor-charts/common-operations.md` | editor chart lifecycle and tab semantics                                                           |
-| `references/editor-charts/troubleshooting.md`   | an editor chart persists but fails to render                                                       |
-| `references/editor-charts/<renderer>.md`        | the one renderer you are targeting                                                                 |
+| `references/editor-charts/_index.md`            | Editor mental model, exact SDK surface, and renderer routing                                         |
+| `references/editor-charts/common-operations.md` | Editor lifecycle, tab replacement, serialization, and persisted-but-not-rendered diagnosis          |
+| `references/editor-charts/<renderer>.md`        | one minimal working payload, the renderer's SDK contract, and exact runtime-documentation sections  |
 | `references/parameters.md`                      | parameter definitions, override precedence, selectors, global/widget/action params                 |
 | `references/dashboards.md`                      | building or editing dashboards; discovering existing item, selector, and chart-tab ids             |
 | `references/navigation.md`                      | listing/finding/moving entities; collections, workbooks, folders                                   |

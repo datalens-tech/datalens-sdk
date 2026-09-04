@@ -1,163 +1,126 @@
-# Editor Chart Common Operations
+# Public Editor chart operations
 
-The lifecycle shared by every Editor renderer. Examples import public domain
-types only from `datalens_sdk` and work with any configured client. For client
-construction and installation choice, see [../setup.md](../setup.md). Check
-[the routing index](_index.md) for the renderer factories before
-creating. Treat every tab value as the complete replacement source for that
-tab.
+Read [the public Editor index](_index.md) first. Runtime payload formats belong
+to the linked official documentation; this file covers the SDK lifecycle.
 
-## Create
+## Create and read
 
-Every factory starts with the same entry arguments and ends with `.build()`:
+Create through `client.create.editor_chart.<factory>(name=..., location=...)`,
+set only tabs supported by the selected matrix row, optionally add
+`.description(...)`, and finish with `.build()`. Public clients accept
+`EntryLocation.path(...)` or `EntryLocation.workbook(...)`.
 
-```python
-from datalens_sdk import EntryLocation
+Start from that renderer leaf's minimal payload. DTO requiredness does not
+define a renderer-safe default: a missing required tab may serialize as an
+empty string, so set every tab that needs non-empty or format-specific content
+explicitly.
 
-
-def build_chart(client, *, location: EntryLocation):
-    return (
-        client.create.editor_chart.markdown(
-            name="SDK Markdown",
-            location=location,
-        )
-        .sources("module.exports = {};\n")
-        .params("module.exports = {};\n")
-        .controls("module.exports = {};\n")
-        .prepare("module.exports = {markdown: '# Hello from Editor'};\n")
-        .description("Created with datalens_sdk")
-        .build()
-    )
-```
-
-Pass either `EntryLocation.path("/Charts")` or
-`EntryLocation.workbook("workbook-id")`, according to the destination used
-by the configured client.
-
-Use the renderer-specific references for complete working tab
-content. DTO requiredness does not define a renderer-safe default: a missing
-required tab may be serialized as an empty string, so set every tab that
-needs non-empty or format-specific content explicitly.
-
-Dashboard widget/global params and manual selectors address Editor parameters
-by the keys exported from the `params` tab. See
-[../parameters.md](../parameters.md) for scope, precedence, and the static
-validation boundary.
-
-## Read
+Fetch one intended version at a time:
 
 ```python
-saved = client.get.editor_chart(
-    by_id=chart.id,
-    workbook_id=chart.workbook_id,
-    branch="saved",
-)
-published = client.get.editor_chart(
-    by_id=chart.id,
-    workbook_id=chart.workbook_id,
-    branch="published",
-)
-revision = client.get.editor_chart(
-    by_id=chart.id,
-    workbook_id=chart.workbook_id,
-    rev_id="revision-id",
-)
-generic = client.get.chart(
-    by_id=chart.id,
-    workbook_id=chart.workbook_id,
+chart = client.get.editor_chart(
+    by_id=chart_id,
+    workbook_id=workbook_id,  # omit for a path-based chart
+    branch="saved",  # or "published"; alternatively use rev_id=
 )
 ```
 
-Omit `workbook_id` when the chart is path-based. Prefer
-`client.get.editor_chart` when the category is known. `branch` accepts
-`"saved"` or `"published"`. When both `rev_id` and `branch` are passed,
-`rev_id` takes precedence and the client emits a `UserWarning`.
+Prefer `client.get.editor_chart` when the category is known;
+`client.get.chart(...)` returns `WizardChart | EditorChart | QLChart`. If both
+`rev_id` and `branch` are passed, `rev_id` wins and the client emits
+`UserWarning`.
 
-Useful public state:
+Useful state is `chart.id`, `name`, `location`, `description`,
+`category == "editor"`, `wire_type`, `data`, `response_snapshot`, and
+`update`. `chart.data` is a
+`Mapping[str, object]` whose values are usually complete stored tab-source
+strings; a nullable, redacted, or omitted tab may be `None` or absent. Editor
+charts have no Wizard/QL `visualization_id`.
 
-- `chart.id`, `chart.name`, `chart.location`, and `chart.description`;
-- `chart.category == "editor"`;
-- `chart.wire_type`, which identifies the renderer; map it to the factory in
-  [the routing index](_index.md). Editor charts do not expose a
-  Wizard/QL-style `visualization_id`;
-- `chart.data`, a `Mapping[str, object]` whose tab values are usually source
-  strings; nullable, redacted, or omitted tabs may be `None` or absent;
-- `chart.update`, which starts a fluent update.
+## Update and publish
 
-## Update and Publish
-
-Fetch the saved branch before editing. Each setter replaces the complete
-tab:
+Fetch the saved branch, confirm `wire_type`, and use only setters from that
+renderer's matrix row. Every setter replaces one complete tab. Untouched tabs
+remain preserved.
 
 ```python
-saved = client.get.editor_chart(
-    by_id=chart.id,
-    workbook_id=chart.workbook_id,
-    branch="saved",
-)
-
-updated = (
-    saved.update.prepare("module.exports = {markdown: '# Updated Editor chart'};\n")
-    .description("Updated with datalens_sdk")
-    .mode("publish")
-    .execute()
-)
-```
-
-Update defaults to `.mode("save")`. Use `.mode("publish")` only when the
-result must be published. The generic `EditorChartUpdate` exposes setters
-for writable tabs — use only the tabs listed for the
-chart's renderer in [the routing index](_index.md), and do not
-call `.meta()` (the setter exists, but its content format is not verified).
-A successful `.execute()` confirms persistence, not JavaScript execution.
-Re-fetch the desired branch after `.execute()` before checking persisted tab
-content.
-
-## Nullable Tabs
-
-The create builders accept only `str`, but the generic `EditorChartUpdate`
-exposes nullable setters (`activities`, `documentation_en`,
-`documentation_ru`) that accept `str | None`. These tabs belong to no
-renderer in [the routing index](_index.md) — leave them unset.
-
-- `None` clears a nullable tab.
-- `""` stores an empty string and is distinct from `None`.
-- Leave a tab untouched on update when its exact renderer format is unknown.
-  In particular, do not invent `activities` or `statface_graph` content from
-  the fact that a setter exists.
-
-Editor secrets are UI-managed, read-only API v3 state. The SDK does not expose
-a create or update setter for them and removes the returned block before it can
-enter domain state, artifacts, or raw mutation payloads. Ordinary updates
-preserve the server-side binding.
-
-## Rename, Relations, and Delete
-
-```python
-chart = client.get.editor_chart(by_id=chart_id, workbook_id=workbook_id)
-renamed = chart.rename("New name")
-
-for relation in renamed.get_relations(
-    include_permissions_info=True,
-    link_direction="to",
-    page_size=100,
-    scope="dash",
+def update_prepare(
+    client,
+    *,
+    chart_id: str,
+    workbook_id: str | None,
+    prepare_source: str,
+    publish: bool = False,
 ):
-    print(relation)
-
-renamed.delete()
+    saved = client.get.editor_chart(
+        by_id=chart_id,
+        workbook_id=workbook_id,
+        branch="saved",
+    )
+    return saved.update.prepare(prepare_source).mode("publish" if publish else "save").execute()
 ```
 
-`get_relations()` is lazy. Iterate it or call `.pages()` to perform the
-request. Its optional arguments are `include_permissions_info`,
-`link_direction` (`"from"` or `"to"`), `page_size` (default `100`), and
-`scope` (`"dash"`, `"report"`, `"widget"`, `"dataset"`, `"folder"`, or
-`"connection"`). Deletion is immediate, so obtain confirmation before
-deleting an existing user chart.
+Use `prepare` only for a renderer whose matrix row exposes it; the same pattern
+applies to every documented tab setter.
 
-## Related references
+The shared update object exposes several setters used by other installations,
+including `activities`, `shared`, `graph`, `statface_graph`, `ymap`,
+`documentation_en`, and `documentation_ru`. Their presence does not make them
+available to a public client. Use only the methods in the selected public
+renderer matrix row. Public runtime documentation already describes
+Activities for Selector, Table, and Gravity UI Charts, but typed public SDK
+support has not been implemented yet.
 
-- [_index.md](_index.md) — renderer routing, exact tab matrix
-- [troubleshooting.md](troubleshooting.md) — a chart persists but does not render
-- [../core-concepts.md](../core-concepts.md) — namespaces, terminal calls, retries
-- [../serialization.md](../serialization.md) — export/clone via `to_file` and `client.raw`
+Update defaults to `save`; publish only when requested. Re-fetch the selected
+branch and compare the intended stored values. Never repeat a successful write
+because later verification code failed.
+
+## Rename, relations, and delete
+
+- Rename: `client.get.editor_chart(...).rename(new_name)`.
+- Relations: `chart.get_relations(...)` returns a lazy pager; consume it only
+  with permission to handle the result. Arguments include
+  `include_permissions_info`, `link_direction`, `page_size`, and `scope`.
+  `link_direction` is `"from" | "to"`; `scope` is `"dash" | "report" |
+  "widget" | "dataset" | "folder" | "connection"`; `page_size` defaults to
+  `100`.
+- Delete only after explicit confirmation: fetch the exact chart, then call
+  `chart.delete()`; deletion is immediate.
+
+## Export, import, and clone
+
+`chart.to_file(path, split_tabs=True)` writes review-friendly tab files, but
+only `chart.json` is importable. Typed tab updates remain the safe default.
+Creating through `client.raw.create.editor_chart` or preparing
+`client.raw.replace.editor_chart` uses full snapshots; read
+[../serialization.md](../serialization.md), and obtain explicit approval before
+constructing any raw replace builder.
+
+## Persisted but not rendered
+
+`ERR.CHARTS.INVALID_SOURCE_FORMAT` is a deterministic tab-format failure, not
+a transient API error: fix the source instead of retrying. Public `Meta` is
+JSON text; ordinary code tabs are JavaScript and must export the value expected
+by the renderer. An empty string and `module.exports = {};` are not
+interchangeable—start from that renderer leaf's minimal payload.
+
+1. Re-fetch the same saved or published branch.
+2. Confirm `wire_type` and compare only the intended changed tabs.
+3. Check the selected runtime documentation for export shape and sandbox rules.
+4. Preserve unknown tabs and diagnose one tab at a time in save mode.
+5. Without UI/browser execution evidence, report "persisted; rendering not
+   verified".
+
+Runtime errors are visible in the Editor Console. `console.log(...)` in code
+wrapped with `Editor.wrapFn` appears in the browser console; see
+[Editor debugging](https://yandex.cloud/ru/docs/datalens/charts/editor/debug).
+
+## Related SDK references
+
+- [Core concepts](../core-concepts.md) — terminal calls, verification, retries,
+  and pagination
+- [Parameters](../parameters.md) — keys exported from the Editor `params` tab
+  and their dashboard, widget, selector, URL, and action scopes
+- [Navigation](../navigation.md) — relation objects and dependency direction
+- [Serialization](../serialization.md) — complete snapshot import and replace
+- [Troubleshooting](../troubleshooting.md) — generic API failures
