@@ -111,7 +111,7 @@ class ChartSnapshotView(Mapping[str, JsonValue]):
 
 
 def strip_editor_read_secrets(snapshot: dict[str, JsonValue]) -> dict[str, JsonValue]:
-    """Remove the API v3 read-only Editor secrets block from an owned snapshot."""
+    """Remove a legacy or unexpected Editor secrets block from an owned snapshot."""
     entry = chart_entry_from_normalized_snapshot(snapshot)
     data = entry.get("data")
     if isinstance(data, dict):

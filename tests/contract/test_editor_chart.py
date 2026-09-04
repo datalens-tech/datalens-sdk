@@ -47,16 +47,6 @@ _PUBLIC_EDITOR_CONTRACTS = {
         "UpdateEditorTableNodeEntry",
     ),
 }
-_EDITOR_SECRET_FIELDS = {
-    "addedBy",
-    "alias",
-    "entryId",
-    "key",
-    "name",
-    "secretId",
-    "token",
-    "tokenId",
-}
 
 
 def _object(value: object) -> dict[str, object]:
@@ -72,20 +62,13 @@ def _editor_data_properties(schemas: dict[str, object], schema_name: str) -> dic
 
 
 @pytest.mark.parametrize("installation", ["enterprise", "yacloud"])
-def test_public_editor_specs_expose_secrets_only_on_existing_read_nodes(installation: str) -> None:
+def test_public_editor_specs_have_no_secrets(installation: str) -> None:
     spec = _object(json.loads((ROOT / "spec" / f"{installation}.json").read_text(encoding="utf-8")))
     schemas = _object(_object(spec["components"])["schemas"])
 
     assert generated_dto.INSTALLATION_EDITOR_NODE_TYPES[installation] == frozenset(_PUBLIC_EDITOR_CONTRACTS)
     for read_schema, create_schema, update_schema in _PUBLIC_EDITOR_CONTRACTS.values():
-        read_properties = _editor_data_properties(schemas, read_schema)
-        secrets = _object(read_properties["secrets"])
-        secret_item = _object(secrets["items"])
-
-        assert secrets["type"] == "array"
-        assert set(_object(secret_item["properties"])) == _EDITOR_SECRET_FIELDS
-        assert set(cast(list[str], secret_item["required"])) == _EDITOR_SECRET_FIELDS
-        assert "Read-only" in cast(str, secrets["description"])
+        assert "secrets" not in _editor_data_properties(schemas, read_schema)
         assert "secrets" not in _editor_data_properties(schemas, create_schema)
         assert "secrets" not in _editor_data_properties(schemas, update_schema)
 
@@ -311,7 +294,7 @@ def test_to_domain_builds_editor_chart() -> None:
 
 
 @pytest.mark.parametrize("wrapped", [False, True])
-def test_to_domain_redacts_read_only_secrets_from_all_domain_state(wrapped: bool) -> None:
+def test_to_domain_redacts_legacy_secrets_from_all_domain_state(wrapped: bool) -> None:
     sentinel = "must-not-leak-editor-token"
     entry: dict[str, object] = {
         "entryId": "chart-1",

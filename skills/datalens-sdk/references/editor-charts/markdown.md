@@ -1,23 +1,19 @@
-# Markdown
+# Public Markdown
 
-Factory: `client.create.editor_chart.markdown`. `chart.wire_type`:
-`markdown_node`.
+Factory: `client.create.editor_chart.markdown`.
+`chart.wire_type`: `markdown_node`.
+Supported create/update tab methods: `controls(str)`, `meta(str)`,
+`params(str)`, `prepare(str)`, `sources(str)`.
 
-Tabs: `controls`, `meta`, `params`, `prepare`, `sources`.
-
-`prepare` must export an object containing `markdown`, not a bare string.
+## Minimal payload
 
 ```python
 from datalens_sdk import EntryLocation
 
-SOURCES = "module.exports = {};\n"
-PARAMS = "module.exports = {};\n"
-CONTROLS = "module.exports = {};\n"
+EMPTY = "module.exports = {};\n"
 PREPARE = """\
 const markdown = `
 # Markdown created with datalens_sdk
-
-Working **bold**, _italics_, and a table:
 
 Type | Status
 :--- | :---
@@ -28,26 +24,23 @@ module.exports = {markdown};
 """
 
 
-def build_chart(client, *, location: EntryLocation):
+def build_minimal(client, *, location: EntryLocation):
     return (
-        client.create.editor_chart.markdown(
-            name="SDK Markdown",
-            location=location,
-        )
-        .sources(SOURCES)
-        .params(PARAMS)
-        .controls(CONTROLS)
+        client.create.editor_chart.markdown(name="Markdown", location=location)
+        .sources(EMPTY)
+        .params(EMPTY)
+        .controls(EMPTY)
         .prepare(PREPARE)
         .description("Markdown Editor chart")
         .build()
     )
 ```
 
-Leave `meta` unset.
+`prepare` exports an object containing `markdown`, not a bare string. This
+dependency-free smoke test omits `meta`. See the authoritative
+[Prepare contract](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/markdown#prepare);
+for linked data follow the index's Meta → Sources flow.
 
-## Related references
-
-- [_index.md](_index.md) — routing, exact tab matrix
-- [common-operations.md](common-operations.md) — read, update, publish, delete
-- [troubleshooting.md](troubleshooting.md) — chart persists but does not render
-- [Official Markdown documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/widgets/markdown)
+Every setter replaces a complete tab. Re-fetching proves persistence, not
+rendering. See [_index.md](_index.md) and
+[common-operations.md](common-operations.md).

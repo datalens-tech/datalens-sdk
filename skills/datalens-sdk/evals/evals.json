@@ -180,6 +180,71 @@
         {"text": "Re-fetches the chart and verifies the persisted measure or formatting state before reporting success", "type": "workflow"},
         {"text": "Does NOT use httpx/requests or hand-built JSON payloads", "type": "code"}
       ]
+    },
+    {
+      "id": 12,
+      "name": "public-editor-advanced-create",
+      "prompt": "Create a public DataLens Advanced Editor chart in workbook wb-public with a wrapped HTML render function and no linked DataLens objects.",
+      "expected_output": "Uses the public Editor index and Advanced SDK bridge, checks capabilities, creates through advanced_chart with only public writable tabs, leaves meta unset because there are no linked objects, and does not add shared or internal documentation links.",
+      "files": [],
+      "assertions": [
+        {"text": "Checks client.capabilities['chart_factories']['editor'] for advanced_chart before building", "type": "code"},
+        {"text": "Uses client.create.editor_chart.advanced_chart(...) and the public builder recipe", "type": "code"},
+        {"text": "Uses the Advanced payload shape {render: Editor.wrapFn(...)} with Editor.generateHtml(...) for HTML", "type": "code"},
+        {"text": "Does NOT call shared(...), activities(...), or meta(...) and does not use internal documentation", "type": "code"},
+        {"text": "Re-fetches the chart to verify persistence without claiming that read-back proves rendering", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 13,
+      "name": "public-editor-gravity-no-activities",
+      "prompt": "Update the existing public Gravity UI Editor chart chart-id by adding an Activities handler described by the newest Editor documentation.",
+      "expected_output": "Fetches the chart and treats the runtime documentation as authoritative that Gravity supports Activities, but explains that the installed typed public SDK has not implemented the tab yet. It does not call the misleading shared update setter, mutate the chart, or bypass the typed SDK.",
+      "files": [],
+      "assertions": [
+        {"text": "Fetches chart-id, confirms wire_type d3_node, and checks the public writable tab matrix before attempting an update", "type": "workflow"},
+        {"text": "Does NOT call saved.update.activities(...), use raw HTTP, hand-build a mutation, or execute an unrelated update while typed public support is unavailable", "type": "code"},
+        {"text": "States that the documentation supports Activities for Gravity but the installed typed SDK does not yet implement it", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 14,
+      "name": "public-editor-docs-newer-than-sdk",
+      "prompt": "The current Editor manual shows a new tab named Experimental. Use it on my public Markdown Editor chart even if my installed SDK does not list it.",
+      "expected_output": "Checks the installed capabilities and Markdown builder, reports that the missing setter is unavailable, and stops without raw HTTP or a hand-built payload.",
+      "files": [],
+      "assertions": [
+        {"text": "Checks the installed generated builder or capability surface before proposing code", "type": "workflow"},
+        {"text": "Does NOT invent .experimental(...), raw HTTP, or a hand-built mutation", "type": "code"},
+        {"text": "Explains that newer runtime documentation does not add a setter to the installed SDK", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 15,
+      "name": "public-editor-selector-exact-surface",
+      "prompt": "Create a public DataLens Editor selector with literal North, West, South, and East values and North selected initially. Also add a prepare script for the options.",
+      "expected_output": "Uses the public Editor index, Selector leaf, and its linked runtime sections. It puts literal control values in controls, the initial selection in params, keeps sources as an empty exported object, and does not call prepare because control_node has no such method.",
+      "files": [],
+      "assertions": [
+        {"text": "Checks client.capabilities['chart_factories']['editor'] for selector", "type": "code"},
+        {"text": "Uses client.create.editor_chart.selector(...) with sources(...), params(...), and controls(...)", "type": "code"},
+        {"text": "Does NOT call prepare(...), shared(...), activities(...), or meta(...)", "type": "code"},
+        {"text": "Re-fetches the selector and verifies sources, params, and controls without claiming persistence proves rendering", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 16,
+      "name": "public-editor-linked-source-meta",
+      "prompt": "Create a public Advanced Editor chart backed by dataset ds-sales. The Sources tab should refer to it as sales.",
+      "expected_output": "Uses the public Advanced SDK bridge and official Meta/Sources documentation. It declares the dataset link in meta, resolves the sales alias from Sources, and keeps runtime payload details sourced from the documentation rather than inventing or copying an unrelated recipe.",
+      "files": [],
+      "assertions": [
+        {"text": "Checks client.capabilities['chart_factories']['editor'] for advanced_chart", "type": "code"},
+        {"text": "Calls .meta(...) because the chart links a DataLens dataset", "type": "code"},
+        {"text": "Uses the same sales alias in Meta and Sources via Editor.getId(...) according to the official sections", "type": "workflow"},
+        {"text": "Uses Editor.getLoadedData() from Prepare and does not claim persistence proves rendering", "type": "workflow"},
+        {"text": "Does NOT use shared(...), raw HTTP, or private imports", "type": "code"}
+      ]
     }
   ]
 }
