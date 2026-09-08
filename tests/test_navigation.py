@@ -1,12 +1,21 @@
 from __future__ import annotations
 
 import json
+from typing import get_args
 
 import httpx
 import pytest
 
 import datalens_sdk as dl
-from datalens_sdk._generated.dto import EntryRelationsResultDTO
+from datalens_sdk._generated.dto import (
+    CollectionContentResultDTO,
+    EntryRelationsResultDTO,
+    EntrySummaryReadDTO,
+    GetEntriesResultDTO,
+    ListDirectoryResultDTO,
+    StructureEntrySummaryReadDTO,
+    WorkbookEntriesResultDTO,
+)
 from datalens_sdk.converter.navigation import NavigationConverter
 from datalens_sdk.domain.collection import Collection
 from datalens_sdk.domain.dataset import Dataset
@@ -83,6 +92,30 @@ def test_entry_relation_reads_preserve_open_scope(scope: str) -> None:
     assert relations[0].scope == scope
     assert relations[0].raw["scope"] == scope
     assert next_page_token == "relations-2"
+
+
+def test_entry_summary_reads_preserve_unknown_scope_across_list_results() -> None:
+    raw = {**_entry("future-1"), "scope": "future_scope"}
+    collection_result = CollectionContentResultDTO.model_validate({"items": [{**raw, "entity": "entry"}]})
+    collection_entry = collection_result.items[0]
+    assert isinstance(collection_entry, StructureEntrySummaryReadDTO)
+
+    entries = (
+        EntrySummaryReadDTO.model_validate(raw),
+        GetEntriesResultDTO.model_validate({"entries": [raw]}).entries[0],
+        ListDirectoryResultDTO.model_validate({"entries": [raw], "breadCrumbs": [], "hasNextPage": False}).entries[0],
+        WorkbookEntriesResultDTO.model_validate({"entries": [raw]}).entries[0],
+        collection_entry,
+    )
+
+    for entry in entries:
+        assert entry.scope == "future_scope"
+        assert entry.raw["scope"] == "future_scope"
+
+    domain_entries, next_page_token = NavigationConverter.get_entries_result({"entries": [raw]})
+    assert domain_entries[0].scope == "future_scope"
+    assert domain_entries[0].raw["scope"] == "future_scope"
+    assert next_page_token is None
 
 
 def test_get_entries_is_lazy_typed_and_reiterable() -> None:
@@ -201,7 +234,14 @@ def test_folder_list_entries_exposes_directory_pages_and_breadcrumbs() -> None:
         _operations=client._folder_service,
     )
 
-    pages = list(folder.list_entries(name="Entry", order_by="name", page_size=1).pages())
+    pages = list(
+        folder.list_entries(
+            name="Entry",
+            order_by="name",
+            page_size=1,
+            scope=("dataset", "sql_query"),
+        ).pages()
+    )
 
     assert [[entry.id for entry in page.items] for page in pages] == [["entry-1"], ["entry-2"]]
     assert pages[0].breadcrumbs[0].name == "Folder"
@@ -212,6 +252,7 @@ def test_folder_list_entries_exposes_directory_pages_and_breadcrumbs() -> None:
             "pageSize": 1,
             "filters": {"name": "Entry"},
             "orderBy": {"field": "name", "direction": "asc"},
+            "scope": ["dataset", "sql_query"],
         },
         {
             "path": "folder/",
@@ -219,8 +260,58 @@ def test_folder_list_entries_exposes_directory_pages_and_breadcrumbs() -> None:
             "pageSize": 1,
             "filters": {"name": "Entry"},
             "orderBy": {"field": "name", "direction": "asc"},
+            "scope": ["dataset", "sql_query"],
         },
     ]
+
+
+def test_folder_list_entries_preserves_single_scope_filter() -> None:
+    recorder = RecordedTransport(
+        {"/rpc/listDirectory": httpx.Response(200, json={"entries": [], "breadCrumbs": [], "hasNextPage": False})}
+    )
+    folder = Folder(
+        id="folder-1",
+        name="Folder",
+        key="folder/",
+        installation="yacloud",
+        _operations=_client(recorder)._folder_service,
+    )
+
+    assert list(folder.list_entries(scope="artifact")) == []
+    assert recorder.bodies("/rpc/listDirectory") == [
+        {"path": "folder/", "page": 0, "pageSize": 100, "scope": "artifact"}
+    ]
+
+
+def test_empty_directory_and_workbook_filter_sequences_are_omitted() -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/listDirectory": httpx.Response(
+                200,
+                json={"entries": [], "breadCrumbs": [], "hasNextPage": False},
+            ),
+            "/rpc/getWorkbookEntries": httpx.Response(200, json={"entries": []}),
+        }
+    )
+    client = _client(recorder)
+    folder = Folder(
+        id="folder-1",
+        name="Folder",
+        key="folder/",
+        installation="yacloud",
+        _operations=client._folder_service,
+    )
+    workbook = Workbook(
+        id="workbook-1",
+        name="Workbook",
+        installation="yacloud",
+        _operations=client._workbook_service,
+    )
+
+    assert list(folder.list_entries(created_by=[], scope=[])) == []
+    assert list(workbook.list_entries(scope=())) == []
+    assert recorder.bodies("/rpc/listDirectory") == [{"path": "folder/", "page": 0, "pageSize": 100}]
+    assert recorder.bodies("/rpc/getWorkbookEntries") == [{"workbookId": "workbook-1", "page": 0, "pageSize": 100}]
 
 
 def test_collection_and_workbook_list_entries_return_canonical_summaries() -> None:
@@ -358,7 +449,7 @@ def test_entry_objects_get_paginated_relations() -> None:
     ]
 
 
-@pytest.mark.parametrize("scope", ["dataset", "widget"])
+@pytest.mark.parametrize("scope", get_args(EntryScope))
 def test_entry_relation_filters_preserve_supported_scope_payload(scope: EntryScope) -> None:
     recorder = RecordedTransport({"/rpc/getEntriesRelations": httpx.Response(200, json={"relations": []})})
     connection = _client(recorder).domain_connection(id="connection-1", type="postgres")
@@ -367,12 +458,38 @@ def test_entry_relation_filters_preserve_supported_scope_payload(scope: EntrySco
     assert recorder.bodies("/rpc/getEntriesRelations") == [{"entryIds": ["connection-1"], "limit": 100, "scope": scope}]
 
 
-def test_entry_relation_filter_rejects_unknown_scope() -> None:
-    recorder = RecordedTransport({"/rpc/getEntriesRelations": httpx.Response(200, json={"relations": []})})
-    connection = _client(recorder).domain_connection(id="connection-1", type="postgres")
+def test_navigation_write_filters_reject_invalid_scopes_eagerly() -> None:
+    recorder = RecordedTransport({})
+    client = _client(recorder)
+    folder = Folder(
+        id="folder-1",
+        name="Folder",
+        key="folder/",
+        installation="yacloud",
+        _operations=client._folder_service,
+    )
+    workbook = Workbook(
+        id="workbook-1",
+        name="Workbook",
+        installation="yacloud",
+        _operations=client._workbook_service,
+    )
+    connection = client.domain_connection(id="connection-1", type="postgres")
 
-    with pytest.raises(dl.DTOValidationError, match="getEntriesRelations"):
-        list(connection.get_relations(scope="future_scope"))  # type: ignore[arg-type]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        client.navigation.get_entries(scope="chart")  # type: ignore[arg-type]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        client.navigation.get_entries(scope=["dataset"])  # type: ignore[arg-type]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        folder.list_entries(scope=("dataset", "charts"))  # type: ignore[arg-type]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        folder.list_entries(scope=(None,))  # type: ignore[arg-type]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        workbook.list_entries(scope=["future_scope"])  # type: ignore[list-item]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        workbook.list_entries(scope=1)  # type: ignore[arg-type]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        connection.get_relations(scope="future_scope")  # type: ignore[arg-type]
 
     assert recorder.requests == []
 

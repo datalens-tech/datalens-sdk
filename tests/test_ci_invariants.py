@@ -14,6 +14,7 @@ from datalens_sdk._generated import dto
 from datalens_sdk.domain import dashboard_types, entry_types
 from datalens_sdk.domain.common_types import SortDirection
 from datalens_sdk.domain.dataset_types import WhereOperation
+from datalens_sdk.domain.navigation import EntryScope
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "datalens_sdk"
@@ -461,6 +462,12 @@ def test_dataset_data_domain_literals_match_spec_enums() -> None:
         assert set(get_args(SortDirection)) == set(cast(list[str], sort_properties["direction"]["enum"]))
 
 
+def test_entry_scope_domain_literal_matches_spec_enum() -> None:
+    for spec_name in SPEC_NAMES:
+        _, schemas = _spec_schemas(spec_name)
+        assert set(get_args(EntryScope)) == set(cast(list[str], schemas["EntryScope"]["enum"])), spec_name
+
+
 def test_sort_direction_has_one_neutral_domain_owner() -> None:
     owners = sorted(
         path.relative_to(SRC).as_posix()
@@ -484,6 +491,47 @@ def _resolved_schema(
     if not isinstance(reference, str):
         return schema
     return schemas[reference.rsplit("/", 1)[-1]]
+
+
+def _scope_property(
+    schemas: dict[str, dict[str, object]],
+    schema_name: str,
+) -> dict[str, object]:
+    properties = cast(dict[str, dict[str, object]], schemas[schema_name]["properties"])
+    return properties["scope"]
+
+
+def _scope_enum(
+    schemas: dict[str, dict[str, object]],
+    schema: dict[str, object],
+) -> set[str]:
+    resolved = _resolved_schema(schemas, schema)
+    assert resolved["type"] == "string"
+    return set(cast(list[str], resolved["enum"]))
+
+
+def test_entry_scope_request_schemas_match_domain_contract() -> None:
+    expected = set(get_args(EntryScope))
+    for spec_name in SPEC_NAMES:
+        _, schemas = _spec_schemas(spec_name)
+
+        for schema_name in ("GetEntriesV2Args", "GetEntriesRelationsArgs"):
+            scope_schema = _scope_property(schemas, schema_name)
+            assert "anyOf" not in scope_schema, (spec_name, schema_name)
+            assert _scope_enum(schemas, scope_schema) == expected, (spec_name, schema_name)
+
+        for schema_name in ("GetWorkbookEntriesArgs", "ListDirectoryArgs"):
+            scope_schema = _scope_property(schemas, schema_name)
+            variants = cast(list[dict[str, object]], scope_schema["anyOf"])
+            scalar_variants = [variant for variant in variants if variant.get("type") != "array"]
+            array_variants = [variant for variant in variants if variant.get("type") == "array"]
+
+            assert len(scalar_variants) == 1, (spec_name, schema_name)
+            assert len(array_variants) == 1, (spec_name, schema_name)
+            assert _scope_enum(schemas, scalar_variants[0]) == expected, (spec_name, schema_name)
+
+            item_schema = cast(dict[str, object], array_variants[0]["items"])
+            assert _scope_enum(schemas, item_schema) == expected, (spec_name, schema_name)
 
 
 def _dashboard_item_variants(schemas: dict[str, dict[str, object]]) -> list[dict[str, object]]:
