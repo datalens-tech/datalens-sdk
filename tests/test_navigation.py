@@ -283,6 +283,37 @@ def test_folder_list_entries_preserves_single_scope_filter() -> None:
     ]
 
 
+def test_empty_directory_and_workbook_filter_sequences_are_omitted() -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/listDirectory": httpx.Response(
+                200,
+                json={"entries": [], "breadCrumbs": [], "hasNextPage": False},
+            ),
+            "/rpc/getWorkbookEntries": httpx.Response(200, json={"entries": []}),
+        }
+    )
+    client = _client(recorder)
+    folder = Folder(
+        id="folder-1",
+        name="Folder",
+        key="folder/",
+        installation="yacloud",
+        _operations=client._folder_service,
+    )
+    workbook = Workbook(
+        id="workbook-1",
+        name="Workbook",
+        installation="yacloud",
+        _operations=client._workbook_service,
+    )
+
+    assert list(folder.list_entries(created_by=[], scope=[])) == []
+    assert list(workbook.list_entries(scope=())) == []
+    assert recorder.bodies("/rpc/listDirectory") == [{"path": "folder/", "page": 0, "pageSize": 100}]
+    assert recorder.bodies("/rpc/getWorkbookEntries") == [{"workbookId": "workbook-1", "page": 0, "pageSize": 100}]
+
+
 def test_collection_and_workbook_list_entries_return_canonical_summaries() -> None:
     recorder = RecordedTransport(
         {
@@ -427,12 +458,38 @@ def test_entry_relation_filters_preserve_supported_scope_payload(scope: EntrySco
     assert recorder.bodies("/rpc/getEntriesRelations") == [{"entryIds": ["connection-1"], "limit": 100, "scope": scope}]
 
 
-def test_entry_relation_filter_rejects_unknown_scope() -> None:
-    recorder = RecordedTransport({"/rpc/getEntriesRelations": httpx.Response(200, json={"relations": []})})
-    connection = _client(recorder).domain_connection(id="connection-1", type="postgres")
+def test_navigation_write_filters_reject_invalid_scopes_eagerly() -> None:
+    recorder = RecordedTransport({})
+    client = _client(recorder)
+    folder = Folder(
+        id="folder-1",
+        name="Folder",
+        key="folder/",
+        installation="yacloud",
+        _operations=client._folder_service,
+    )
+    workbook = Workbook(
+        id="workbook-1",
+        name="Workbook",
+        installation="yacloud",
+        _operations=client._workbook_service,
+    )
+    connection = client.domain_connection(id="connection-1", type="postgres")
 
-    with pytest.raises(dl.DTOValidationError, match="getEntriesRelations"):
-        list(connection.get_relations(scope="future_scope"))  # type: ignore[arg-type]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        client.navigation.get_entries(scope="chart")  # type: ignore[arg-type]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        client.navigation.get_entries(scope=["dataset"])  # type: ignore[arg-type]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        folder.list_entries(scope=("dataset", "charts"))  # type: ignore[arg-type]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        folder.list_entries(scope=(None,))  # type: ignore[arg-type]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        workbook.list_entries(scope=["future_scope"])  # type: ignore[list-item]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        workbook.list_entries(scope=1)  # type: ignore[arg-type]
+    with pytest.raises(dl.DataLensValidationError, match="scope must be one of"):
+        connection.get_relations(scope="future_scope")  # type: ignore[arg-type]
 
     assert recorder.requests == []
 

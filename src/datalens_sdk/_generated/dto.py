@@ -573,7 +573,7 @@ class ListDirectoryArgsDTO(BaseModel):
 
     def to_payload(self) -> dict[str, object]:
         payload: dict[str, object] = {"path": self.path, "page": self.page, "pageSize": self.page_size}
-        if self.created_by is not None:
+        if self.created_by:
             payload["createdBy"] = list(self.created_by) if isinstance(self.created_by, tuple) else self.created_by
         if self.name is not None:
             payload["filters"] = {"name": self.name}
@@ -581,7 +581,7 @@ class ListDirectoryArgsDTO(BaseModel):
             payload["includePermissionsInfo"] = self.include_permissions_info
         if self.order_field is not None:
             payload["orderBy"] = {"field": self.order_field, "direction": self.order_direction}
-        if self.scope is not None:
+        if self.scope:
             payload["scope"] = list(self.scope) if isinstance(self.scope, tuple) else self.scope
         return payload
 
@@ -646,7 +646,7 @@ class WorkbookEntriesArgsDTO(BaseModel):
             payload["includePermissionsInfo"] = self.include_permissions_info
         if self.order_field is not None:
             payload["orderBy"] = {"field": self.order_field, "direction": self.order_direction}
-        if self.scope is not None:
+        if self.scope:
             payload["scope"] = list(self.scope) if isinstance(self.scope, tuple) else self.scope
         return payload
 

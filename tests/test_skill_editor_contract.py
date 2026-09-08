@@ -4,12 +4,13 @@ import ast
 import json
 from pathlib import Path
 import re
-from typing import cast, get_type_hints
+from typing import cast, get_args, get_type_hints
 
 from datalens_sdk._generated.builders.charts import (
     EnterpriseEditorChartCreateFactory,
     YacloudEditorChartCreateFactory,
 )
+from datalens_sdk.domain.navigation import EntryScope
 
 ROOT = Path(__file__).parents[1]
 SKILLS_DIR = ROOT / "skills"
@@ -185,17 +186,7 @@ def test_public_editor_common_operations_separate_destructive_steps() -> None:
     lifecycle = text.split("## Rename, relations, and delete\n", 1)[1]
 
     assert "Mapping[str, object]" in text
-    relation_scopes = (
-        "dash",
-        "report",
-        "widget",
-        "dataset",
-        "folder",
-        "connection",
-        "compute",
-        "artifact",
-        "sql_query",
-    )
+    relation_scopes = get_args(EntryScope)
     assert all(f'"{scope}"' in lifecycle for scope in relation_scopes)
     before_delete = lifecycle[: lifecycle.index("chart.delete(")]
     assert re.search(r"\bconfirm\w*\b", before_delete, re.IGNORECASE)

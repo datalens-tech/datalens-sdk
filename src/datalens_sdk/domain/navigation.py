@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Generic, Literal, TypeAlias, TypeVar
+from typing import Generic, Literal, TypeAlias, TypeVar, cast, get_args
 
 from datalens_sdk.domain.common_types import SortDirection
+from datalens_sdk.errors import DataLensValidationError
 
 EntryOrderField: TypeAlias = Literal["created_at", "name"]
 StructureOrderField: TypeAlias = Literal["name", "created_at", "updated_at"]
@@ -21,6 +22,33 @@ EntryScope: TypeAlias = Literal[
     "artifact",
     "sql_query",
 ]
+_ENTRY_SCOPE_VALUES: frozenset[str] = frozenset(get_args(EntryScope))
+
+
+def _invalid_scope(value: object) -> DataLensValidationError:
+    supported = ", ".join(sorted(_ENTRY_SCOPE_VALUES))
+    return DataLensValidationError(f"scope must be one of: {supported}; got {value!r}")
+
+
+def _validated_entry_scope(value: object) -> EntryScope:
+    if not isinstance(value, str) or value not in _ENTRY_SCOPE_VALUES:
+        raise _invalid_scope(value)
+    return cast(EntryScope, value)
+
+
+def _validate_entry_scope(scope: object) -> None:
+    if scope is not None:
+        _validated_entry_scope(scope)
+
+
+def _normalize_entry_scopes(scope: object) -> EntryScope | tuple[EntryScope, ...] | None:
+    if scope is None:
+        return None
+    if isinstance(scope, str):
+        return _validated_entry_scope(scope)
+    if not isinstance(scope, Sequence):
+        raise _invalid_scope(scope)
+    return tuple(_validated_entry_scope(value) for value in scope)
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +189,9 @@ class GetEntriesOptions:
     scope: EntryScope | None = None
     type: str | None = None
 
+    def __post_init__(self) -> None:
+        _validate_entry_scope(self.scope)
+
     @classmethod
     def create(
         cls,
@@ -208,6 +239,9 @@ class DirectoryListOptions:
     page_size: int = 100
     scope: EntryScope | tuple[EntryScope, ...] | None = None
 
+    def __post_init__(self) -> None:
+        _normalize_entry_scopes(self.scope)
+
     @classmethod
     def create(
         cls,
@@ -221,7 +255,7 @@ class DirectoryListOptions:
         scope: EntryScope | Sequence[EntryScope] | None = None,
     ) -> DirectoryListOptions:
         normalized = tuple(created_by) if created_by is not None and not isinstance(created_by, str) else created_by
-        normalized_scope = tuple(scope) if scope is not None and not isinstance(scope, str) else scope
+        normalized_scope = _normalize_entry_scopes(scope)
         return cls(
             created_by=normalized,
             name=name,
@@ -254,6 +288,9 @@ class WorkbookListOptions:
     page_size: int = 100
     scope: EntryScope | tuple[EntryScope, ...] | None = None
 
+    def __post_init__(self) -> None:
+        _normalize_entry_scopes(self.scope)
+
     @classmethod
     def create(
         cls,
@@ -266,7 +303,7 @@ class WorkbookListOptions:
         page_size: int = 100,
         scope: EntryScope | Sequence[EntryScope] | None = None,
     ) -> WorkbookListOptions:
-        normalized_scope = tuple(scope) if scope is not None and not isinstance(scope, str) else scope
+        normalized_scope = _normalize_entry_scopes(scope)
         return cls(
             created_by=created_by,
             name=name,
@@ -284,3 +321,6 @@ class RelationOptions:
     link_direction: LinkDirection | None = None
     page_size: int = 100
     scope: EntryScope | None = None
+
+    def __post_init__(self) -> None:
+        _validate_entry_scope(self.scope)

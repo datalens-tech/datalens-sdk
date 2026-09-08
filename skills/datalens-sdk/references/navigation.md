@@ -20,7 +20,7 @@ pager = client.navigation.get_entries(
     ids=[...],  # exact ids
     created_by=[...],  # author filter
     name="Sales",  # name filter (narrows; do exact match client-side)
-    scope="dataset",  # EntryScope; see the complete list below
+    scope="dataset",  # one EntryScope (single value; see the complete list below)
     type=None,  # entry subtype, e.g. "graph_wizard_node"
     exclude_locked=True,
     ignore_shared_entries=None,
@@ -40,6 +40,9 @@ for entry in pager:  # EntrySummary
 
 `EntryScope` accepts `"dash"`, `"report"`, `"widget"`, `"dataset"`,
 `"folder"`, `"connection"`, `"compute"`, `"artifact"`, and `"sql_query"`.
+Write-side scope filters are closed to this set: an unsupported value raises
+`DataLensValidationError` before a pager is created or HTTP is sent. Read-side
+`.scope` remains a string so newer backend values can still be inspected.
 
 ### Pager semantics — lazy and re-iterable
 
@@ -99,7 +102,8 @@ for page in folder.list_entries(scope=("dataset", "widget"), order_by="name").pa
 
 Folder filters are `created_by=`, `name=`, `include_permissions_info=`,
 `order_by=`, `order_direction=`, `page_size=`, and `scope=` (one `EntryScope`
-or a sequence of them).
+or a sequence of them). For both folder and workbook listings, an empty scope
+sequence omits the filter.
 
 ## Finding an entity by name
 

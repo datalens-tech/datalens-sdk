@@ -10,12 +10,15 @@
   `build()`.
 - Restrict navigation write filters to the nine values in `EntryScope`.
   Global and workbook listing calls that previously accepted arbitrary scope
-  strings now reject unsupported or custom values before HTTP.
+  strings now raise `DataLensValidationError` eagerly for unsupported or custom
+  values, before creating a pager or sending HTTP.
 
 ### Changed
 
 - Add the `scope` filter to folder `list_entries()` calls and complete the
   shared `EntryScope` enum with `compute`, `artifact`, and `sql_query`.
+  Empty scope sequences omit the filter rather than serializing as an empty
+  array.
 - Refresh the Yandex Cloud OpenAPI specification from the authoritative API v3
   endpoint and derive the Enterprise specification from the same contract with
   its unsupported connector and dataset-source mappings removed.
