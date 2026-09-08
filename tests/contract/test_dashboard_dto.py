@@ -26,7 +26,16 @@ def _minimal_data() -> dict[str, object]:
             "hideDashTitle": False,
             "hideTabs": False,
         },
-        "tabs": [],
+        "tabs": [
+            {
+                "aliases": {"default": []},
+                "connections": [],
+                "id": "tab_1",
+                "items": [],
+                "layout": [],
+                "title": "Tab 1",
+            }
+        ],
     }
 
 

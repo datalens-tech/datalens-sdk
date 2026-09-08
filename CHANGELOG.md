@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Require at least one tab when creating a dashboard, matching the refreshed
+  API v3 Dashboard contract. Add a `DashboardTab` before calling `build()`.
+
+### Changed
+
+- Refresh the Yandex Cloud OpenAPI specification from the authoritative API v3
+  endpoint and derive the Enterprise specification from the same contract with
+  its unsupported connector and dataset-source mappings removed.
+
 ## 3.0.0rc2 - 2026-09-04
 
 ### Changed

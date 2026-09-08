@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import cast
 
+from pydantic import ValidationError
 import pytest
 
 from datalens_sdk import (
@@ -91,27 +92,13 @@ def _text_tab(tab_id: str = "tab_1", item_id: str = "el_1") -> TabSpec:
 # -- document canon ---------------------------------------------------------------
 
 
-def test_empty_builder_produces_full_canonical_document() -> None:
-    data = _data(_builder())
+def test_empty_builder_is_rejected_by_wire_contract() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        _payload(_builder())
 
-    assert "schemeVersion" not in data
-    assert isinstance(data["salt"], str)
-    assert data["salt"]
-    assert data["counter"] == 1
-    assert data["tabs"] == []
-    assert data["settings"] == {
-        "autoupdateInterval": None,
-        "maxConcurrentRequests": None,
-        "silentLoading": False,
-        "dependentSelectors": True,
-        "expandTOC": False,
-        "globalParams": {},
-        "hideDashTitle": False,
-        "hideTabs": False,
-    }
-    assert "description" not in data
-    assert "accessDescription" not in data
-    assert "supportDescription" not in data
+    error = exc_info.value.errors(include_url=False)[0]
+    assert error["loc"] == ("entry", "data", "tabs")
+    assert error["type"] == "too_short"
 
 
 def test_counter_counts_generated_ids_and_stays_deterministic() -> None:
@@ -131,7 +118,7 @@ def test_counter_floors_at_one_when_all_ids_are_explicit() -> None:
 
 
 def test_settings_merge_defaults_without_overwriting_user_values() -> None:
-    builder = _builder().settings(hide_tabs=True, autoupdate_interval=60)
+    builder = _builder().add_tab(_tab()).settings(hide_tabs=True, autoupdate_interval=60)
 
     settings = cast(dict[str, object], _data(builder)["settings"])
 
@@ -143,7 +130,7 @@ def test_settings_merge_defaults_without_overwriting_user_values() -> None:
 
 
 def test_required_nullable_fields_survive_as_nulls() -> None:
-    entry = _entry(_builder())
+    entry = _entry(_builder().add_tab(_tab()))
     data = cast(dict[str, object], entry["data"])
     settings = cast(dict[str, object], data["settings"])
 
@@ -156,13 +143,15 @@ def test_required_nullable_fields_survive_as_nulls() -> None:
 
 
 def test_meta_is_passed_through_when_set() -> None:
-    entry = _entry(_builder().meta({"is_release": True}))
+    entry = _entry(_builder().add_tab(_tab()).meta({"is_release": True}))
 
     assert entry["meta"] == {"is_release": True}
 
 
 def test_description_channels_use_v2_annotation_and_data_fields() -> None:
-    entry = _entry(_builder().description("Main").access_description("Access").support_description("Support"))
+    entry = _entry(
+        _builder().add_tab(_tab()).description("Main").access_description("Access").support_description("Support")
+    )
     data = cast(dict[str, object], entry["data"])
 
     assert "description" not in data
@@ -175,7 +164,7 @@ def test_description_channels_use_v2_annotation_and_data_fields() -> None:
 
 
 def test_path_location_sends_key_without_name_and_workbook() -> None:
-    entry = _entry(_builder(location=EntryLocation.path("/Users/me"), name="Dash"))
+    entry = _entry(_builder(location=EntryLocation.path("/Users/me"), name="Dash").add_tab(_tab()))
 
     assert entry["key"] == "/Users/me/Dash"
     assert "name" not in entry
@@ -183,7 +172,7 @@ def test_path_location_sends_key_without_name_and_workbook() -> None:
 
 
 def test_workbook_location_sends_name_and_workbook_without_key() -> None:
-    entry = _entry(_builder(location=EntryLocation.workbook("wb-1"), name="Dash"))
+    entry = _entry(_builder(location=EntryLocation.workbook("wb-1"), name="Dash").add_tab(_tab()))
 
     assert "key" not in entry
     assert entry["name"] == "Dash"
@@ -462,23 +451,23 @@ def test_border_radius_maps_to_wire_field() -> None:
 
 
 def test_load_priority_is_emitted_only_when_set() -> None:
-    default_settings = cast(dict[str, object], _data(_builder())["settings"])
+    default_settings = cast(dict[str, object], _data(_builder().add_tab(_tab()))["settings"])
     assert "loadPriority" not in default_settings
 
     tuned = cast(
         dict[str, object],
-        _data(_builder().settings(load_priority="selectors", max_concurrent_requests=2))["settings"],
+        _data(_builder().add_tab(_tab()).settings(load_priority="selectors", max_concurrent_requests=2))["settings"],
     )
     assert tuned["loadPriority"] == "selectors"
     assert tuned["maxConcurrentRequests"] == 2
 
 
 def test_payloads_do_not_share_mutable_settings_state() -> None:
-    first = _data(_builder())
+    first = _data(_builder().add_tab(_tab()))
     first_settings = cast(dict[str, object], first["settings"])
     cast(dict[str, object], first_settings["globalParams"])["leak"] = "oops"
 
-    second_settings = cast(dict[str, object], _data(_builder())["settings"])
+    second_settings = cast(dict[str, object], _data(_builder().add_tab(_tab()))["settings"])
     assert second_settings["globalParams"] == {}
 
 
