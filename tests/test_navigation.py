@@ -7,7 +7,15 @@ import httpx
 import pytest
 
 import datalens_sdk as dl
-from datalens_sdk._generated.dto import EntryRelationsResultDTO
+from datalens_sdk._generated.dto import (
+    CollectionContentResultDTO,
+    EntryRelationsResultDTO,
+    EntrySummaryReadDTO,
+    GetEntriesResultDTO,
+    ListDirectoryResultDTO,
+    StructureEntrySummaryReadDTO,
+    WorkbookEntriesResultDTO,
+)
 from datalens_sdk.converter.navigation import NavigationConverter
 from datalens_sdk.domain.collection import Collection
 from datalens_sdk.domain.dataset import Dataset
@@ -84,6 +92,30 @@ def test_entry_relation_reads_preserve_open_scope(scope: str) -> None:
     assert relations[0].scope == scope
     assert relations[0].raw["scope"] == scope
     assert next_page_token == "relations-2"
+
+
+def test_entry_summary_reads_preserve_unknown_scope_across_list_results() -> None:
+    raw = {**_entry("future-1"), "scope": "future_scope"}
+    collection_result = CollectionContentResultDTO.model_validate({"items": [{**raw, "entity": "entry"}]})
+    collection_entry = collection_result.items[0]
+    assert isinstance(collection_entry, StructureEntrySummaryReadDTO)
+
+    entries = (
+        EntrySummaryReadDTO.model_validate(raw),
+        GetEntriesResultDTO.model_validate({"entries": [raw]}).entries[0],
+        ListDirectoryResultDTO.model_validate({"entries": [raw], "breadCrumbs": [], "hasNextPage": False}).entries[0],
+        WorkbookEntriesResultDTO.model_validate({"entries": [raw]}).entries[0],
+        collection_entry,
+    )
+
+    for entry in entries:
+        assert entry.scope == "future_scope"
+        assert entry.raw["scope"] == "future_scope"
+
+    domain_entries, next_page_token = NavigationConverter.get_entries_result({"entries": [raw]})
+    assert domain_entries[0].scope == "future_scope"
+    assert domain_entries[0].raw["scope"] == "future_scope"
+    assert next_page_token is None
 
 
 def test_get_entries_is_lazy_typed_and_reiterable() -> None:

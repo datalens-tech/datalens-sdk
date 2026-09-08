@@ -8,12 +8,14 @@
   API v3 Dashboard contract. Empty create builders now raise an actionable
   `DataLensValidationError` before HTTP; add a `DashboardTab` before calling
   `build()`.
+- Restrict navigation write filters to the nine values in `EntryScope`.
+  Global and workbook listing calls that previously accepted arbitrary scope
+  strings now reject unsupported or custom values before HTTP.
 
 ### Changed
 
-- Add the `scope` filter to folder `list_entries()` calls and type navigation
-  scope filters with the complete `EntryScope` enum, including `compute`,
-  `artifact`, and `sql_query`.
+- Add the `scope` filter to folder `list_entries()` calls and complete the
+  shared `EntryScope` enum with `compute`, `artifact`, and `sql_query`.
 - Refresh the Yandex Cloud OpenAPI specification from the authoritative API v3
   endpoint and derive the Enterprise specification from the same contract with
   its unsupported connector and dataset-source mappings removed.
