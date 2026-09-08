@@ -1848,7 +1848,7 @@
             "type"
           ]
         },
-        "fingerprint": "63a0d35b8f7d02d8555dede73cb06a432dfc959d9b088b2a7ff767b06e5ba244",
+        "fingerprint": "cd8ba590fdd6b6b14d05801dbe47b2630ab0108b01cd42ba1f6e86fc69bdafe4",
         "manifest": {
           "api_version": "3",
           "combined_layer_variants": {
@@ -2011,6 +2011,7 @@
               "type": "string"
             },
             "GetWizardChartV1Args": {
+              "additionalProperties": false,
               "properties": {
                 "branch": {
                   "$ref": "#/components/schemas/EntryBranch"
@@ -21930,7 +21931,7 @@
             "type"
           ]
         },
-        "fingerprint": "63a0d35b8f7d02d8555dede73cb06a432dfc959d9b088b2a7ff767b06e5ba244",
+        "fingerprint": "cd8ba590fdd6b6b14d05801dbe47b2630ab0108b01cd42ba1f6e86fc69bdafe4",
         "manifest": {
           "api_version": "3",
           "combined_layer_variants": {
@@ -22093,6 +22094,7 @@
               "type": "string"
             },
             "GetWizardChartV1Args": {
+              "additionalProperties": false,
               "properties": {
                 "branch": {
                   "$ref": "#/components/schemas/EntryBranch"
