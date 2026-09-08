@@ -85,7 +85,7 @@ for entry in pager:  # EntrySummary: .id, .scope, .type, .name, .key, .workbook_
     print(entry.id, entry.name)
 ```
 
-`Pager` holds a loader, not results: nothing is fetched until you iterate, and **each iteration replays the query from the first page** (fresh HTTP calls — cheap to pass around, not a cache). `pager.pages()` yields `Page` objects (`.items`, `.next_page_token`) when you need page granularity. Useful filters: `ids=`, `created_by=`, `name=`, `scope=` (`"dataset"`, `"widget"`, `"dash"`, `"connection"`, `"folder"`), `type=`, `order_by=`/`order_direction=`, `exclude_locked=`.
+`Pager` holds a loader, not results: nothing is fetched until you iterate, and **each iteration replays the query from the first page** (fresh HTTP calls — cheap to pass around, not a cache). `pager.pages()` yields `Page` objects (`.items`, `.next_page_token`) when you need page granularity. Useful filters: `ids=`, `created_by=`, `name=`, `scope=` (`"dash"`, `"report"`, `"widget"`, `"dataset"`, `"folder"`, `"connection"`, `"compute"`, `"artifact"`, `"sql_query"`), `type=`, `order_by=`/`order_direction=`, `exclude_locked=`.
 
 ### `client.raw` — snapshot-level create and replace
 

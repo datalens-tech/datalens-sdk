@@ -167,7 +167,10 @@ chart.get_relations(
     include_permissions_info: bool | None = None,
     link_direction: Literal["from", "to"] | None = None,
     page_size: int = 100,
-    scope: Literal["dash", "report", "widget", "dataset", "folder", "connection"] | None = None,
+    scope: Literal[
+        "dash", "report", "widget", "dataset", "folder", "connection",
+        "compute", "artifact", "sql_query",
+    ] | None = None,
 ) -> Pager[EntryRelation]
 chart.delete() -> None
 ```

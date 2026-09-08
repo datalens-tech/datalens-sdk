@@ -8,6 +8,17 @@
   API v3 Dashboard contract. Empty create builders now raise an actionable
   `DataLensValidationError` before HTTP; add a `DashboardTab` before calling
   `build()`.
+- Restrict navigation write filters to the nine values in `EntryScope`.
+  Global and workbook listing calls that previously accepted arbitrary scope
+  strings now raise `DataLensValidationError` eagerly for unsupported or custom
+  values, before creating a pager or sending HTTP.
+
+### Changed
+
+- Add the `scope` filter to folder `list_entries()` calls and complete the
+  shared `EntryScope` enum with `compute`, `artifact`, and `sql_query`.
+  Empty scope sequences omit the filter rather than serializing as an empty
+  array.
 
 ### Changed
 

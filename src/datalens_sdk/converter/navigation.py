@@ -48,7 +48,7 @@ class GetEntriesArgsDTOClass(Protocol):
         order_direction: Literal["asc", "desc"],
         page_size: int,
         page_token: str | None,
-        scope: str | None,
+        scope: EntryScope | None,
         type: str | None,
     ) -> NavigationWriteDTOProtocol: ...
 
@@ -65,6 +65,7 @@ class ListDirectoryArgsDTOClass(Protocol):
         order_direction: Literal["asc", "desc"],
         page: int,
         page_size: int,
+        scope: EntryScope | tuple[EntryScope, ...] | None,
     ) -> NavigationWriteDTOProtocol: ...
 
 
@@ -96,7 +97,7 @@ class WorkbookEntriesArgsDTOClass(Protocol):
         order_direction: Literal["asc", "desc"],
         page: int,
         page_size: int,
-        scope: str | tuple[str, ...] | None,
+        scope: EntryScope | tuple[EntryScope, ...] | None,
     ) -> NavigationWriteDTOProtocol: ...
 
 
@@ -300,6 +301,7 @@ class NavigationConverter:
             order_direction=options.order_direction,
             page=page,
             page_size=options.page_size,
+            scope=options.scope,
         ).to_payload()
 
     @staticmethod
