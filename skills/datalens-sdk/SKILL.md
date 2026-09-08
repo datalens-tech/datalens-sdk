@@ -130,6 +130,9 @@ Two more rules of the object model:
 - After `client.create.dataset(...).build()`, re-fetch with
   `client.get.dataset(by_id=...)` before any field operations — the create
   response omits field snapshots.
+- Before `client.create.dashboard(...).build()`, attach at least one
+  `DashboardTab` with `.add_tab(...)`. Empty dashboards raise
+  `DataLensValidationError` before HTTP.
 
 Full object model, field-reference conventions, retry and pagination
 behavior: [references/core-concepts.md](references/core-concepts.md).
@@ -318,6 +321,9 @@ All SDK exceptions derive from `DataLensError`. Two families:
 
 - **Client-side** (`DataLensValidationError`, `DataLensConfigurationError`,
   `NotSupportedError`): your code or setup is wrong — fix it, never retry.
+- **Empty dashboard create**: add at least one `DashboardTab` with
+  `.add_tab(...)` before `.build()`; otherwise `DataLensValidationError` is
+  raised before HTTP.
 - **Server-side** (`DataLensAPIError` and typed subclasses:
   `UnauthorizedError` 401, `ForbiddenError` 403, `NotFoundError` 404,
   `ConflictError` (usually 409; unique-name conflicts may retain legacy 400),

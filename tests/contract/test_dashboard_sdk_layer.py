@@ -65,6 +65,17 @@ def _client(recorder: _RecordedTransport) -> dl.DataLensClientYC:
     return dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
 
 
+def _tabbed_dashboard_builder(
+    client: dl.DataLensClientYC,
+    *,
+    location: dl.EntryLocation | None = None,
+) -> dl.DashboardCreate:
+    return client.create.dashboard(
+        name="New dash",
+        location=location if location is not None else dl.EntryLocation.path("/Users/me"),
+    ).add_tab(dl.DashboardTab("Tab 1"))
+
+
 def test_get_dashboard_sends_args_and_unwraps_entry_envelope() -> None:
     recorder = _RecordedTransport({"/rpc/getDashboard": httpx.Response(200, json={"entry": _dashboard_entry()})})
     client = _client(recorder)
@@ -385,9 +396,7 @@ def test_create_dashboard_wire_keeps_required_nullable_nulls() -> None:
     recorder = _RecordedTransport({"/rpc/createDashboard": httpx.Response(200, json={"entry": _created_entry()})})
     client = _client(recorder)
 
-    client.create.dashboard(name="New dash", location=dl.EntryLocation.path("/Users/me")).add_tab(
-        dl.DashboardTab("Tab 1")
-    ).build()
+    _tabbed_dashboard_builder(client).build()
 
     entry = cast(dict[str, object], recorder.request_json(0)["entry"])
     assert "meta" in entry
@@ -402,12 +411,7 @@ def test_create_dashboard_description_goes_to_annotation() -> None:
     recorder = _RecordedTransport({"/rpc/createDashboard": httpx.Response(200, json={"entry": _created_entry()})})
     client = _client(recorder)
 
-    (
-        client.create.dashboard(name="New dash", location=dl.EntryLocation.path("/Users/me"))
-        .add_tab(dl.DashboardTab("Tab 1"))
-        .description("Main channel")
-        .build()
-    )
+    _tabbed_dashboard_builder(client).description("Main channel").build()
 
     entry = cast(dict[str, object], recorder.request_json(0)["entry"])
     assert entry["annotation"] == {"description": "Main channel"}
@@ -420,11 +424,7 @@ def test_create_dashboard_workbook_location_sends_name_and_workbook_id() -> None
     )
     client = _client(recorder)
 
-    dashboard = (
-        client.create.dashboard(name="New dash", location=dl.EntryLocation.workbook("wb-1"))
-        .add_tab(dl.DashboardTab("Tab 1"))
-        .build()
-    )
+    dashboard = _tabbed_dashboard_builder(client, location=dl.EntryLocation.workbook("wb-1")).build()
 
     entry = cast(dict[str, object], recorder.request_json(0)["entry"])
     assert "key" not in entry
@@ -445,14 +445,22 @@ def test_create_dashboard_rejects_collection_location_before_http() -> None:
     assert recorder.paths() == []
 
 
+def test_create_dashboard_requires_a_tab_before_http() -> None:
+    recorder = _RecordedTransport({})
+    client = _client(recorder)
+
+    with pytest.raises(dl.DataLensValidationError, match=r"at least one tab.*\.add_tab.*before build"):
+        client.create.dashboard(name="New dash", location=dl.EntryLocation.path("/Users/me")).build()
+
+    assert recorder.paths() == []
+
+
 def test_create_dashboard_malformed_200_raises_invalid_response() -> None:
     recorder = _RecordedTransport({"/rpc/createDashboard": httpx.Response(200, json={"entry": {"scope": "dash"}})})
     client = _client(recorder)
 
     with pytest.raises(dl.InvalidResponseError, match="createDashboard"):
-        client.create.dashboard(name="New dash", location=dl.EntryLocation.path("/Users/me")).add_tab(
-            dl.DashboardTab("Tab 1")
-        ).build()
+        _tabbed_dashboard_builder(client).build()
 
 
 def test_create_dashboard_conflict_translates_to_conflict_error() -> None:
@@ -460,9 +468,7 @@ def test_create_dashboard_conflict_translates_to_conflict_error() -> None:
     client = _client(recorder)
 
     with pytest.raises(dl.ConflictError) as conflict_exc:
-        client.create.dashboard(name="New dash", location=dl.EntryLocation.path("/Users/me")).add_tab(
-            dl.DashboardTab("Tab 1")
-        ).build()
+        _tabbed_dashboard_builder(client).build()
 
     assert conflict_exc.value.context.status_code == 409
     assert conflict_exc.value.context.code == "ERR.US.ENTRY_ALREADY_EXISTS"

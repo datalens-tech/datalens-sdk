@@ -5,7 +5,9 @@
 ### Breaking changes
 
 - Require at least one tab when creating a dashboard, matching the refreshed
-  API v3 Dashboard contract. Add a `DashboardTab` before calling `build()`.
+  API v3 Dashboard contract. Empty create builders now raise an actionable
+  `DataLensValidationError` before HTTP; add a `DashboardTab` before calling
+  `build()`.
 
 ### Changed
 

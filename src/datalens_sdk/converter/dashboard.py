@@ -313,6 +313,13 @@ def _validate_unique_ids(spec: DashboardCreateSpec) -> None:
                     seen_items.add(member.id)
 
 
+def _validate_has_tabs(spec: DashboardCreateSpec) -> None:
+    if not spec.tabs:
+        raise DataLensValidationError(
+            "A dashboard needs at least one tab; call .add_tab(DashboardTab(...)) before build()"
+        )
+
+
 class DashboardConverter:
     @staticmethod
     def from_domain_create(
@@ -321,6 +328,7 @@ class DashboardConverter:
         dto_module: DashboardDtoModule | None = None,
     ) -> DashboardArgsDTOProtocol:
         generated = _dto_module(dto_module)
+        _validate_has_tabs(spec)
         _validate_unique_ids(spec)
         # show_on_tabs targets must be valid BEFORE the endpoint map keys off them
         _validate_show_on_tabs_targets(spec)
