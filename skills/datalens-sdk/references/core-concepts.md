@@ -33,6 +33,7 @@ Chart and dashboard getters additionally accept `branch=` (`"saved"` or `"publis
 ### `client.create.*` — fluent builders, terminal `.build()`
 
 Builders accumulate state and persist nothing until `.build()`. A chain without `.build()` "succeeds" and creates nothing.
+Dashboard create builders additionally require at least one `.add_tab(DashboardTab(...))` before `.build()`; an empty dashboard raises `DataLensValidationError` before HTTP.
 
 ```python
 conn = client.create.connection.clickhouse(name="prod-ch", location=wb).host("ch.example.net").port(8443).build()
