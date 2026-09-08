@@ -19,6 +19,9 @@
   shared `EntryScope` enum with `compute`, `artifact`, and `sql_query`.
   Empty scope sequences omit the filter rather than serializing as an empty
   array.
+
+### Changed
+
 - Refresh the Yandex Cloud OpenAPI specification from the authoritative API v3
   endpoint and derive the Enterprise specification from the same contract with
   its unsupported connector and dataset-source mappings removed.
