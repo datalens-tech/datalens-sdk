@@ -2617,7 +2617,7 @@ class GetEntriesArgsDTO(BaseModel):
     order_direction: Literal["asc", "desc"] = "asc"
     page_size: int = Field(default=100, ge=1, le=200)
     page_token: str | None = None
-    scope: str | None = None
+    scope: EntryScope | None = None
     type: str | None = None
 
     def to_payload(self) -> dict[str, object]:
@@ -2660,6 +2660,7 @@ class ListDirectoryArgsDTO(BaseModel):
     order_direction: Literal["asc", "desc"] = "asc"
     page: int = Field(default=0, ge=0)
     page_size: int = Field(default=100, ge=1)
+    scope: EntryScope | tuple[EntryScope, ...] | None = None
 
     def to_payload(self) -> dict[str, object]:
         payload: dict[str, object] = {"path": self.path, "page": self.page, "pageSize": self.page_size}
@@ -2671,6 +2672,8 @@ class ListDirectoryArgsDTO(BaseModel):
             payload["includePermissionsInfo"] = self.include_permissions_info
         if self.order_field is not None:
             payload["orderBy"] = {"field": self.order_field, "direction": self.order_direction}
+        if self.scope is not None:
+            payload["scope"] = list(self.scope) if isinstance(self.scope, tuple) else self.scope
         return payload
 
 
@@ -2718,7 +2721,7 @@ class WorkbookEntriesArgsDTO(BaseModel):
     order_direction: Literal["asc", "desc"] = "asc"
     page: int = Field(default=0, ge=0)
     page_size: int = Field(default=100, ge=1)
-    scope: str | tuple[str, ...] | None = None
+    scope: EntryScope | tuple[EntryScope, ...] | None = None
 
     def to_payload(self) -> dict[str, object]:
         payload: dict[str, object] = {
@@ -2747,7 +2750,7 @@ class EntryRelationsArgsDTO(BaseModel):
     link_direction: Literal["from", "to"] | None = None
     limit: int = Field(default=100, ge=1)
     page_token: str | None = None
-    scope: Literal["dash", "report", "widget", "dataset", "folder", "connection"] | None = None
+    scope: EntryScope | None = None
 
     def to_payload(self) -> dict[str, object]:
         payload: dict[str, object] = {"entryIds": list(self.entry_ids), "limit": self.limit}
@@ -3083,6 +3086,7 @@ from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field
 
 from datalens_sdk._runtime.wizard_structure import WizardFieldStructure, WizardVisualizationRegistry
 from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
+from datalens_sdk.domain.navigation import EntryScope
 from datalens_sdk.errors import NotSupportedError
 from datalens_sdk.serialization.json_types import JsonValue
 

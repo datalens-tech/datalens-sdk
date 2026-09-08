@@ -10,6 +10,7 @@ from datalens_sdk.domain.common_types import SortDirection
 from datalens_sdk.domain.entry_location import EntryLocation, resolve_entry_location, validate_entry_name
 from datalens_sdk.domain.navigation import (
     EntryOrderField,
+    EntryScope,
     EntrySummary,
     Pager,
     WorkbookListOptions,
@@ -135,7 +136,7 @@ class Workbook(EntryLocation):
         order_by: EntryOrderField | None = None,
         order_direction: SortDirection = "asc",
         page_size: int = 100,
-        scope: str | Sequence[str] | None = None,
+        scope: EntryScope | Sequence[EntryScope] | None = None,
     ) -> Pager[EntrySummary]:
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)

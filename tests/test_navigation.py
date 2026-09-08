@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import get_args
 
 import httpx
 import pytest
@@ -201,7 +202,14 @@ def test_folder_list_entries_exposes_directory_pages_and_breadcrumbs() -> None:
         _operations=client._folder_service,
     )
 
-    pages = list(folder.list_entries(name="Entry", order_by="name", page_size=1).pages())
+    pages = list(
+        folder.list_entries(
+            name="Entry",
+            order_by="name",
+            page_size=1,
+            scope=("dataset", "sql_query"),
+        ).pages()
+    )
 
     assert [[entry.id for entry in page.items] for page in pages] == [["entry-1"], ["entry-2"]]
     assert pages[0].breadcrumbs[0].name == "Folder"
@@ -212,6 +220,7 @@ def test_folder_list_entries_exposes_directory_pages_and_breadcrumbs() -> None:
             "pageSize": 1,
             "filters": {"name": "Entry"},
             "orderBy": {"field": "name", "direction": "asc"},
+            "scope": ["dataset", "sql_query"],
         },
         {
             "path": "folder/",
@@ -219,7 +228,26 @@ def test_folder_list_entries_exposes_directory_pages_and_breadcrumbs() -> None:
             "pageSize": 1,
             "filters": {"name": "Entry"},
             "orderBy": {"field": "name", "direction": "asc"},
+            "scope": ["dataset", "sql_query"],
         },
+    ]
+
+
+def test_folder_list_entries_preserves_single_scope_filter() -> None:
+    recorder = RecordedTransport(
+        {"/rpc/listDirectory": httpx.Response(200, json={"entries": [], "breadCrumbs": [], "hasNextPage": False})}
+    )
+    folder = Folder(
+        id="folder-1",
+        name="Folder",
+        key="folder/",
+        installation="yacloud",
+        _operations=_client(recorder)._folder_service,
+    )
+
+    assert list(folder.list_entries(scope="artifact")) == []
+    assert recorder.bodies("/rpc/listDirectory") == [
+        {"path": "folder/", "page": 0, "pageSize": 100, "scope": "artifact"}
     ]
 
 
@@ -358,7 +386,7 @@ def test_entry_objects_get_paginated_relations() -> None:
     ]
 
 
-@pytest.mark.parametrize("scope", ["dataset", "widget"])
+@pytest.mark.parametrize("scope", get_args(EntryScope))
 def test_entry_relation_filters_preserve_supported_scope_payload(scope: EntryScope) -> None:
     recorder = RecordedTransport({"/rpc/getEntriesRelations": httpx.Response(200, json={"relations": []})})
     connection = _client(recorder).domain_connection(id="connection-1", type="postgres")

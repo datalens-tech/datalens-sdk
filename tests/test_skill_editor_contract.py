@@ -185,7 +185,17 @@ def test_public_editor_common_operations_separate_destructive_steps() -> None:
     lifecycle = text.split("## Rename, relations, and delete\n", 1)[1]
 
     assert "Mapping[str, object]" in text
-    relation_scopes = ("dash", "report", "widget", "dataset", "folder", "connection")
+    relation_scopes = (
+        "dash",
+        "report",
+        "widget",
+        "dataset",
+        "folder",
+        "connection",
+        "compute",
+        "artifact",
+        "sql_query",
+    )
     assert all(f'"{scope}"' in lifecycle for scope in relation_scopes)
     before_delete = lifecycle[: lifecycle.index("chart.delete(")]
     assert re.search(r"\bconfirm\w*\b", before_delete, re.IGNORECASE)

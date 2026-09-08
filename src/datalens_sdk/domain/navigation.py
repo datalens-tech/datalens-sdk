@@ -10,7 +10,17 @@ EntryOrderField: TypeAlias = Literal["created_at", "name"]
 StructureOrderField: TypeAlias = Literal["name", "created_at", "updated_at"]
 CollectionContentMode: TypeAlias = Literal["all", "collections", "workbooks", "entries"]
 LinkDirection: TypeAlias = Literal["from", "to"]
-EntryScope: TypeAlias = Literal["dash", "report", "widget", "dataset", "folder", "connection"]
+EntryScope: TypeAlias = Literal[
+    "dash",
+    "report",
+    "widget",
+    "dataset",
+    "folder",
+    "connection",
+    "compute",
+    "artifact",
+    "sql_query",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,7 +158,7 @@ class GetEntriesOptions:
     order_by: EntryOrderField | None = None
     order_direction: SortDirection = "asc"
     page_size: int = 100
-    scope: str | None = None
+    scope: EntryScope | None = None
     type: str | None = None
 
     @classmethod
@@ -167,7 +177,7 @@ class GetEntriesOptions:
         order_by: EntryOrderField | None = None,
         order_direction: SortDirection = "asc",
         page_size: int = 100,
-        scope: str | None = None,
+        scope: EntryScope | None = None,
         type: str | None = None,
     ) -> GetEntriesOptions:
         return cls(
@@ -196,6 +206,7 @@ class DirectoryListOptions:
     order_by: EntryOrderField | None = None
     order_direction: SortDirection = "asc"
     page_size: int = 100
+    scope: EntryScope | tuple[EntryScope, ...] | None = None
 
     @classmethod
     def create(
@@ -207,8 +218,10 @@ class DirectoryListOptions:
         order_by: EntryOrderField | None = None,
         order_direction: SortDirection = "asc",
         page_size: int = 100,
+        scope: EntryScope | Sequence[EntryScope] | None = None,
     ) -> DirectoryListOptions:
         normalized = tuple(created_by) if created_by is not None and not isinstance(created_by, str) else created_by
+        normalized_scope = tuple(scope) if scope is not None and not isinstance(scope, str) else scope
         return cls(
             created_by=normalized,
             name=name,
@@ -216,6 +229,7 @@ class DirectoryListOptions:
             order_by=order_by,
             order_direction=order_direction,
             page_size=page_size,
+            scope=normalized_scope,
         )
 
 
@@ -238,7 +252,7 @@ class WorkbookListOptions:
     order_by: EntryOrderField | None = None
     order_direction: SortDirection = "asc"
     page_size: int = 100
-    scope: str | tuple[str, ...] | None = None
+    scope: EntryScope | tuple[EntryScope, ...] | None = None
 
     @classmethod
     def create(
@@ -250,7 +264,7 @@ class WorkbookListOptions:
         order_by: EntryOrderField | None = None,
         order_direction: SortDirection = "asc",
         page_size: int = 100,
-        scope: str | Sequence[str] | None = None,
+        scope: EntryScope | Sequence[EntryScope] | None = None,
     ) -> WorkbookListOptions:
         normalized_scope = tuple(scope) if scope is not None and not isinstance(scope, str) else scope
         return cls(

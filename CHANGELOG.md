@@ -11,6 +11,9 @@
 
 ### Changed
 
+- Add the `scope` filter to folder `list_entries()` calls and type navigation
+  scope filters with the complete `EntryScope` enum, including `compute`,
+  `artifact`, and `sql_query`.
 - Refresh the Yandex Cloud OpenAPI specification from the authoritative API v3
   endpoint and derive the Enterprise specification from the same contract with
   its unsupported connector and dataset-source mappings removed.

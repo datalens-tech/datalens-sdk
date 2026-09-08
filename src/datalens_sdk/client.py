@@ -64,6 +64,7 @@ from datalens_sdk.domain.license import (
 )
 from datalens_sdk.domain.navigation import (
     EntryOrderField,
+    EntryScope,
     EntrySummary,
     GetEntriesOptions,
     Pager,
@@ -509,7 +510,7 @@ class NavigationNamespace:
         order_by: EntryOrderField | None = None,
         order_direction: SortDirection = "asc",
         page_size: int = 100,
-        scope: str | None = None,
+        scope: EntryScope | None = None,
         type: str | None = None,
     ) -> Pager[EntrySummary]:
         return self._operations.get_entries(

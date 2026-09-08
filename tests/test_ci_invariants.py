@@ -14,6 +14,7 @@ from datalens_sdk._generated import dto
 from datalens_sdk.domain import dashboard_types, entry_types
 from datalens_sdk.domain.common_types import SortDirection
 from datalens_sdk.domain.dataset_types import WhereOperation
+from datalens_sdk.domain.navigation import EntryScope
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "datalens_sdk"
@@ -459,6 +460,12 @@ def test_dataset_data_domain_literals_match_spec_enums() -> None:
             cast(list[str], filter_properties["operation"]["enum"])
         )
         assert set(get_args(SortDirection)) == set(cast(list[str], sort_properties["direction"]["enum"]))
+
+
+def test_entry_scope_domain_literal_matches_spec_enum() -> None:
+    for spec_name in SPEC_NAMES:
+        _, schemas = _spec_schemas(spec_name)
+        assert set(get_args(EntryScope)) == set(cast(list[str], schemas["EntryScope"]["enum"])), spec_name
 
 
 def test_sort_direction_has_one_neutral_domain_owner() -> None:

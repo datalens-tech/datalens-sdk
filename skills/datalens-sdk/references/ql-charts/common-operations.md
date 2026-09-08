@@ -264,8 +264,9 @@ for relation in relations:
 ```
 
 `link_direction` is `"from" | "to"`; `scope` is one of `"dash"`, `"report"`,
-`"widget"`, `"dataset"`, `"folder"`, or `"connection"`. All relation arguments
-are optional and `page_size` defaults to `100`.
+`"widget"`, `"dataset"`, `"folder"`, `"connection"`, `"compute"`, `"artifact"`,
+or `"sql_query"`. All relation arguments are optional and `page_size` defaults
+to `100`.
 
 Exporting a QL chart to a file (`chart.to_file(...)`), importing, and cloning
 via `client.raw` work the same way as for other entries — see

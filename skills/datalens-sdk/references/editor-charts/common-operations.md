@@ -82,8 +82,8 @@ because later verification code failed.
   with permission to handle the result. Arguments include
   `include_permissions_info`, `link_direction`, `page_size`, and `scope`.
   `link_direction` is `"from" | "to"`; `scope` is `"dash" | "report" |
-  "widget" | "dataset" | "folder" | "connection"`; `page_size` defaults to
-  `100`.
+  "widget" | "dataset" | "folder" | "connection" | "compute" | "artifact" |
+  "sql_query"`; `page_size` defaults to `100`.
 - Delete only after explicit confirmation: fetch the exact chart, then call
   `chart.delete()`; deletion is immediate.
 
