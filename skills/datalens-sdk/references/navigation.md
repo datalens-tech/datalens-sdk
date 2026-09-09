@@ -20,7 +20,7 @@ pager = client.navigation.get_entries(
     ids=[...],  # exact ids
     created_by=[...],  # author filter
     name="Sales",  # name filter (narrows; do exact match client-side)
-    scope="dataset",  # "dataset" | "widget" (charts) | "dash" | "connection" | "folder"
+    scope="dataset",  # one EntryScope (single value; see the complete list below)
     type=None,  # entry subtype, e.g. "graph_wizard_node"
     exclude_locked=True,
     ignore_shared_entries=None,
@@ -37,6 +37,12 @@ for entry in pager:  # EntrySummary
 ```
 
 `EntrySummary` carries `.id`, `.scope`, `.type`, `.name`, `.key` (path, on folder installations), `.workbook_id`, `.collection_id`, `.created_by`/`.created_at`, `.updated_by`/`.updated_at`, `.saved_id`/`.published_id`, `.hidden`, `.is_favorite`, `.is_locked`, plus `.data`/`.links`/`.permissions` (populated only when the matching `include_*` flag is on) and `.raw`. Some listing endpoints return a path-qualified `.name` such as `Folder/Sales`; derive the display leaf with `entry.name.rsplit("/", 1)[-1]` when matching by the user-visible name.
+
+`EntryScope` accepts `"dash"`, `"report"`, `"widget"`, `"dataset"`,
+`"folder"`, `"connection"`, `"compute"`, `"artifact"`, and `"sql_query"`.
+Write-side scope filters are closed to this set: an unsupported value raises
+`DataLensValidationError` before a pager is created or HTTP is sent. Read-side
+`.scope` remains a string so newer backend values can still be inspected.
 
 ### Pager semantics — lazy and re-iterable
 
@@ -66,7 +72,7 @@ wb = client.get.workbook(by_id=workbook_id)
 for entry in wb.list_entries(scope=["widget", "dataset"], name="Sales", order_by="name"):
     print(entry.id, entry.scope, entry.name)
 # workbook filters: created_by=, name=, include_permissions_info=, order_by=,
-#                   order_direction=, page_size=, scope= (str or sequence)
+#                   order_direction=, page_size=, scope= (EntryScope or sequence)
 
 col = client.get.collection(by_id=collection_id)
 from datalens_sdk import CollectionSummary, WorkbookSummary
@@ -88,11 +94,16 @@ for item in col.list_entries(mode="all"):  # "all" | "collections" | "workbooks"
 
 ```python
 folder = client.get.folder(by_path="Users/someone/reports")
-for page in folder.list_entries(order_by="name").pages():
+for page in folder.list_entries(scope=("dataset", "widget"), order_by="name").pages():
     print(" > ".join(crumb.name for crumb in page.breadcrumbs))
     for entry in page.items:
         print(" ", entry.id, entry.name)
 ```
+
+Folder filters are `created_by=`, `name=`, `include_permissions_info=`,
+`order_by=`, `order_direction=`, `page_size=`, and `scope=` (one `EntryScope`
+or a sequence of them). For both folder and workbook listings, an empty scope
+sequence omits the filter.
 
 ## Finding an entity by name
 

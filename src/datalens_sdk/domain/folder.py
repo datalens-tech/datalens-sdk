@@ -15,6 +15,7 @@ from datalens_sdk.domain.navigation import (
     DirectoryListOptions,
     DirectoryPager,
     EntryOrderField,
+    EntryScope,
     EntrySummary,
 )
 from datalens_sdk.domain.ports import FolderOperations
@@ -120,6 +121,7 @@ class Folder(EntryLocation):
         order_by: EntryOrderField | None = None,
         order_direction: SortDirection = "asc",
         page_size: int = 100,
+        scope: EntryScope | Sequence[EntryScope] | None = None,
     ) -> DirectoryPager[EntrySummary]:
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
@@ -134,6 +136,7 @@ class Folder(EntryLocation):
                 order_by=order_by,
                 order_direction=order_direction,
                 page_size=page_size,
+                scope=scope,
             ),
         )
 

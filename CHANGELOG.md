@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+## 3.0.0 - 2026-09-09
+
+### Breaking changes
+
+- Require at least one tab when creating a dashboard, matching the refreshed
+  API v3 Dashboard contract. Empty create builders now raise an actionable
+  `DataLensValidationError` before HTTP; add a `DashboardTab` before calling
+  `build()`.
+- Restrict navigation write filters to the nine values in `EntryScope`.
+  Global and workbook listing calls that previously accepted arbitrary scope
+  strings now raise `DataLensValidationError` eagerly for unsupported or custom
+  values, before creating a pager or sending HTTP.
+
+### Changed
+
+- Add the `scope` filter to folder `list_entries()` calls and complete the
+  shared `EntryScope` enum with `compute`, `artifact`, and `sql_query`.
+  Empty scope sequences omit the filter rather than serializing as an empty
+  array.
+- Refresh the Yandex Cloud OpenAPI specification from the authoritative API v3
+  endpoint and derive the Enterprise specification from the same contract with
+  its unsupported connector and dataset-source mappings removed.
+
 ## 3.0.0rc2 - 2026-09-04
 
 ### Changed

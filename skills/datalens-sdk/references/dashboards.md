@@ -7,7 +7,7 @@ params, and precedence, also read [parameters.md](parameters.md).
 
 ## The model in one paragraph
 
-A dashboard is a set of **tabs**; each tab holds **items** (charts, text, titles, images, selectors) placed on a **36-column grid** (`datalens_sdk.GRID_COLUMNS == 36`; height is unbounded). Charts are referenced by object or id — the dashboard does not own them. You build each tab standalone with `DashboardTab`, then attach it to a create or update builder with `.add_tab(tab)`. The terminal calls are the usual ones: `client.create.dashboard(...).build()` and `dash.update...execute(publish=...)` — dashboards are the one entity whose `execute()` **requires** the `publish=` keyword.
+A dashboard is a set of **tabs**; each tab holds **items** (charts, text, titles, images, selectors) placed on a **36-column grid** (`datalens_sdk.GRID_COLUMNS == 36`; height is unbounded). Charts are referenced by object or id — the dashboard does not own them. You build each tab standalone with `DashboardTab`, then attach it to a create or update builder with `.add_tab(tab)`. **A create builder must have at least one tab before `.build()`**; an empty dashboard raises `DataLensValidationError` before HTTP. The terminal calls are the usual ones: `client.create.dashboard(...).build()` and `dash.update...execute(publish=...)` — dashboards are the one entity whose `execute()` **requires** the `publish=` keyword.
 
 ## `DashboardTab` — build tabs before the dashboard
 
