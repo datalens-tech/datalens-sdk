@@ -13,7 +13,8 @@ navigation in Yandex Cloud DataLens and DataLens Enterprise.
 
 ## Project status
 
-The `0.X` series is an alpha release. Until a major release is published, breaking API changes may be made in minor releases.
+The `3.X` series is a beta release. The SDK is used in production, while its public API and coverage are still being
+stabilized. Backward-incompatible API changes require a new major release.
 
 ## Installation
 
