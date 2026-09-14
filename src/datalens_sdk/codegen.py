@@ -3154,8 +3154,15 @@ def _emit_permissions_dto(metadata: Metadata) -> str:
         read=False,
         contract="Permissions",
     ).emit(("GetPermissionsArgs", "ModifyPermissionsArgs"))
+    # Live responses can omit granted metadata required by the published schema.
+    # Keep the upstream contract intact and relax only these read DTO fields.
+    read_schemas = dict(schemas)
+    participant = _string_object_dict(schemas["DlsPermissionParticipant"], context="DlsPermissionParticipant")
+    required = _string_list(participant["required"], context="DlsPermissionParticipant.required")
+    participant["required"] = [field for field in required if field not in {"description", "extras"}]
+    read_schemas["DlsPermissionParticipant"] = cast(JsonValue, participant)
     response_models = _PydanticSchemaEmitter(
-        schemas,
+        read_schemas,
         read=True,
         contract="Permissions",
         wire_name_overrides={"__rlsid": "rls_id", "__source": "source"},

@@ -22,8 +22,10 @@ Each participant preserves `name`, `kind`, `description`, `subject`,
 `requester`, `approver`, and `extras`. The participant's `name` is the subject
 identifier used in mutations; optional `subject.name` may be absent.
 Subject metadata includes parent, cloud fields, `rls_id`, and `source`.
-Omitted granted participant `description` and `extras` are preserved as
-`None`; these fields remain required for pending participants.
+Read DTOs accept omitted granted participant `description` and `extras`
+as `None` for compatibility with live responses. Supplied values remain
+validated, and these fields remain required for pending participants.
+The bundled upstream specifications retain their original required fields.
 
 This is one read with no pagination. The SDK does not expand groups or
 calculate effective inherited access. Navigation permission booleans describe

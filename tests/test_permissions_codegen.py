@@ -77,6 +77,22 @@ def test_permissions_codegen_rejects_installation_schema_drift(tmp_path: Path) -
         )
 
 
+def test_permissions_codegen_preserves_upstream_required_metadata() -> None:
+    metadata = codegen.build_metadata(
+        {installation: ROOT / "spec" / f"{installation}.json" for installation in ("enterprise", "yacloud")}
+    )
+    expected_required = ["approver", "description", "extras", "kind", "name", "requester", "subject"]
+    for installation in ("enterprise", "yacloud"):
+        assert _schemas(_load_spec(installation))["DlsPermissionParticipant"]["required"] == expected_required
+    participant = cast(dict[str, object], metadata["permissions"]["schemas"]["DlsPermissionParticipant"])
+    assert participant["required"] == expected_required
+    original = json.dumps(metadata, sort_keys=True)
+
+    codegen.emit_dto(metadata)
+
+    assert json.dumps(metadata, sort_keys=True) == original
+
+
 def test_permissions_codegen_rejects_unimplemented_schema_semantics() -> None:
     spec = _load_spec()
     args = _schemas(spec)["ModifyPermissionsArgs"]
@@ -231,6 +247,35 @@ def test_permissions_generated_reads_distinguish_optional_and_required_fields(
                 "approver": {},
             }
         )
+
+
+def test_permissions_generated_reads_allow_only_omitted_granted_metadata(
+    permissions_dto_module: ModuleType,
+) -> None:
+    participant: dict[str, object] = {
+        "name": "user",
+        "kind": "user",
+        "subject": {},
+        "requester": None,
+        "approver": None,
+    }
+    granted = permissions_dto_module.DlsPermissionParticipantReadDTO.model_validate(participant)
+    assert granted.description is None
+    assert granted.extras is None
+    assert granted.model_dump(by_alias=True, exclude_unset=True) == participant
+
+    for invalid_metadata in (
+        {"description": None},
+        {"description": 42},
+        {"extras": "invalid"},
+        {"extras": {"initial_on_create": None}},
+    ):
+        with pytest.raises(ValidationError):
+            permissions_dto_module.DlsPermissionParticipantReadDTO.model_validate(participant | invalid_metadata)
+
+    with pytest.raises(ValidationError) as error:
+        permissions_dto_module.DlsPermissionPendingParticipantReadDTO.model_validate(participant)
+    assert {item["loc"] for item in error.value.errors()} == {("description",), ("extras",)}
 
 
 @pytest.mark.parametrize("token", [None, "next-page", ""])

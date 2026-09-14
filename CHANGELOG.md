@@ -10,8 +10,9 @@
   all four ACL levels, comments, and mutation continuation information.
   Changes apply an explicit diff to one entry without recursive traversal
   or automatic continuation. Generate DTOs from the ACL RPC contracts
-  required in every supported installation specification. Preserve omitted
-  granted participant descriptions and extras as `None`.
+  required in every supported installation specification. Read DTOs accept
+  omitted granted participant descriptions and extras as `None` for live
+  response compatibility, retaining the upstream specifications unchanged.
 
 ## 3.0.0 - 2026-09-09
 

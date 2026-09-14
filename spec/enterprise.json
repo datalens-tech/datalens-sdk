@@ -8750,6 +8750,8 @@
         },
         "required": [
           "approver",
+          "description",
+          "extras",
           "kind",
           "name",
           "requester",
