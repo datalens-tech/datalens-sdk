@@ -77,6 +77,20 @@ def _participant(name: str, *, pending: bool = False) -> dict[str, object]:
     }
 
 
+def _permissions_response(grants: dict[str, list[str]]) -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={
+            "editable": True,
+            "permissions": {
+                level: [_participant(name) | {"subject": _subject(f"metadata-{name}")} for name in names]
+                for level, names in grants.items()
+            },
+            "pendingPermissions": {level: [_participant(f"pending-{level}", pending=True)] for level in ACL_LEVELS},
+        },
+    )
+
+
 def _assert_subject(subject: dl.PermissionSubject | None, name: str) -> None:
     assert isinstance(subject, dl.PermissionSubject)
     assert asdict(subject) == {
@@ -419,6 +433,148 @@ def test_modify_permissions_does_not_retry_transient_failure() -> None:
     with pytest.raises(dl.ServerError, match="temporarily unavailable"):
         _client(recorder).permissions.modify(entry_id="entry-1", diff=dl.PermissionDiff())
     assert len(recorder.requests) == 1
+
+
+@pytest.mark.parametrize("mode", ["replace", "merge"])
+def test_copy_permissions_applies_only_granted_subject_level_differences(
+    mode: Literal["replace", "merge"],
+) -> None:
+    recorder = RecordedTransport(
+        _permissions_response(
+            {
+                "acl_view": ["shared", "source-view", "multi-level"],
+                "acl_execute": ["source-execute", "multi-level"],
+                "acl_edit": ["level-change", "source-edit"],
+                "acl_adm": ["source-admin"],
+            }
+        ),
+        _permissions_response(
+            {
+                "acl_view": ["shared", "target-view", "level-change"],
+                "acl_execute": ["target-execute", "multi-level"],
+                "acl_edit": ["target-edit"],
+                "acl_adm": ["target-admin"],
+            }
+        ),
+        httpx.Response(200, json={"result": "ok", "nextPageToken": "continue-copy"}),
+    )
+
+    result = _client(recorder).permissions.copy(source_entry_id="source-1", target_entry_id="target-1", mode=mode)
+
+    diff: dict[str, object] = {
+        "added": {
+            "acl_view": [{"subject": "multi-level"}, {"subject": "source-view"}],
+            "acl_execute": [{"subject": "source-execute"}],
+            "acl_edit": (
+                [{"subject": "source-edit"}]
+                if mode == "replace"
+                else [{"subject": "level-change"}, {"subject": "source-edit"}]
+            ),
+            "acl_adm": [{"subject": "source-admin"}],
+        }
+    }
+    if mode == "replace":
+        diff["removed"] = {
+            "acl_view": [{"subject": "target-view"}],
+            "acl_execute": [{"subject": "target-execute"}],
+            "acl_edit": [{"subject": "target-edit"}],
+            "acl_adm": [{"subject": "target-admin"}],
+        }
+        diff["modified"] = {
+            "acl_view": [{"subject": "level-change", "new": {"subject": "level-change", "grantType": "acl_edit"}}]
+        }
+    assert [request.url.path for request in recorder.requests] == [
+        "/rpc/getPermissions",
+        "/rpc/getPermissions",
+        "/rpc/modifyPermissions",
+    ]
+    assert [recorder.request_json(index) for index in range(3)] == [
+        {"entryId": "source-1"},
+        {"entryId": "target-1"},
+        {"entryId": "target-1", "nested": False, "body": {"diff": diff}},
+    ]
+    assert result == dl.PermissionModificationResult(result="ok", next_page_token="continue-copy")
+    assert result.continuation_required is True
+
+
+@pytest.mark.parametrize("mode", ["replace", "merge"])
+def test_copy_permissions_submits_empty_diff_and_returns_server_result(
+    mode: Literal["replace", "merge"],
+) -> None:
+    recorder = RecordedTransport(
+        _permissions_response({"acl_view": ["shared"]}),
+        _permissions_response({"acl_view": ["shared"]}),
+        httpx.Response(200, json={"result": "ok", "nextPageToken": ""}),
+    )
+
+    result = _client(recorder).permissions.copy(source_entry_id="source-1", target_entry_id="target-1", mode=mode)
+
+    assert len(recorder.requests) == 3
+    assert recorder.requests[2].url.path == "/rpc/modifyPermissions"
+    assert recorder.request_json(2) == {"entryId": "target-1", "nested": False, "body": {"diff": {}}}
+    assert result == dl.PermissionModificationResult(result="ok", next_page_token="")
+    assert result.continuation_required is True
+
+
+@pytest.mark.parametrize("failed_read", ["source", "target"])
+def test_copy_permissions_does_not_mutate_after_a_read_failure(failed_read: str) -> None:
+    responses = []
+    if failed_read == "target":
+        responses.append(_permissions_response({"acl_view": ["source-user"]}))
+    responses.append(httpx.Response(403, json={"code": "ERR.US.ACCESS_DENIED", "message": "Insufficient permissions"}))
+    recorder = RecordedTransport(*responses)
+
+    with pytest.raises(dl.ForbiddenError, match="Insufficient permissions"):
+        _client(recorder).permissions.copy(source_entry_id="source-1", target_entry_id="target-1", mode="replace")
+
+    expected_entries = ["source-1"] if failed_read == "source" else ["source-1", "target-1"]
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getPermissions"] * len(expected_entries)
+    assert [recorder.request_json(index) for index in range(len(recorder.requests))] == [
+        {"entryId": entry_id} for entry_id in expected_entries
+    ]
+
+
+@pytest.mark.parametrize("mode", ["invalid", None])
+def test_copy_permissions_rejects_invalid_mode_before_http(mode: object) -> None:
+    recorder = RecordedTransport()
+
+    with pytest.raises(dl.DataLensValidationError, match="mode"):
+        _client(recorder).permissions.copy(
+            source_entry_id="source-1",
+            target_entry_id="target-1",
+            mode=cast(Literal["replace", "merge"], mode),
+        )
+
+    assert recorder.requests == []
+
+
+def test_copy_permissions_does_not_repeat_mutation_after_transient_failure() -> None:
+    recorder = RecordedTransport(
+        _permissions_response({"acl_view": ["source-user"]}),
+        _permissions_response({}),
+        httpx.Response(
+            503,
+            json={"message": "temporarily unavailable"},
+            headers={"x-request-id": "copy-failed-1"},
+        ),
+        httpx.Response(200, json={"result": "ok"}),
+    )
+
+    with pytest.raises(dl.ServerError, match="temporarily unavailable") as exc_info:
+        _client(recorder).permissions.copy(source_entry_id="source-1", target_entry_id="target-1", mode="merge")
+
+    assert exc_info.value.context.status_code == 503
+    assert exc_info.value.context.request_id == "copy-failed-1"
+    assert [request.url.path for request in recorder.requests] == [
+        "/rpc/getPermissions",
+        "/rpc/getPermissions",
+        "/rpc/modifyPermissions",
+    ]
+    assert recorder.request_json(2) == {
+        "entryId": "target-1",
+        "nested": False,
+        "body": {"diff": {"added": {"acl_view": [{"subject": "source-user"}]}}},
+    }
 
 
 @pytest.mark.parametrize("client_class", [dl.DataLensClientEnterprise, dl.DataLensClientYC])

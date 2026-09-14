@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from importlib import import_module, resources
 from importlib.metadata import PackageNotFoundError, version
 import json
-from typing import TYPE_CHECKING, ClassVar, Generic, Protocol, TypedDict, TypeVar, cast
+from typing import TYPE_CHECKING, ClassVar, Generic, Literal, Protocol, TypedDict, TypeVar, cast
 import warnings
 
 import httpx
@@ -69,7 +69,12 @@ from datalens_sdk.domain.navigation import (
     GetEntriesOptions,
     Pager,
 )
-from datalens_sdk.domain.permissions import EntryPermissions, PermissionDiff, PermissionModificationResult
+from datalens_sdk.domain.permissions import (
+    EntryPermissions,
+    PermissionDiff,
+    PermissionModificationResult,
+    _copy_permissions_diff,
+)
 from datalens_sdk.domain.ports import (
     ChartOperations,
     CollectionOperations,
@@ -536,7 +541,7 @@ class NavigationNamespace:
 
 
 class PermissionsNamespace:
-    """Read an entry ACL and apply an explicit diff to that entry only."""
+    """Read, modify, or copy granted permissions for entry objects."""
 
     def __init__(self, operations: PermissionsOperations) -> None:
         self._operations = operations
@@ -547,6 +552,29 @@ class PermissionsNamespace:
     def modify(self, *, entry_id: str, diff: PermissionDiff) -> PermissionModificationResult:
         """Apply one non-recursive diff; preserve any server continuation token."""
         return self._operations.modify_permissions(entry_id=entry_id, diff=diff)
+
+    def copy(
+        self,
+        *,
+        source_entry_id: str,
+        target_entry_id: str,
+        mode: Literal["replace", "merge"],
+    ) -> PermissionModificationResult:
+        """Copy granted subject/level pairs using two reads and one mutation.
+
+        ``replace`` removes target grants absent from the source, including
+        administrative grants, and modifies differing levels of the same subject.
+        ``merge`` adds missing grants without explicit removals; the server may
+        retain or upgrade an existing level instead of keeping both grants.
+        Pending requests and participant metadata are not copied. This operation
+        uses read snapshots and is not atomic with concurrent ACL changes.
+        """
+        if mode not in ("replace", "merge"):
+            raise DataLensValidationError("mode must be 'replace' or 'merge'")
+        source = self.get(entry_id=source_entry_id)
+        target = self.get(entry_id=target_entry_id)
+        diff = _copy_permissions_diff(source.permissions, target.permissions, mode=mode)
+        return self.modify(entry_id=target_entry_id, diff=diff)
 
 
 class LicensesNamespace:

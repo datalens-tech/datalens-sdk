@@ -83,3 +83,45 @@ returned. Do not repeat a successful mutation because subsequent verification
 failed. Recursive changes and approval/rejection of pending requests are not
 exposed by this surface. API failures raise typed exceptions with error code
 and request ID; malformed responses raise `InvalidResponseError`.
+
+## Copy permissions between entries
+
+```python
+result = client.permissions.copy(
+    source_entry_id=source_entry_id,
+    target_entry_id=target_entry_id,
+    mode="replace",  # Or "merge" to add missing grants.
+)
+```
+
+`mode` is required and accepts only `"replace"` or `"merge"`:
+
+- `replace` adds source grants missing from the target and removes target
+  grants absent from the source, including administrative grants. A level
+  change for the same subject is sent through `modified`.
+- `merge` submits missing source grants without explicit removals. The server
+  can normalize levels for an existing subject rather than retain both grants.
+
+The SDK compares participant `name` and ACL level; matching pairs are left
+untouched. Server normalization means the result need not contain the literal
+union of ACL records. For example, adding `acl_view` to a subject with
+`acl_edit` returns `ok` and keeps only `acl_edit`. Adding `acl_edit` to a
+subject with `acl_view` replaces it with `acl_edit`. This is accepted
+behavior for `merge`; do not retry the addition to force a redundant level.
+The SDK does not implement its own ACL-level hierarchy.
+
+For a level replacement, use `modified` rather than adding a lower grant and
+removing the higher one in the same diff: the addition can be ignored before
+the old grant is removed, leaving neither grant. `copy(mode="replace")`
+handles this by pairing level changes for the same subject into modifications.
+Redundant source levels can still be normalized by the server.
+
+Only granted permissions are copied. Pending requests and participant
+metadata are excluded; source descriptions are not submitted as comments.
+Both entries belong to the same client installation and organization.
+
+The method reads the source and target, then sends one non-recursive diff
+only to the target. It returns the existing `PermissionModificationResult`,
+including continuation information, and does not repeat the mutation. An
+empty diff is sent when there is nothing to change. The operation uses the
+read snapshots and is not atomic with concurrent ACL changes.

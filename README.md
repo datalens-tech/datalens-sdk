@@ -325,6 +325,23 @@ repeat the diff or assume it fully completed. See the
 [permissions reference](skills/datalens-sdk/references/permissions.md) for
 removals, modifications, participant metadata, and contract limits.
 
+Copy granted permissions between existing entries:
+
+```python
+result = client.permissions.copy(
+    source_entry_id="source-entry-id",
+    target_entry_id="target-entry-id",
+    mode="replace",  # Or "merge" to add missing grants.
+)
+```
+
+`replace` copies source grants using additions, removals, and level changes;
+`merge` adds missing grants without explicit removals. The server can retain
+or upgrade an existing subject's level instead of keeping redundant grants.
+Copying reads both ACLs and applies one non-recursive mutation to the target.
+Pending requests and participant metadata are excluded; concurrent ACL changes
+are not protected by an atomic copy operation.
+
 ## License
 
 Licensed under the Apache License 2.0. See [LICENSE](LICENSE).

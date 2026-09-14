@@ -4,6 +4,13 @@
 
 ### Added
 
+- Add `client.permissions.copy(source_entry_id=..., target_entry_id=..., mode=...)`
+  to replace a target entry's granted permissions or merge missing grants.
+  Copying uses two reads and one non-recursive diff, with same-subject level
+  replacements expressed as modifications. Server normalization can retain or
+  upgrade an existing level instead of keeping redundant grants. Pending
+  requests and participant metadata are not copied.
+
 - Add `client.permissions.get(entry_id=...)` and
   `client.permissions.modify(entry_id=..., diff=...)` for typed entry ACLs.
   Preserve granted and pending participants, requester/approver metadata,

@@ -131,3 +131,51 @@ class PermissionModificationResult:
         Do not repeat a successful diff to attempt continuation.
         """
         return self.next_page_token is not None
+
+
+def _grant_keys(permissions: PermissionSet[PermissionParticipant]) -> set[tuple[PermissionGrantType, str]]:
+    groups: dict[PermissionGrantType, tuple[PermissionParticipant, ...]] = {
+        "acl_view": permissions.acl_view,
+        "acl_execute": permissions.acl_execute,
+        "acl_edit": permissions.acl_edit,
+        "acl_adm": permissions.acl_adm,
+    }
+    return {(level, participant.name) for level, participants in groups.items() for participant in participants}
+
+
+def _copy_permissions_diff(
+    source: PermissionSet[PermissionParticipant],
+    target: PermissionSet[PermissionParticipant],
+    *,
+    mode: Literal["replace", "merge"],
+) -> PermissionDiff:
+    source_grants = _grant_keys(source)
+    target_grants = _grant_keys(target)
+    added = source_grants - target_grants
+    removed = target_grants - source_grants if mode == "replace" else set()
+    modified: list[PermissionModification] = []
+    if mode == "replace":
+        # Adding a lower level can be ignored while the old grant still exists.
+        # Express same-subject level changes as modifications, not add/remove.
+        removed_levels: dict[str, list[PermissionGrantType]] = {}
+        for level, subject in sorted(removed):
+            removed_levels.setdefault(subject, []).append(level)
+        for new_level, subject in sorted(added):
+            old_levels = removed_levels.get(subject)
+            if old_levels:
+                old_level = old_levels.pop()
+                modified.append(
+                    PermissionModification(
+                        subject=subject,
+                        grant_type=old_level,
+                        new_subject=subject,
+                        new_grant_type=new_level,
+                    )
+                )
+                added.remove((new_level, subject))
+                removed.remove((old_level, subject))
+    return PermissionDiff(
+        added=tuple(PermissionGrant(subject=subject, grant_type=level) for level, subject in sorted(added)),
+        removed=tuple(PermissionGrant(subject=subject, grant_type=level) for level, subject in sorted(removed)),
+        modified=tuple(modified),
+    )
