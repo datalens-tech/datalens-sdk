@@ -6,7 +6,7 @@ from typing import Protocol, cast
 from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.domain.entry_location import EntryLocation, dir_path_from_location
 from datalens_sdk.domain.navigation import EntryMoveResult
-from datalens_sdk.errors import DataLensValidationError
+from datalens_sdk.errors import DataLensValidationError, translate_invalid_response_error
 
 
 class EntryMutationWriteDTOProtocol(Protocol):
@@ -70,17 +70,24 @@ class EntryMutationConverter:
         dto_module: EntryMutationDtoModule | None = None,
     ) -> tuple[EntryMoveResult, ...]:
         generated = _dto_module(dto_module)
-        return tuple(
-            EntryMoveResult(
-                id=item.id,
-                key=item.key,
-                scope=item.scope,
-                type=item.type,
-                raw=dict(entry),
+        result: list[EntryMoveResult] = []
+        for entry in raw:
+            item = generated.MoveEntryResultEntryReadDTO.model_validate(entry)
+            if not isinstance(entry.get("entryId"), str):
+                raise translate_invalid_response_error(
+                    operation="moveFolderEntry",
+                    reason="entry is missing a moved entry id",
+                )
+            result.append(
+                EntryMoveResult(
+                    id=item.id,
+                    key=item.key,
+                    scope=item.scope,
+                    type=item.type,
+                    raw=dict(entry),
+                )
             )
-            for entry in raw
-            for item in (generated.MoveEntryResultEntryReadDTO.model_validate(entry),)
-        )
+        return tuple(result)
 
     @staticmethod
     def from_domain_rename(

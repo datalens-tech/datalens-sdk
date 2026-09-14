@@ -24,6 +24,10 @@ def _move_result_schema(spec: dict[str, object]) -> dict[str, object]:
     return schemas["MoveEntryResultEntry"]
 
 
+def test_build_metadata_preserves_empty_installation_mapping() -> None:
+    assert codegen.build_metadata({}) == {"installations": {}}
+
+
 def test_entry_move_read_dto_follows_openapi(tmp_path: Path) -> None:
     spec = _load_spec("yacloud")
     properties = cast(dict[str, dict[str, object]], _move_result_schema(spec)["properties"])

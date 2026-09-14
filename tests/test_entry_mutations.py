@@ -678,3 +678,31 @@ def test_entry_move_rejects_malformed_result_entry() -> None:
         client.get.connection(by_id="connection-1").move(dl.EntryLocation.path("/Destination"))
 
     assert len(recorder.bodies("/rpc/getConnection")) == 1
+
+
+def test_entry_move_rejects_python_field_name_for_result_id() -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/getConnection": httpx.Response(
+                200,
+                json={"id": "connection-1", "type": "postgres", "name": "Connection", "key": "/Source/Connection"},
+            ),
+            "/rpc/moveFolderEntry": httpx.Response(
+                200,
+                json=[
+                    {
+                        "id": "connection-1",
+                        "key": "/Destination/Connection",
+                        "scope": "connection",
+                        "type": "postgres",
+                    }
+                ],
+            ),
+        }
+    )
+    client = _client(recorder)
+
+    with pytest.raises(dl.InvalidResponseError, match="moved entry id"):
+        client.get.connection(by_id="connection-1").move(dl.EntryLocation.path("/Destination"))
+
+    assert len(recorder.bodies("/rpc/getConnection")) == 1

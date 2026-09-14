@@ -1763,13 +1763,14 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
         out["dataset_data"] = canonical_dataset_data
     if entry_move_missing:
         raise ValueError(f"moveFolderEntry is missing from installations: {entry_move_missing!r}")
-    canonical_move_installation, canonical_entry_move = entry_move_contracts[0]
-    for installation, candidate in entry_move_contracts[1:]:
-        if candidate != canonical_entry_move:
-            raise ValueError(
-                f"moveFolderEntry schemas differ between {canonical_move_installation!r} and {installation!r}"
-            )
-    out["entry_move"] = canonical_entry_move
+    if entry_move_contracts:
+        canonical_move_installation, canonical_entry_move = entry_move_contracts[0]
+        for installation, candidate in entry_move_contracts[1:]:
+            if candidate != canonical_entry_move:
+                raise ValueError(
+                    f"moveFolderEntry schemas differ between {canonical_move_installation!r} and {installation!r}"
+                )
+        out["entry_move"] = canonical_entry_move
     editor_methods_by_wire_type: dict[str, tuple[str, str]] = {}
     for installation, info in sorted(out["installations"].items()):
         for wire_type, node_meta in sorted(info["charts"]["editor_nodes"].items()):
