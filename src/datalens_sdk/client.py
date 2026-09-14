@@ -69,6 +69,7 @@ from datalens_sdk.domain.navigation import (
     GetEntriesOptions,
     Pager,
 )
+from datalens_sdk.domain.permissions import EntryPermissions, PermissionDiff, PermissionModificationResult
 from datalens_sdk.domain.ports import (
     ChartOperations,
     CollectionOperations,
@@ -78,6 +79,7 @@ from datalens_sdk.domain.ports import (
     FolderOperations,
     LicenseOperations,
     NavigationOperations,
+    PermissionsOperations,
     WorkbookOperations,
 )
 from datalens_sdk.domain.ql_chart import QLChart
@@ -533,6 +535,20 @@ class NavigationNamespace:
         )
 
 
+class PermissionsNamespace:
+    """Read an entry ACL and apply an explicit diff to that entry only."""
+
+    def __init__(self, operations: PermissionsOperations) -> None:
+        self._operations = operations
+
+    def get(self, *, entry_id: str) -> EntryPermissions:
+        return self._operations.get_permissions(entry_id=entry_id)
+
+    def modify(self, *, entry_id: str, diff: PermissionDiff) -> PermissionModificationResult:
+        """Apply one non-recursive diff; preserve any server continuation token."""
+        return self._operations.modify_permissions(entry_id=entry_id, diff=diff)
+
+
 class LicensesNamespace:
     def __init__(self, operations: LicenseOperations) -> None:
         self._operations = operations
@@ -580,6 +596,7 @@ class DataLensClientBase:
     data: DataNamespace
     get: GetNamespace
     navigation: NavigationNamespace
+    permissions: PermissionsNamespace
     raw: RawNamespace
 
     @classmethod
@@ -755,6 +772,7 @@ class DataLensClientBase:
             workbook_operations=self._workbook_service,
         )
         self.navigation = NavigationNamespace(self._navigation_service)
+        self.permissions = PermissionsNamespace(entries_service)
         if "licenses" in self._installation_info["namespaces"]:
             self._license_service = LicenseService(
                 api=LicenseAPI(self._http),

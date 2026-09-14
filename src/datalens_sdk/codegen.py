@@ -41,8 +41,27 @@ INSTALLATIONS = {
 }
 
 NAMESPACES = {
-    "enterprise": ["collections", "connections", "dashboards", "data", "datasets", "folders", "workbooks"],
-    "yacloud": ["collections", "connections", "dashboards", "data", "datasets", "folders", "licenses", "workbooks"],
+    "enterprise": [
+        "collections",
+        "connections",
+        "dashboards",
+        "data",
+        "datasets",
+        "folders",
+        "permissions",
+        "workbooks",
+    ],
+    "yacloud": [
+        "collections",
+        "connections",
+        "dashboards",
+        "data",
+        "datasets",
+        "folders",
+        "licenses",
+        "permissions",
+        "workbooks",
+    ],
 }
 
 READ_ONLY_FIELDS = {"id", "key", "created_at", "updated_at", "meta"}
@@ -82,6 +101,11 @@ _DASHBOARD_V2_ROOTS = (
 )
 _DATASET_DATA_ROUTE = "/rpc/getDatasetData"
 _DATASET_DATA_ROOTS = ("DatasetDataArgs", "DatasetData")
+_PERMISSIONS_ROUTES = {
+    "/rpc/getPermissions": ("GetPermissionsArgs", "GetPermissionsResult"),
+    "/rpc/modifyPermissions": ("ModifyPermissionsArgs", "ModifyPermissionsResult"),
+}
+_PERMISSIONS_ROOTS = tuple(root for roots in _PERMISSIONS_ROUTES.values() for root in roots)
 _SCHEMA_REF_PREFIX = "#/components/schemas/"
 _SCHEMA_DOCUMENTATION_KEYS = frozenset({"$comment", "description", "example", "examples", "title"})
 _SCHEMA_NAMED_MAP_KEYS = frozenset({"properties"})
@@ -213,6 +237,11 @@ class DatasetDataContractMeta(TypedDict):
     schemas: dict[str, JsonValue]
 
 
+class PermissionsContractMeta(TypedDict):
+    roots: list[str]
+    schemas: dict[str, JsonValue]
+
+
 class InstallationMetadata(TypedDict):
     name: str
     namespaces: list[str]
@@ -227,6 +256,7 @@ class Metadata(TypedDict):
     installations: dict[str, InstallationMetadata]
     dashboard: NotRequired[DashboardContractMeta]
     dataset_data: NotRequired[DatasetDataContractMeta]
+    permissions: NotRequired[PermissionsContractMeta]
 
 
 def _string_object_dict(value: object, *, context: str) -> dict[str, object]:
@@ -945,6 +975,51 @@ def build_dataset_data_contract_meta(spec: Mapping[str, object]) -> DatasetDataC
     }
 
 
+def build_permissions_contract_meta(spec: Mapping[str, object]) -> PermissionsContractMeta:
+    """Extract the entry ACL contract required in every supported specification."""
+
+    paths = _string_object_dict(spec.get("paths"), context="paths")
+    missing = sorted(set(_PERMISSIONS_ROUTES) - paths.keys())
+    if missing:
+        raise ValueError(f"Permissions contract is missing routes: {missing}")
+    for route, expected_roots in _PERMISSIONS_ROUTES.items():
+        path_item = _string_object_dict(paths[route], context=route)
+        operation = _string_object_dict(path_item.get("post"), context=f"{route}.post")
+        request_schema, _ = _route_schema(operation, route=route, request=True)
+        result_schema, _ = _route_schema(operation, route=route, request=False)
+        if (request_schema, result_schema) != expected_roots:
+            raise ValueError(
+                f"Permissions route {route!r} must reference {expected_roots!r}, "
+                f"got {(request_schema, result_schema)!r}"
+            )
+
+    schemas = _schemas(spec)
+    reached: set[str] = set()
+    queue = list(_PERMISSIONS_ROOTS)
+    normalized_schemas: dict[str, JsonValue] = {}
+    while queue:
+        name = queue.pop(0)
+        if name in reached:
+            continue
+        schema = schemas.get(name)
+        if schema is None:
+            raise ValueError(f"Permissions schema graph references missing component {name!r}")
+        normalized = _normalize_wizard_schema(schema)
+        _audit_pydantic_schema_features(
+            normalized,
+            pointer=f"/schemas/{_json_pointer_token(name)}",
+            contract="Permissions",
+            require_provably_disjoint_one_of=True,
+        )
+        reached.add(name)
+        normalized_schemas[name] = normalized
+        queue.extend(sorted(_schema_refs(normalized) - reached - set(queue)))
+    return {
+        "roots": list(_PERMISSIONS_ROOTS),
+        "schemas": dict(sorted(normalized_schemas.items())),
+    }
+
+
 def wizard_schema_fingerprint(meta: WizardSchemaMeta) -> str:
     canonical = normalize_json_object(meta, context="Wizard schema metadata")
     return hashlib.sha256(_canonical_json(canonical).encode("utf-8")).hexdigest()
@@ -1617,6 +1692,7 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
     dashboard_contracts: list[tuple[str, DashboardContractMeta]] = []
     dataset_data_contracts: list[tuple[str, DatasetDataContractMeta]] = []
     dataset_data_missing: list[str] = []
+    permissions_contracts: list[tuple[str, PermissionsContractMeta]] = []
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
@@ -1628,6 +1704,7 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
             dataset_data_missing.append(installation)
         else:
             dataset_data_contracts.append((installation, dataset_data_contract))
+        permissions_contracts.append((installation, build_permissions_contract_meta(spec)))
         connection_discriminator = _string_object_dict(
             schemas["ConnectionCreate"].get("discriminator"),
             context="ConnectionCreate.discriminator",
@@ -1696,6 +1773,11 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
                     f"getDatasetData schemas differ between {canonical_installation!r} and {installation!r}"
                 )
         out["dataset_data"] = canonical_dataset_data
+    canonical_installation, canonical_permissions = permissions_contracts[0]
+    for installation, candidate in permissions_contracts[1:]:
+        if candidate != canonical_permissions:
+            raise ValueError(f"Permissions schemas differ between {canonical_installation!r} and {installation!r}")
+    out["permissions"] = canonical_permissions
     editor_methods_by_wire_type: dict[str, tuple[str, str]] = {}
     for installation, info in sorted(out["installations"].items()):
         for wire_type, node_meta in sorted(info["charts"]["editor_nodes"].items()):
@@ -1757,6 +1839,7 @@ class _PydanticSchemaEmitter:
         contract: str,
         open_schema_refs: Mapping[str, str] | frozenset[str] = frozenset(),
         field_name_overrides: Mapping[tuple[str, ...], str] | None = None,
+        wire_name_overrides: Mapping[str, str] | None = None,
     ) -> None:
         self._schemas = schemas
         self._read = read
@@ -1767,6 +1850,7 @@ class _PydanticSchemaEmitter:
             else dict.fromkeys(open_schema_refs, "dict[str, JsonValue]")
         )
         self._field_name_overrides = dict(field_name_overrides or {})
+        self._wire_name_overrides = dict(wire_name_overrides or {})
         self._lines: list[str] = []
         self._emitted: set[str] = set()
         self._emitting: set[str] = set()
@@ -2044,7 +2128,7 @@ class _PydanticSchemaEmitter:
                 raise TypeError(f"{self._contract} schema {'.'.join(path)}.{wire_name} must be an object")
             python_name = self._field_name_overrides.get(
                 (*path, wire_name),
-                _wizard_python_field_name(wire_name),
+                self._wire_name_overrides.get(wire_name, _wizard_python_field_name(wire_name)),
             )
             annotation = self._annotation(raw_field_schema, path=(*path, wire_name))
             alias_in_annotation = False
@@ -3063,6 +3147,22 @@ def _emit_dataset_data_dto(metadata: Metadata) -> str:
     return f"\n{request_models}\n{response_models}\n"
 
 
+def _emit_permissions_dto(metadata: Metadata) -> str:
+    schemas = metadata["permissions"]["schemas"]
+    request_models = _PydanticSchemaEmitter(
+        schemas,
+        read=False,
+        contract="Permissions",
+    ).emit(("GetPermissionsArgs", "ModifyPermissionsArgs"))
+    response_models = _PydanticSchemaEmitter(
+        schemas,
+        read=True,
+        contract="Permissions",
+        wire_name_overrides={"__rlsid": "rls_id", "__source": "source"},
+    ).emit(("GetPermissionsResult", "ModifyPermissionsResult"))
+    return f"\n{request_models}\n{response_models}\n"
+
+
 def emit_dto(metadata: Metadata) -> str:
     installations = metadata["installations"]
     connectors = {name: sorted(info["connectors"]) for name, info in sorted(installations.items())}
@@ -3075,6 +3175,7 @@ def emit_dto(metadata: Metadata) -> str:
     chart_dto_block = _emit_chart_dto(metadata)
     dashboard_dto_block = _emit_dashboard_dto(metadata)
     dataset_data_dto_block = _emit_dataset_data_dto(metadata)
+    permissions_dto_block = _emit_permissions_dto(metadata)
     navigation_dto_block = _emit_navigation_dto()
     return f"""# AUTOGENERATED by scripts/generate_sdk.py. Do not edit by hand.
 # ruff: noqa
@@ -3268,6 +3369,7 @@ class DatasetReadDTO(BaseModel):
         return value
 
 
+{permissions_dto_block}
 {dataset_data_dto_block}
 class DatasetValidateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)

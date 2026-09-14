@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Added
+
+- Add `client.permissions.get(entry_id=...)` and
+  `client.permissions.modify(entry_id=..., diff=...)` for typed entry ACLs.
+  Preserve granted and pending participants, requester/approver metadata,
+  all four ACL levels, comments, and mutation continuation information.
+  Changes apply an explicit diff to one entry without recursive traversal
+  or automatic continuation. Generate DTOs from the ACL RPC contracts
+  required in every supported installation specification. Preserve omitted
+  granted participant descriptions and extras as `None`.
+
 ## 3.0.0 - 2026-09-09
 
 ### Breaking changes

@@ -300,6 +300,31 @@ source tree by repository administrators.
 For general project questions, use
 [GitHub Issues](https://github.com/datalens-tech/datalens-sdk/issues).
 
+## Entry permissions
+
+Read an entry ACL or apply a typed diff to one entry:
+
+```python
+from datalens_sdk import PermissionDiff, PermissionGrant
+
+acl = client.permissions.get(entry_id="entry-id")
+viewers = acl.permissions.acl_view
+pending = acl.pending_permissions.acl_view
+
+result = client.permissions.modify(
+    entry_id="entry-id",
+    diff=PermissionDiff(
+        added=(PermissionGrant(subject="subject-id", grant_type="acl_view"),),
+    ),
+)
+```
+
+All four ACL levels are typed. Mutations are non-recursive and preserve any
+server continuation token; if `result.continuation_required` is true, do not
+repeat the diff or assume it fully completed. See the
+[permissions reference](skills/datalens-sdk/references/permissions.md) for
+removals, modifications, participant metadata, and contract limits.
+
 ## License
 
 Licensed under the Apache License 2.0. See [LICENSE](LICENSE).

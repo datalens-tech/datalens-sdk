@@ -234,6 +234,147 @@ class DatasetReadDTO(BaseModel):
 
 
 
+class GetPermissionsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    entry_id: str = Field(alias='entryId')
+
+class ModifyPermissionsArgsBodyDiffAddedAclAdmItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    comment: str = _UNVALIDATED_NONE_DEFAULT
+    subject: str
+
+class ModifyPermissionsArgsBodyDiffAddedDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    acl_adm: list[ModifyPermissionsArgsBodyDiffAddedAclAdmItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    acl_edit: list[ModifyPermissionsArgsBodyDiffAddedAclAdmItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    acl_execute: list[ModifyPermissionsArgsBodyDiffAddedAclAdmItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    acl_view: list[ModifyPermissionsArgsBodyDiffAddedAclAdmItemDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class ModifyPermissionsArgsBodyDiffModifiedAclAdmItemNewDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    grant_type: Literal['acl_adm', 'acl_edit', 'acl_execute', 'acl_view'] = Field(alias='grantType')
+    subject: str
+
+class ModifyPermissionsArgsBodyDiffModifiedAclAdmItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    comment: str = _UNVALIDATED_NONE_DEFAULT
+    new: ModifyPermissionsArgsBodyDiffModifiedAclAdmItemNewDTO
+    subject: str
+
+class ModifyPermissionsArgsBodyDiffModifiedDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    acl_adm: list[ModifyPermissionsArgsBodyDiffModifiedAclAdmItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    acl_edit: list[ModifyPermissionsArgsBodyDiffModifiedAclAdmItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    acl_execute: list[ModifyPermissionsArgsBodyDiffModifiedAclAdmItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    acl_view: list[ModifyPermissionsArgsBodyDiffModifiedAclAdmItemDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class ModifyPermissionsArgsBodyDiffDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    added: ModifyPermissionsArgsBodyDiffAddedDTO = _UNVALIDATED_NONE_DEFAULT
+    modified: ModifyPermissionsArgsBodyDiffModifiedDTO = _UNVALIDATED_NONE_DEFAULT
+    removed: ModifyPermissionsArgsBodyDiffAddedDTO = _UNVALIDATED_NONE_DEFAULT
+
+class ModifyPermissionsArgsBodyDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    diff: ModifyPermissionsArgsBodyDiffDTO
+
+class ModifyPermissionsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    body: ModifyPermissionsArgsBodyDTO
+    check_type: Literal['hierarchical', 'root', 'straight'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='checkType')
+    entry_id: str = Field(alias='entryId')
+    nested: bool = _UNVALIDATED_NONE_DEFAULT
+    page: float = _UNVALIDATED_NONE_DEFAULT
+    page_size: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageSize')
+
+class DlsPermissionPendingParticipantExtrasAnyOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    initial_on_create: bool = _UNVALIDATED_NONE_DEFAULT
+
+class DlsPermissionPendingParticipantRequesterObjectParentReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    link: str
+    title: str
+
+class DlsPermissionPendingParticipantRequesterObjectReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    rls_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='__rlsid')
+    source: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='__source')
+    cloud_icon: str = _UNVALIDATED_NONE_DEFAULT
+    cloud_icon_data: str = _UNVALIDATED_NONE_DEFAULT
+    cloud_user_id: str = _UNVALIDATED_NONE_DEFAULT
+    icon: str = _UNVALIDATED_NONE_DEFAULT
+    link: str = _UNVALIDATED_NONE_DEFAULT
+    name: str = _UNVALIDATED_NONE_DEFAULT
+    parent: DlsPermissionPendingParticipantRequesterObjectParentReadDTO = _UNVALIDATED_NONE_DEFAULT
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['group-staff-department', 'group-staff-service', 'group-staff-servicerole', 'group-staff-wiki', 'group-system', 'user', 'user-staff', 'user-system'] = _UNVALIDATED_NONE_DEFAULT
+
+class DlsPermissionPendingParticipantReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    approver: None
+    description: str
+    extras: DlsPermissionPendingParticipantExtrasAnyOf0ReadDTO | None
+    kind: Literal['group', 'user']
+    name: str
+    requester: None | DlsPermissionPendingParticipantRequesterObjectReadDTO
+    subject: DlsPermissionPendingParticipantRequesterObjectReadDTO
+
+class GetPermissionsResultPendingPermissionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    acl_adm: list[DlsPermissionPendingParticipantReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    acl_edit: list[DlsPermissionPendingParticipantReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    acl_execute: list[DlsPermissionPendingParticipantReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    acl_view: list[DlsPermissionPendingParticipantReadDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class DlsPermissionParticipantReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    approver: None | DlsPermissionPendingParticipantRequesterObjectReadDTO
+    description: str = _UNVALIDATED_NONE_DEFAULT
+    extras: DlsPermissionPendingParticipantExtrasAnyOf0ReadDTO | None = _UNVALIDATED_NONE_DEFAULT
+    kind: Literal['group', 'user']
+    name: str
+    requester: None | DlsPermissionPendingParticipantRequesterObjectReadDTO
+    subject: DlsPermissionPendingParticipantRequesterObjectReadDTO
+
+class GetPermissionsResultPermissionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    acl_adm: list[DlsPermissionParticipantReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    acl_edit: list[DlsPermissionParticipantReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    acl_execute: list[DlsPermissionParticipantReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    acl_view: list[DlsPermissionParticipantReadDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class GetPermissionsResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    editable: bool
+    pending_permissions: GetPermissionsResultPendingPermissionsReadDTO = Field(alias='pendingPermissions')
+    permissions: GetPermissionsResultPermissionsReadDTO
+
+class ModifyPermissionsResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    next_page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='nextPageToken')
+    result: Literal['ok']
+
+
+
 class DatasetDataArgsFiltersItemDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 

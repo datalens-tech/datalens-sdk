@@ -38,6 +38,7 @@ if TYPE_CHECKING:
         StructureSummary,
         WorkbookListOptions,
     )
+    from datalens_sdk.domain.permissions import EntryPermissions, PermissionDiff, PermissionModificationResult
     from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate
     from datalens_sdk.domain.specs.raw_resource import (
         RawCreateSpec,
@@ -47,6 +48,13 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.workbook import Workbook, WorkbookCreate, WorkbookUpdate
     from datalens_sdk.serialization.artifacts import ArtifactPath
     from datalens_sdk.serialization.json_types import JsonObject
+
+
+@runtime_checkable
+class PermissionsOperations(Protocol):
+    def get_permissions(self, *, entry_id: str) -> EntryPermissions: ...
+
+    def modify_permissions(self, *, entry_id: str, diff: PermissionDiff) -> PermissionModificationResult: ...
 
 
 @runtime_checkable
