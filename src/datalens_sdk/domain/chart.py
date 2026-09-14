@@ -15,6 +15,7 @@ from datalens_sdk.domain.entry_location import (
     collection_id_from_location,
     dir_path_from_location,
     key_from_location,
+    resolve_entry_move_location,
     validate_entry_name,
     workbook_id_from_location,
 )
@@ -99,6 +100,16 @@ class Chart(ABC):
             raise DataLensValidationError("Cannot rename a chart without an id")
         validate_entry_name(name=name, location=self.location)
         return cast(Self, self._operations.rename_chart(self, name))
+
+    def move(self, location: EntryLocation, *, name: str | None = None) -> Self:
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot move a chart without an id")
+        resolved_location = resolve_entry_move_location(
+            location, self.installation, self.workbook_id, name, "Chart move"
+        )
+        return cast(Self, self._operations.move_chart(self, resolved_location, name=name))
 
     def _write_artifact(
         self,

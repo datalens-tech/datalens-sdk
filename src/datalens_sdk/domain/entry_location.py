@@ -85,6 +85,29 @@ def validate_entry_name(*, name: str, location: EntryLocation | None = None) -> 
         raise DataLensValidationError("name must not contain '/' for path locations")
 
 
+def resolve_entry_move_location(
+    location: EntryLocation,
+    installation: str,
+    source_workbook_id: str | None,
+    name: str | None,
+    context: str,
+) -> EntryLocation:
+    if source_workbook_id is not None:
+        raise NotSupportedError(f"{context} does not support moving entries out of workbooks")
+    resolved = resolve_entry_location(location=location, installation=installation)
+    if location_kind(resolved) == "workbook":
+        raise NotSupportedError(f"{context} does not support moving entries into workbooks")
+    resolved = resolve_entry_location(
+        location=resolved,
+        installation=installation,
+        allowed_kinds={"path"},
+        context=context,
+    )
+    if name is not None:
+        validate_entry_name(name=name, location=resolved)
+    return resolved
+
+
 def _dir_path_from_key(key: str | None) -> str | None:
     if not key:
         return None

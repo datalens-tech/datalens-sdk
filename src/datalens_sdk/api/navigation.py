@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from datalens_sdk.api.collection import CollectionAPI
 from datalens_sdk.api.entries import EntriesAPI, EntriesDtoModule, EntriesService
 from datalens_sdk.api.workbook import WorkbookAPI
-from datalens_sdk.converter.entry import EntryMutationConverter
 from datalens_sdk.converter.navigation import NavigationConverter
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.navigation import (
@@ -15,6 +14,7 @@ from datalens_sdk.domain.navigation import (
     DirectoryListOptions,
     DirectoryPage,
     DirectoryPager,
+    EntryMoveResult,
     EntryRelation,
     EntrySummary,
     GetEntriesOptions,
@@ -113,17 +113,8 @@ class NavigationService(NavigationOperations):
         entry_id: str,
         location: EntryLocation,
         name: str | None = None,
-    ) -> None:
-        try:
-            dto = EntryMutationConverter.from_domain_move(
-                entry_id=entry_id,
-                location=location,
-                name=name,
-                dto_module=self._dto_module,
-            )
-        except ValidationError as exc:
-            raise translate_dto_validation_error(operation="moveFolderEntry", reason=str(exc)) from exc
-        self._entries_api.move(dto.to_payload())
+    ) -> EntryMoveResult:
+        return self._entries_service.move_entry(entry_id=entry_id, location=location, name=name)
 
     def list_collection_entries(
         self,

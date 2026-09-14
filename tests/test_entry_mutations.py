@@ -76,6 +76,13 @@ def _folder_response(*, name: str, key: str) -> dict[str, object]:
     return {"entryId": "folder-1", "name": name, "key": key, "scope": "folder", "type": ""}
 
 
+def _move_response(*, entry_id: str, key: str, scope: str, type: str) -> list[dict[str, object]]:
+    return [
+        {"entryId": "affected-parent", "key": "/Destination", "scope": "folder", "type": ""},
+        {"entryId": entry_id, "key": key, "scope": scope, "type": type},
+    ]
+
+
 def _dashboard_response(*, key: str) -> dict[str, object]:
     return {"entry": {"entryId": "dashboard-1", "key": key, "data": {}}}
 
@@ -155,7 +162,15 @@ def test_collection_workbook_and_folder_moves_use_dedicated_routes() -> None:
                     "hasNextPage": False,
                 },
             ),
-            "/rpc/moveFolderEntry": httpx.Response(200, json=[{"entryId": "folder-1"}]),
+            "/rpc/moveFolderEntry": httpx.Response(
+                200,
+                json=_move_response(
+                    entry_id="folder-1",
+                    key="/Destination/Folder moved",
+                    scope="folder",
+                    type="",
+                ),
+            ),
             "/rpc/getEntries": httpx.Response(
                 200,
                 json={"entries": [_folder_response(name="Folder moved", key="/Destination/Folder moved")]},
@@ -313,8 +328,108 @@ def test_entry_rename_refetches_each_concrete_resource_type() -> None:
         {"entryId": "ql-1", "name": "QL renamed"},
     ]
     assert recorder.bodies("/rpc/getDataset")[-1] == {"datasetId": "dataset-1", "workbookId": "workbook-1"}
-    for entry in (connection, dataset, dashboard, wizard, editor, ql):
-        assert not hasattr(entry, "move")
+
+
+def test_entry_move_preserves_ids_and_refetches_each_concrete_resource_type() -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/getConnection": [
+                httpx.Response(
+                    200,
+                    json={"id": "connection-1", "type": "postgres", "name": "Connection", "key": "/Source/Connection"},
+                ),
+                httpx.Response(
+                    200,
+                    json={
+                        "id": "connection-1",
+                        "type": "postgres",
+                        "name": "Connection moved",
+                        "key": "/Destination/Connection moved",
+                    },
+                ),
+            ],
+            "/rpc/getDataset": [
+                httpx.Response(
+                    200, json={"id": "dataset-1", "name": "Dataset", "key": "/Source/Dataset", "dataset": {}}
+                ),
+                httpx.Response(
+                    200,
+                    json={"id": "dataset-1", "name": "Dataset", "key": "/Destination/Dataset", "dataset": {}},
+                ),
+            ],
+            "/rpc/getDashboard": [
+                httpx.Response(200, json=_dashboard_response(key="/Source/Dashboard")),
+                httpx.Response(200, json=_dashboard_response(key="/Destination/Dashboard moved")),
+            ],
+            "/rpc/getWizardChart": [
+                httpx.Response(200, json=_wizard_response(key="/Source/Wizard")),
+                httpx.Response(200, json=_wizard_response(key="/Destination/Wizard")),
+            ],
+            "/rpc/getEditorChart": [
+                httpx.Response(200, json=_editor_response(key="/Source/Editor")),
+                httpx.Response(200, json=_editor_response(key="/Destination/Editor moved")),
+            ],
+            "/rpc/getQLChart": [
+                httpx.Response(200, json=_ql_response(key="/Source/QL")),
+                httpx.Response(200, json=_ql_response(key="/Destination/QL")),
+            ],
+            "/rpc/moveFolderEntry": [
+                httpx.Response(
+                    200,
+                    json=_move_response(
+                        entry_id=entry_id,
+                        key=key,
+                        scope=scope,
+                        type=wire_type,
+                    ),
+                )
+                for entry_id, key, scope, wire_type in (
+                    ("connection-1", "/Destination/Connection moved", "connection", "postgres"),
+                    ("dataset-1", "/Destination/Dataset", "dataset", "dataset"),
+                    ("dashboard-1", "/Destination/Dashboard moved", "dash", "dash"),
+                    ("wizard-1", "/Destination/Wizard", "widget", "d3_wizard_node"),
+                    ("editor-1", "/Destination/Editor moved", "widget", "advanced-chart-node"),
+                    ("ql-1", "/Destination/QL", "widget", "d3_ql_node"),
+                )
+            ],
+        }
+    )
+    client = _client(recorder)
+    destination = dl.EntryLocation.path("/Destination")
+
+    connection = client.get.connection(by_id="connection-1").move(destination, name="Connection moved")
+    dataset = client.get.dataset(by_id="dataset-1").move(destination)
+    dashboard = client.get.dashboard(by_id="dashboard-1").move(destination, name="Dashboard moved")
+    wizard = client.get.wizard_chart(by_id="wizard-1").move(destination)
+    editor = client.get.editor_chart(by_id="editor-1").move(destination, name="Editor moved")
+    ql = client.get.ql_chart(by_id="ql-1").move(destination)
+
+    assert (connection.id, connection.name, connection.location) == (
+        "connection-1",
+        "Connection moved",
+        destination,
+    )
+    assert (dataset.id, dataset.name, dataset.location) == ("dataset-1", "Dataset", destination)
+    assert (dashboard.id, dashboard.name, dashboard.location) == (
+        "dashboard-1",
+        "Dashboard moved",
+        destination,
+    )
+    assert isinstance(wizard, dl.WizardChart)
+    assert (wizard.id, wizard.name, wizard.location) == ("wizard-1", "Wizard", destination)
+    assert isinstance(editor, dl.EditorChart)
+    assert (editor.id, editor.name, editor.location) == ("editor-1", "Editor moved", destination)
+    assert isinstance(ql, dl.QLChart)
+    assert (ql.id, ql.name, ql.location) == ("ql-1", "QL", destination)
+    assert recorder.bodies("/rpc/moveFolderEntry") == [
+        {"entryId": "connection-1", "destination": "/Destination", "name": "Connection moved"},
+        {"entryId": "dataset-1", "destination": "/Destination"},
+        {"entryId": "dashboard-1", "destination": "/Destination", "name": "Dashboard moved"},
+        {"entryId": "wizard-1", "destination": "/Destination"},
+        {"entryId": "editor-1", "destination": "/Destination", "name": "Editor moved"},
+        {"entryId": "ql-1", "destination": "/Destination"},
+    ]
+    assert recorder.bodies("/rpc/getDataset")[-1] == {"datasetId": "dataset-1"}
 
 
 def test_chart_rename_rejects_unknown_subtype_before_mutation() -> None:
@@ -379,6 +494,22 @@ def test_move_and_rename_validate_names_and_destination_kinds_before_requests() 
         folder.rename("nested/name")
     with pytest.raises(dl.DataLensValidationError, match="must not contain"):
         connection.rename("nested/name")
+    with pytest.raises(dl.NotSupportedError, match="into workbooks"):
+        connection.move(dl.EntryLocation.workbook("workbook-1"))
+    with pytest.raises(dl.DataLensValidationError, match="Connection move requires location kind 'path'"):
+        connection.move(dl.EntryLocation.collection("collection-1"))
+    with pytest.raises(dl.DataLensValidationError, match="name must not be empty"):
+        connection.move(dl.EntryLocation.path("/Destination"), name="")
+    with pytest.raises(dl.DataLensValidationError, match="must not contain"):
+        connection.move(dl.EntryLocation.path("/Destination"), name="nested/name")
+    with pytest.raises(dl.NotSupportedError, match="out of workbooks"):
+        dl.Connection(
+            id="workbook-connection",
+            type="postgres",
+            installation="yacloud",
+            location=dl.EntryLocation.workbook("workbook-1"),
+            _operations=client._connection_service,
+        ).move(dl.EntryLocation.path("/Destination"))
 
     assert recorder.bodies("/rpc/moveCollection") == []
     assert recorder.bodies("/rpc/moveWorkbook") == []
@@ -399,6 +530,8 @@ def test_move_and_rename_reject_unbound_objects_and_missing_ids() -> None:
         dl.Folder(id="folder-1", name="Folder", key="/Folder").rename("Renamed")
     with pytest.raises(dl.DataLensConfigurationError, match="not bound"):
         dl.Connection(id="connection-1", type="postgres").rename("Renamed")
+    with pytest.raises(dl.DataLensConfigurationError, match="not bound"):
+        dl.Connection(id="connection-1", type="postgres").move(dl.EntryLocation.path("/Destination"))
 
     with pytest.raises(dl.DataLensValidationError, match="collection without an id"):
         dl.Collection(
@@ -444,6 +577,12 @@ def test_move_and_rename_reject_unbound_objects_and_missing_ids() -> None:
             type="postgres",
             _operations=cast(ConnectionOperations, object()),
         ).rename("Renamed")
+    with pytest.raises(dl.DataLensValidationError, match="connection without an id"):
+        dl.Connection(
+            id=None,
+            type="postgres",
+            _operations=cast(ConnectionOperations, object()),
+        ).move(dl.EntryLocation.path("/Destination"))
     with pytest.raises(dl.DataLensValidationError, match="dataset without an id"):
         dl.Dataset(
             id=None,
@@ -492,3 +631,50 @@ def test_entry_mutations_reject_non_array_responses(route: str, action: str) -> 
     else:
         with pytest.raises(dl.InvalidResponseError, match="response root is not an array"):
             client.get.connection(by_id="connection-1").rename("Renamed")
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        [],
+        [{"entryId": "other", "key": "/Destination/Other", "scope": "dataset", "type": "dataset"}],
+        [
+            {"entryId": "connection-1", "key": "/Destination/Connection", "scope": "connection", "type": "postgres"},
+            {"entryId": "connection-1", "key": "/Destination/Connection", "scope": "connection", "type": "postgres"},
+        ],
+    ],
+)
+def test_entry_move_rejects_missing_or_duplicate_target(response: list[dict[str, object]]) -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/getConnection": httpx.Response(
+                200,
+                json={"id": "connection-1", "type": "postgres", "name": "Connection", "key": "/Source/Connection"},
+            ),
+            "/rpc/moveFolderEntry": httpx.Response(200, json=response),
+        }
+    )
+    client = _client(recorder)
+
+    with pytest.raises(dl.InvalidResponseError, match="exactly one moved entry with id 'connection-1'"):
+        client.get.connection(by_id="connection-1").move(dl.EntryLocation.path("/Destination"))
+
+    assert len(recorder.bodies("/rpc/getConnection")) == 1
+
+
+def test_entry_move_rejects_malformed_result_entry() -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/getConnection": httpx.Response(
+                200,
+                json={"id": "connection-1", "type": "postgres", "name": "Connection", "key": "/Source/Connection"},
+            ),
+            "/rpc/moveFolderEntry": httpx.Response(200, json=[{"entryId": "connection-1"}]),
+        }
+    )
+    client = _client(recorder)
+
+    with pytest.raises(dl.DTOValidationError, match="Failed to parse response for moveFolderEntry"):
+        client.get.connection(by_id="connection-1").move(dl.EntryLocation.path("/Destination"))
+
+    assert len(recorder.bodies("/rpc/getConnection")) == 1

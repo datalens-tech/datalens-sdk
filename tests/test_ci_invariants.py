@@ -318,6 +318,7 @@ def test_dto_extra_config_is_strict_on_write_ignore_on_read() -> None:
     assert dto.ConnectionCreateDTO.model_config.get("extra") == "forbid"
     assert dto.DatasetCreateDTO.model_config.get("extra") == "forbid"
     assert dto.EntryMoveDTO.model_config.get("extra") == "forbid"
+    assert dto.MoveEntryResultEntryReadDTO.model_config.get("extra") == "ignore"
     assert dto.EntryRenameDTO.model_config.get("extra") == "forbid"
     assert dto.CollectionCreateDTO.model_config.get("extra") == "forbid"
     assert dto.CollectionMoveDTO.model_config.get("extra") == "forbid"

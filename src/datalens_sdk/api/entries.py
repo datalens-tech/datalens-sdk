@@ -7,7 +7,9 @@ from pydantic import ValidationError
 
 from datalens_sdk.converter.entry import EntryMutationConverter, EntryMutationDtoModule
 from datalens_sdk.converter.navigation import NavigationConverter, NavigationDtoModule
+from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.navigation import (
+    EntryMoveResult,
     EntryRelation,
     Page,
     Pager,
@@ -49,12 +51,13 @@ class EntriesAPI:
     def get_relations(self, payload: dict[str, object]) -> dict[str, object]:
         return self._post_object("/rpc/getEntriesRelations", payload, retry_policy=TRANSIENT_RETRY_POLICY)
 
-    def move(self, payload: dict[str, object]) -> None:
+    def move(self, payload: dict[str, object]) -> list[Mapping[str, object]]:
         response = self._response("/rpc/moveFolderEntry", payload)
         if not isinstance(response, list) or not all(isinstance(item, Mapping) for item in response):
             raise translate_invalid_response_error(
                 operation="/rpc/moveFolderEntry", reason="response root is not an array"
             )
+        return response
 
     def rename(self, payload: dict[str, object]) -> None:
         response = self._response("/rpc/renameEntry", payload)
@@ -120,3 +123,32 @@ class EntriesService:
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="renameEntry", reason=str(exc)) from exc
         self._api.rename(dto.to_payload())
+
+    def move_entry(
+        self,
+        *,
+        entry_id: str,
+        location: EntryLocation,
+        name: str | None = None,
+    ) -> EntryMoveResult:
+        try:
+            dto = EntryMutationConverter.from_domain_move(
+                entry_id=entry_id,
+                location=location,
+                name=name,
+                dto_module=self._dto_module,
+            )
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="moveFolderEntry", reason=str(exc)) from exc
+        raw = self._api.move(dto.to_payload())
+        try:
+            entries = EntryMutationConverter.to_domain_move_result(raw, dto_module=self._dto_module)
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="moveFolderEntry", reason=str(exc)) from exc
+        matches = [entry for entry in entries if entry.id == entry_id]
+        if len(matches) != 1:
+            raise translate_invalid_response_error(
+                operation="moveFolderEntry",
+                reason=f"expected exactly one moved entry with id {entry_id!r}",
+            )
+        return matches[0]
