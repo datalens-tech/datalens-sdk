@@ -8,7 +8,6 @@ import re
 from typing import overload
 from uuid import uuid4
 
-from datalens_sdk.domain import entry_location as locations
 from datalens_sdk.domain.connection import Connection
 from datalens_sdk.domain.data import (
     DatasetData,
@@ -38,6 +37,16 @@ from datalens_sdk.domain.dataset_types import (
     WhereOperation,
 )
 from datalens_sdk.domain.dataset_update import DatasetUpdate
+from datalens_sdk.domain.entry_location import (
+    EntryLocation,
+    collection_id_from_location,
+    dir_path_from_location,
+    key_from_location,
+    resolve_entry_location,
+    resolve_entry_move_location,
+    validate_entry_name,
+    workbook_id_from_location,
+)
 from datalens_sdk.domain.fields import DatasetField, FieldLike, FieldRef, FieldsProxy
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import DatasetOperations
@@ -172,15 +181,15 @@ class DatasetCreate:
         *,
         installation: str,
         name: str,
-        location: locations.EntryLocation,
+        location: EntryLocation,
         operations: DatasetOperations | None = None,
     ) -> None:
         self._installation = installation
-        self._location = locations.resolve_entry_location(
+        self._location = resolve_entry_location(
             location=location,
             installation=installation,
         )
-        locations.validate_entry_name(name=name, location=self._location)
+        validate_entry_name(name=name, location=self._location)
         self._name = name
         self._operations = operations
         self._description = ""
@@ -426,7 +435,7 @@ class Dataset:
     name: str | None = None
     installation: str = ""
     description: str = ""
-    location: locations.EntryLocation | None = None
+    location: EntryLocation | None = None
     sources: SourcesProxy = field(default_factory=lambda: SourcesProxy(()))
     source_avatars: tuple[Mapping[str, object], ...] = ()
     avatar_relations: tuple[Mapping[str, object], ...] = ()
@@ -455,19 +464,19 @@ class Dataset:
 
     @property
     def key(self) -> str | None:
-        return _optional_str(self.raw.get("key")) or locations.key_from_location(self.location, name=self.name)
+        return _optional_str(self.raw.get("key")) or key_from_location(self.location, name=self.name)
 
     @property
     def dir_path(self) -> str | None:
-        return locations.dir_path_from_location(self.location) or _optional_str(self.raw.get("dir_path"))
+        return dir_path_from_location(self.location) or _optional_str(self.raw.get("dir_path"))
 
     @property
     def workbook_id(self) -> str | None:
-        return locations.workbook_id_from_location(self.location) or _optional_str(self.raw.get("workbook_id"))
+        return workbook_id_from_location(self.location) or _optional_str(self.raw.get("workbook_id"))
 
     @property
     def collection_id(self) -> str | None:
-        return locations.collection_id_from_location(self.location) or _optional_str(self.raw.get("collection_id"))
+        return collection_id_from_location(self.location) or _optional_str(self.raw.get("collection_id"))
 
     @property
     def fields(self) -> FieldsProxy:
@@ -514,15 +523,15 @@ class Dataset:
             raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
             raise DataLensValidationError("Cannot rename a dataset without an id")
-        locations.validate_entry_name(name=name, location=self.location)
+        validate_entry_name(name=name, location=self.location)
         return self._operations.rename_dataset(self, name)
 
-    def move(self, location: locations.EntryLocation, *, name: str | None = None) -> Dataset:
+    def move(self, location: EntryLocation, *, name: str | None = None) -> Dataset:
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
             raise DataLensValidationError("Cannot move a dataset without an id")
-        resolved_location = locations.resolve_entry_move_location(
+        resolved_location = resolve_entry_move_location(
             location, self.installation, self.workbook_id, name, "Dataset move"
         )
         return self._operations.move_dataset(self, resolved_location, name=name)
