@@ -8,7 +8,7 @@ import re
 from typing import overload
 from uuid import uuid4
 
-from datalens_sdk.domain.connection import Connection
+from datalens_sdk.domain.connection import Connection, _optional_str
 from datalens_sdk.domain.data import (
     DatasetData,
     DatasetDataFilter,
@@ -56,10 +56,6 @@ from datalens_sdk.serialization.artifacts import ArtifactPath, write_dataset_art
 from datalens_sdk.serialization.json_types import JsonValue
 
 _UNBOUND = "Object is not bound to client operations. Use a client namespace."
-
-
-def _optional_str(value: object) -> str | None:
-    return value if isinstance(value, str) else None
 
 
 @dataclass(slots=True)
