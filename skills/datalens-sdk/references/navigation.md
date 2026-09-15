@@ -2,6 +2,9 @@
 
 Read this when you need to find, list, move, or rename entities, or manage the containers they live in: collections, workbooks, and folders.
 
+For ACL participants and explicit permission changes, use
+[entry permissions](permissions.md).
+
 ## The container model
 
 Two organizational schemes coexist, per installation:

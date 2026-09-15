@@ -108,7 +108,7 @@ connection -> source -> dataset -> chart -> dashboard
                         (fields)    (wizard | ql | editor)
 ```
 
-One client, four namespaces:
+One client, purpose-specific namespaces:
 
 | Namespace                          | Role                              | Terminal call         |
 |------------------------------------|-----------------------------------|-----------------------|
@@ -116,6 +116,7 @@ One client, four namespaces:
 | `client.create.*`                  | fluent builders                   | `.build()` persists   |
 | `obj.update...`                    | fluent update on a fetched object | `.execute()` persists |
 | `client.navigation` / `client.raw` | listing / snapshot import-export  | —                     |
+| `client.permissions` | entry ACL read / explicit diff / copy | `get()` / `modify()` / `copy()` |
 
 Forgetting the terminal call is the #1 mistake: a builder chain without
 `.build()` or `.execute()` runs "successfully" and persists nothing.
@@ -260,6 +261,7 @@ Editor index replaces the public Editor subtree for that installation.
 | A custom-code (JavaScript) chart or selector                               | [references/editor-charts/_index.md](references/editor-charts/_index.md) |
 | Parameters across Dataset/Wizard, QL, Editor, widgets, dashboards, selectors, or chart clicks | [references/parameters.md](references/parameters.md) |
 | Dashboards: tabs, widgets, selectors, layout, read model                   | [references/dashboards.md](references/dashboards.md)                     |
+| Entry ACL participants, pending requests, explicit permission changes or copying | [references/permissions.md](references/permissions.md) |
 | Finding, listing, moving, renaming entities; collections/workbooks/folders | [references/navigation.md](references/navigation.md)                     |
 | Export, import, clone, copy across workbooks                               | [references/serialization.md](references/serialization.md)               |
 | Any `DataLensAPIError` or unexpected SDK exception                         | [references/troubleshooting.md](references/troubleshooting.md)           |
@@ -377,6 +379,7 @@ from [references/setup.md](references/setup.md).
 | `references/editor-charts/<renderer>.md`        | one minimal working payload, the renderer's SDK contract, and exact runtime-documentation sections  |
 | `references/parameters.md`                      | parameter definitions, override precedence, selectors, global/widget/action params                 |
 | `references/dashboards.md`                      | building or editing dashboards; discovering existing item, selector, and chart-tab ids             |
+| `references/permissions.md` | entry ACL read, non-recursive explicit diff, and copying |
 | `references/navigation.md`                      | listing/finding/moving entities; collections, workbooks, folders                                   |
 | `references/serialization.md`                   | export/import/clone via `to_file` and `client.raw`                                                 |
 | `references/troubleshooting.md`                 | any API error; before retrying anything                                                            |

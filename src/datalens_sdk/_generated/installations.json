@@ -1802,6 +1802,7 @@
         "data",
         "datasets",
         "folders",
+        "permissions",
         "workbooks"
       ],
       "wizard": {
@@ -21885,6 +21886,7 @@
         "datasets",
         "folders",
         "licenses",
+        "permissions",
         "workbooks"
       ],
       "wizard": {

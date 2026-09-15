@@ -105,6 +105,21 @@ from datalens_sdk.domain.navigation import (
     StructureSummary,
     WorkbookSummary,
 )
+from datalens_sdk.domain.permissions import (
+    EntryPermissions,
+    PendingPermissionParticipant,
+    PermissionDiff,
+    PermissionExtras,
+    PermissionGrant,
+    PermissionGrantType,
+    PermissionModification,
+    PermissionModificationResult,
+    PermissionParticipant,
+    PermissionSet,
+    PermissionSubject,
+    PermissionSubjectParent,
+    PermissionSubjectType,
+)
 from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate, QLColumn, QLParam
 from datalens_sdk.domain.raw_dashboard import RawDashboardCreate, RawDashboardReplace
 from datalens_sdk.domain.raw_resource import (
@@ -177,6 +192,7 @@ __all__ = [
     "EntryBranch",
     "EntryLocation",
     "EntryOrderField",
+    "EntryPermissions",
     "EntryRelation",
     "EntryScope",
     "EntrySummary",
@@ -210,6 +226,18 @@ __all__ = [
     "Pager",
     "ParameterDataType",
     "ParameterValue",
+    "PendingPermissionParticipant",
+    "PermissionDiff",
+    "PermissionExtras",
+    "PermissionGrant",
+    "PermissionGrantType",
+    "PermissionModification",
+    "PermissionModificationResult",
+    "PermissionParticipant",
+    "PermissionSet",
+    "PermissionSubject",
+    "PermissionSubjectParent",
+    "PermissionSubjectType",
     "PinZone",
     "Position",
     "QLCast",

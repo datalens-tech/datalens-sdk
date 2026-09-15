@@ -4,6 +4,25 @@
 
 ### Added
 
+- Add `client.permissions.copy(source_entry_id=..., target_entry_id=..., mode=...)`
+  to replace a target entry's granted permissions or merge missing grants.
+  Copying uses two reads and at most one non-recursive diff, with same-subject
+  level replacements expressed as deterministic modifications, including
+  participants present at multiple levels. Matching ACLs skip the mutation.
+  Server normalization can retain or upgrade an existing level instead of
+  keeping redundant grants. Pending requests and participant metadata are not
+  copied.
+
+- Add `client.permissions.get(entry_id=...)` and
+  `client.permissions.modify(entry_id=..., diff=...)` for typed entry ACLs.
+  Preserve granted and pending participants, requester/approver metadata,
+  all four ACL levels, comments, and mutation continuation information.
+  Changes apply an explicit diff to one entry without recursive traversal
+  or automatic continuation. Generate DTOs from the ACL RPC contracts
+  required in every supported installation specification. Read DTOs accept
+  omitted granted participant descriptions and extras as `None` for live
+  response compatibility, retaining the upstream specifications unchanged.
+
 - Add ID-preserving `.move(EntryLocation.path(...), name=...)` operations for
   connections, datasets, dashboards, and every chart family. The SDK validates
   the `moveFolderEntry` result against the moved entry id and returns the
