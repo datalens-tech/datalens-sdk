@@ -150,6 +150,12 @@ def _check_entry_mutation_return_types(
     assert_type(wizard.rename("Renamed"), WizardChart)
     assert_type(editor.rename("Renamed"), EditorChart)
     assert_type(ql.rename("Renamed"), QLChart)
+    assert_type(connection.move(EntryLocation.path("/Destination")), Connection)
+    assert_type(dataset.move(EntryLocation.path("/Destination")), Dataset)
+    assert_type(dashboard.move(EntryLocation.path("/Destination")), Dashboard)
+    assert_type(wizard.move(EntryLocation.path("/Destination")), WizardChart)
+    assert_type(editor.move(EntryLocation.path("/Destination")), EditorChart)
+    assert_type(ql.move(EntryLocation.path("/Destination")), QLChart)
     assert_type(
         ql.update.x([QLColumn("x")])
         .y(["y"])

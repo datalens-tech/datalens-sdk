@@ -8,7 +8,13 @@ from typing import cast
 from datalens_sdk.domain.dashboard_types import KNOWN_DASHBOARD_ITEM_TYPES, ValidationIssue
 from datalens_sdk.domain.dashboard_update import DashboardUpdate
 from datalens_sdk.domain.dashboard_validate import validate_dashboard
-from datalens_sdk.domain.entry_location import EntryLocation, key_from_location, validate_entry_name
+from datalens_sdk.domain.entry_location import (
+    EntryLocation,
+    key_from_location,
+    resolve_entry_move_location,
+    validate_entry_name,
+    workbook_id_from_location,
+)
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import DashboardOperations
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
@@ -462,6 +468,20 @@ class Dashboard:
             raise DataLensValidationError("Cannot rename a dashboard without an id")
         validate_entry_name(name=name, location=self.location)
         return self._operations.rename_dashboard(self, name)
+
+    def move(self, location: EntryLocation, *, name: str | None = None) -> Dashboard:
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot move a dashboard without an id")
+        resolved_location = resolve_entry_move_location(
+            location,
+            self.installation,
+            self.workbook_id or workbook_id_from_location(self.location),
+            name,
+            "Dashboard move",
+        )
+        return self._operations.move_dashboard(self, resolved_location, name=name)
 
     def get_relations(
         self,

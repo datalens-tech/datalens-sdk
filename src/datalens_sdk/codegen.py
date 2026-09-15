@@ -106,6 +106,8 @@ _PERMISSIONS_ROUTES = {
     "/rpc/modifyPermissions": ("ModifyPermissionsArgs", "ModifyPermissionsResult"),
 }
 _PERMISSIONS_ROOTS = tuple(root for roots in _PERMISSIONS_ROUTES.values() for root in roots)
+_ENTRY_MOVE_ROUTE = "/rpc/moveFolderEntry"
+_ENTRY_MOVE_ROOTS = ("MoveEntryArgs", "MoveEntryResult", "MoveEntryResultEntry")
 _SCHEMA_REF_PREFIX = "#/components/schemas/"
 _SCHEMA_DOCUMENTATION_KEYS = frozenset({"$comment", "description", "example", "examples", "title"})
 _SCHEMA_NAMED_MAP_KEYS = frozenset({"properties"})
@@ -242,6 +244,11 @@ class PermissionsContractMeta(TypedDict):
     schemas: dict[str, JsonValue]
 
 
+class EntryMoveContractMeta(TypedDict):
+    roots: list[str]
+    schemas: dict[str, JsonValue]
+
+
 class InstallationMetadata(TypedDict):
     name: str
     namespaces: list[str]
@@ -257,6 +264,7 @@ class Metadata(TypedDict):
     dashboard: NotRequired[DashboardContractMeta]
     dataset_data: NotRequired[DatasetDataContractMeta]
     permissions: NotRequired[PermissionsContractMeta]
+    entry_move: NotRequired[EntryMoveContractMeta]
 
 
 def _string_object_dict(value: object, *, context: str) -> dict[str, object]:
@@ -827,6 +835,56 @@ def build_dashboard_contract_meta(spec: Mapping[str, object]) -> DashboardContra
 
     return {
         "roots": list(_DASHBOARD_V2_ROOTS),
+        "schemas": dict(sorted(normalized_schemas.items())),
+    }
+
+
+def build_entry_move_contract_meta(spec: Mapping[str, object]) -> EntryMoveContractMeta | None:
+    paths = _string_object_dict(spec.get("paths"), context="paths")
+    route_value = paths.get(_ENTRY_MOVE_ROUTE)
+    if route_value is None:
+        return None
+    route = _string_object_dict(route_value, context=_ENTRY_MOVE_ROUTE)
+    operation = _string_object_dict(route.get("post"), context=f"{_ENTRY_MOVE_ROUTE}.post")
+    request_schema, _ = _route_schema(operation, route=_ENTRY_MOVE_ROUTE, request=True)
+    result_schema, _ = _route_schema(operation, route=_ENTRY_MOVE_ROUTE, request=False)
+    if request_schema != _ENTRY_MOVE_ROOTS[0] or result_schema != _ENTRY_MOVE_ROOTS[1]:
+        raise ValueError(
+            f"{_ENTRY_MOVE_ROUTE} must use {_ENTRY_MOVE_ROOTS[0]!r} and {_ENTRY_MOVE_ROOTS[1]!r}, "
+            f"got {request_schema!r} and {result_schema!r}"
+        )
+
+    schemas = _schemas(spec)
+    result = schemas.get(_ENTRY_MOVE_ROOTS[1])
+    if result is None:
+        raise ValueError(f"{_ENTRY_MOVE_ROUTE} is missing result schema {_ENTRY_MOVE_ROOTS[1]!r}")
+    items = _string_object_dict(result.get("items"), context=f"{_ENTRY_MOVE_ROOTS[1]}.items")
+    item_schema = _schema_ref_name(items, context=f"{_ENTRY_MOVE_ROOTS[1]}.items")
+    if item_schema != _ENTRY_MOVE_ROOTS[2]:
+        raise ValueError(f"{_ENTRY_MOVE_ROOTS[1]}.items must reference {_ENTRY_MOVE_ROOTS[2]!r}, got {item_schema!r}")
+
+    reached: set[str] = set()
+    queue = list(_ENTRY_MOVE_ROOTS)
+    normalized_schemas: dict[str, JsonValue] = {}
+    while queue:
+        name = queue.pop(0)
+        if name in reached:
+            continue
+        schema = schemas.get(name)
+        if schema is None:
+            raise ValueError(f"{_ENTRY_MOVE_ROUTE} schema graph references missing component {name!r}")
+        normalized = _normalize_wizard_schema(schema)
+        _audit_pydantic_schema_features(
+            normalized,
+            pointer=f"/schemas/{_json_pointer_token(name)}",
+            contract="moveFolderEntry",
+            require_provably_disjoint_one_of=False,
+        )
+        reached.add(name)
+        normalized_schemas[name] = normalized
+        queue.extend(sorted(_schema_refs(normalized) - reached - set(queue)))
+    return {
+        "roots": list(_ENTRY_MOVE_ROOTS),
         "schemas": dict(sorted(normalized_schemas.items())),
     }
 
@@ -1693,12 +1751,19 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
     dataset_data_contracts: list[tuple[str, DatasetDataContractMeta]] = []
     dataset_data_missing: list[str] = []
     permissions_contracts: list[tuple[str, PermissionsContractMeta]] = []
+    entry_move_contracts: list[tuple[str, EntryMoveContractMeta]] = []
+    entry_move_missing: list[str] = []
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
         schemas = _schemas(spec)
         dashboard_contract = build_dashboard_contract_meta(spec)
         dashboard_contracts.append((installation, dashboard_contract))
+        entry_move_contract = build_entry_move_contract_meta(spec)
+        if entry_move_contract is None:
+            entry_move_missing.append(installation)
+        else:
+            entry_move_contracts.append((installation, entry_move_contract))
         dataset_data_contract = build_dataset_data_contract_meta(spec)
         if dataset_data_contract is None:
             dataset_data_missing.append(installation)
@@ -1773,11 +1838,22 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
                     f"getDatasetData schemas differ between {canonical_installation!r} and {installation!r}"
                 )
         out["dataset_data"] = canonical_dataset_data
-    canonical_installation, canonical_permissions = permissions_contracts[0]
-    for installation, candidate in permissions_contracts[1:]:
-        if candidate != canonical_permissions:
-            raise ValueError(f"Permissions schemas differ between {canonical_installation!r} and {installation!r}")
-    out["permissions"] = canonical_permissions
+    if permissions_contracts:
+        canonical_installation, canonical_permissions = permissions_contracts[0]
+        for installation, candidate in permissions_contracts[1:]:
+            if candidate != canonical_permissions:
+                raise ValueError(f"Permissions schemas differ between {canonical_installation!r} and {installation!r}")
+        out["permissions"] = canonical_permissions
+    if entry_move_missing:
+        raise ValueError(f"moveFolderEntry is missing from installations: {entry_move_missing!r}")
+    if entry_move_contracts:
+        canonical_move_installation, canonical_entry_move = entry_move_contracts[0]
+        for installation, candidate in entry_move_contracts[1:]:
+            if candidate != canonical_entry_move:
+                raise ValueError(
+                    f"moveFolderEntry schemas differ between {canonical_move_installation!r} and {installation!r}"
+                )
+        out["entry_move"] = canonical_entry_move
     editor_methods_by_wire_type: dict[str, tuple[str, str]] = {}
     for installation, info in sorted(out["installations"].items()):
         for wire_type, node_meta in sorted(info["charts"]["editor_nodes"].items()):
@@ -3170,6 +3246,19 @@ def _emit_permissions_dto(metadata: Metadata) -> str:
     return f"\n{request_models}\n{response_models}\n"
 
 
+def _emit_entry_move_result_dto(metadata: Metadata) -> str:
+    contract = metadata.get("entry_move")
+    if contract is None:
+        return ""
+    return _PydanticSchemaEmitter(
+        contract["schemas"],
+        read=True,
+        contract="moveFolderEntry",
+        open_schema_refs={"EntryScope": "str"},
+        field_name_overrides={("MoveEntryResultEntry", "entryId"): "id"},
+    ).emit(("MoveEntryResultEntry",))
+
+
 def emit_dto(metadata: Metadata) -> str:
     installations = metadata["installations"]
     connectors = {name: sorted(info["connectors"]) for name, info in sorted(installations.items())}
@@ -3183,6 +3272,7 @@ def emit_dto(metadata: Metadata) -> str:
     dashboard_dto_block = _emit_dashboard_dto(metadata)
     dataset_data_dto_block = _emit_dataset_data_dto(metadata)
     permissions_dto_block = _emit_permissions_dto(metadata)
+    entry_move_result_dto_block = _emit_entry_move_result_dto(metadata)
     navigation_dto_block = _emit_navigation_dto()
     return f"""# AUTOGENERATED by scripts/generate_sdk.py. Do not edit by hand.
 # ruff: noqa
@@ -3412,6 +3502,7 @@ class EntryMoveDTO(BaseModel):
         return payload
 
 
+{entry_move_result_dto_block}
 class EntryRenameDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 

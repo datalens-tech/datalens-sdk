@@ -77,6 +77,15 @@ class EntrySummary:
 
 
 @dataclass(frozen=True, slots=True)
+class EntryMoveResult:
+    id: str
+    key: str
+    scope: str
+    type: str
+    raw: Mapping[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
 class CollectionSummary:
     id: str
     name: str

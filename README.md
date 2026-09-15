@@ -115,7 +115,7 @@ The client groups operations by intent:
 
 - `client.get` loads resources such as datasets, charts, and dashboards.
 - `client.create` exposes typed builders. Configure a builder fluently and call `.build()` to send it.
-- Returned resources provide operations such as `.rename()`, `.update`, and `.delete()`.
+- Returned resources provide operations such as `.move()`, `.rename()`, `.update`, and `.delete()`.
 - `EntryLocation` identifies a destination path, workbook, or collection.
 
 For example, create a workbook and use the returned object directly as a destination:

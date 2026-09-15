@@ -159,6 +159,15 @@ class _FakeOperations:
     def rename_dashboard(self, dashboard: Dashboard, name: str) -> Dashboard:
         raise NotImplementedError
 
+    def move_dashboard(
+        self,
+        dashboard: Dashboard,
+        location: EntryLocation,
+        *,
+        name: str | None = None,
+    ) -> Dashboard:
+        raise NotImplementedError
+
     def get_entry_relations(self, entry_id: str, options: object) -> object:
         raise NotImplementedError
 

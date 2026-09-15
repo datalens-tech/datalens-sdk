@@ -6,7 +6,7 @@ from datalens_sdk._runtime.builder_base import BaseConnectionCreate
 from datalens_sdk.api.entries import EntriesService
 from datalens_sdk.converter.connection import ConnectionConverter, ConnectionDtoModule
 from datalens_sdk.domain.connection import Connection, ConnectionUpdate
-from datalens_sdk.domain.entry_location import workbook_id_from_location
+from datalens_sdk.domain.entry_location import EntryLocation, workbook_id_from_location
 from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
 from datalens_sdk.domain.ports import ConnectionOperations, NavigationOperations
 from datalens_sdk.domain.specs.connection import ConnectionUpdateSpec
@@ -176,6 +176,18 @@ class ConnectionService(ConnectionOperations):
             raise ValueError("Cannot rename a connection without an id")
         self._entries_service.rename_entry(entry_id=connection.id, name=name)
         return self.get_connection(connection.id, workbook_id=connection.workbook_id)
+
+    def move_connection(
+        self,
+        connection: Connection,
+        location: EntryLocation,
+        *,
+        name: str | None = None,
+    ) -> Connection:
+        if not connection.id:
+            raise ValueError("Cannot move a connection without an id")
+        self._navigation_operations.move_folder_entry(entry_id=connection.id, location=location, name=name)
+        return self.get_connection(connection.id)
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]:
         return self._navigation_operations.get_entry_relations(entry_id, options)
