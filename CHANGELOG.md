@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- Add ID-preserving `.move(EntryLocation.path(...), name=...)` operations for
+  connections, datasets, dashboards, and every chart family. The SDK validates
+  the `moveFolderEntry` result against the moved entry id and returns the
+  refreshed resource with its current name and location.
+
 ## 3.0.0 - 2026-09-09
 
 ### Breaking changes

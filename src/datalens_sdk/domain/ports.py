@@ -30,6 +30,7 @@ if TYPE_CHECKING:
         CollectionListOptions,
         DirectoryListOptions,
         DirectoryPager,
+        EntryMoveResult,
         EntryRelation,
         EntrySummary,
         GetEntriesOptions,
@@ -65,7 +66,7 @@ class NavigationOperations(Protocol):
         entry_id: str,
         location: EntryLocation,
         name: str | None = None,
-    ) -> None: ...
+    ) -> EntryMoveResult: ...
 
     def list_collection_entries(
         self,
@@ -118,6 +119,14 @@ class ConnectionOperations(Protocol):
 
     def rename_connection(self, connection: Connection, name: str) -> Connection: ...
 
+    def move_connection(
+        self,
+        connection: Connection,
+        location: EntryLocation,
+        *,
+        name: str | None = None,
+    ) -> Connection: ...
+
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]: ...
 
 
@@ -143,6 +152,14 @@ class DatasetOperations(Protocol):
     def delete_dataset(self, dataset_id: str) -> None: ...
 
     def rename_dataset(self, dataset: Dataset, name: str) -> Dataset: ...
+
+    def move_dataset(
+        self,
+        dataset: Dataset,
+        location: EntryLocation,
+        *,
+        name: str | None = None,
+    ) -> Dataset: ...
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]: ...
 
@@ -264,6 +281,14 @@ class DashboardOperations(Protocol):
 
     def rename_dashboard(self, dashboard: Dashboard, name: str) -> Dashboard: ...
 
+    def move_dashboard(
+        self,
+        dashboard: Dashboard,
+        location: EntryLocation,
+        *,
+        name: str | None = None,
+    ) -> Dashboard: ...
+
     def get_entry_relations(
         self,
         entry_id: str,
@@ -376,5 +401,13 @@ class ChartOperations(Protocol):
     ) -> WizardChart | EditorChart | QLChart: ...
 
     def rename_chart(self, chart: Chart, name: str) -> Chart: ...
+
+    def move_chart(
+        self,
+        chart: Chart,
+        location: EntryLocation,
+        *,
+        name: str | None = None,
+    ) -> Chart: ...
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]: ...

@@ -9,6 +9,7 @@ from datalens_sdk.domain.entry_location import (
     collection_id_from_location,
     dir_path_from_location,
     key_from_location,
+    resolve_entry_move_location,
     validate_entry_name,
     workbook_id_from_location,
 )
@@ -97,6 +98,16 @@ class Connection:
             raise DataLensValidationError("Cannot rename a connection without an id")
         validate_entry_name(name=name, location=self.location)
         return self._operations.rename_connection(self, name)
+
+    def move(self, location: EntryLocation, *, name: str | None = None) -> Connection:
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot move a connection without an id")
+        resolved_location = resolve_entry_move_location(
+            location, self.installation, self.workbook_id, name, "Connection move"
+        )
+        return self._operations.move_connection(self, resolved_location, name=name)
 
     def get_relations(
         self,

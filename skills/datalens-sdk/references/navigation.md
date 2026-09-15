@@ -171,14 +171,14 @@ Key attributes: `Collection.parent_id`, `Workbook.collection_id`, `Folder.key` (
 
 ## Moving, and atomic move-and-rename
 
-Only containers move; entries do not:
+Containers and path-located entries expose typed move operations:
 
 | Object | `.move()` | Destination kind |
 |---|---|---|
 | `Collection` | `move(location, *, name=None)` | a collection (`Collection` object or `EntryLocation.collection(id)`), or `None` for the root |
 | `Workbook` | `move(location, *, name=None)` | a collection, or `None` for the root |
 | `Folder` | `move(location, *, name=None)` | a path (`Folder` object or `EntryLocation.path(dir)`) |
-| `Connection`, `Dataset`, charts, `Dashboard` | — no `move()`; `rename(name)` only | — |
+| `Connection`, `Dataset`, charts, `Dashboard` | `move(location, *, name=None)` | a path (`Folder` object or `EntryLocation.path(dir)`) |
 
 `name=` makes the move-and-rename atomic — one API call, no window where the object sits at the destination under the old name:
 
@@ -187,7 +187,7 @@ wb = wb.move(target_collection, name="Q3 archived")  # move + rename in one call
 fld = fld.move(EntryLocation.path("Users/me/archive"))  # keep the name
 ```
 
-Every `move()` returns the updated object — rebind the variable, and verify via `parent_id` / `collection_id` / `key`. Wrong destination kind (e.g. a workbook passed to `Folder.move`) raises `DataLensValidationError`; a destination from another installation raises `NotSupportedError`. To "move" an entry between workbooks or folders, use the export/clone workflow in [serialization.md](serialization.md) instead — and remember the copy gets a new id.
+Every `move()` returns the updated object — rebind the variable, and verify via `parent_id` / `collection_id` / `key`. Ordinary entries keep their id and may be renamed atomically while moving between paths. Moving an ordinary entry into or out of a workbook is unsupported and raises `NotSupportedError`; use the export/clone workflow when crossing that boundary, and remember the copy gets a new id. Other wrong destination kinds raise `DataLensValidationError`, and a destination from another installation raises `NotSupportedError`.
 
 For a path-located create or move, `name` must not contain `/` — the directory goes in the location, the leaf name in `name=`.
 

@@ -312,6 +312,14 @@ class EntryMoveDTO(BaseModel):
         return payload
 
 
+class MoveEntryResultEntryReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    id: str = Field(alias='entryId')
+    key: str
+    scope: str
+    type: str
+
 class EntryRenameDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 

@@ -25,6 +25,7 @@ from datalens_sdk.converter.wizard_chart import (
 )
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.editor_chart import EditorChart, EditorChartUpdate
+from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
 from datalens_sdk.domain.navigation import (
     EntryRelation,
@@ -502,6 +503,27 @@ class ChartService(ChartOperations):
             raise NotSupportedError(f"Cannot rename unsupported chart type {type(chart).__name__!r}")
         self._entries_service.rename_entry(entry_id=chart.id, name=name)
         return get_chart(chart.id, chart.workbook_id)
+
+    def move_chart(
+        self,
+        chart: Chart,
+        location: EntryLocation,
+        *,
+        name: str | None = None,
+    ) -> Chart:
+        if not chart.id:
+            raise ValueError("Cannot move a chart without an id")
+        get_chart: Callable[[str, str | None], Chart]
+        if isinstance(chart, EditorChart):
+            get_chart = self.get_editor_chart
+        elif isinstance(chart, QLChart):
+            get_chart = self.get_ql_chart
+        elif isinstance(chart, WizardChart):
+            get_chart = self.get_wizard_chart
+        else:
+            raise NotSupportedError(f"Cannot move unsupported chart type {type(chart).__name__!r}")
+        self._navigation_operations.move_folder_entry(entry_id=chart.id, location=location, name=name)
+        return get_chart(chart.id, None)
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]:
         return self._navigation_operations.get_entry_relations(entry_id, options)

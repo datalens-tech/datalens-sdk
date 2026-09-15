@@ -8,7 +8,7 @@ import re
 from typing import overload
 from uuid import uuid4
 
-from datalens_sdk.domain.connection import Connection
+from datalens_sdk.domain.connection import Connection, _optional_str
 from datalens_sdk.domain.data import (
     DatasetData,
     DatasetDataFilter,
@@ -43,6 +43,7 @@ from datalens_sdk.domain.entry_location import (
     dir_path_from_location,
     key_from_location,
     resolve_entry_location,
+    resolve_entry_move_location,
     validate_entry_name,
     workbook_id_from_location,
 )
@@ -55,10 +56,6 @@ from datalens_sdk.serialization.artifacts import ArtifactPath, write_dataset_art
 from datalens_sdk.serialization.json_types import JsonValue
 
 _UNBOUND = "Object is not bound to client operations. Use a client namespace."
-
-
-def _optional_str(value: object) -> str | None:
-    return value if isinstance(value, str) else None
 
 
 @dataclass(slots=True)
@@ -524,6 +521,16 @@ class Dataset:
             raise DataLensValidationError("Cannot rename a dataset without an id")
         validate_entry_name(name=name, location=self.location)
         return self._operations.rename_dataset(self, name)
+
+    def move(self, location: EntryLocation, *, name: str | None = None) -> Dataset:
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot move a dataset without an id")
+        resolved_location = resolve_entry_move_location(
+            location, self.installation, self.workbook_id, name, "Dataset move"
+        )
+        return self._operations.move_dataset(self, resolved_location, name=name)
 
     def get_relations(
         self,

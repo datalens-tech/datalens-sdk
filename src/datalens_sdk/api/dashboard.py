@@ -239,6 +239,18 @@ class DashboardService(DashboardOperations):
         self._entries_service.rename_entry(entry_id=dashboard.id, name=name)
         return self.get_dashboard(dashboard.id, workbook_id=dashboard.workbook_id)
 
+    def move_dashboard(
+        self,
+        dashboard: Dashboard,
+        location: EntryLocation,
+        *,
+        name: str | None = None,
+    ) -> Dashboard:
+        if not dashboard.id:
+            raise DataLensValidationError("Cannot move a dashboard without an id")
+        self._navigation_operations.move_folder_entry(entry_id=dashboard.id, location=location, name=name)
+        return self.get_dashboard(dashboard.id)
+
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]:
         return self._navigation_operations.get_entry_relations(entry_id, options)
 
