@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.entry_location import EntryLocation
     from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
     from datalens_sdk.domain.folder import Folder, FolderCreate, FolderUpdate
+    from datalens_sdk.domain.html_page import HtmlPage, HtmlPageCreate, HtmlPageUpdate
     from datalens_sdk.domain.license import License, LicenseLimits, LicenseListOptions
     from datalens_sdk.domain.navigation import (
         CollectionListOptions,
@@ -238,6 +239,25 @@ class FolderOperations(Protocol):
         path: str,
         options: DirectoryListOptions,
     ) -> DirectoryPager[EntrySummary]: ...
+
+
+@runtime_checkable
+class HtmlPageOperations(Protocol):
+    def create_html_page(self, builder: HtmlPageCreate) -> HtmlPage: ...
+
+    def get_html_page(
+        self,
+        entry_id: str,
+        *,
+        branch: EntryBranch | None = None,
+        rev_id: str | None = None,
+        include_favorite: bool | None = None,
+        include_permissions: bool | None = None,
+    ) -> HtmlPage: ...
+
+    def update_html_page(self, builder: HtmlPageUpdate) -> HtmlPage: ...
+
+    def delete_html_page(self, entry_id: str) -> None: ...
 
 
 @runtime_checkable

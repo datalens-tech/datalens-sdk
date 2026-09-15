@@ -4694,3 +4694,153 @@ class DashboardDeleteArgsDTO(BaseModel):
         payload = self.model_dump(mode="json", by_alias=True, exclude_none=True)
         model = DeleteDashboardArgsDTO.model_validate(payload)
         return model.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+
+class CreateHtmlPageArgsAnnotationDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    description: str
+
+class CreateHtmlPageArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    annotation: CreateHtmlPageArgsAnnotationDTO = _UNVALIDATED_NONE_DEFAULT
+    content: Annotated[str, Field(max_length=10485760)]
+    key: str = _UNVALIDATED_NONE_DEFAULT
+    name: str = _UNVALIDATED_NONE_DEFAULT
+    workbook_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='workbookId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class DeleteHtmlPageArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    entry_id: str = Field(alias='entryId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class GetHtmlPageArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    branch: Literal['published', 'saved'] = _UNVALIDATED_NONE_DEFAULT
+    entry_id: str = Field(alias='entryId')
+    include_favorite: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includeFavorite')
+    include_permissions: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includePermissions')
+    rev_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class UpdateHtmlPageArgsAnyOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    annotation: CreateHtmlPageArgsAnnotationDTO = _UNVALIDATED_NONE_DEFAULT
+    content: Annotated[str, Field(max_length=10485760)]
+    entry_id: str = Field(alias='entryId')
+    mode: Literal['publish', 'save'] = _UNVALIDATED_NONE_DEFAULT
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class UpdateHtmlPageArgsAnyOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    entry_id: str = Field(alias='entryId')
+    mode: Literal['publish', 'save']
+    rev_id: str = Field(alias='revId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+UpdateHtmlPageArgsDTO = UpdateHtmlPageArgsAnyOf0DTO | UpdateHtmlPageArgsAnyOf1DTO
+
+class CreateHtmlPageResultEntryAnnotationObjectReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    description: str = _UNVALIDATED_NONE_DEFAULT
+
+class CreateHtmlPageResultEntryMetaReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    object_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='objectId')
+    policy_version: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='policyVersion')
+
+class CreateHtmlPageResultEntryPermissionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    admin: bool
+    edit: bool
+    execute: bool
+    read: bool
+
+class CreateHtmlPageResultEntryReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    annotation: None | CreateHtmlPageResultEntryAnnotationObjectReadDTO
+    collection_id: None | str = Field(alias='collectionId')
+    created_at: str = Field(alias='createdAt')
+    created_by: str = Field(alias='createdBy')
+    data: dict[str, JsonValue]
+    entry_id: str = Field(alias='entryId')
+    hidden: bool
+    is_favorite: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='isFavorite')
+    key: str
+    links: None | dict[str, str] = _UNVALIDATED_NONE_DEFAULT
+    meta: CreateHtmlPageResultEntryMetaReadDTO
+    permissions: CreateHtmlPageResultEntryPermissionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    public: bool
+    published_id: None | str = Field(alias='publishedId')
+    rev_id: str = Field(alias='revId')
+    rev_updated_at: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revUpdatedAt')
+    rev_updated_by: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revUpdatedBy')
+    saved_id: str = Field(alias='savedId')
+    scope: Literal['artifact']
+    tenant_id: str = Field(alias='tenantId')
+    type: Literal['html-page']
+    updated_at: str = Field(alias='updatedAt')
+    updated_by: str = Field(alias='updatedBy')
+    version: Literal[1] | None
+    workbook_id: None | str = Field(alias='workbookId')
+
+class CreateHtmlPageResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    entry: CreateHtmlPageResultEntryReadDTO
+    warnings: list[str]
+
+class GetHtmlPageResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    annotation: None | CreateHtmlPageResultEntryAnnotationObjectReadDTO
+    collection_id: None | str = Field(alias='collectionId')
+    created_at: str = Field(alias='createdAt')
+    created_by: str = Field(alias='createdBy')
+    data: dict[str, JsonValue]
+    entry_id: str = Field(alias='entryId')
+    hidden: bool
+    is_favorite: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='isFavorite')
+    key: str
+    links: None | dict[str, str] = _UNVALIDATED_NONE_DEFAULT
+    meta: CreateHtmlPageResultEntryMetaReadDTO
+    permissions: CreateHtmlPageResultEntryPermissionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    public: bool
+    published_id: None | str = Field(alias='publishedId')
+    rev_id: str = Field(alias='revId')
+    rev_updated_at: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revUpdatedAt')
+    rev_updated_by: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revUpdatedBy')
+    saved_id: str = Field(alias='savedId')
+    scope: Literal['artifact']
+    tenant_id: str = Field(alias='tenantId')
+    type: Literal['html-page']
+    updated_at: str = Field(alias='updatedAt')
+    updated_by: str = Field(alias='updatedBy')
+    version: Literal[1] | None
+    workbook_id: None | str = Field(alias='workbookId')
+
+class UpdateHtmlPageResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    entry: CreateHtmlPageResultEntryReadDTO
+    warnings: list[str]

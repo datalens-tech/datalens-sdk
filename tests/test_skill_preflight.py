@@ -136,11 +136,15 @@ def test_preflight_never_invokes_environment_or_package_tools(tmp_path: Path) ->
     assert not (tmp_path / ".venv").exists()
 
 
-def test_bundled_skill_does_not_name_external_wrapper_repository() -> None:
+def test_bundled_skill_links_only_to_public_html_authoring_skill() -> None:
+    html_skill_url = "https://github.com/datalens-tech/datalens-skills/tree/main/skills/datalens-html-pages"
+    html_reference = SKILL_DIR / "references" / "html-pages.md"
+    assert html_reference.read_text().count(html_skill_url) == 1
+
     coupled_files = [
         path.relative_to(SKILL_DIR)
         for path in SKILL_DIR.rglob("*")
-        if path.is_file() and "datalens-skills" in path.read_text(errors="ignore").lower()
+        if path.is_file() and "datalens-skills" in path.read_text(errors="ignore").replace(html_skill_url, "").lower()
     ]
 
     assert coupled_files == []
