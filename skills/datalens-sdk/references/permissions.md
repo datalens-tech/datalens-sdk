@@ -113,15 +113,19 @@ The SDK does not implement its own ACL-level hierarchy.
 For a level replacement, use `modified` rather than adding a lower grant and
 removing the higher one in the same diff: the addition can be ignored before
 the old grant is removed, leaving neither grant. `copy(mode="replace")`
-handles this by pairing level changes for the same subject into modifications.
-Redundant source levels can still be normalized by the server.
+handles this by pairing unmatched levels for the same subject in ACL field
+order (`acl_view`, `acl_execute`, `acl_edit`, `acl_adm`) and sending any
+surplus additions or removals in the same mutation. This also supports
+participants present at multiple levels. Redundant source levels can still be
+normalized by the server.
 
 Only granted permissions are copied. Pending requests and participant
 metadata are excluded; source descriptions are not submitted as comments.
 Both entries belong to the same client installation and organization.
 
-The method reads the source and target, then sends one non-recursive diff
-only to the target. It returns the existing `PermissionModificationResult`,
-including continuation information, and does not repeat the mutation. An
-empty diff is sent when there is nothing to change. The operation uses the
-read snapshots and is not atomic with concurrent ACL changes.
+The method reads the source and target, then sends at most one non-recursive
+diff only to the target. It returns the existing `PermissionModificationResult`,
+including continuation information, and does not repeat the mutation. When
+the granted subject/level pairs already match, it returns `ok` locally with no
+continuation token and sends no mutation. The operation uses the read snapshots
+and is not atomic with concurrent ACL changes.

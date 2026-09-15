@@ -497,23 +497,58 @@ def test_copy_permissions_applies_only_granted_subject_level_differences(
     assert result.continuation_required is True
 
 
+@pytest.mark.parametrize(
+    ("source_level", "target_level"),
+    [("acl_edit", "acl_view"), ("acl_view", "acl_edit")],
+    ids=["raise-to-edit", "lower-to-view"],
+)
+def test_copy_permissions_pairs_multiple_target_levels_in_acl_order(
+    source_level: Literal["acl_view", "acl_edit"],
+    target_level: Literal["acl_view", "acl_edit"],
+) -> None:
+    recorder = RecordedTransport(
+        _permissions_response({source_level: ["multi-level"]}),
+        _permissions_response({target_level: ["multi-level"], "acl_adm": ["multi-level"]}),
+        httpx.Response(200, json={"result": "ok"}),
+    )
+
+    result = _client(recorder).permissions.copy(
+        source_entry_id="source-1",
+        target_entry_id="target-1",
+        mode="replace",
+    )
+
+    assert recorder.request_json(2) == {
+        "entryId": "target-1",
+        "nested": False,
+        "body": {
+            "diff": {
+                "removed": {"acl_adm": [{"subject": "multi-level"}]},
+                "modified": {
+                    target_level: [
+                        {"subject": "multi-level", "new": {"subject": "multi-level", "grantType": source_level}}
+                    ]
+                },
+            }
+        },
+    }
+    assert result == dl.PermissionModificationResult(result="ok")
+
+
 @pytest.mark.parametrize("mode", ["replace", "merge"])
-def test_copy_permissions_submits_empty_diff_and_returns_server_result(
+def test_copy_permissions_skips_mutation_when_grants_already_match(
     mode: Literal["replace", "merge"],
 ) -> None:
     recorder = RecordedTransport(
         _permissions_response({"acl_view": ["shared"]}),
         _permissions_response({"acl_view": ["shared"]}),
-        httpx.Response(200, json={"result": "ok", "nextPageToken": ""}),
     )
 
     result = _client(recorder).permissions.copy(source_entry_id="source-1", target_entry_id="target-1", mode=mode)
 
-    assert len(recorder.requests) == 3
-    assert recorder.requests[2].url.path == "/rpc/modifyPermissions"
-    assert recorder.request_json(2) == {"entryId": "target-1", "nested": False, "body": {"diff": {}}}
-    assert result == dl.PermissionModificationResult(result="ok", next_page_token="")
-    assert result.continuation_required is True
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getPermissions", "/rpc/getPermissions"]
+    assert result == dl.PermissionModificationResult(result="ok")
+    assert result.continuation_required is False
 
 
 @pytest.mark.parametrize("failed_read", ["source", "target"])

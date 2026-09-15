@@ -108,7 +108,7 @@ connection -> source -> dataset -> chart -> dashboard
                         (fields)    (wizard | ql | editor)
 ```
 
-One client, four namespaces:
+One client, purpose-specific namespaces:
 
 | Namespace                          | Role                              | Terminal call         |
 |------------------------------------|-----------------------------------|-----------------------|

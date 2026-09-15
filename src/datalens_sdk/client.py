@@ -560,7 +560,7 @@ class PermissionsNamespace:
         target_entry_id: str,
         mode: Literal["replace", "merge"],
     ) -> PermissionModificationResult:
-        """Copy granted subject/level pairs using two reads and one mutation.
+        """Copy granted subject/level pairs using two reads and at most one mutation.
 
         ``replace`` removes target grants absent from the source, including
         administrative grants, and modifies differing levels of the same subject.
@@ -574,6 +574,8 @@ class PermissionsNamespace:
         source = self.get(entry_id=source_entry_id)
         target = self.get(entry_id=target_entry_id)
         diff = _copy_permissions_diff(source.permissions, target.permissions, mode=mode)
+        if not (diff.added or diff.removed or diff.modified):
+            return PermissionModificationResult(result="ok")
         return self.modify(entry_id=target_entry_id, diff=diff)
 
 

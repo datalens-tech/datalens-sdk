@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Generic, Literal, TypeAlias, TypeVar
 
 PermissionGrantType: TypeAlias = Literal["acl_view", "acl_execute", "acl_edit", "acl_adm"]
+_PERMISSION_LEVELS: tuple[PermissionGrantType, ...] = ("acl_view", "acl_execute", "acl_edit", "acl_adm")
 PermissionSubjectType: TypeAlias = Literal[
     "user",
     "user-staff",
@@ -157,13 +158,13 @@ def _copy_permissions_diff(
     if mode == "replace":
         # Adding a lower level can be ignored while the old grant still exists.
         # Express same-subject level changes as modifications, not add/remove.
-        removed_levels: dict[str, list[PermissionGrantType]] = {}
-        for level, subject in sorted(removed):
-            removed_levels.setdefault(subject, []).append(level)
-        for new_level, subject in sorted(added):
-            old_levels = removed_levels.get(subject)
-            if old_levels:
-                old_level = old_levels.pop()
+        # Pair unmatched levels in ACL field order so multi-level participants
+        # produce a stable diff independent of lexical or set ordering.
+        changed_subjects = {subject for _, subject in added} & {subject for _, subject in removed}
+        for subject in sorted(changed_subjects):
+            old_levels = [level for level in _PERMISSION_LEVELS if (level, subject) in removed]
+            new_levels = [level for level in _PERMISSION_LEVELS if (level, subject) in added]
+            for old_level, new_level in zip(old_levels, new_levels, strict=False):
                 modified.append(
                     PermissionModification(
                         subject=subject,
