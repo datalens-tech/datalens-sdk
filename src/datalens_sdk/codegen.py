@@ -926,13 +926,11 @@ def _allow_nullable_html_page_version(schema: JsonValue, *, context: str, wrappe
     return cast(JsonValue, root)
 
 
-def build_html_page_contract_meta(spec: Mapping[str, object]) -> HtmlPageContractMeta | None:
+def build_html_page_contract_meta(spec: Mapping[str, object]) -> HtmlPageContractMeta:
     """Extract the four HTML-page RPC routes and their focused schema closure."""
 
     paths = _string_object_dict(spec.get("paths"), context="paths")
     discovered = {path for path in paths if "HtmlPage" in path}
-    if not discovered:
-        return None
     expected = set(_HTML_PAGE_ROUTES)
     if discovered != expected:
         raise ValueError(
@@ -1819,7 +1817,6 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
     entry_move_contracts: list[tuple[str, EntryMoveContractMeta]] = []
     entry_move_missing: list[str] = []
     html_page_contracts: list[tuple[str, HtmlPageContractMeta]] = []
-    html_page_missing: list[str] = []
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
@@ -1832,10 +1829,7 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
         else:
             entry_move_contracts.append((installation, entry_move_contract))
         html_page_contract = build_html_page_contract_meta(spec)
-        if html_page_contract is None:
-            html_page_missing.append(installation)
-        else:
-            html_page_contracts.append((installation, html_page_contract))
+        html_page_contracts.append((installation, html_page_contract))
         dataset_data_contract = build_dataset_data_contract_meta(spec)
         if dataset_data_contract is None:
             dataset_data_missing.append(installation)
@@ -1860,11 +1854,7 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
         chart_meta = _chart_meta(schemas)
         installation_metadata: InstallationMetadata = {
             "name": installation,
-            "namespaces": [
-                namespace
-                for namespace in NAMESPACES[installation]
-                if namespace != "html_pages" or html_page_contract is not None
-            ],
+            "namespaces": NAMESPACES[installation],
             "connectors": {
                 connector: _connector_meta(schemas, connector, ref, installation)
                 for connector, ref in sorted(connection_mapping.items())
@@ -1900,11 +1890,6 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
                     f"Dashboard V2 schema closure differs between {canonical_installation!r} and {installation!r}"
                 )
         out["dashboard"] = canonical_dashboard
-    if html_page_contracts and html_page_missing:
-        raise ValueError(
-            "HTML-page availability differs between installations: "
-            f"present on {[name for name, _ in html_page_contracts]!r}, missing on {html_page_missing!r}"
-        )
     if html_page_contracts:
         canonical_installation, canonical_html_page = html_page_contracts[0]
         for installation, candidate in html_page_contracts[1:]:

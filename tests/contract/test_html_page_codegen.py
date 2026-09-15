@@ -27,7 +27,6 @@ def test_html_page_contract_is_available_in_checked_in_specs(installation: str) 
     spec = _spec(installation)
     contract = build_html_page_contract_meta(spec)
 
-    assert contract is not None
     assert set(contract["roots"]) == {
         "CreateHtmlPageArgs",
         "CreateHtmlPageResult",
@@ -47,6 +46,17 @@ def test_html_page_contract_rejects_partial_route_availability() -> None:
     paths = spec["paths"]
     assert isinstance(paths, dict)
     del paths["/rpc/updateHtmlPage"]
+
+    with pytest.raises(ValueError, match="HTML-page routes differ"):
+        build_html_page_contract_meta(spec)
+
+
+def test_html_page_contract_rejects_missing_routes() -> None:
+    spec = _spec()
+    paths = spec["paths"]
+    assert isinstance(paths, dict)
+    for route in HTML_PAGE_ROUTES:
+        del paths[route]
 
     with pytest.raises(ValueError, match="HTML-page routes differ"):
         build_html_page_contract_meta(spec)
