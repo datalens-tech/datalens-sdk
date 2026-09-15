@@ -78,6 +78,7 @@ from datalens_sdk.domain.fields import (
     WizardLocalField,
 )
 from datalens_sdk.domain.folder import Folder, FolderCreate, FolderUpdate
+from datalens_sdk.domain.html_page import HtmlPage, HtmlPageCreate, HtmlPagePermissions, HtmlPageUpdate
 from datalens_sdk.domain.license import (
     License,
     LicenseLimit,
@@ -191,6 +192,10 @@ __all__ = [
     "FolderCreate",
     "FolderUpdate",
     "GeoLayerFilter",
+    "HtmlPage",
+    "HtmlPageCreate",
+    "HtmlPagePermissions",
+    "HtmlPageUpdate",
     "JoinCondition",
     "JoinOperator",
     "JoinType",

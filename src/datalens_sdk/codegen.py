@@ -41,8 +41,27 @@ INSTALLATIONS = {
 }
 
 NAMESPACES = {
-    "enterprise": ["collections", "connections", "dashboards", "data", "datasets", "folders", "workbooks"],
-    "yacloud": ["collections", "connections", "dashboards", "data", "datasets", "folders", "licenses", "workbooks"],
+    "enterprise": [
+        "collections",
+        "connections",
+        "dashboards",
+        "data",
+        "datasets",
+        "folders",
+        "html_pages",
+        "workbooks",
+    ],
+    "yacloud": [
+        "collections",
+        "connections",
+        "dashboards",
+        "data",
+        "datasets",
+        "folders",
+        "html_pages",
+        "licenses",
+        "workbooks",
+    ],
 }
 
 READ_ONLY_FIELDS = {"id", "key", "created_at", "updated_at", "meta"}
@@ -80,6 +99,21 @@ _DASHBOARD_V2_ROOTS = (
     "GetDashboardV2Result",
     "UpdateDashboardV2Args",
 )
+_HTML_PAGE_ROUTES = {
+    "/rpc/createHtmlPage": ("CreateHtmlPageArgs", "CreateHtmlPageResult"),
+    "/rpc/deleteHtmlPage": ("DeleteHtmlPageArgs", None),
+    "/rpc/getHtmlPage": ("GetHtmlPageArgs", "GetHtmlPageResult"),
+    "/rpc/updateHtmlPage": ("UpdateHtmlPageArgs", "UpdateHtmlPageResult"),
+}
+_HTML_PAGE_WRITE_DTO_NAMES = frozenset(
+    {
+        "CreateHtmlPageArgsDTO",
+        "DeleteHtmlPageArgsDTO",
+        "GetHtmlPageArgsDTO",
+        "UpdateHtmlPageArgsAnyOf0DTO",
+        "UpdateHtmlPageArgsAnyOf1DTO",
+    }
+)
 _DATASET_DATA_ROUTE = "/rpc/getDatasetData"
 _DATASET_DATA_ROOTS = ("DatasetDataArgs", "DatasetData")
 _ENTRY_MOVE_ROUTE = "/rpc/moveFolderEntry"
@@ -106,6 +140,7 @@ _SCHEMA_SUPPORTED_KEYS = frozenset(
 )
 _DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "maxItems", "minItems", "minLength", "minimum"})
 _DATASET_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"maximum", "minItems", "minLength", "minimum"})
+_HTML_PAGE_SCHEMA_SUPPORTED_KEYS = frozenset({"maxLength"})
 
 
 class _WizardSchemaFeatureState(Enum):
@@ -220,6 +255,11 @@ class EntryMoveContractMeta(TypedDict):
     schemas: dict[str, JsonValue]
 
 
+class HtmlPageContractMeta(TypedDict):
+    roots: list[str]
+    schemas: dict[str, JsonValue]
+
+
 class InstallationMetadata(TypedDict):
     name: str
     namespaces: list[str]
@@ -235,6 +275,7 @@ class Metadata(TypedDict):
     dashboard: NotRequired[DashboardContractMeta]
     dataset_data: NotRequired[DatasetDataContractMeta]
     entry_move: NotRequired[EntryMoveContractMeta]
+    html_page: NotRequired[HtmlPageContractMeta]
 
 
 def _string_object_dict(value: object, *, context: str) -> dict[str, object]:
@@ -391,8 +432,10 @@ def _audit_pydantic_schema_features(
         if not isinstance(key, str):
             raise TypeError(f"{contract} schema node at {pointer} contains a non-string key")
         state = _wizard_schema_feature_state(key)
-        contract_extension = (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS) or (
-            contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS
+        contract_extension = (
+            (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS)
+            or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
+            or (contract == "HtmlPages" and key in _HTML_PAGE_SCHEMA_SUPPORTED_KEYS)
         )
         if state is _WizardSchemaFeatureState.SEMANTIC_UNSUPPORTED and not contract_extension:
             raise ValueError(
@@ -427,7 +470,7 @@ def _audit_pydantic_schema_features(
     ):
         raise ValueError(f"{contract} schema enum at {_schema_pointer(pointer, 'enum')} must contain JSON scalars")
 
-    for constraint in ("maxItems", "minItems", "minLength"):
+    for constraint in ("maxItems", "maxLength", "minItems", "minLength"):
         constraint_value = value.get(constraint)
         if constraint in value and (
             not isinstance(constraint_value, int) or isinstance(constraint_value, bool) or constraint_value < 0
@@ -535,6 +578,7 @@ def _audit_pydantic_schema_features(
                         _wizard_schema_feature_state(str(key)) is _WizardSchemaFeatureState.SUPPORTED
                         or (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS)
                         or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
+                        or (contract == "HtmlPages" and key in _HTML_PAGE_SCHEMA_SUPPORTED_KEYS)
                     )
                     and key not in {"$ref", "properties", "required", "type"}
                 }
@@ -857,6 +901,103 @@ def build_entry_move_contract_meta(spec: Mapping[str, object]) -> EntryMoveContr
         "roots": list(_ENTRY_MOVE_ROOTS),
         "schemas": dict(sorted(normalized_schemas.items())),
     }
+
+
+def _allow_nullable_html_page_version(schema: JsonValue, *, context: str, wrapper: bool) -> JsonValue:
+    """The YaTeam RPC has returned version=null even though all three specs enumerate version=1."""
+
+    root = _string_object_dict(schema, context=context)
+    entry = (
+        _string_object_dict(root.get("properties"), context=f"{context}.properties").get("entry") if wrapper else root
+    )
+    entry_schema = _string_object_dict(entry, context=f"{context}.entry")
+    properties = _string_object_dict(entry_schema.get("properties"), context=f"{context}.properties")
+    version = _string_object_dict(properties.get("version"), context=f"{context}.version")
+    if version.get("enum") is None:
+        raise ValueError(f"{context}.version must preserve a schema enum")
+    properties["version"] = {"anyOf": [version, {"type": "null"}]}
+    entry_schema["properties"] = properties
+    if wrapper:
+        root_properties = _string_object_dict(root.get("properties"), context=f"{context}.properties")
+        root_properties["entry"] = entry_schema
+        root["properties"] = root_properties
+    else:
+        root = entry_schema
+    return cast(JsonValue, root)
+
+
+def build_html_page_contract_meta(spec: Mapping[str, object]) -> HtmlPageContractMeta | None:
+    """Extract the four HTML-page RPC routes and their focused schema closure."""
+
+    paths = _string_object_dict(spec.get("paths"), context="paths")
+    discovered = {path for path in paths if "HtmlPage" in path}
+    if not discovered:
+        return None
+    expected = set(_HTML_PAGE_ROUTES)
+    if discovered != expected:
+        raise ValueError(
+            f"HTML-page routes differ from the expected contract: expected {sorted(expected)}, got {sorted(discovered)}"
+        )
+
+    roots: set[str] = set()
+    for route, (expected_request, expected_result) in sorted(_HTML_PAGE_ROUTES.items()):
+        path_item = _string_object_dict(paths.get(route), context=route)
+        operation = _string_object_dict(path_item.get("post"), context=f"{route}.post")
+        request_schema, _ = _route_schema(operation, route=route, request=True)
+        result_schema, _ = _route_schema(operation, route=route, request=False)
+        if (request_schema, result_schema) != (expected_request, expected_result):
+            raise ValueError(
+                f"{route} schema references differ: expected "
+                f"{(expected_request, expected_result)!r}, got {(request_schema, result_schema)!r}"
+            )
+        roots.add(expected_request)
+        if expected_result is not None:
+            roots.add(expected_result)
+
+    schemas = _schemas(spec)
+    reached: set[str] = set()
+    queue = sorted(roots)
+    normalized_schemas: dict[str, JsonValue] = {}
+    while queue:
+        name = queue.pop(0)
+        if name in reached:
+            continue
+        schema = schemas.get(name)
+        if schema is None:
+            raise ValueError(f"HTML-page schema graph references missing component {name!r}")
+        reached.add(name)
+        _audit_pydantic_schema_features(
+            schema,
+            pointer=f"/schemas/{_json_pointer_token(name)}",
+            contract="HtmlPages",
+            require_provably_disjoint_one_of=False,
+        )
+        normalized_schemas[name] = _normalize_wizard_schema(schema)
+        queue.extend(sorted(_schema_refs(schema) - reached - set(queue)))
+
+    update = _string_object_dict(normalized_schemas["UpdateHtmlPageArgs"], context="UpdateHtmlPageArgs")
+    branches = update.get("anyOf")
+    if not isinstance(branches, list) or len(branches) != 2:
+        raise ValueError("UpdateHtmlPageArgs must have distinct content and revision branches")
+    branch_fields = [
+        set(_string_object_dict(branch.get("properties"), context=f"UpdateHtmlPageArgs.anyOf[{index}]"))
+        for index, branch in enumerate(branches)
+        if isinstance(branch, dict)
+    ]
+    if branch_fields != [
+        {"annotation", "content", "entryId", "mode"},
+        {"entryId", "mode", "revId"},
+    ]:
+        raise ValueError(f"UpdateHtmlPageArgs branches differ from content/revision contract: {branch_fields!r}")
+
+    for root_name in ("CreateHtmlPageResult", "GetHtmlPageResult", "UpdateHtmlPageResult"):
+        normalized_schemas[root_name] = _allow_nullable_html_page_version(
+            normalized_schemas[root_name],
+            context=root_name,
+            wrapper=root_name != "GetHtmlPageResult",
+        )
+
+    return {"roots": sorted(roots), "schemas": dict(sorted(normalized_schemas.items()))}
 
 
 def _dataset_data_route_schema(spec: Mapping[str, object], *, request: bool) -> dict[str, object] | None:
@@ -1677,6 +1818,8 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
     dataset_data_missing: list[str] = []
     entry_move_contracts: list[tuple[str, EntryMoveContractMeta]] = []
     entry_move_missing: list[str] = []
+    html_page_contracts: list[tuple[str, HtmlPageContractMeta]] = []
+    html_page_missing: list[str] = []
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
@@ -1688,6 +1831,11 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
             entry_move_missing.append(installation)
         else:
             entry_move_contracts.append((installation, entry_move_contract))
+        html_page_contract = build_html_page_contract_meta(spec)
+        if html_page_contract is None:
+            html_page_missing.append(installation)
+        else:
+            html_page_contracts.append((installation, html_page_contract))
         dataset_data_contract = build_dataset_data_contract_meta(spec)
         if dataset_data_contract is None:
             dataset_data_missing.append(installation)
@@ -1712,7 +1860,11 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
         chart_meta = _chart_meta(schemas)
         installation_metadata: InstallationMetadata = {
             "name": installation,
-            "namespaces": NAMESPACES[installation],
+            "namespaces": [
+                namespace
+                for namespace in NAMESPACES[installation]
+                if namespace != "html_pages" or html_page_contract is not None
+            ],
             "connectors": {
                 connector: _connector_meta(schemas, connector, ref, installation)
                 for connector, ref in sorted(connection_mapping.items())
@@ -1748,6 +1900,17 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
                     f"Dashboard V2 schema closure differs between {canonical_installation!r} and {installation!r}"
                 )
         out["dashboard"] = canonical_dashboard
+    if html_page_contracts and html_page_missing:
+        raise ValueError(
+            "HTML-page availability differs between installations: "
+            f"present on {[name for name, _ in html_page_contracts]!r}, missing on {html_page_missing!r}"
+        )
+    if html_page_contracts:
+        canonical_installation, canonical_html_page = html_page_contracts[0]
+        for installation, candidate in html_page_contracts[1:]:
+            if candidate != canonical_html_page:
+                raise ValueError(f"HTML-page schemas differ between {canonical_installation!r} and {installation!r}")
+        out["html_page"] = canonical_html_page
     if dataset_data_contracts and dataset_data_missing:
         raise ValueError(
             "getDatasetData availability differs between installations: "
@@ -1996,7 +2159,7 @@ class _PydanticSchemaEmitter:
             return " | ".join(dict.fromkeys(annotations)) or "JsonValue"
 
         if raw_type == "string":
-            return self._with_constraints("str", schema, length_key="minLength")
+            return self._with_constraints("str", schema, length_key="minLength", max_length_key="maxLength")
         if raw_type == "integer":
             return self._with_constraints("int", schema, minimum=True)
         if raw_type == "number":
@@ -2155,6 +2318,14 @@ class _PydanticSchemaEmitter:
                     )
             else:
                 self._lines.append(f"    {python_name}: {annotation} = _UNVALIDATED_NONE_DEFAULT")
+        if self._contract == "HtmlPages" and name in _HTML_PAGE_WRITE_DTO_NAMES:
+            self._lines.extend(
+                (
+                    "",
+                    "    def to_payload(self) -> dict[str, object]:",
+                    '        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)',
+                )
+            )
         self._lines.append("")
         self._emitted.add(name)
         self._definitions_by_schema.setdefault(canonical, name)
@@ -3119,6 +3290,24 @@ class DashboardDeleteArgsDTO(BaseModel):
 """
 
 
+def _emit_html_page_dto(metadata: Metadata) -> str:
+    contract = metadata.get("html_page")
+    if contract is None:
+        return ""
+    schemas = contract["schemas"]
+    request_models = _PydanticSchemaEmitter(
+        schemas,
+        read=False,
+        contract="HtmlPages",
+    ).emit(("CreateHtmlPageArgs", "DeleteHtmlPageArgs", "GetHtmlPageArgs", "UpdateHtmlPageArgs"))
+    result_models = _PydanticSchemaEmitter(
+        schemas,
+        read=True,
+        contract="HtmlPages",
+    ).emit(("CreateHtmlPageResult", "GetHtmlPageResult", "UpdateHtmlPageResult"))
+    return f"\n{request_models}\n{result_models}".rstrip() + "\n"
+
+
 def _emit_dataset_data_dto(metadata: Metadata) -> str:
     contract = metadata.get("dataset_data")
     if contract is None:
@@ -3164,6 +3353,7 @@ def emit_dto(metadata: Metadata) -> str:
     dashboard_dto_block = _emit_dashboard_dto(metadata)
     dataset_data_dto_block = _emit_dataset_data_dto(metadata)
     entry_move_result_dto_block = _emit_entry_move_result_dto(metadata)
+    html_page_dto_block = _emit_html_page_dto(metadata)
     navigation_dto_block = _emit_navigation_dto()
     return f"""# AUTOGENERATED by scripts/generate_sdk.py. Do not edit by hand.
 # ruff: noqa
@@ -3684,7 +3874,8 @@ class LicenseSetLimitArgsDTO(BaseModel):
 
     def to_payload(self) -> dict[str, object]:
         return {{"value": self.value}}
-{chart_dto_block}{dashboard_dto_block}"""
+{chart_dto_block}{dashboard_dto_block}
+{html_page_dto_block}"""
 
 
 def emit_builder_module(installation: str, info: InstallationMetadata) -> str:

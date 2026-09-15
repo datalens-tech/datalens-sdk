@@ -4,7 +4,8 @@ description: >-
   Use this skill for any Yandex DataLens automation task through the Python
   package `datalens-sdk`. Trigger on: DataLens, datalens, даталенс, chart,
   чарт, график, dashboard, дашборд, dataset, датасет, connection, подключение,
-  workbook, воркбук, collection, коллекция, wizard chart, QL chart, editor
+  workbook, воркбук, collection, коллекция, HTML page, HTML-страница,
+  wizard chart, QL chart, editor
   chart, BI automation, автоматизация DataLens, "create a dashboard",
   "построй дашборд", "создай чарт", "export dataset", or "clone dashboard";
   entity ids such as dataset_id, chart_id, dashboard_id, or workbook_id; and
@@ -18,8 +19,9 @@ description: >-
 
 Operate Yandex DataLens through the official Python SDK. This skill covers
 installation configuration and credentials, the full entity
-lifecycle (connection → dataset → chart → dashboard), and safe editing
-practices. Write Python against the SDK — never hand-built HTTP requests.
+lifecycle (connection → dataset → chart → dashboard), standalone HTML pages,
+and safe editing practices. Write Python against the SDK — never hand-built
+HTTP requests.
 For UI viewing or screenshots, business metric interpretation, embedding, or
 raw REST work, state that the request is outside this skill and stop instead of
 improvising an SDK solution.
@@ -107,6 +109,8 @@ object or id:
 connection -> source -> dataset -> chart -> dashboard
                         (fields)    (wizard | ql | editor)
 ```
+
+Standalone HTML pages are independent artifacts with their own revisions.
 
 One client, four namespaces:
 
@@ -252,6 +256,7 @@ Editor index replaces the public Editor subtree for that installation.
 | Installation configuration, auth, tokens, preflight states                | [references/setup.md](references/setup.md)                               |
 | Object model unclear; lifecycle, errors, retries, pagination               | [references/core-concepts.md](references/core-concepts.md)               |
 | Creating/updating a connection or data source                              | [references/connections.md](references/connections.md)                   |
+| Creating, reading, updating, or deleting a standalone HTML page            | [references/html-pages.md](references/html-pages.md)                     |
 | Datasets: fields, calculations, parameters, joins, RLS                     | [references/datasets.md](references/datasets.md)                         |
 | Reading rows from a dataset                                                 | [references/dataset-data.md](references/dataset-data.md)                 |
 | Writing, fixing, or reviewing a calculated field or formula                | [references/formulas/_index.md](references/formulas/_index.md)           |
@@ -363,6 +368,7 @@ from [references/setup.md](references/setup.md).
 | `references/setup.md`                           | configuring the installation, interpreting preflight output, anything about auth or tokens          |
 | `references/core-concepts.md`                   | you need the object model: namespaces, lifecycle, field references, retries, pagination, sentinels |
 | `references/connections.md`                     | creating or editing connections to the databases                                                   |
+| `references/html-pages.md`                      | standalone HTML-page CRUD, revision modes, metadata-only reads, and authoring-skill link            |
 | `references/datasets.md`                        | dataset creation, the fields update DSL, joins, parameters, RLS, formulas                          |
 | `references/formulas/_index.md`                 | official formula documentation routing plus SDK ownership, persistence, and validation boundaries  |
 | `references/wizard-charts/_index.md`            | routing to one of the wizard chart types; read before any wizard work                              |

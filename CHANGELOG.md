@@ -8,6 +8,10 @@
   connections, datasets, dashboards, and every chart family. The SDK validates
   the `moveFolderEntry` result against the moved entry id and returns the
   refreshed resource with its current name and location.
+- Add typed HTML page create, metadata read, content/revision update, and delete
+  operations for Enterprise and Yandex Cloud installations. Create and update
+  responses expose processing warning codes and object/revision metadata. The
+  `getHtmlPage` contract does not return the HTML source.
 
 ## 3.0.0 - 2026-09-09
 
