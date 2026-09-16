@@ -4,6 +4,9 @@
 
 ### Added
 
+- Allow `DashboardUpdate.set_chart_params(..., widget_tab_id=...)` to merge,
+  replace, or clear params on one internal chart tab while preserving the
+  existing all-tabs behavior when the argument is omitted.
 - Add ID-preserving `.move(EntryLocation.path(...), name=...)` operations for
   connections, datasets, dashboards, and every chart family. The SDK validates
   the `moveFolderEntry` result against the moved entry id and returns the

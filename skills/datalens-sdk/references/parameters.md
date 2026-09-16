@@ -75,10 +75,13 @@ dashboard = dashboard.update.global_params(
 ```
 
 `set_chart_params(item_id=..., params=..., merge=True)` merges keys by
-default; `merge=False` replaces the complete mapping. On a multi-tab chart
-widget it applies to **every internal chart tab**; there is no per-chart-tab
-target. It also updates defaults on a standalone `control`, but rejects a
-`group_control`: update a grouped selector by its member id instead.
+default; `merge=False` replaces the complete mapping, so `params={}` clears
+it. On a multi-tab chart widget, omit `widget_tab_id` to update **every
+internal chart tab**, or pass an internal chart-tab id to update only that
+tab. Shared widgets are updated in every dashboard-tab occurrence. The method
+also updates defaults on a standalone `control`, but `widget_tab_id` is valid
+only for widgets; `group_control` is rejected, so update a grouped selector by
+its member id instead.
 
 ## Manual selector to every tab
 

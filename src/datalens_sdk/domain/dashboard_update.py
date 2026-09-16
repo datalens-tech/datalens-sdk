@@ -362,18 +362,13 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         item_id: str,
         params: Mapping[str, object],
         merge: bool = True,
+        widget_tab_id: str | None = None,
     ) -> Self:
-        """Set widget params (ALL chart tabs of the widget) or selector defaults.
-
-        For a multi-tab widget the params apply to every chart tab; there is
-        no per-chart-tab targeting yet. A shared global item is ONE logical
-        item: the patch applies to every occurrence on every tab (same
-        semantics as ``remove_item``). ``merge=False`` replaces the whole
-        params mapping instead of merging by key.
-
-        ``group_control`` is deliberately rejected: its defaults live on the
-        NESTED controls (``data.group[].defaults``) — use
-        :meth:`update_selector` with the member id instead.
+        """Set widget params or selector defaults.
+        Pass ``widget_tab_id`` to target one internal widget tab; omit it to
+        update all tabs. Shared items are patched everywhere. ``merge=False``
+        replaces the whole mapping. Tab targeting supports widgets only;
+        group controls require :meth:`update_selector` on nested member ids.
         """
         item_type = self._require_item(item_id)
         if item_type == "group_control":
@@ -385,6 +380,16 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
             raise DataLensValidationError(
                 f"set_chart_params targets widget/control items; item {item_id!r} has type {item_type!r}"
             )
+        if widget_tab_id is not None and item_type != "widget":
+            raise DataLensValidationError(
+                f"widget_tab_id is only valid for widget items; item {item_id!r} has type {item_type!r}"
+            )
+        if widget_tab_id is not None:
+            widget_tabs = self._item_widget_tab_ids.get(item_id, set())
+            if widget_tab_id not in widget_tabs:
+                raise DataLensValidationError(
+                    f"Widget {item_id!r} has no chart tab {widget_tab_id!r}; known: {sorted(widget_tabs)!r}"
+                )
         if not isinstance(params, Mapping):
             raise DataLensValidationError(f"params expects a mapping, got {params!r}")
         normalized: dict[str, tuple[str, ...]] = {}
@@ -392,7 +397,7 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
             if not isinstance(key, str) or not key:
                 raise DataLensValidationError(f"params keys must be non-empty strings, got {key!r}")
             normalized[key] = _normalize_param_values(key, value)
-        self._ops.append(SetChartParamsOp(item_id=item_id, params=normalized, merge=merge))
+        self._ops.append(SetChartParamsOp(item_id=item_id, widget_tab_id=widget_tab_id, params=normalized, merge=merge))
         return self
 
     # -- connections / aliases -------------------------------------------------

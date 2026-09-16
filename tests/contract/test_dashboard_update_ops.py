@@ -291,6 +291,76 @@ def test_set_chart_params_merges_into_all_widget_chart_tabs() -> None:
         assert params["cities"] == ["a", "b"]
 
 
+def test_set_chart_params_targets_one_tab_in_every_shared_widget_occurrence() -> None:
+    widget: dict[str, object] = {
+        "id": "wg_shared",
+        "type": "widget",
+        "namespace": "default",
+        "data": {
+            "tabs": [
+                {"id": "wt_1", "chartId": "first", "params": {"kept": ["left"], "region": ["west"]}},
+                {"id": "wt_2", "chartId": "second", "params": {"kept": ["right"], "region": ["old"]}},
+            ]
+        },
+    }
+    tabs: list[dict[str, object]] = [
+        {"id": "tab_1", "title": "One", "items": [], "layout": [], "globalItems": [json.loads(json.dumps(widget))]},
+        {"id": "tab_2", "title": "Two", "items": [], "layout": [], "globalItems": [json.loads(json.dumps(widget))]},
+    ]
+    update = _synthetic(tabs).update
+    update.set_chart_params(
+        item_id="wg_shared",
+        widget_tab_id="wt_2",
+        params={"region": ["north", "south"], "added": "value"},
+    )
+    applied = _apply_update(update.to_spec())
+    occurrences = [_as_dicts(tab["globalItems"])[0] for tab in _tabs(applied)]
+    for item in occurrences:
+        widget_tabs = _as_dicts(_as_dict(item["data"])["tabs"])
+        assert widget_tabs[0]["params"] == {"kept": ["left"], "region": ["west"]}
+        assert widget_tabs[1]["params"] == {
+            "kept": ["right"],
+            "region": ["north", "south"],
+            "added": ["value"],
+        }
+    assert len({_canonical(item) for item in occurrences}) == 1
+
+
+@pytest.mark.parametrize(
+    ("params", "expected"),
+    [
+        ({"only": ("one", "two")}, {"only": ["one", "two"]}),
+        ({}, {}),
+    ],
+)
+def test_set_chart_params_replaces_or_clears_one_widget_tab(
+    params: dict[str, object], expected: dict[str, object]
+) -> None:
+    widget: dict[str, object] = {
+        "id": "wg_1",
+        "type": "widget",
+        "namespace": "default",
+        "data": {
+            "tabs": [
+                {"id": "wt_1", "chartId": "first", "params": {"neighbor": ["unchanged"]}},
+                {"id": "wt_2", "chartId": "second", "params": {"old": ["value"]}},
+            ]
+        },
+    }
+    dashboard = _synthetic([{"id": "tab_1", "title": "One", "items": [widget], "layout": []}])
+    update = dashboard.update.set_chart_params(
+        item_id="wg_1",
+        widget_tab_id="wt_2",
+        params=params,
+        merge=False,
+    )
+    applied = _apply_update(update.to_spec())
+    item = _as_dicts(_tabs(applied)[0]["items"])[0]
+    widget_tabs = _as_dicts(_as_dict(item["data"])["tabs"])
+    assert widget_tabs[0]["params"] == {"neighbor": ["unchanged"]}
+    assert widget_tabs[1]["params"] == expected
+
+
 def test_set_chart_params_replace_mode_and_selector_defaults() -> None:
     entry = _load_entry("selectors_manual_two_tabs")
     update = _dashboard_from(entry).update
@@ -305,10 +375,17 @@ def test_set_chart_params_prechecks() -> None:
     tab0 = _tabs(_as_dict(entry["data"]))[0]
     _as_dicts(tab0["items"]).append({"id": "txt_x", "type": "text", "namespace": "default", "data": {"text": "t"}})
     update = _dashboard_from(entry).update
+    with pytest.raises(DataLensValidationError, match="Unknown item"):
+        update.set_chart_params(item_id="nope", params={"a": "b"}, widget_tab_id="wt_1")
     with pytest.raises(DataLensValidationError, match="targets widget/control items"):
         update.set_chart_params(item_id="txt_x", params={"a": "b"})
+    with pytest.raises(DataLensValidationError, match="only valid for widget items"):
+        update.set_chart_params(item_id="item_1", params={"a": "b"}, widget_tab_id="wt_1")
+    with pytest.raises(DataLensValidationError, match="has no chart tab"):
+        update.set_chart_params(item_id="item_3", params={"a": "b"}, widget_tab_id="wt_nope")
     with pytest.raises(DataLensValidationError, match="string or a sequence of strings"):
         update.set_chart_params(item_id="item_3", params={"a": 5})
+    assert update.ops == ()
 
 
 def test_set_chart_params_rejects_group_control() -> None:

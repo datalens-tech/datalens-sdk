@@ -380,7 +380,8 @@ Use the ids deliberately:
   `set_chart_params`;
 - selector member id → `update_selector`, `remove_selector`, connections;
 - internal chart-tab id from `item.data["tabs"]` → multi-tab connection
-  endpoints and `replace_chart(widget_tab_id=...)`.
+  endpoints, `replace_chart(widget_tab_id=...)`, and
+  `set_chart_params(widget_tab_id=...)`.
 
 Connections serialize widget endpoints as internal chart-tab ids, not the
 outer widget id. Create-side `add_connection` accepts the logical widget id

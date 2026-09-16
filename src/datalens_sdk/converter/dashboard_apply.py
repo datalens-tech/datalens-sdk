@@ -293,9 +293,12 @@ def _apply_remove_item(data: dict[str, object], op: RemoveItemOp) -> None:
 def _apply_set_chart_params(data: dict[str, object], op: SetChartParamsOp) -> None:
     # every occurrence is patched: a shared global item must stay identical
     # across tabs (the builder rejects group_control at call time)
+    patched_widget_tab = False
     for item in _find_item_occurrences(data, op.item_id):
         if item.get("type") == "widget":
             for widget_tab in _item_widget_tabs(item):
+                if op.widget_tab_id is not None and widget_tab.get("id") != op.widget_tab_id:
+                    continue
                 if op.merge:
                     params = widget_tab.setdefault("params", {})
                     if not isinstance(params, dict):
@@ -303,6 +306,11 @@ def _apply_set_chart_params(data: dict[str, object], op: SetChartParamsOp) -> No
                     params.update({key: list(values) for key, values in op.params.items()})
                 else:
                     widget_tab["params"] = {key: list(values) for key, values in op.params.items()}
+                patched_widget_tab = True
+        elif op.widget_tab_id is not None:
+            raise DataLensValidationError(
+                f"widget_tab_id is only valid for widget items; item {op.item_id!r} has type {item.get('type')!r}"
+            )
         elif op.merge:
             defaults = item.setdefault("defaults", {})
             if not isinstance(defaults, dict):
@@ -310,6 +318,8 @@ def _apply_set_chart_params(data: dict[str, object], op: SetChartParamsOp) -> No
             defaults.update({key: list(values) for key, values in op.params.items()})
         else:
             item["defaults"] = {key: list(values) for key, values in op.params.items()}
+    if op.widget_tab_id is not None and not patched_widget_tab:
+        raise DataLensValidationError(f"Widget {op.item_id!r} has no chart tab {op.widget_tab_id!r}")
 
 
 def _apply_remove_connection(data: dict[str, object], op: RemoveConnectionOp) -> None:
