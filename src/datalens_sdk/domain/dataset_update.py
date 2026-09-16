@@ -112,6 +112,8 @@ class DatasetUpdate:
         self._actions: list[DatasetUpdateAction] = []
         self._name_change: str | None = None
         self._rls2_changes: dict[str, list[RLS2ConfigEntryPayload] | None] = {}
+        self._rls2_clear = False
+        self._rls2_deleted_fields: set[str] = set()
 
     @property
     def actions(self) -> tuple[DatasetUpdateAction, ...]:
@@ -397,7 +399,15 @@ class DatasetUpdate:
         )
 
     def delete_rls(self, *, field: FieldRef) -> Self:
-        self._rls2_changes[_field_guid(field)] = None
+        guid = _field_guid(field)
+        self._rls2_deleted_fields.add(guid)
+        self._rls2_changes[guid] = None
+        return self
+
+    def clear_rls(self) -> Self:
+        self._rls2_clear = True
+        self._rls2_changes.clear()
+        self._rls2_deleted_fields.clear()
         return self
 
     def delete_field(self, *, field: FieldRef) -> Self:
@@ -628,6 +638,8 @@ class DatasetUpdate:
             actions=tuple(self._actions),
             name_change=self._name_change,
             rls2_changes=dict(self._rls2_changes),
+            rls2_clear=self._rls2_clear,
+            rls2_deleted_fields=frozenset(self._rls2_deleted_fields),
         )
 
     def execute(self) -> Dataset:

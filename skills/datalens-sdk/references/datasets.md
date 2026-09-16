@@ -55,7 +55,7 @@ with `.id`/`.title`; use `avatar.get("id")`, `avatar.get("source_id")`, and
 
 ## The update DSL
 
-`ds.update` is a property returning a fresh `DatasetUpdate`. Each method appends an action; **chain as many as you like and finish with a single `.execute()`**, which sends one validated update and returns the new `Dataset`:
+`ds.update` is a property returning a fresh `DatasetUpdate`. Methods accumulate changes; **chain as many as you like and finish with a single `.execute()`**, which saves once and returns the new `Dataset`. Field and source actions run through `validateDataset` before the save; an RLS-only update does not call it:
 
 ```python
 ds = (
@@ -71,7 +71,7 @@ ds = (
 )
 ```
 
-Anywhere a method takes `field=` it accepts a `DatasetField` object or a string (guid, title, name, or source column). Prefer the `DatasetField` — in multi-source datasets a bare string that matches fields on several avatars is ambiguous. Formulas reference other fields by `[Title]`.
+Field actions accept a `DatasetField` object or a string (guid, title, name, or source column). Prefer the `DatasetField` — in multi-source datasets a bare string that matches fields on several avatars is ambiguous. RLS methods require a `DatasetField` or an exact field GUID; resolve a name with `ds.fields.by_name(...)`. Formulas reference other fields by `[Title]`.
 
 For expression syntax, calculation levels, functions, diagnostics, and the
 choice between reusable Dataset formulas and chart-local Wizard formulas, read
@@ -144,23 +144,60 @@ ds = ds.update.add_relation(
 
 `JoinCondition(left, right, operator="eq")` takes **source column names** for each side; operators: `"eq"`, `"ne"`, `"gt"`, `"gte"`, `"lt"`, `"lte"`. On the update path the avatars are inferred from the first condition's columns; on the create path pass `left_source=` / `right_source=` explicitly (see the full example below). Edit an existing join with `update_relation(relation_id=..., type=..., conditions=..., drop_duplicates=...)` or remove it with `delete_relation(relation_id=...)` — ids come from `ds.relations`.
 
-### Default filters and RLS
+### Default filters
 
 ```python
 u = ds.update
 u.add_default_filter(field="Shop", operator="EQ", values=["Epsilon"])
 u.update_default_filter(filter_id=fid, operator="IN", values=["Epsilon", "Delta"])  # fid from ds.default_filters
 u.delete_default_filter(filter_id=fid)
-
-u.add_rls(
-    field="Shop", subject_id=user_id, allowed_value="Epsilon"
-)  # subject_type: "user" | "group" | "all" | "userid"
-u.update_rls(field="Shop", subject_id=user_id, allowed_value="Delta")
-u.delete_rls(field="Shop")  # drops all RLS entries for the field
 ds = u.execute()
 ```
 
 Filter operators (`WhereOperation`) are uppercase: `"EQ"`, `"NE"`, `"GT"`, `"GTE"`, `"LT"`, `"LTE"`, `"IN"`, `"NIN"`, `"BETWEEN"`, `"CONTAINS"`, `"ICONTAINS"`, `"STARTSWITH"`, `"ISNULL"`, `"ISNOTNULL"`, ...
+
+### Row-level security (RLS2)
+
+Use `ds.rls2` to inspect saved rules. Every RLS `field=` accepts a
+`DatasetField` or an exact GUID; a string such as `"Shop"` is not resolved as a
+field name. Resolve it with `shop = ds.fields.by_name("Shop")`.
+
+- `add_rls(...)` and `update_rls(...)` both append rules; `update_rls` does not
+  replace an existing subject or field rule.
+- `delete_rls(field=...)` removes all rules for that field, including additions
+  already queued in the same builder. Other fields retain their rules.
+- `clear_rls()` removes all dataset RLS rules, including additions already
+  queued in the builder. It preserves other dataset changes.
+- Additions after a deletion or clear become the new rules. Repeated deletions
+  and clears are allowed. For RLS, `DatasetCreate` supports only `add_rls`.
+
+To replace all rules, clear and add the desired rules in **one builder with
+one `.execute()`**:
+
+```python
+shop = ds.fields.by_name("Shop")
+ds = (
+    ds.update.clear_rls()
+    .add_rls(field=shop, subject_id=user_id, allowed_value="Epsilon")
+    .add_rls(field=shop, subject_id=user_id, allowed_value="Delta")
+    .execute()
+)
+```
+
+To replace only one field's rules and preserve all other fields:
+
+```python
+shop = ds.fields.by_name("Shop")
+ds = ds.update.delete_rls(field=shop).add_rls(field=shop, subject_id=user_id, allowed_value="Delta").execute()
+```
+
+To remove every rule without adding replacements, use
+`ds = ds.update.clear_rls().execute()`. These sequences make one save; do not
+save the clear or deletion separately before adding replacement rules.
+`subject_type` accepts `"user"` (default), `"group"`, `"all"`, or `"userid"`.
+An RLS-only save has no preliminary `validateDataset` call and does not promise
+validation of subject existence or rule semantics. Re-fetch with
+`ds = client.get.dataset(by_id=ds.id)` and inspect `ds.rls2` to verify persistence.
 
 ### Sources, settings, connection
 

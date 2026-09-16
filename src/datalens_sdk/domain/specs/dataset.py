@@ -52,3 +52,5 @@ class DatasetUpdateSpec:
     actions: tuple[DatasetUpdateAction, ...]
     name_change: str | None
     rls2_changes: Mapping[str, list[RLS2ConfigEntryPayload] | None]
+    rls2_clear: bool = False
+    rls2_deleted_fields: frozenset[str] = frozenset()

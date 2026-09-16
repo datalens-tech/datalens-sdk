@@ -464,12 +464,16 @@ class DatasetConverter:
     def apply_rls2_changes(
         state: Mapping[str, object],
         changes: Mapping[str, Sequence[RLS2ConfigEntryPayload] | None],
+        *,
+        clear: bool = False,
+        deleted_fields: frozenset[str] = frozenset(),
     ) -> dict[str, object]:
         out = with_supported_rls2_state(state)
-        if not changes:
+        if not changes and not clear and not deleted_fields:
             return out
-        existing = _dict_with_string_keys(out.get("rls2"))
-        rls2: dict[str, object] = dict(existing)
+        rls2: dict[str, object] = {} if clear else _dict_with_string_keys(out.get("rls2"))
+        for guid in deleted_fields:
+            rls2.pop(guid, None)
         for guid, entries in changes.items():
             if entries is None:
                 rls2.pop(guid, None)
