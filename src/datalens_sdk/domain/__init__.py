@@ -119,6 +119,7 @@ from datalens_sdk.domain.raw_resource import (
     RawWizardChartCreate,
     RawWizardChartReplace,
 )
+from datalens_sdk.domain.revisions import EntryRevision
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
 from datalens_sdk.domain.workbook import Workbook, WorkbookCreate, WorkbookStatus, WorkbookUpdate
 
@@ -178,6 +179,7 @@ __all__ = [
     "EntryLocation",
     "EntryOrderField",
     "EntryRelation",
+    "EntryRevision",
     "EntryScope",
     "EntrySummary",
     "EntryUpdateMode",

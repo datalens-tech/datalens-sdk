@@ -13080,6 +13080,86 @@
         ],
         "type": "object"
       },
+      "GetRevisionsArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "entryId": {
+            "description": "Unique identifier of the DataLens entry.",
+            "type": "string"
+          },
+          "pageSize": {
+            "default": 200,
+            "description": "Number of revisions per page.",
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "Token for retrieving the next page of revisions.",
+            "type": "string"
+          },
+          "revIds": {
+            "description": "IDs of revisions to return.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "entryId"
+        ],
+        "type": "object"
+      },
+      "GetRevisionsResult": {
+        "properties": {
+          "entries": {
+            "items": {
+              "properties": {
+                "isPublished": {
+                  "description": "Whether this is the published revision.",
+                  "type": "boolean"
+                },
+                "isSaved": {
+                  "description": "Whether this is the latest saved revision.",
+                  "type": "boolean"
+                },
+                "revId": {
+                  "description": "Unique identifier of the revision.",
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "description": "Date and time when the revision was last updated.",
+                  "type": "string"
+                },
+                "updatedBy": {
+                  "description": "ID of the user who last updated the revision.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "revId",
+                "updatedAt",
+                "updatedBy",
+                "isSaved",
+                "isPublished"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "nextPageToken": {
+            "description": "Token for retrieving the next page of revisions.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      },
       "GetRootCollectionPermissionsResult": {
         "properties": {
           "createCollectionInRoot": {
@@ -50395,6 +50475,60 @@
         "summary": "Get report",
         "tags": [
           "Reports"
+        ]
+      }
+    },
+    "/rpc/getRevisions": {
+      "post": {
+        "description": "Returns revisions of the specified DataLens entry.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          },
+          {
+            "in": "header",
+            "name": "x-dl-audit-mode",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetRevisionsArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetRevisionsResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "Get entry revisions",
+        "tags": [
+          "Entries"
         ]
       }
     },

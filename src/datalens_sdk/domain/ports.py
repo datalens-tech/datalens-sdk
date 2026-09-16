@@ -40,6 +40,7 @@ if TYPE_CHECKING:
         WorkbookListOptions,
     )
     from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate
+    from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
     from datalens_sdk.domain.specs.raw_resource import (
         RawCreateSpec,
         RawReplaceSpec,
@@ -88,7 +89,12 @@ class NavigationOperations(Protocol):
 
 
 @runtime_checkable
-class ConnectionOperations(Protocol):
+class EntryRevisionsOperations(Protocol):
+    def get_entry_revisions(self, entry_id: str, options: EntryRevisionsOptions) -> Pager[EntryRevision]: ...
+
+
+@runtime_checkable
+class ConnectionOperations(EntryRevisionsOperations, Protocol):
     def create_connection(self, builder: BaseConnectionCreate) -> Connection: ...
 
     def create_connection_from_raw(
@@ -131,7 +137,7 @@ class ConnectionOperations(Protocol):
 
 
 @runtime_checkable
-class DatasetOperations(Protocol):
+class DatasetOperations(EntryRevisionsOperations, Protocol):
     def create_dataset(self, builder: DatasetCreate) -> Dataset: ...
 
     def create_dataset_from_raw(self, spec: RawCreateSpec) -> Dataset: ...
@@ -241,7 +247,7 @@ class FolderOperations(Protocol):
 
 
 @runtime_checkable
-class DashboardOperations(Protocol):
+class DashboardOperations(EntryRevisionsOperations, Protocol):
     def create_dashboard(self, builder: DashboardCreate) -> Dashboard: ...
 
     def create_dashboard_from_raw(self, spec: RawCreateSpec) -> Dashboard: ...
@@ -314,7 +320,7 @@ class LicenseOperations(Protocol):
 
 
 @runtime_checkable
-class ChartOperations(Protocol):
+class ChartOperations(EntryRevisionsOperations, Protocol):
     @property
     def installation(self) -> str: ...
 

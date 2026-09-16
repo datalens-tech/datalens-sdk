@@ -4694,3 +4694,26 @@ class DashboardDeleteArgsDTO(BaseModel):
         payload = self.model_dump(mode="json", by_alias=True, exclude_none=True)
         model = DeleteDashboardArgsDTO.model_validate(payload)
         return model.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class EntryRevisionsRequestDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    entry_id: str = Field(alias='entryId')
+    page_size: Annotated[int, Field(ge=1, le=200, alias='pageSize')] = 200
+    page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
+    rev_ids: Annotated[list[str], Field(min_length=1, max_length=1000, alias='revIds')] = _UNVALIDATED_NONE_DEFAULT
+
+class EntryRevisionReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    is_published: bool = Field(alias='isPublished')
+    is_saved: bool = Field(alias='isSaved')
+    rev_id: str = Field(alias='revId')
+    updated_at: str = Field(alias='updatedAt')
+    updated_by: str = Field(alias='updatedBy')
+
+class EntryRevisionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    entries: list[EntryRevisionReadDTO]
+    next_page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='nextPageToken')

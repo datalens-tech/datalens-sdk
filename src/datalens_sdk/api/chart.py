@@ -35,6 +35,7 @@ from datalens_sdk.domain.navigation import (
 )
 from datalens_sdk.domain.ports import ChartOperations, NavigationOperations
 from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate
+from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
 from datalens_sdk.errors import (
@@ -524,6 +525,9 @@ class ChartService(ChartOperations):
             raise NotSupportedError(f"Cannot move unsupported chart type {type(chart).__name__!r}")
         self._navigation_operations.move_folder_entry(entry_id=chart.id, location=location, name=name)
         return get_chart(chart.id, None)
+
+    def get_entry_revisions(self, entry_id: str, options: EntryRevisionsOptions) -> Pager[EntryRevision]:
+        return self._entries_service.get_entry_revisions(entry_id, options)
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]:
         return self._navigation_operations.get_entry_relations(entry_id, options)
