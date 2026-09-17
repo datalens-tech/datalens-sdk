@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast
 
 import httpx
@@ -10,13 +11,21 @@ import pytest
 import datalens_sdk as dl
 from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk._runtime.chart_builder_base import _BaseEditorNodeCreate, _BaseWizardChartCreate
-from datalens_sdk.converter.editor_chart import EditorChartConverter
+from datalens_sdk.converter.editor_chart import (
+    EditorChartConverter,
+    EditorChartDtoModule,
+    editor_create_wire_types,
+    editor_read_wire_types,
+    editor_update_tabs,
+    editor_update_wire_types,
+    editor_wire_types,
+)
 from datalens_sdk.domain.editor_chart import EditorChart, EditorChartUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.specs.editor_chart import EditorChartCreateSpec
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
-from datalens_sdk.errors import DataLensValidationError
+from datalens_sdk.errors import DataLensValidationError, NotSupportedError
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -345,6 +354,28 @@ def test_editor_chart_update_valid_modes() -> None:
     assert update_pub.mode_value == "publish"
 
 
+def test_legacy_editor_catalog_fallback_keeps_create_write_semantics() -> None:
+    module = cast(
+        EditorChartDtoModule,
+        SimpleNamespace(INSTALLATION_EDITOR_NODE_TYPES={"legacy": frozenset({"legacy_node"})}),
+    )
+
+    assert editor_read_wire_types("legacy", module) == frozenset({"legacy_node"})
+    assert editor_create_wire_types("legacy", module) == frozenset({"legacy_node"})
+    assert editor_update_wire_types("legacy", module) == frozenset({"legacy_node"})
+    assert editor_wire_types("legacy", module) == frozenset({"legacy_node"})
+    assert editor_update_tabs("legacy", "legacy_node", module) is None
+
+
+def test_editor_chart_update_direct_constructor_keeps_legacy_unrestricted_behavior() -> None:
+    update = EditorChartUpdate(
+        chart=EditorChart(id="e1", wire_type="advanced-chart_node"),
+        operations=None,
+    )
+
+    assert update.graph("content").tab_edits == {"graph": "content"}
+
+
 # ---------------------------------------------------------------------------
 # 6. from_domain_update
 # ---------------------------------------------------------------------------
@@ -494,6 +525,43 @@ def test_editor_chart_create_get_update_delete_flow() -> None:
     assert "secrets" not in update_data
     assert update_data["sources"] == "new_src"
     assert update_data["params"] == "p"
+
+
+def test_bound_editor_chart_update_rejects_unsupported_tab_before_http() -> None:
+    recorder = RecordedTransport({"/rpc/getEditorChart": httpx.Response(200, json=_editor_chart_response())})
+    client = dl.DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
+    chart = client.get.editor_chart(by_id="e1")
+    update = chart.update
+
+    with pytest.raises(NotSupportedError) as error:
+        update.graph("not-supported")
+
+    message = str(error.value)
+    assert "installation 'yacloud'" in message
+    assert "wire_type 'advanced-chart_node'" in message
+    assert "update tab 'graph'" in message
+    assert "['controls', 'meta', 'params', 'prepare', 'sources']" in message
+    assert update.tab_edits == {}
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getEditorChart"]
+
+
+def test_editor_update_service_rechecks_wire_type_before_http() -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/getEditorChart": httpx.Response(
+                200,
+                json=_editor_chart_response(wire_type="graph_node"),
+            )
+        }
+    )
+    client = dl.DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
+    chart = client.get.editor_chart(by_id="e1")
+    update = EditorChartUpdate(chart=chart, operations=cast(ChartOperations, chart._operations))
+
+    with pytest.raises(NotSupportedError, match="graph_node"):
+        update.execute()
+
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getEditorChart"]
 
 
 def test_editor_chart_create_payload_wrapped() -> None:

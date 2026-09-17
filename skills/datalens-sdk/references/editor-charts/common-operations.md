@@ -66,8 +66,10 @@ applies to every documented tab setter.
 The shared update object exposes several setters used by other installations,
 including `activities`, `shared`, `graph`, `statface_graph`, `ymap`,
 `documentation_en`, and `documentation_ru`. Their presence does not make them
-available to a public client. Use only the methods in the selected public
-renderer matrix row. Public runtime documentation already describes
+available to a public client. The SDK raises `NotSupportedError` before DTO
+construction or HTTP when a bound chart uses a setter outside its generated
+installation and renderer update schema. Use only the methods in the selected
+public renderer matrix row. Public runtime documentation already describes
 Activities for Selector, Table, and Gravity UI Charts, but typed public SDK
 support has not been implemented yet.
 

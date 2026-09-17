@@ -160,6 +160,28 @@
             "wire_type": "table_node"
           }
         },
+        "editor_read_nodes": {
+          "advanced-chart_node": {
+            "read_schema": "EditorAdvancedChartNode",
+            "wire_type": "advanced-chart_node"
+          },
+          "control_node": {
+            "read_schema": "EditorSelectorNode",
+            "wire_type": "control_node"
+          },
+          "d3_node": {
+            "read_schema": "EditorGravityChartsNode",
+            "wire_type": "d3_node"
+          },
+          "markdown_node": {
+            "read_schema": "EditorMarkdownNode",
+            "wire_type": "markdown_node"
+          },
+          "table_node": {
+            "read_schema": "EditorTableNode",
+            "wire_type": "table_node"
+          }
+        },
         "editor_update_nodes": {
           "advanced-chart_node": {
             "create_schema": "UpdateEditorAdvancedChartNodeEntry",
@@ -19215,6 +19237,28 @@
               }
             },
             "factory_method": "table",
+            "wire_type": "table_node"
+          }
+        },
+        "editor_read_nodes": {
+          "advanced-chart_node": {
+            "read_schema": "EditorAdvancedChartNode",
+            "wire_type": "advanced-chart_node"
+          },
+          "control_node": {
+            "read_schema": "EditorSelectorNode",
+            "wire_type": "control_node"
+          },
+          "d3_node": {
+            "read_schema": "EditorGravityChartsNode",
+            "wire_type": "d3_node"
+          },
+          "markdown_node": {
+            "read_schema": "EditorMarkdownNode",
+            "wire_type": "markdown_node"
+          },
+          "table_node": {
+            "read_schema": "EditorTableNode",
             "wire_type": "table_node"
           }
         },

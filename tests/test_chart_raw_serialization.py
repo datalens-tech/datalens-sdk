@@ -1139,6 +1139,24 @@ def test_editor_type_unavailable_on_target_installation_fails_before_http() -> N
     assert recorder.requests == []
 
 
+def test_read_only_editor_type_cannot_be_raw_replaced() -> None:
+    recorder = RecordedTransport({})
+    client = _client(recorder)
+    target = dl.EditorChart(
+        id="editor-target",
+        installation="yacloud",
+        wire_type="graph_node",
+    )
+    operation = client.raw.replace.editor_chart(
+        target=target,
+        response_snapshot=_raw(_editor_snapshot(wire_type="graph_node")),
+    )
+
+    with pytest.raises(NotSupportedError, match="not available on installation 'yacloud'"):
+        operation.execute()
+    assert recorder.requests == []
+
+
 def test_editor_update_rejects_different_node_type_before_http() -> None:
     recorder = RecordedTransport(
         {"/rpc/getEditorChart": httpx.Response(200, json=_editor_snapshot(wire_type="table_node"))}

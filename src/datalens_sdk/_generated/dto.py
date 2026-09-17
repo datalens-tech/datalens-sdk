@@ -899,10 +899,40 @@ class LicenseSetLimitArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return {"value": self.value}
 
-INSTALLATION_EDITOR_NODE_TYPES: dict[str, frozenset[str]] = {
+INSTALLATION_EDITOR_READ_NODE_TYPES: dict[str, frozenset[str]] = {
     'enterprise': frozenset(['advanced-chart_node', 'control_node', 'd3_node', 'markdown_node', 'table_node']),
     'yacloud': frozenset(['advanced-chart_node', 'control_node', 'd3_node', 'markdown_node', 'table_node']),
 }
+
+INSTALLATION_EDITOR_CREATE_NODE_TYPES: dict[str, frozenset[str]] = {
+    'enterprise': frozenset(['advanced-chart_node', 'control_node', 'd3_node', 'markdown_node', 'table_node']),
+    'yacloud': frozenset(['advanced-chart_node', 'control_node', 'd3_node', 'markdown_node', 'table_node']),
+}
+
+INSTALLATION_EDITOR_UPDATE_NODE_TYPES: dict[str, frozenset[str]] = {
+    'enterprise': frozenset(['advanced-chart_node', 'control_node', 'd3_node', 'markdown_node', 'table_node']),
+    'yacloud': frozenset(['advanced-chart_node', 'control_node', 'd3_node', 'markdown_node', 'table_node']),
+}
+
+INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE: dict[str, dict[str, frozenset[str]]] = {
+    'enterprise': {
+        'advanced-chart_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
+        'control_node': frozenset(['controls', 'meta', 'params', 'sources']),
+        'd3_node': frozenset(['config', 'controls', 'meta', 'params', 'prepare', 'sources']),
+        'markdown_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
+        'table_node': frozenset(['config', 'controls', 'meta', 'params', 'prepare', 'sources']),
+    },
+    'yacloud': {
+        'advanced-chart_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
+        'control_node': frozenset(['controls', 'meta', 'params', 'sources']),
+        'd3_node': frozenset(['config', 'controls', 'meta', 'params', 'prepare', 'sources']),
+        'markdown_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
+        'table_node': frozenset(['config', 'controls', 'meta', 'params', 'prepare', 'sources']),
+    },
+}
+
+# Compatibility: this symbol keeps its historical create/write meaning.
+INSTALLATION_EDITOR_NODE_TYPES = INSTALLATION_EDITOR_CREATE_NODE_TYPES
 
 
 WIZARD_SCHEMA_FINGERPRINT: str | None = 'cd8ba590fdd6b6b14d05801dbe47b2630ab0108b01cd42ba1f6e86fc69bdafe4'

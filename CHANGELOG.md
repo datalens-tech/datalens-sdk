@@ -9,6 +9,24 @@
   the `moveFolderEntry` result against the moved entry id and returns the
   refreshed resource with its current name and location.
 
+### Changed
+
+- Generate separate Editor read, create, and update type catalogs from their
+  operation-specific OpenAPI discriminators. Generic chart reads and dashboard
+  dependency exports now use the read catalog, while raw create and replace
+  remain limited by their respective write catalogs.
+- Keep the existing `chart.update` facade, but reject renderer-incompatible tab
+  setters with `NotSupportedError` before DTO construction or HTTP. The
+  facade's Python autocomplete remains intentionally broad across
+  installations and renderers.
+
+### Known limitations and follow-up
+
+- Editor Activities availability still follows the checked-in OpenAPI metadata
+  for runtime guards. Continue following the stricter renderer matrix in the
+  bundled Editor guidance; this change does not claim additional Activities
+  runtime support.
+
 ## 3.0.0 - 2026-09-09
 
 ### Breaking changes
