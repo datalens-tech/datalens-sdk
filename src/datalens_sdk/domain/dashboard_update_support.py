@@ -78,6 +78,51 @@ def _iter_mappings_or_lists(value: object) -> list[object]:
     return []
 
 
+def _resolve_widget_tab_ids_for_update(
+    *,
+    item_id: str,
+    raw_tabs: Sequence[Mapping[str, object]],
+    occurrence_count: int,
+    staged_widget_tab_ids: set[str],
+) -> tuple[str | None, ...]:
+    """Resolve one live widget occurrence, preserving malformed inner ids."""
+    raw_occurrences = [
+        item
+        for tab in raw_tabs
+        for container in (_ITEMS_FIELD, _GLOBAL_ITEMS_FIELD)
+        for item in _iter_mappings(tab.get(container))
+        if item.get("id") == item_id
+    ]
+    if len(raw_occurrences) > 1:
+        raise DataLensValidationError(
+            f"Widget item id {item_id!r} occurs {len(raw_occurrences)} times; DataLens widget ids must be unique"
+        )
+    if raw_occurrences:
+        data = _mapping_or_none(raw_occurrences[0].get("data")) or {}
+        return tuple(_string_or_none(widget_tab.get("id")) for widget_tab in _iter_mappings(data.get("tabs")))
+    if occurrence_count != 1:  # pragma: no cover - typed adders reserve unique ids
+        raise DataLensValidationError(f"Widget item id {item_id!r} must occur exactly once")
+    return tuple(sorted(staged_widget_tab_ids))
+
+
+def _require_exact_widget_tab(item_id: str, widget_tab_id: str | None, widget_tab_ids: tuple[str | None, ...]) -> None:
+    if widget_tab_id is None:
+        if len(widget_tab_ids) != 1:
+            known = sorted(tab_id for tab_id in widget_tab_ids if tab_id is not None)
+            raise DataLensValidationError(
+                f"Widget {item_id!r} has {len(widget_tab_ids)} chart tabs ({known!r}); pass widget_tab_id= to pick one"
+            )
+        return
+    match_count = widget_tab_ids.count(widget_tab_id)
+    if match_count == 0:
+        known = sorted(tab_id for tab_id in widget_tab_ids if tab_id is not None)
+        raise DataLensValidationError(f"Widget {item_id!r} has no chart tab {widget_tab_id!r}; known: {known!r}")
+    if match_count != 1:
+        raise DataLensValidationError(
+            f"Widget {item_id!r} has {match_count} chart tabs with id {widget_tab_id!r}; expected exactly one"
+        )
+
+
 def _display_pinned_to_current_tabs(item: Mapping[str, object], tab_ids: set[object]) -> bool:
     """True when the item's DISPLAY scope is an explicit tab list (it must not
     follow new tabs). Dashboard V2 keeps display scope on the group itself;

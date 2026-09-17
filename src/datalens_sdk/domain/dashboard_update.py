@@ -38,7 +38,9 @@ from datalens_sdk.domain.dashboard_update_support import (
     _iter_mappings_or_lists,
     _mapping_or_none,
     _normalize_param_values,
+    _require_exact_widget_tab,
     _resolve_chart_id,
+    _resolve_widget_tab_ids_for_update,
     _string_or_none,
     _TabIndex,
 )
@@ -190,6 +192,17 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
                 tab.control_child_ids.add(child_id)
                 self._item_group_children.setdefault(item_id, set()).add(child_id)
 
+    def _widget_tab_ids_for_update(self, item_id: str) -> tuple[str | None, ...]:
+        return _resolve_widget_tab_ids_for_update(
+            item_id=item_id,
+            raw_tabs=self._raw_tabs(),
+            occurrence_count=len(self._item_occurrences[item_id]),
+            staged_widget_tab_ids=self._item_widget_tab_ids.get(item_id, set()),
+        )
+
+    def _require_widget_tab(self, item_id: str, widget_tab_id: str | None) -> None:
+        _require_exact_widget_tab(item_id, widget_tab_id, self._widget_tab_ids_for_update(item_id))
+
     def _resolve_tab(self, ref: str) -> str:
         """Resolve a tab reference: id first, then title (must be unambiguous)."""
         if not isinstance(ref, str) or not ref:
@@ -302,12 +315,9 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         """Swap the chart of one widget chart-tab by ``item_id``.
 
         Only ``chartId`` changes; the chart-tab title and params stay verbatim.
-        A shared global item is ONE logical item: the swap applies to every
-        occurrence on every tab (same semantics as ``remove_item``).
-        Dangling-params risk: the new chart's dataset parameter NAMES may
-        differ from the old one's (widget params filter by dataset parameter
-        name, not field title) — the SDK cannot detect this without HTTP; the
-        D4.6 ``validate_dashboard_refs`` recipe is the planned detector.
+        DataLens widget item ids are document-wide unique.
+        The SDK cannot validate parameter-name compatibility with the
+        replacement chart without HTTP.
         """
         item_type = self._require_item(item_id)
         if item_type != "widget":
@@ -319,17 +329,7 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
             raise DataLensValidationError(
                 f"Cannot place a {chart_installation!r} chart on a {self._installation!r} dashboard"
             )
-        widget_tabs = self._item_widget_tab_ids.get(item_id, set())
-        if widget_tab_id is None:
-            if len(widget_tabs) > 1:
-                raise DataLensValidationError(
-                    f"Widget {item_id!r} has {len(widget_tabs)} chart tabs "
-                    f"({sorted(widget_tabs)!r}); pass widget_tab_id= to pick one"
-                )
-        elif widget_tab_id not in widget_tabs:
-            raise DataLensValidationError(
-                f"Widget {item_id!r} has no chart tab {widget_tab_id!r}; known: {sorted(widget_tabs)!r}"
-            )
+        self._require_widget_tab(item_id, widget_tab_id)
         self._ops.append(ReplaceChartOp(item_id=item_id, chart_id=chart_id, widget_tab_id=widget_tab_id))
         return self
 
@@ -366,9 +366,10 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
     ) -> Self:
         """Set widget params or selector defaults.
         Pass ``widget_tab_id`` to target one internal widget tab; omit it to
-        update all tabs. Shared items are patched everywhere. ``merge=False``
-        replaces the whole mapping. Tab targeting supports widgets only;
-        group controls require :meth:`update_selector` on nested member ids.
+        update all tabs. Shared standalone controls are patched in every
+        occurrence. ``merge=False`` replaces the whole mapping. Tab targeting
+        supports widgets only; group controls require :meth:`update_selector`
+        on nested member ids.
         """
         item_type = self._require_item(item_id)
         if item_type == "group_control":
@@ -384,12 +385,10 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
             raise DataLensValidationError(
                 f"widget_tab_id is only valid for widget items; item {item_id!r} has type {item_type!r}"
             )
-        if widget_tab_id is not None:
-            widget_tabs = self._item_widget_tab_ids.get(item_id, set())
-            if widget_tab_id not in widget_tabs:
-                raise DataLensValidationError(
-                    f"Widget {item_id!r} has no chart tab {widget_tab_id!r}; known: {sorted(widget_tabs)!r}"
-                )
+        if item_type == "widget" and widget_tab_id is None:
+            self._widget_tab_ids_for_update(item_id)
+        elif widget_tab_id is not None:
+            self._require_widget_tab(item_id, widget_tab_id)
         if not isinstance(params, Mapping):
             raise DataLensValidationError(f"params expects a mapping, got {params!r}")
         normalized: dict[str, tuple[str, ...]] = {}

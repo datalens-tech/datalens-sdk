@@ -222,12 +222,13 @@ target tab's `globalItems` wire collection. On read, those copies appear in
 `DashboardTabView.global_items`; `DashboardTabView.controls` already combines
 local and global controls.
 
-Shared items have global mutation semantics:
+Server-supported shared items are selectors, and they have global mutation
+semantics:
 
 - `remove_item` removes every occurrence from every tab, all related
   connections, and selector-dependent alias fields/groups that become empty.
-- `replace_chart` and `set_chart_params` likewise patch every occurrence of a
-  shared logical item.
+- `set_chart_params` patches every occurrence of a shared standalone
+  `control`; grouped selectors use `update_selector` by member id.
 - Every target tab gets a layout entry for the shared selector. Overlap checks
   use `items ∪ global_items`, so leave space for it on **every** displayed tab.
 

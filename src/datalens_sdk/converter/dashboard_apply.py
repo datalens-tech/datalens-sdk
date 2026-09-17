@@ -223,24 +223,34 @@ def _item_widget_tabs(item: dict[str, object]) -> list[dict[str, object]]:
     return cast("list[dict[str, object]]", [tab for tab in tabs if isinstance(tab, dict)])
 
 
+def _exact_widget_tab(
+    occurrences: list[dict[str, object]], item_id: str, widget_tab_id: str | None
+) -> dict[str, object]:
+    """Resolve one server-valid widget and one internal target before mutation."""
+    if len(occurrences) != 1:
+        raise DataLensValidationError(
+            f"Widget item id {item_id!r} occurs {len(occurrences)} times; DataLens widget ids must be unique"
+        )
+    item = occurrences[0]
+    if item.get("type") != "widget":
+        raise DataLensValidationError(f"Item {item_id!r} has type {item.get('type')!r}; expected 'widget'")
+    widget_tabs = _item_widget_tabs(item)
+    matches = widget_tabs if widget_tab_id is None else [tab for tab in widget_tabs if tab.get("id") == widget_tab_id]
+    if len(matches) == 1:
+        return matches[0]
+    if widget_tab_id is not None and not matches:
+        raise DataLensValidationError(f"Widget {item_id!r} has no chart tab {widget_tab_id!r}")
+    if widget_tab_id is None:
+        raise DataLensValidationError(f"Widget {item_id!r} does not have exactly one chart tab; pass widget_tab_id=")
+    raise DataLensValidationError(
+        f"Widget {item_id!r} has {len(matches)} chart tabs with id {widget_tab_id!r}; expected exactly one"
+    )
+
+
 def _apply_replace_chart(data: dict[str, object], op: ReplaceChartOp) -> None:
-    swapped = False
-    for item in _find_item_occurrences(data, op.item_id):
-        widget_tabs = _item_widget_tabs(item)
-        if op.widget_tab_id is None:
-            if len(widget_tabs) != 1:
-                raise DataLensValidationError(
-                    f"Widget {op.item_id!r} does not have exactly one chart tab; pass widget_tab_id="
-                )
-            widget_tabs[0]["chartId"] = op.chart_id
-            swapped = True
-        else:
-            for widget_tab in widget_tabs:
-                if widget_tab.get("id") == op.widget_tab_id:
-                    widget_tab["chartId"] = op.chart_id
-                    swapped = True
-    if not swapped:
-        raise DataLensValidationError(f"Widget {op.item_id!r} has no chart tab {op.widget_tab_id!r}")
+    occurrences = _find_item_occurrences(data, op.item_id)
+    widget_tab = _exact_widget_tab(occurrences, op.item_id, op.widget_tab_id)
+    widget_tab["chartId"] = op.chart_id
 
 
 def _apply_remove_item(data: dict[str, object], op: RemoveItemOp) -> None:
@@ -293,12 +303,24 @@ def _apply_remove_item(data: dict[str, object], op: RemoveItemOp) -> None:
 def _apply_set_chart_params(data: dict[str, object], op: SetChartParamsOp) -> None:
     # every occurrence is patched: a shared global item must stay identical
     # across tabs (the builder rejects group_control at call time)
-    patched_widget_tab = False
-    for item in _find_item_occurrences(data, op.item_id):
+    occurrences = _find_item_occurrences(data, op.item_id)
+    if len(occurrences) != 1 and any(item.get("type") == "widget" for item in occurrences):
+        raise DataLensValidationError(
+            f"Widget item id {op.item_id!r} occurs {len(occurrences)} times; DataLens widget ids must be unique"
+        )
+    if op.widget_tab_id is not None:
+        widget_tab = _exact_widget_tab(occurrences, op.item_id, op.widget_tab_id)
+        if op.merge:
+            params = widget_tab.setdefault("params", {})
+            if not isinstance(params, dict):
+                raise DataLensValidationError(f"Widget {op.item_id!r} chart tab params is not an object")
+            params.update({key: list(values) for key, values in op.params.items()})
+        else:
+            widget_tab["params"] = {key: list(values) for key, values in op.params.items()}
+        return
+    for item in occurrences:
         if item.get("type") == "widget":
             for widget_tab in _item_widget_tabs(item):
-                if op.widget_tab_id is not None and widget_tab.get("id") != op.widget_tab_id:
-                    continue
                 if op.merge:
                     params = widget_tab.setdefault("params", {})
                     if not isinstance(params, dict):
@@ -306,11 +328,6 @@ def _apply_set_chart_params(data: dict[str, object], op: SetChartParamsOp) -> No
                     params.update({key: list(values) for key, values in op.params.items()})
                 else:
                     widget_tab["params"] = {key: list(values) for key, values in op.params.items()}
-                patched_widget_tab = True
-        elif op.widget_tab_id is not None:
-            raise DataLensValidationError(
-                f"widget_tab_id is only valid for widget items; item {op.item_id!r} has type {item.get('type')!r}"
-            )
         elif op.merge:
             defaults = item.setdefault("defaults", {})
             if not isinstance(defaults, dict):
@@ -318,8 +335,6 @@ def _apply_set_chart_params(data: dict[str, object], op: SetChartParamsOp) -> No
             defaults.update({key: list(values) for key, values in op.params.items()})
         else:
             item["defaults"] = {key: list(values) for key, values in op.params.items()}
-    if op.widget_tab_id is not None and not patched_widget_tab:
-        raise DataLensValidationError(f"Widget {op.item_id!r} has no chart tab {op.widget_tab_id!r}")
 
 
 def _apply_remove_connection(data: dict[str, object], op: RemoveConnectionOp) -> None:
