@@ -301,26 +301,17 @@ def _apply_remove_item(data: dict[str, object], op: RemoveItemOp) -> None:
 
 
 def _apply_set_chart_params(data: dict[str, object], op: SetChartParamsOp) -> None:
-    # every occurrence is patched: a shared global item must stay identical
-    # across tabs (the builder rejects group_control at call time)
+    # Shared standalone controls must stay identical across tabs.
     occurrences = _find_item_occurrences(data, op.item_id)
     if len(occurrences) != 1 and any(item.get("type") == "widget" for item in occurrences):
         raise DataLensValidationError(
             f"Widget item id {op.item_id!r} occurs {len(occurrences)} times; DataLens widget ids must be unique"
         )
-    if op.widget_tab_id is not None:
-        widget_tab = _exact_widget_tab(occurrences, op.item_id, op.widget_tab_id)
-        if op.merge:
-            params = widget_tab.setdefault("params", {})
-            if not isinstance(params, dict):
-                raise DataLensValidationError(f"Widget {op.item_id!r} chart tab params is not an object")
-            params.update({key: list(values) for key, values in op.params.items()})
-        else:
-            widget_tab["params"] = {key: list(values) for key, values in op.params.items()}
-        return
+    target_tab = _exact_widget_tab(occurrences, op.item_id, op.widget_tab_id) if op.widget_tab_id is not None else None
     for item in occurrences:
         if item.get("type") == "widget":
-            for widget_tab in _item_widget_tabs(item):
+            widget_tabs = _item_widget_tabs(item) if target_tab is None else [target_tab]
+            for widget_tab in widget_tabs:
                 if op.merge:
                     params = widget_tab.setdefault("params", {})
                     if not isinstance(params, dict):

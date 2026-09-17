@@ -9,10 +9,11 @@ from typing import cast
 
 import pytest
 
+from datalens_sdk import DashboardChartTab, DashboardTab
 from datalens_sdk.converter.dashboard_apply import _apply_update
 from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.dashboard_update import DashboardUpdate
-from datalens_sdk.domain.specs.dashboard import AddAliasOp, AddConnectionOp
+from datalens_sdk.domain.specs.dashboard import AddAliasOp, AddConnectionOp, AddItemsOp, AddTabOp, WidgetItem
 from datalens_sdk.errors import DataLensValidationError
 
 _FIXTURES_DIR = Path(__file__).parent / "fixtures" / "dashboards"
@@ -69,6 +70,11 @@ def _raw_widget(item_id: str, *widget_tab_ids: str) -> dict[str, object]:
             ]
         },
     }
+
+
+def _widget_chart_tabs(data: dict[str, object], item_id: str) -> list[dict[str, object]]:
+    item = next(item for tab in _tabs(data) for item in _as_dicts(tab["items"]) if item["id"] == item_id)
+    return _as_dicts(_as_dict(item["data"])["tabs"])
 
 
 def _record_targeted_widget_op(update: DashboardUpdate, operation: str, *, item_id: str, widget_tab_id: str) -> None:
@@ -416,6 +422,77 @@ def test_set_chart_params_replaces_or_clears_one_widget_tab(
     widget_tabs = _as_dicts(_as_dict(item["data"])["tabs"])
     assert widget_tabs[0]["params"] == {"neighbor": ["unchanged"]}
     assert widget_tabs[1]["params"] == expected
+
+
+@pytest.mark.parametrize("stage", ["add_chart", "add_chart_group", "add_tab"])
+@pytest.mark.parametrize(
+    ("params", "merge", "expected"),
+    [
+        pytest.param({"region": "north"}, True, {"kept": ["right"], "region": ["north"]}, id="merge"),
+        pytest.param({"region": "north"}, False, {"region": ["north"]}, id="replace"),
+        pytest.param({}, False, {}, id="clear"),
+    ],
+)
+def test_set_chart_params_targets_typed_widget_staged_in_same_update(
+    stage: str, params: dict[str, object], merge: bool, expected: dict[str, list[str]]
+) -> None:
+    dashboard = _synthetic(
+        [
+            {"id": "tab_keep", "title": "Keep", "items": [], "layout": []},
+            {"id": "tab_drop", "title": "Drop", "items": [], "layout": []},
+        ]
+    )
+    source = _canonical(dashboard.data)
+    update = dashboard.update
+    charts = [
+        DashboardChartTab("left-chart", title="Left", params={"kept": "left", "region": "west"}),
+        DashboardChartTab("right-chart", title="Right", params={"kept": "right", "region": "east"}),
+    ]
+    if stage == "add_chart":
+        update.add_chart(
+            "right-chart", title="Right", item_id="new", tab="tab_keep", params={"kept": "right", "region": "east"}
+        )
+    elif stage == "add_chart_group":
+        update.add_chart_group(charts, item_id="new", tab="tab_keep")
+    else:
+        update.add_tab(DashboardTab("Added").add_chart_group(charts, item_id="new"))
+    add_op = update.ops[-1]
+    assert isinstance(add_op, (AddItemsOp, AddTabOp))
+    items = add_op.items if isinstance(add_op, AddItemsOp) else add_op.tab.items
+    item = items[0]
+    assert isinstance(item, WidgetItem)
+    target_id = item.tabs[-1].id
+    before = _widget_chart_tabs(_apply_update(update.to_spec()), "new")
+
+    update.remove_tab("tab_drop").set_chart_params(
+        item_id="new", widget_tab_id=target_id, params=params, merge=merge
+    ).replace_chart(item_id="new", widget_tab_id=target_id, chart="replacement")
+    applied = _apply_update(update.to_spec())
+    after = _widget_chart_tabs(applied, "new")
+    assert after[:-1] == before[:-1]
+    assert after[-1] == {**before[-1], "chartId": "replacement", "params": expected}
+    assert "tab_drop" not in {tab["id"] for tab in _tabs(applied)}
+    assert _canonical(dashboard.data) == source
+
+
+def test_set_chart_params_preserves_order_of_all_tabs_and_targeted_operations() -> None:
+    update = _synthetic([{"id": "tab_1", "title": "One", "items": [], "layout": []}]).update
+    update.add_chart_group(
+        [DashboardChartTab("left", title="Left"), DashboardChartTab("right", title="Right")],
+        item_id="new",
+        tab="tab_1",
+    )
+    add_op = update.ops[0]
+    assert isinstance(add_op, AddItemsOp)
+    item = add_op.items[0]
+    assert isinstance(item, WidgetItem)
+    update.set_chart_params(item_id="new", params={"shared": "one", "kept": "base"})
+    update.set_chart_params(item_id="new", widget_tab_id=item.tabs[1].id, params={"target": "two"}, merge=False)
+    update.set_chart_params(item_id="new", params={"shared": "three"})
+
+    tabs = _widget_chart_tabs(_apply_update(update.to_spec()), "new")
+    assert tabs[0]["params"] == {"shared": ["three"], "kept": ["base"]}
+    assert tabs[1]["params"] == {"shared": ["three"], "target": ["two"]}
 
 
 def test_set_chart_params_replace_mode_and_selector_defaults() -> None:

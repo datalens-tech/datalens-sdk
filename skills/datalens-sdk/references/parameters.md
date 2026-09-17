@@ -83,6 +83,54 @@ defaults on every occurrence of a shared standalone `control`, but
 `widget_tab_id` is valid only for widgets; `group_control` is rejected, so
 update a grouped selector by its member id instead.
 
+### Update one internal chart tab
+
+With a configured `client`, a known `dashboard_id`, and the receiving
+`revenue_chart_id`, discover the internal tab id from the existing widget.
+Here `revenue_comparison` is the widget's stable semantic `item_id`; it is
+neither the chart id nor the internal tab id. Singleton unpacking below fails
+before the write if the widget or receiving chart is missing or ambiguous.
+
+```python
+from collections.abc import Mapping
+
+item_id = "revenue_comparison"
+dashboard = client.get.dashboard(by_id=dashboard_id, branch="saved")
+(widget,) = [item for tab in dashboard.tabs for item in (*tab.items, *tab.global_items) if item.id == item_id]
+chart_tabs = widget.data.get("tabs")
+if widget.item_type != "widget" or not isinstance(chart_tabs, list):
+    raise ValueError("Expected a chart widget with internal tabs")
+if not all(isinstance(tab, Mapping) for tab in chart_tabs):
+    raise ValueError("Expected an object for every internal chart tab")
+(target,) = [tab for tab in chart_tabs if tab.get("chartId") == revenue_chart_id]
+widget_tab_id = target.get("id")
+if not isinstance(widget_tab_id, str) or not widget_tab_id:
+    raise ValueError("The target chart tab has no usable id")
+neighbors_before = {tab["id"]: tab.get("params", {}) for tab in chart_tabs if tab["id"] != widget_tab_id}
+
+dashboard.update.set_chart_params(
+    item_id=item_id,
+    widget_tab_id=widget_tab_id,
+    params={"env": "prod"},
+    merge=False,
+).execute(publish=True)
+
+# The write has succeeded. If verification fails, rerun only this read phase.
+dashboard = client.get.dashboard(by_id=dashboard_id, branch="published")
+(widget,) = [item for tab in dashboard.tabs for item in (*tab.items, *tab.global_items) if item.id == item_id]
+chart_tabs = widget.data.get("tabs")
+if not isinstance(chart_tabs, list) or not all(isinstance(tab, Mapping) for tab in chart_tabs):
+    raise ValueError("Expected the persisted internal chart tabs")
+(target,) = [tab for tab in chart_tabs if tab.get("id") == widget_tab_id]
+assert target.get("params") == {"env": ["prod"]}
+assert {tab["id"]: tab.get("params", {}) for tab in chart_tabs if tab["id"] != widget_tab_id} == neighbors_before
+```
+
+If the same chart appears more than once in this widget, inspect the internal
+tab ids and titles and select the intended one explicitly; never pick the first
+match. Use `merge=True` to preserve other keys on the target, or
+`params={}, merge=False` to clear only that tab's overrides.
+
 ## Manual selector to every tab
 
 For one shared selector, do not create a named one-member group with both
