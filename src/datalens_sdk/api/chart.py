@@ -349,15 +349,21 @@ class ChartService(ChartOperations):
             dto_module=self._dto_module,
         )
 
-    def build_editor_chart_update(self, chart: EditorChart) -> EditorChartUpdate:
-        if not chart.id:
-            raise DataLensValidationError("Cannot update an editor chart without an id")
-        wire_type = chart.wire_type
+    def _validate_editor_update_wire_type(
+        self,
+        wire_type: str | None,
+    ) -> tuple[str, EditorChartDtoModule | None]:
         editor_dto_module = cast(EditorChartDtoModule | None, self._dto_module)
         if wire_type is None or wire_type not in editor_update_wire_types(self._installation, editor_dto_module):
             raise NotSupportedError(
                 f"Editor chart type {wire_type!r} cannot be updated on installation {self._installation!r}"
             )
+        return wire_type, editor_dto_module
+
+    def build_editor_chart_update(self, chart: EditorChart) -> EditorChartUpdate:
+        if not chart.id:
+            raise DataLensValidationError("Cannot update an editor chart without an id")
+        wire_type, editor_dto_module = self._validate_editor_update_wire_type(chart.wire_type)
         return EditorChartUpdate(
             chart=chart,
             operations=self,
@@ -370,16 +376,16 @@ class ChartService(ChartOperations):
         entry_id = builder.chart.id
         if not entry_id:
             raise ValueError("Cannot update editor chart without an id")
-        wire_type = builder.chart.wire_type
-        if wire_type is None or wire_type not in editor_update_wire_types(
-            self._installation,
-            cast(EditorChartDtoModule | None, self._dto_module),
-        ):
-            raise NotSupportedError(
-                f"Editor chart type {wire_type!r} cannot be updated on installation {self._installation!r}"
+        wire_type = builder.wire_type_value
+        current_wire_type = builder.chart.wire_type
+        if current_wire_type != wire_type:
+            raise DataLensValidationError(
+                "Editor chart wire type changed after update builder creation: "
+                f"expected {wire_type!r}, got {current_wire_type!r}"
             )
+        _, editor_dto_module = self._validate_editor_update_wire_type(wire_type)
         try:
-            dto_obj = EditorChartConverter.from_domain_update(builder, dto_module=self._dto_module)
+            dto_obj = EditorChartConverter.from_domain_update(builder, dto_module=editor_dto_module)
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="updateEditorChart", reason=str(exc)) from exc
         response = self._api.update_editor(dto_obj.to_payload())

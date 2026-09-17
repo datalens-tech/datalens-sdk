@@ -376,6 +376,10 @@ def test_editor_chart_update_direct_constructor_keeps_legacy_unrestricted_behavi
     assert update.graph("content").tab_edits == {"graph": "content"}
 
 
+def test_chart_operations_keeps_editor_update_construction_hook_optional() -> None:
+    assert not hasattr(ChartOperations, "build_editor_chart_update")
+
+
 # ---------------------------------------------------------------------------
 # 6. from_domain_update
 # ---------------------------------------------------------------------------
@@ -400,6 +404,22 @@ def test_from_domain_update_builds_update_dto() -> None:
     data = entry["data"]
     assert isinstance(data, dict)
     assert data["sources"] == "new_sources"
+
+
+def test_from_domain_update_rejects_wire_type_mutation() -> None:
+    ops = cast(ChartOperations, _FakeOps())
+    chart = EditorChart(
+        id="e1",
+        wire_type="advanced-chart_node",
+        data={"sources": "old", "params": "p", "controls": "c", "meta": "m", "prepare": "pr"},
+        _operations=ops,
+    )
+    update = chart.update.sources("new_sources")
+
+    chart.wire_type = "markdown_node"
+
+    with pytest.raises(DataLensValidationError, match=r"wire type changed.*advanced-chart_node.*markdown_node"):
+        EditorChartConverter.from_domain_update(update)
 
 
 @pytest.mark.parametrize("description", ["Updated description", ""])
@@ -559,6 +579,27 @@ def test_editor_update_service_rechecks_wire_type_before_http() -> None:
     update = EditorChartUpdate(chart=chart, operations=cast(ChartOperations, chart._operations))
 
     with pytest.raises(NotSupportedError, match="graph_node"):
+        update.execute()
+
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getEditorChart"]
+
+
+def test_editor_update_rejects_wire_type_mutation_before_http() -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/getEditorChart": httpx.Response(
+                200,
+                json=_editor_chart_response(wire_type="advanced-chart_node"),
+            )
+        }
+    )
+    client = dl.DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
+    chart = client.get.editor_chart(by_id="e1")
+    update = chart.update.sources("updated")
+
+    chart.wire_type = "markdown_node"
+
+    with pytest.raises(DataLensValidationError, match=r"wire type changed.*advanced-chart_node.*markdown_node"):
         update.execute()
 
     assert [request.url.path for request in recorder.requests] == ["/rpc/getEditorChart"]

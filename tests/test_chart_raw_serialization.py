@@ -1126,7 +1126,7 @@ def test_raw_editor_rejects_incomplete_file_before_builder_or_http(tmp_path: Pat
     assert recorder.requests == []
 
 
-def test_editor_type_unavailable_on_target_installation_fails_before_http() -> None:
+def test_editor_type_cannot_be_raw_created_on_target_installation() -> None:
     recorder = RecordedTransport({})
     operation = _client(recorder).raw.create.editor_chart(
         response_snapshot=_raw(_editor_snapshot(wire_type="graph_node")),
@@ -1134,7 +1134,7 @@ def test_editor_type_unavailable_on_target_installation_fails_before_http() -> N
         location=dl.EntryLocation.path("/target"),
     )
 
-    with pytest.raises(NotSupportedError, match="not available on installation 'yacloud'"):
+    with pytest.raises(NotSupportedError, match="cannot be created on installation 'yacloud'"):
         operation.build()
     assert recorder.requests == []
 
@@ -1152,7 +1152,7 @@ def test_read_only_editor_type_cannot_be_raw_replaced() -> None:
         response_snapshot=_raw(_editor_snapshot(wire_type="graph_node")),
     )
 
-    with pytest.raises(NotSupportedError, match="not available on installation 'yacloud'"):
+    with pytest.raises(NotSupportedError, match="cannot be replaced on installation 'yacloud'"):
         operation.execute()
     assert recorder.requests == []
 

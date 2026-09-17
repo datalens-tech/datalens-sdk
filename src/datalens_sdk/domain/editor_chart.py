@@ -42,6 +42,10 @@ class EditorChartUpdate:
         return self._chart
 
     @property
+    def wire_type_value(self) -> str | None:
+        return self._wire_type
+
+    @property
     def mode_value(self) -> EntryUpdateMode:
         return self._mode
 

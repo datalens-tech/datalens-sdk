@@ -327,7 +327,7 @@ class EditorChartConverter:
         supported = editor_create_wire_types(installation, dto_module)
         if source.wire_type not in supported:
             raise NotSupportedError(
-                f"Editor chart type {source.wire_type!r} is not available on installation {installation!r}"
+                f"Editor chart type {source.wire_type!r} cannot be created on installation {installation!r}"
             )
         key = key_from_location(spec.location, name=spec.name)
         return RawEditorChartCreateEnvelope(
@@ -356,7 +356,7 @@ class EditorChartConverter:
         supported = editor_update_wire_types(installation, dto_module)
         if source.wire_type not in supported:
             raise NotSupportedError(
-                f"Editor chart type {source.wire_type!r} is not available on installation {installation!r}"
+                f"Editor chart type {source.wire_type!r} cannot be replaced on installation {installation!r}"
             )
         if source.wire_type != target_wire_type:
             raise DataLensValidationError(
@@ -382,7 +382,12 @@ class EditorChartConverter:
     ) -> EditorChartUpdateDTOProtocol:
         effective_module = generated_dto if dto_module is None else dto_module
         chart = update.chart
-        wire_type = chart.wire_type
+        wire_type = update.wire_type_value
+        if chart.wire_type != wire_type:
+            raise DataLensValidationError(
+                "Editor chart wire type changed after update builder creation: "
+                f"expected {wire_type!r}, got {chart.wire_type!r}"
+            )
         if wire_type is None:
             raise ValueError("Cannot update editor chart without wire_type")
 
