@@ -182,6 +182,20 @@ def test_editor_operation_catalogs_match_their_own_discriminators(installation: 
     assert INSTALLATION_EDITOR_UPDATE_NODE_TYPES[installation] <= INSTALLATION_EDITOR_READ_NODE_TYPES[installation]
 
 
+@pytest.mark.parametrize("installation", ["enterprise", "yacloud"])
+def test_editor_create_and_update_catalogs_remain_symmetric(installation: str) -> None:
+    create_types = INSTALLATION_EDITOR_CREATE_NODE_TYPES[installation]
+    update_types = INSTALLATION_EDITOR_UPDATE_NODE_TYPES[installation]
+
+    assert create_types == update_types, (
+        f"{installation} Editor create/update catalogs diverged: "
+        f"create-only={sorted(create_types - update_types)!r}, "
+        f"update-only={sorted(update_types - create_types)!r}. "
+        "If the schema divergence is intentional, replace this symmetry invariant "
+        "with an explicit expected delta and preserve operation-specific routing coverage."
+    )
+
+
 def test_legacy_editor_node_types_constant_remains_the_create_catalog() -> None:
     assert INSTALLATION_EDITOR_NODE_TYPES is INSTALLATION_EDITOR_CREATE_NODE_TYPES
 

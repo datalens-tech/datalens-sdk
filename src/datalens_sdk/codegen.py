@@ -2480,6 +2480,8 @@ class WizardChartDeleteArgsDTO(BaseModel):
 
 def _emit_chart_dto(metadata: Metadata) -> str:
     all_editor_nodes: dict[str, EditorCreateNodeMeta] = {}
+    all_editor_update_nodes: dict[str, EditorNodeMeta] = {}
+    editor_update_node_installations: dict[str, str] = {}
     installation_editor_read_types: dict[str, list[str]] = {}
     installation_editor_create_types: dict[str, list[str]] = {}
     installation_editor_update_types: dict[str, list[str]] = {}
@@ -2496,6 +2498,20 @@ def _emit_chart_dto(metadata: Metadata) -> str:
         for wire_type, node_meta in info["charts"]["editor_nodes"].items():
             if wire_type not in all_editor_nodes:
                 all_editor_nodes[wire_type] = node_meta
+        for wire_type, update_node_meta in chart_meta["editor_update_nodes"].items():
+            previous_node_meta = all_editor_update_nodes.get(wire_type)
+            if previous_node_meta is None:
+                all_editor_update_nodes[wire_type] = update_node_meta
+                editor_update_node_installations[wire_type] = installation
+                continue
+            if previous_node_meta["data_fields"] != update_node_meta["data_fields"]:
+                previous_installation = editor_update_node_installations[wire_type]
+                raise ValueError(
+                    f"Editor update wire type {wire_type!r} has incompatible data fields or requiredness "
+                    f"across installations {previous_installation!r} and {installation!r}: "
+                    f"{previous_node_meta['data_fields']!r} != {update_node_meta['data_fields']!r}. "
+                    "Per-installation Editor update DTOs are not supported."
+                )
 
     lines: list[str] = []
 
@@ -2664,12 +2680,6 @@ class QLChartDeleteArgsDTO(BaseModel):
         lines.append("            entry['workbookId'] = self.workbook_id")
         lines.append("        return {'entry': entry}")
         lines.append("")
-
-    all_editor_update_nodes: dict[str, EditorNodeMeta] = {}
-    for _installation, info in sorted(metadata["installations"].items()):
-        for wire_type, update_node_meta in info["charts"]["editor_update_nodes"].items():
-            if wire_type not in all_editor_update_nodes:
-                all_editor_update_nodes[wire_type] = update_node_meta
 
     for wire_type, update_node_meta in sorted(all_editor_update_nodes.items()):
         cls_prefix = _node_class_name(wire_type)

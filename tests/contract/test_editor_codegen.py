@@ -40,10 +40,56 @@ def _entry_discriminator(schemas: dict[str, dict[str, object]], operation: str) 
     return _object(entry["discriminator"])
 
 
-def _add_optional_update_tab(schemas: dict[str, dict[str, object]], tab: str) -> None:
-    update_schema = _object(schemas["UpdateEditorAdvancedChartNodeEntry"])
+def _update_node_schema(
+    schemas: dict[str, dict[str, object]],
+    wire_type: str,
+) -> dict[str, object]:
+    mapping = _object(_entry_discriminator(schemas, "update")["mapping"])
+    schema_ref = mapping[wire_type]
+    assert isinstance(schema_ref, str)
+    return _object(schemas[schema_ref.rsplit("/", 1)[-1]])
+
+
+def _add_optional_update_tab(
+    schemas: dict[str, dict[str, object]],
+    tab: str,
+    *,
+    wire_type: str = "advanced-chart_node",
+) -> None:
+    update_schema = _update_node_schema(schemas, wire_type)
     data_schema = _object(_object(update_schema["properties"])["data"])
     _object(data_schema["properties"])[tab] = {"type": "string"}
+
+
+def _require_update_tab(
+    schemas: dict[str, dict[str, object]],
+    tab: str,
+    *,
+    wire_type: str = "advanced-chart_node",
+) -> None:
+    update_schema = _update_node_schema(schemas, wire_type)
+    data_schema = _object(_object(update_schema["properties"])["data"])
+    required = data_schema.setdefault("required", [])
+    assert isinstance(required, list)
+    required.append(tab)
+
+
+def _retain_update_wire_types(schemas: dict[str, dict[str, object]], *wire_types: str) -> None:
+    mapping = _object(_entry_discriminator(schemas, "update")["mapping"])
+    for wire_type in set(mapping) - set(wire_types):
+        del mapping[wire_type]
+
+
+def _metadata(first: codegen.ChartMeta, second: codegen.ChartMeta) -> codegen.Metadata:
+    return cast(
+        codegen.Metadata,
+        {
+            "installations": {
+                "first": {"charts": first},
+                "second": {"charts": second},
+            }
+        },
+    )
 
 
 def test_editor_metadata_allows_a_read_superset_without_opening_writes() -> None:
@@ -58,31 +104,52 @@ def test_editor_metadata_allows_a_read_superset_without_opening_writes() -> None
     assert "legacy_read_only" not in metadata["editor_update_nodes"]
 
 
-def test_editor_update_tabs_remain_nested_by_installation() -> None:
+def test_editor_update_tabs_are_bound_to_their_installation() -> None:
     first_schemas = _schemas()
     second_schemas = _schemas()
+    _retain_update_wire_types(first_schemas, "advanced-chart_node")
+    _retain_update_wire_types(second_schemas, "markdown_node")
     _add_optional_update_tab(first_schemas, "first_only")
-    _add_optional_update_tab(second_schemas, "second_only")
+    _add_optional_update_tab(second_schemas, "second_only", wire_type="markdown_node")
     first = codegen._chart_meta(first_schemas)
     second = codegen._chart_meta(second_schemas)
-    metadata = cast(
-        codegen.Metadata,
-        {
-            "installations": {
-                "first": {"charts": first},
-                "second": {"charts": second},
-            }
-        },
-    )
 
-    emitted = codegen._emit_chart_dto(metadata)
+    emitted = codegen._emit_chart_dto(_metadata(first, second))
 
     first_tabs = sorted(first["editor_update_nodes"]["advanced-chart_node"]["data_fields"])
-    second_tabs = sorted(second["editor_update_nodes"]["advanced-chart_node"]["data_fields"])
-    assert f"        'advanced-chart_node': frozenset({first_tabs!r})," in emitted
-    assert f"        'advanced-chart_node': frozenset({second_tabs!r})," in emitted
-    assert "'first': {" in emitted
-    assert "'second': {" in emitted
+    second_tabs = sorted(second["editor_update_nodes"]["markdown_node"]["data_fields"])
+    expected = f"""INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE: dict[str, dict[str, frozenset[str]]] = {{
+    'first': {{
+        'advanced-chart_node': frozenset({first_tabs!r}),
+    }},
+    'second': {{
+        'markdown_node': frozenset({second_tabs!r}),
+    }},
+}}"""
+    assert expected in emitted
+
+
+@pytest.mark.parametrize("drift", ["fields", "requiredness"])
+def test_editor_update_dto_generation_rejects_installation_specific_shared_wire_type(drift: str) -> None:
+    first_schemas = _schemas()
+    second_schemas = _schemas()
+    if drift == "fields":
+        _add_optional_update_tab(second_schemas, "second_only")
+    else:
+        _add_optional_update_tab(first_schemas, "shared_tab")
+        _add_optional_update_tab(second_schemas, "shared_tab")
+        _require_update_tab(second_schemas, "shared_tab")
+    first = codegen._chart_meta(first_schemas)
+    second = codegen._chart_meta(second_schemas)
+
+    with pytest.raises(ValueError, match="incompatible data fields or requiredness") as exc_info:
+        codegen._emit_chart_dto(_metadata(first, second))
+
+    message = str(exc_info.value)
+    assert "'advanced-chart_node'" in message
+    assert "'first'" in message
+    assert "'second'" in message
+    assert "Per-installation Editor update DTOs are not supported" in message
 
 
 def test_editor_discriminator_requires_type_property() -> None:
