@@ -70,7 +70,8 @@ For YC with `YC_CLI=missing` and `YC_STATIC=absent`, the response must include
 
 1. **Recommended:** install and configure the Yandex Cloud CLI (`yc`) using
    the [official quickstart](https://yandex.cloud/docs/cli/quickstart), including
-   profile initialization with `yc init`.
+   profile initialization with `yc init`. Explicitly offer to help with CLI
+   installation and configuration in the current environment.
 2. **Alternative without CLI:** set `DATALENS_ORG_ID` and `DATALENS_IAM_TOKEN`
    in the environment or the current project's `.env`; use
    `StaticYCIAMAuthProvider` explicitly. Never ask the user to paste the token
