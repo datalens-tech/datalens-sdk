@@ -61,17 +61,25 @@ the configuration state from malformed output.
 
 | STATUS        | Meaning                             | What to do                                                                                                                                       |
 |---------------|-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ready`       | installation and credentials configured | proceed with the supplied `PYTHON`                                                                                                 |
+| `ready`       | local configuration prerequisites detected | proceed with the supplied `PYTHON` after any pending user confirmation of CLI initialization |
 | `needs_input` | installation choice is unresolved       | ask the one missing question (yc or Enterprise), then rerun preflight                                                              |
 | `blocked`     | configuration action required           | for YC, offer both recovery options below; for Enterprise, request the base URL; do not work around it |
 
 For YC with `YC_CLI=missing` and `YC_STATIC=absent`, the response must include
 **both** recovery options:
 
-1. **Recommended:** install and configure the Yandex Cloud CLI (`yc`) using
-   the [official quickstart](https://yandex.cloud/docs/cli/quickstart), including
-   profile initialization with `yc init`. Explicitly offer to help with CLI
-   installation and configuration in the current environment.
+1. **Recommended:** offer to install the Yandex Cloud CLI (`yc`) using the
+   [official installation guide](https://yandex.cloud/docs/cli/operations/install-cli).
+   Ask whether to install globally for the current user with `PATH` integration
+   or locally under the current project directory, unless already specified.
+   After the user chooses, install it using
+   [the CLI installation workflow](references/setup.md#installing-yc-for-the-user).
+   The agent installs the binary; the user initializes it. Never run `yc init`
+   or authenticate on the user's behalf. Give the user initialization commands
+   and the [official quickstart](https://yandex.cloud/docs/cli/quickstart), then
+   ask them to reply **"Готово", "Продолжай", or "Continue"** after setup.
+   Wait for that confirmation before resuming SDK work, even if preflight
+   already reports `ready` because the binary exists.
 2. **Alternative without CLI:** set `DATALENS_ORG_ID` and `DATALENS_IAM_TOKEN`
    in the environment or the current project's `.env`; use
    `StaticYCIAMAuthProvider` explicitly. Never ask the user to paste the token
@@ -157,9 +165,10 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
    supplied by the calling bootstrap. Run this bundled
    `scripts/preflight.sh` through its absolute path, from the user's project
    directory, before the first SDK call of a session.
-2. **No package management here.** Never run pip, uv, or Poetry from this
-   bundled skill and never suggest `--break-system-packages`; installation
-   and version decisions belong to the calling bootstrap.
+2. **No Python package management here.** Never run pip, uv, or Poetry from
+   this bundled skill and never suggest `--break-system-packages`; Python
+   package installation and version decisions belong to the calling bootstrap.
+   Installing the external `yc` CLI follows the user-selected scope above.
 3. **Tokens are opaque.** Never print, log, echo, hash, or measure a token;
    never ask the user to paste one into chat. Secrets live in `.env`, which
    the user edits themselves. The only permitted checks are existence

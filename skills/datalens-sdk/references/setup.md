@@ -52,16 +52,17 @@ malformed output.
 
 | Condition | STATUS | Agent action |
 |---|---|---|
-| Installation resolved and credentials present | `ready` | Proceed to the task with the exact `PYTHON` supplied by the calling bootstrap. |
+| Installation resolved and local prerequisites present | `ready` | Proceed with the exact `PYTHON` supplied by the calling bootstrap. If CLI initialization was handed to the user, first wait for their completion confirmation. Presence checks do not verify authentication. |
 | `INSTALLATION=ambiguous` (see `INSTALLATION_HINTS`) | `needs_input` | Ask the user which installation to target, offering the hints; rerun `preflight.sh <choice>`. |
 | `INSTALLATION=unknown` | `needs_input` | Ask the user: yc or enterprise; rerun with the answer. |
-| yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Offer both options in the response: **recommended**, install and configure the `yc` CLI using the [official quickstart](https://yandex.cloud/docs/cli/quickstart), including profile initialization with `yc init`, and explicitly offer to help with CLI installation and configuration in the current environment; **alternative**, set `DATALENS_ORG_ID` + `DATALENS_IAM_TOKEN` in the environment or the current project's `.env` and use `StaticYCIAMAuthProvider`. Never ask for the token in chat. Do not work around the blocker. |
+| yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Offer both options: install `yc` using the [official guide](https://yandex.cloud/docs/cli/operations/install-cli) after the user chooses global-with-PATH or project-local installation, following [Installing yc for the user](#installing-yc-for-the-user); alternatively, set `DATALENS_ORG_ID` + `DATALENS_IAM_TOKEN` in the environment or the current project's `.env` and use `StaticYCIAMAuthProvider`. Never ask for the token in chat. |
 | enterprise, `BASE_URL=missing` | `blocked` | Ask the user for the API endpoint; they set `DATALENS_BASE_URL` (non-secret — with their consent you may write it to the file at `ENV_FILE`). |
 | enterprise, `TOKEN=absent` | (unchanged) | Informational, not a blocker. Proceed without auth; if the deployment then rejects calls with 401, use `OAuthAuthProvider()` when the user has an OAuth token or `EnterpriseServiceAccountCredentialsAuthProvider` when they have service-account credentials. |
 
 Two rules apply: never run `yc iam create-token` during diagnostics (the SDK
-mints IAM tokens lazily at request time), and never perform package management
-from this bundled skill.
+mints IAM tokens lazily at request time), and never perform Python package
+management from this bundled skill. External CLI installation follows the
+workflow below after the user chooses its scope.
 
 After constructing the client, inspect the local generated
 `client.capabilities`. Check connection and source factories in `connectors`
@@ -71,6 +72,75 @@ These inventories are authoritative for the configured client and require no
 network call. When credentials or endpoint health are in doubt, use the
 harmless one-entry navigation listing from
 [troubleshooting.md](troubleshooting.md).
+
+## Installing yc for the user
+
+Use this workflow when the user accepts CLI installation. If its scope is not
+already specified, ask **global for the current user with PATH integration, or
+local under the current project directory?** Wait for the choice before
+installing. That choice authorizes the corresponding installation; do not ask
+for the same approval again.
+
+### Install in the selected scope
+
+Read the current [official installation instructions](https://yandex.cloud/docs/cli/operations/install-cli)
+for the host OS, architecture, and shell. On Linux/macOS, download the official
+`https://storage.yandexcloud.net/yandexcloud-yc/install.sh` to a temporary file,
+inspect it, and run only the selected variant:
+
+| User choice | Installer invocation | Expected executable |
+|---|---|---|
+| Global for the current user, added to PATH | `bash "$yc_installer" -a` | `$HOME/yandex-cloud/bin/yc` |
+| Local to the current project, without shell-profile changes | `bash "$yc_installer" -i "$PWD/.yandex-cloud" -n` | `$PWD/.yandex-cloud/bin/yc` |
+
+Here `yc_installer` is the downloaded script's absolute path, and `PWD` is the
+user's project directory. Global means available across this user's projects,
+not a system-wide installation requiring `sudo`. For Windows or another shell,
+use the matching official installer or archive instructions with the same
+scope and PATH behavior; do not reuse Bash flags with PowerShell. A local
+installation must not modify the persistent user or system PATH.
+
+Verify installation using the installed executable's absolute path and
+`version` only. If installation fails, report the error before proceeding to
+initialization instructions; do not silently switch installation scope.
+For subsequent preflight and SDK processes, explicitly pass
+`DATALENS_YC_BIN` as that absolute path, including for a global install when the
+agent's current PATH has not refreshed. User-terminal exports do not update
+the agent's environment. Preserve the selected binary across tool calls;
+loading a project `.env` follows the non-executing rules below.
+
+### Hand initialization to the user and wait
+
+The agent installs the binary but **must not run `yc init`, perform login,
+enter credentials, or configure the user's authentication profile**. Link the
+[official quickstart](https://yandex.cloud/docs/cli/quickstart) and provide
+copyable commands for the user to run in their own terminal, using the actual
+installed executable path:
+
+```bash
+"/absolute/path/to/yc" init
+"/absolute/path/to/yc" config set organization-id "<organization-id>"
+```
+
+Replace the executable placeholder with the installed path. Fill the
+organization id if already known; otherwise explain that the user supplies
+their DataLens organization id. Adapt initialization to the user's account
+type using the official instructions. If `DATALENS_YC_PROFILE` is set, tell the
+user to select that profile in the wizard and add `--profile <profile>` to the
+organization-setting command. Retain the same profile when resuming SDK work.
+Never ask for credentials, tokens, or a full CLI configuration dump in chat.
+
+End the handoff by asking the user to reply **"Готово", "Продолжай", or
+"Continue"** after completing setup. Wait for that reply (or an equally clear
+confirmation of completion). A successful `yc version`, `YC_CLI=found`, or
+preflight `STATUS=ready` only establishes binary availability; none replaces
+the user's completion confirmation. Do not construct the Cloud client or run
+API calls while waiting.
+
+After confirmation, rerun `preflight.sh yc` with the selected binary and
+profile in the agent's process environment, then resume the original task.
+If configuration still fails, explain what the user must correct and wait
+again; do not run initialization or obtain tokens as a diagnostic workaround.
 
 ## Constructing a client
 
