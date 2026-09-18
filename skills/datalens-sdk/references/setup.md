@@ -55,7 +55,7 @@ malformed output.
 | Installation resolved and credentials present | `ready` | Proceed to the task with the exact `PYTHON` supplied by the calling bootstrap. |
 | `INSTALLATION=ambiguous` (see `INSTALLATION_HINTS`) | `needs_input` | Ask the user which installation to target, offering the hints; rerun `preflight.sh <choice>`. |
 | `INSTALLATION=unknown` | `needs_input` | Ask the user: yc or enterprise; rerun with the answer. |
-| yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Relay one line: install the `yc` CLI (https://yandex.cloud/docs/cli/quickstart), point `DATALENS_YC_BIN` at it, or provide `DATALENS_ORG_ID` + `DATALENS_IAM_TOKEN`. Do not work around it. |
+| yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Offer both options in the response: **recommended**, install and configure the `yc` CLI using the [official quickstart](https://yandex.cloud/docs/cli/quickstart), including profile initialization with `yc init`; **alternative**, set `DATALENS_ORG_ID` + `DATALENS_IAM_TOKEN` in the environment or the current project's `.env` and use `StaticYCIAMAuthProvider`. Never ask for the token in chat. Do not work around the blocker. |
 | enterprise, `BASE_URL=missing` | `blocked` | Ask the user for the API endpoint; they set `DATALENS_BASE_URL` (non-secret — with their consent you may write it to the file at `ENV_FILE`). |
 | enterprise, `TOKEN=absent` | (unchanged) | Informational, not a blocker. Proceed without auth; if the deployment then rejects calls with 401, use `OAuthAuthProvider()` when the user has an OAuth token or `EnterpriseServiceAccountCredentialsAuthProvider` when they have service-account credentials. |
 

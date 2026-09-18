@@ -63,7 +63,20 @@ the configuration state from malformed output.
 |---------------|-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
 | `ready`       | installation and credentials configured | proceed with the supplied `PYTHON`                                                                                                 |
 | `needs_input` | installation choice is unresolved       | ask the one missing question (yc or Enterprise), then rerun preflight                                                              |
-| `blocked`     | configuration action required           | relay the one-line instruction (install `yc` CLI, provide static YC credentials, or provide the Enterprise base URL); do not work around it |
+| `blocked`     | configuration action required           | for YC, offer both recovery options below; for Enterprise, request the base URL; do not work around it |
+
+For YC with `YC_CLI=missing` and `YC_STATIC=absent`, the response must include
+**both** recovery options:
+
+1. **Recommended:** install and configure the Yandex Cloud CLI (`yc`) using
+   the [official quickstart](https://yandex.cloud/docs/cli/quickstart), including
+   profile initialization with `yc init`.
+2. **Alternative without CLI:** set `DATALENS_ORG_ID` and `DATALENS_IAM_TOKEN`
+   in the environment or the current project's `.env`; use
+   `StaticYCIAMAuthProvider` explicitly. Never ask the user to paste the token
+   into chat.
+
+After configuration changes, rerun preflight before continuing.
 
 Key output fields: `INSTALLATION`, `TOKEN`/`YC_CLI`/`YC_STATIC`/`BASE_URL`
 (per installation), and `ENV_FILE`. Full state table and interpretation:
