@@ -76,17 +76,22 @@ harmless one-entry navigation listing from
 ## Installing yc for the user
 
 Use this workflow when the user accepts CLI installation. If its scope is not
-already specified, ask **global for the current user with PATH integration, or
-local under the current project directory?** Wait for the choice before
-installing. That choice authorizes the corresponding installation; do not ask
-for the same approval again.
+already specified, explain the effects and ask **global for the current user
+with PATH integration, or local under the current project directory?** The
+global installer edits the user's shell profile to load `PATH` and completion;
+the local installer creates `.yandex-cloud/` in the project and does not edit a
+shell profile. Wait for the informed choice before installing. That choice
+authorizes those stated effects; do not ask for the same approval again.
 
 ### Install in the selected scope
 
 Read the current [official installation instructions](https://yandex.cloud/docs/cli/operations/install-cli)
 for the host OS, architecture, and shell. On Linux/macOS, download the official
 `https://storage.yandexcloud.net/yandexcloud-yc/install.sh` to a temporary file,
-inspect it, and run only the selected variant:
+read the downloaded file before execution, and confirm that it is the Yandex
+Cloud installer for the detected OS/architecture and documents the selected
+`-a` or `-i ... -n` flags. Never pipe the remote script directly into a shell.
+Run only the selected variant:
 
 | User choice | Installer invocation | Expected executable |
 |---|---|---|
@@ -100,14 +105,35 @@ use the matching official installer or archive instructions with the same
 scope and PATH behavior; do not reuse Bash flags with PowerShell. A local
 installation must not modify the persistent user or system PATH.
 
+Before a local installation in a Git worktree, check whether anything beneath
+`.yandex-cloud/` is already tracked. If so, stop and report the conflict; do not
+overwrite or untrack it. Otherwise ensure the project's `.gitignore` ignores
+`/.yandex-cloud/`, appending that exact root-relative rule only when no existing
+rule already ignores the directory. Preserve all existing `.gitignore`
+content, then verify the directory is ignored before installing. Outside a Git
+worktree, do not create `.gitignore`.
+
 Verify installation using the installed executable's absolute path and
 `version` only. If installation fails, report the error before proceeding to
 initialization instructions; do not silently switch installation scope.
 For subsequent preflight and SDK processes, explicitly pass
 `DATALENS_YC_BIN` as that absolute path, including for a global install when the
 agent's current PATH has not refreshed. User-terminal exports do not update
-the agent's environment. Preserve the selected binary across tool calls;
-loading a project `.env` follows the non-executing rules below.
+the agent's environment. A `DATALENS_YC_BIN` assignment written only to `.env`
+is insufficient: preflight and the SDK do not load that file themselves.
+Preserve the selected binary across tool calls and set it on **every** relevant
+process invocation. Set `DATALENS_YC_PROFILE` the same way when a profile was
+selected. For example, omit the profile assignment when it is unused:
+
+```bash
+DATALENS_YC_BIN="/absolute/path/to/yc" \
+  DATALENS_YC_PROFILE="profile-name" \
+  bash "/absolute/path/to/datalens-sdk/scripts/preflight.sh" yc
+
+DATALENS_YC_BIN="/absolute/path/to/yc" \
+  DATALENS_YC_PROFILE="profile-name" \
+  "$PYTHON" script.py
+```
 
 ### Hand initialization to the user and wait
 
@@ -130,12 +156,14 @@ user to select that profile in the wizard and add `--profile <profile>` to the
 organization-setting command. Retain the same profile when resuming SDK work.
 Never ask for credentials, tokens, or a full CLI configuration dump in chat.
 
-End the handoff by asking the user to reply **"Готово", "Продолжай", or
-"Continue"** after completing setup. Wait for that reply (or an equally clear
-confirmation of completion). A successful `yc version`, `YC_CLI=found`, or
-preflight `STATUS=ready` only establishes binary availability; none replaces
-the user's completion confirmation. Do not construct the Cloud client or run
-API calls while waiting.
+End the handoff by asking the user to confirm after completing setup.
+**"Готово", "Продолжай", and "Continue"** are examples; accept `done`, "CLI
+настроен", or any equally clear statement that setup is complete. Do not treat
+an ambiguous acknowledgement such as "ок, настрою позже" as completion; keep
+waiting or ask whether setup has finished. A successful `yc version`,
+`YC_CLI=found`, or preflight `STATUS=ready` only establishes binary
+availability; none replaces the user's completion confirmation. Do not
+construct the Cloud client or run API calls while waiting.
 
 After confirmation, rerun `preflight.sh yc` with the selected binary and
 profile in the agent's process environment, then resume the original task.
@@ -301,6 +329,7 @@ static-credential variables, and examples pass those explicitly.
 
 - One `.env` in the user's working directory — preflight reports its path as `ENV_FILE` when enterprise configuration is incomplete (and creates the empty file so the user appends to a ready file).
 - The **user** writes secret values into it. The agent never writes or echoes secrets; non-secret variables (`DATALENS_BASE_URL`, `DATALENS_INSTALLATION`, `DATALENS_ORG_ID`, `DATALENS_YC_BIN`, `DATALENS_YC_PROFILE`) may be added by the agent with the user's consent.
+- Preflight inspects selected `.env` keys for presence but does not export their values into the process environment, and the SDK does not read `.env`. A `DATALENS_YC_BIN` or `DATALENS_YC_PROFILE` stored there takes effect only when a wrapper explicitly loads it with the allowlisted reader below; the CLI installation workflow passes these values directly to every process instead.
 - Both `KEY=value` and `export KEY=value` line styles are accepted by preflight.
 - **Never execute `.env`** (no `source`, no `.` — a crafted value would run as shell code). Load it in bash wrappers with this non-executing, allowlisted reader:
 

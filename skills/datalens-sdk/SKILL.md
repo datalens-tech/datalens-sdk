@@ -70,14 +70,17 @@ For YC with `YC_CLI=missing` and `YC_STATIC=absent`, the response must include
 
 1. **Recommended:** offer to install the Yandex Cloud CLI (`yc`) using the
    [official installation guide](https://yandex.cloud/docs/cli/operations/install-cli).
-   Ask whether to install globally for the current user with `PATH` integration
-   or locally under the current project directory, unless already specified.
+   Explain that global installation for the current user edits their shell
+   profile for `PATH` and completion, while local installation creates a
+   `.yandex-cloud/` directory under the current project and leaves shell
+   profiles unchanged. Ask which scope to use unless already specified.
    After the user chooses, install it using
    [the CLI installation workflow](references/setup.md#installing-yc-for-the-user).
    The agent installs the binary; the user initializes it. Never run `yc init`
    or authenticate on the user's behalf. Give the user initialization commands
    and the [official quickstart](https://yandex.cloud/docs/cli/quickstart), then
-   ask them to reply **"Готово", "Продолжай", or "Continue"** after setup.
+   ask them to confirm when setup is complete; **"Готово", "Продолжай", and
+   "Continue"** are examples, and any equally clear confirmation is valid.
    Wait for that confirmation before resuming SDK work, even if preflight
    already reports `ready` because the binary exists.
 2. **Alternative without CLI:** set `DATALENS_ORG_ID` and `DATALENS_IAM_TOKEN`
