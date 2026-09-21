@@ -55,7 +55,7 @@ malformed output.
 | Installation resolved and local prerequisites present | `ready` | Proceed with the exact `PYTHON` supplied by the calling bootstrap. If CLI initialization was handed to the user, first wait for their completion confirmation. Presence checks do not verify authentication. |
 | `INSTALLATION=ambiguous` (see `INSTALLATION_HINTS`) | `needs_input` | Ask the user which installation to target, offering the hints; rerun `preflight.sh <choice>`. |
 | `INSTALLATION=unknown` | `needs_input` | Ask the user: yc or enterprise; rerun with the answer. |
-| yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Offer both options: install `yc` using the [official guide](https://yandex.cloud/docs/cli/operations/install-cli) after the user chooses global-with-PATH or project-local installation, following [Installing yc for the user](#installing-yc-for-the-user); alternatively, set `DATALENS_ORG_ID` + `DATALENS_IAM_TOKEN` in the process environment or the current project's `.env` and use `StaticYCIAMAuthProvider`. When using `.env`, load it with the [non-executing allowlisted reader](#env-rules) before the repeated preflight and every SDK process; `.env` alone is insufficient. Never ask for the token in chat. |
+| yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Offer [CLI installation](#installing-yc-for-the-user) and static `DATALENS_ORG_ID` + `DATALENS_IAM_TOKEN` with `StaticYCIAMAuthProvider`; apply the [`.env` rules](#env-rules) when needed. Do not work around the block or request a token in chat. |
 | enterprise, `BASE_URL=missing` | `blocked` | Ask the user for the API endpoint; they set `DATALENS_BASE_URL` (non-secret — with their consent you may write it to the file at `ENV_FILE`). |
 | enterprise, `TOKEN=absent` | (unchanged) | Informational, not a blocker. Proceed without auth; if the deployment then rejects calls with 401, use `OAuthAuthProvider()` when the user has an OAuth token or `EnterpriseServiceAccountCredentialsAuthProvider` when they have service-account credentials. |
 
@@ -75,117 +75,71 @@ harmless one-entry navigation listing from
 
 ## Installing yc for the user
 
-Use this workflow when the user accepts CLI installation. If its scope is not
-already specified, explain the effects and ask **global for the current user
-with PATH integration, or local under the current project directory?** The
-global installer edits the user's shell profile to load `PATH` and completion;
-the local installer creates `.yandex-cloud/` in the project and does not edit a
-shell profile. In a Git worktree, the local workflow may also create or update
-`$PWD/.gitignore` when no existing rule ignores that directory. Wait for the
-informed choice before installing. That choice authorizes those stated effects;
-do not ask for the same approval again.
+When the user accepts installation, ask for the scope unless already known:
 
-### Install in the selected scope
+- **Global for the current user:** edits their shell profile for `PATH` and
+  completion; it is not system-wide and needs no `sudo`.
+- **Local to the project:** creates `$PWD/.yandex-cloud/`, never edits persistent
+  `PATH`, and may update `$PWD/.gitignore` in a Git worktree.
 
-Read the current [official installation instructions](https://yandex.cloud/docs/cli/operations/install-cli)
-for the host OS, architecture, and shell. On Linux/macOS, download the official
-`https://storage.yandexcloud.net/yandexcloud-yc/install.sh` to a temporary file,
-read the downloaded file before execution, and confirm that it is the Yandex
-Cloud installer for the detected OS/architecture and documents the selected
-`-a` or `-i ... -n` flags. Never pipe the remote script directly into a shell.
-The installer downloads and executes a second-stage binary, so do not run it
-with the agent's inherited environment. Resolve the current user's home and
-login shell from the OS account record rather than `HOME` or `SHELL`, resolve
-`env` and `bash` to trusted absolute system paths, and create a mode-700
-temporary directory under a trusted system temporary root.
+Wait for this informed choice. It authorizes the stated effects; do not ask
+again. The agent installs the CLI, but the user initializes it.
 
-#### Protect a local destination
+### Prepare and protect the destination
 
-Complete all checks in this section before executing the local installer.
-Global installation does not use this destination and can proceed to the next
-section.
+Follow the current [official installation instructions](https://yandex.cloud/docs/cli/operations/install-cli)
+for the OS, architecture, and shell. On Linux/macOS, download
+`https://storage.yandexcloud.net/yandexcloud-yc/install.sh` to a mode-700
+temporary directory under a trusted system temporary root; never pipe it into a shell.
+Confirm it is the expected Yandex Cloud installer for the platform and selected
+flags, then execute that inspected file by its verified absolute path.
 
-Before any local installation, inspect the destination from the user's project
-directory, whether or not it is a Git worktree. Stop if `.yandex-cloud` is a
-symbolic link or exists but is not a directory. If it is an existing non-empty
-directory, do not inspect file contents, execute a binary from it, delete it, or
-let the installer overwrite it. Report the conflict and ask the user to move or
-remove it themselves, or to choose the global scope. Continue only when the
-destination is absent or is an empty real directory.
+Resolve the user's home and login shell from the OS account record, and `env`
+and `bash` as trusted absolute system paths. The installer fetches a second
+stage, so run it only with the clean environment below: do not retain
+`BASH_ENV`, `ENV`, exported functions, `CLI_*`, `VERBOSE`, or test hooks. If a
+proxy or TLS setting is required, stop and request approval for that named
+setting instead of restoring the inherited environment.
 
-After that filesystem check, in a Git worktree use
-`git ls-files -- .yandex-cloud .yandex-cloud/` to check the exact destination
-and everything beneath it. If it prints any path, stop and report the conflict;
-do not overwrite or untrack it.
+Before local installation:
 
-Next run:
+1. Continue only if `.yandex-cloud` is absent or an empty real directory. Stop
+   for a symlink, non-directory, or non-empty directory; do not inspect file
+   contents, execute anything there, delete it, or allow overwrite. Ask the user
+   to move/remove it or choose global installation.
+2. In a Git worktree, run
+   `git ls-files -- .yandex-cloud .yandex-cloud/`; stop if it prints anything.
+   Then run `git check-ignore -q --no-index -- .yandex-cloud/`. If needed,
+   preserve `$PWD/.gitignore`, ensure its terminating newline, append exactly
+   `/.yandex-cloud/`, and rerun the same check; stop if it fails. Do not put the
+   root-relative rule in a parent ignore file. Outside Git, create no `.gitignore`.
 
-```bash
-git check-ignore -q --no-index -- .yandex-cloud/
-```
+### Install and verify
 
-If that succeeds, an existing rule already covers the actual destination;
-leave all ignore files unchanged. If it fails, create or update
-`$PWD/.gitignore`, preserving its existing content and adding a terminating
-newline first when necessary, then append the exact rule
-`/.yandex-cloud/`. Do not put that root-relative rule in a higher-level
-`.gitignore`: it would refer to a different directory in a nested project.
-Rerun the same `git check-ignore` command and stop with the error if the probe
-is still not ignored. Outside a Git worktree, do not create `.gitignore`.
-
-#### Run the official installer
-
-After all checks required for the selected scope pass, use a clean environment
-containing only the resolved values and a fixed system-tool `PATH`:
+After all applicable checks pass, run only the selected command:
 
 ```bash
 "$trusted_env" -i \
-  HOME="$yc_home" \
-  SHELL="$yc_shell" \
-  PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-  TMPDIR="$yc_tmpdir" \
+  HOME="$yc_home" SHELL="$yc_shell" \
+  PATH="/usr/bin:/bin:/usr/sbin:/sbin" TMPDIR="$yc_tmpdir" \
   "$trusted_bash" --noprofile --norc "$yc_installer" -a
 
 "$trusted_env" -i \
-  HOME="$yc_home" \
-  SHELL="$yc_shell" \
-  PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-  TMPDIR="$yc_tmpdir" \
+  HOME="$yc_home" SHELL="$yc_shell" \
+  PATH="/usr/bin:/bin:/usr/sbin:/sbin" TMPDIR="$yc_tmpdir" \
   "$trusted_bash" --noprofile --norc "$yc_installer" \
     -i "$PWD/.yandex-cloud" -n
 ```
 
-Run only the command for the selected scope. Here `yc_installer`,
-`trusted_env`, and `trusted_bash` are verified absolute paths; `yc_home` and
-`yc_shell` come from the OS account record; `yc_tmpdir` is the safe temporary
-directory; and `PWD` is the user's project directory. Do not preserve
-`BASH_ENV`, `ENV`, exported shell functions, `CLI_*` installer overrides,
-`VERBOSE`, or installer test hooks. If required proxy or TLS settings are
-missing from the clean environment, stop and explain the failure rather than
-restoring the inherited environment; pass an individual setting only after
-the user approves that named exception.
+Expected executables are `$yc_home/yandex-cloud/bin/yc` (global) and
+`$PWD/.yandex-cloud/bin/yc` (local). Verify the selected absolute path with
+`version` only. On failure, stop without switching scope. For Windows or another
+shell, use the matching official instructions and the same isolation and scope
+rules; if they cannot satisfy those rules, provide the manual official steps.
 
-Global means available across this user's projects, not a system-wide
-installation requiring `sudo`; its expected executable is
-`$yc_home/yandex-cloud/bin/yc`. The local executable is
-`$PWD/.yandex-cloud/bin/yc`. For Windows or another shell, use the matching
-official installer or archive instructions with the same scope, clean
-environment, and PATH behavior; do not reuse Bash flags with PowerShell. If the
-official workflow cannot meet these isolation rules, give the user the manual
-official instructions instead of executing it. A local installation must not
-modify the persistent user or system PATH.
-
-Verify installation using the installed executable's absolute path and
-`version` only. If installation fails, report the error before proceeding to
-initialization instructions; do not silently switch installation scope.
-For subsequent preflight and SDK processes, explicitly pass
-`DATALENS_YC_BIN` as that absolute path, including for a global install when the
-agent's current PATH has not refreshed. User-terminal exports do not update
-the agent's environment. A `DATALENS_YC_BIN` assignment written only to `.env`
-is insufficient: preflight and the SDK do not load that file themselves.
-Preserve the selected binary across tool calls and set it on **every** relevant
-process invocation. Set `DATALENS_YC_PROFILE` the same way when a profile was
-selected. For example, omit the profile assignment when it is unused:
+Pass the selected binary, and profile when used, explicitly to every later
+preflight and SDK process; agent tool calls do not inherit prior exports and
+`.env` is not loaded automatically:
 
 ```bash
 DATALENS_YC_BIN="/absolute/path/to/yc" \
@@ -197,40 +151,30 @@ DATALENS_YC_BIN="/absolute/path/to/yc" \
   "$PYTHON" script.py
 ```
 
-### Hand initialization to the user and wait
+Omit `DATALENS_YC_PROFILE` when unused.
 
-The agent installs the binary but **must not run `yc init`, perform login,
-enter credentials, or configure the user's authentication profile**. Link the
-[official quickstart](https://yandex.cloud/docs/cli/quickstart) and provide
-copyable commands for the user to run in their own terminal, using the actual
-installed executable path:
+### Hand initialization to the user
+
+Never run `yc init`, authenticate, enter credentials, or configure a profile.
+Link the [official quickstart](https://yandex.cloud/docs/cli/quickstart) and give
+commands using the installed absolute path:
 
 ```bash
 "/absolute/path/to/yc" init
 "/absolute/path/to/yc" config set organization-id "<organization-id>"
 ```
 
-Replace the executable placeholder with the installed path. Fill the
-organization id if already known; otherwise explain that the user supplies
-their DataLens organization id. Adapt initialization to the user's account
-type using the official instructions. If `DATALENS_YC_PROFILE` is set, tell the
-user to select that profile in the wizard and add `--profile <profile>` to the
-organization-setting command. Retain the same profile when resuming SDK work.
-Never ask for credentials, tokens, or a full CLI configuration dump in chat.
+Fill the organization id only when known; otherwise the user supplies it. Adapt
+the instructions to their account type. For a selected profile, have the user
+choose it in the wizard and add `--profile <profile>` to the second command.
+Never request credentials, tokens, or a full configuration dump.
 
-End the handoff by asking the user to confirm after completing setup.
-**"Готово", "Продолжай", and "Continue"** are examples; accept `done`, "CLI
-настроен", or any equally clear statement that setup is complete. Do not treat
-an ambiguous acknowledgement such as "ок, настрою позже" as completion; keep
-waiting or ask whether setup has finished. A successful `yc version`,
-`YC_CLI=found`, or preflight `STATUS=ready` only establishes binary
-availability; none replaces the user's completion confirmation. Do not
-construct the Cloud client or run API calls while waiting.
-
-After confirmation, rerun `preflight.sh yc` with the selected binary and
-profile in the agent's process environment, then resume the original task.
-If configuration still fails, explain what the user must correct and wait
-again; do not run initialization or obtain tokens as a diagnostic workaround.
+Ask the user to confirm completion; "Готово", "Продолжай", "Continue", and any
+equally clear statement are valid. An ambiguous acknowledgement, `yc version`,
+`YC_CLI=found`, or `STATUS=ready` is not confirmation. Make no client or API
+call while waiting. After confirmation, rerun preflight with the selected binary
+and profile. If it still fails, explain the correction and wait; do not
+initialize or obtain tokens as a workaround.
 
 ## Constructing a client
 
@@ -391,7 +335,7 @@ static-credential variables, and examples pass those explicitly.
 
 - One `.env` in the user's working directory — preflight reports its path as `ENV_FILE` when enterprise configuration is incomplete (and creates the empty file so the user appends to a ready file).
 - The **user** writes secret values into it. The agent never writes or echoes secrets; non-secret variables (`DATALENS_BASE_URL`, `DATALENS_INSTALLATION`, `DATALENS_ORG_ID`, `DATALENS_YC_BIN`, `DATALENS_YC_PROFILE`) may be added by the agent with the user's consent.
-- Preflight inspects selected `.env` keys for presence but does not export their values into the process environment, and the SDK does not read `.env`. Any value stored there, including `DATALENS_ORG_ID` and `DATALENS_IAM_TOKEN`, takes effect in an SDK process only when a wrapper explicitly loads it with the allowlisted reader below. The CLI installation workflow passes its selected binary and profile directly to every process instead.
+- Preflight detects selected keys but neither exports them nor makes the SDK load `.env`; use the reader below in every process that needs those values. The CLI workflow instead passes its binary and profile explicitly.
 - Both `KEY=value` and `export KEY=value` line styles are accepted by preflight.
 - **Never execute `.env`** (no `source`, no `.` — a crafted value would run as shell code). Load it in bash wrappers with this non-executing, allowlisted reader:
 
@@ -408,19 +352,8 @@ fi
 
   Values are taken literally: quotes are not stripped and `$var`, `$(...)`, and backticks are never expanded — keep `.env` values unquoted plain strings. Only the allowlisted `DATALENS_*` variables above are exported, and a variable already set in the environment is never overwritten by `.env`.
 
-  Run this reader at the start of the same Bash wrapper that immediately invokes
-  one relevant process. Repeat it for each later tool call; environment changes
-  from one call do not carry into another. After the reader, finish the wrapper
-  with one of these commands:
-
-```bash
-exec bash "/absolute/path/to/datalens-sdk/scripts/preflight.sh" yc
-# or, for an SDK script:
-exec "$PYTHON" script.py
-```
-
-  Never print the loaded variables or pass their values as command-line
-  arguments.
+  Run the reader and target command in the same Bash wrapper for every preflight
+  or SDK tool call. Never print loaded values or pass secrets as arguments.
 
 ## Tokens are opaque
 
