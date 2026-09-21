@@ -71,9 +71,10 @@ For YC with `YC_CLI=missing` and `YC_STATIC=absent`, the response must include
 1. **Recommended:** offer to install the Yandex Cloud CLI (`yc`) using the
    [official installation guide](https://yandex.cloud/docs/cli/operations/install-cli).
    Explain that global installation for the current user edits their shell
-   profile for `PATH` and completion, while local installation creates a
-   `.yandex-cloud/` directory under the current project and leaves shell
-   profiles unchanged. Ask which scope to use unless already specified.
+   profile for `PATH` and completion. Local installation creates a
+   `.yandex-cloud/` directory under the current project and, when Git does
+   not already ignore it, creates or updates `$PWD/.gitignore`; it leaves
+   shell profiles unchanged. Ask which scope to use unless already specified.
    After the user chooses, install it using
    [the CLI installation workflow](references/setup.md#installing-yc-for-the-user).
    The agent installs the binary; the user initializes it. Never run `yc init`

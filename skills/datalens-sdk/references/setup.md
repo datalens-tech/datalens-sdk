@@ -80,8 +80,10 @@ already specified, explain the effects and ask **global for the current user
 with PATH integration, or local under the current project directory?** The
 global installer edits the user's shell profile to load `PATH` and completion;
 the local installer creates `.yandex-cloud/` in the project and does not edit a
-shell profile. Wait for the informed choice before installing. That choice
-authorizes those stated effects; do not ask for the same approval again.
+shell profile. In a Git worktree, the local workflow may also create or update
+`$PWD/.gitignore` when no existing rule ignores that directory. Wait for the
+informed choice before installing. That choice authorizes those stated effects;
+do not ask for the same approval again.
 
 ### Install in the selected scope
 
@@ -105,13 +107,25 @@ use the matching official installer or archive instructions with the same
 scope and PATH behavior; do not reuse Bash flags with PowerShell. A local
 installation must not modify the persistent user or system PATH.
 
-Before a local installation in a Git worktree, check whether anything beneath
-`.yandex-cloud/` is already tracked. If so, stop and report the conflict; do not
-overwrite or untrack it. Otherwise ensure the project's `.gitignore` ignores
-`/.yandex-cloud/`, appending that exact root-relative rule only when no existing
-rule already ignores the directory. Preserve all existing `.gitignore`
-content, then verify the directory is ignored before installing. Outside a Git
-worktree, do not create `.gitignore`.
+Before a local installation in a Git worktree, run the checks below from the
+user's project directory. First use `git ls-files -- .yandex-cloud/` to check
+whether anything beneath the destination is already tracked. If it prints any
+path, stop and report the conflict; do not overwrite or untrack it.
+
+Next run:
+
+```bash
+git check-ignore -q --no-index -- .yandex-cloud/.ignore-probe
+```
+
+If that succeeds, an existing rule already covers the actual destination;
+leave all ignore files unchanged. If it fails, create or update
+`$PWD/.gitignore`, preserving its existing content and adding a terminating
+newline first when necessary, then append the exact rule
+`/.yandex-cloud/`. Do not put that root-relative rule in a higher-level
+`.gitignore`: it would refer to a different directory in a nested project.
+Rerun the same `git check-ignore` command and stop with the error if the probe
+is still not ignored. Outside a Git worktree, do not create `.gitignore`.
 
 Verify installation using the installed executable's absolute path and
 `version` only. If installation fails, report the error before proceeding to
