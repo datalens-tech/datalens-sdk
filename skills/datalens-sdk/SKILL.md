@@ -85,9 +85,12 @@ For YC with `YC_CLI=missing` and `YC_STATIC=absent`, the response must include
    Wait for that confirmation before resuming SDK work, even if preflight
    already reports `ready` because the binary exists.
 2. **Alternative without CLI:** set `DATALENS_ORG_ID` and `DATALENS_IAM_TOKEN`
-   in the environment or the current project's `.env`; use
-   `StaticYCIAMAuthProvider` explicitly. Never ask the user to paste the token
-   into chat.
+   in the process environment or the current project's `.env`; use
+   `StaticYCIAMAuthProvider` explicitly. The SDK does not load `.env` itself.
+   When the values are stored there, use the non-executing allowlisted reader
+   from [the `.env` rules](references/setup.md#env-rules) before the repeated
+   preflight and before every SDK process. Never ask the user to paste the
+   token into chat.
 
 After configuration changes, rerun preflight before continuing.
 
@@ -104,7 +107,8 @@ The only code this file shows — everything else lives in references.
 from datalens_sdk import DataLensClientYC, StaticYCIAMAuthProvider
 
 client = DataLensClientYC()  # YCIAMAuthProvider; configurable via environment
-# or, with static credentials from env:
+# or, with static credentials already loaded into the process environment
+# (`.env` is not loaded by the SDK):
 import os
 
 client = DataLensClientYC(
@@ -380,8 +384,11 @@ environment values are treated as unset.
 `.env` rules: one `.env` in the user's working directory; the **user**
 writes secret values into it (the agent never writes or echoes secrets;
 non-secret vars may be added with the user's consent); never execute it
-with `source` or `.` — load it with the non-executing allowlisted reader
-from [references/setup.md](references/setup.md).
+with `source` or `.`. When a later process depends on values stored there,
+load them in that same process with the non-executing allowlisted reader
+from [references/setup.md](references/setup.md). Repeat the load for every
+preflight and SDK process because neither exported state nor `.env` loading
+carries across agent tool calls.
 
 ## Reference map
 

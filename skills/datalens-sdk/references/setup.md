@@ -55,7 +55,7 @@ malformed output.
 | Installation resolved and local prerequisites present | `ready` | Proceed with the exact `PYTHON` supplied by the calling bootstrap. If CLI initialization was handed to the user, first wait for their completion confirmation. Presence checks do not verify authentication. |
 | `INSTALLATION=ambiguous` (see `INSTALLATION_HINTS`) | `needs_input` | Ask the user which installation to target, offering the hints; rerun `preflight.sh <choice>`. |
 | `INSTALLATION=unknown` | `needs_input` | Ask the user: yc or enterprise; rerun with the answer. |
-| yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Offer both options: install `yc` using the [official guide](https://yandex.cloud/docs/cli/operations/install-cli) after the user chooses global-with-PATH or project-local installation, following [Installing yc for the user](#installing-yc-for-the-user); alternatively, set `DATALENS_ORG_ID` + `DATALENS_IAM_TOKEN` in the environment or the current project's `.env` and use `StaticYCIAMAuthProvider`. Never ask for the token in chat. |
+| yc, `YC_CLI=missing` and `YC_STATIC=absent` | `blocked` | Offer both options: install `yc` using the [official guide](https://yandex.cloud/docs/cli/operations/install-cli) after the user chooses global-with-PATH or project-local installation, following [Installing yc for the user](#installing-yc-for-the-user); alternatively, set `DATALENS_ORG_ID` + `DATALENS_IAM_TOKEN` in the process environment or the current project's `.env` and use `StaticYCIAMAuthProvider`. When using `.env`, load it with the [non-executing allowlisted reader](#env-rules) before the repeated preflight and every SDK process; `.env` alone is insufficient. Never ask for the token in chat. |
 | enterprise, `BASE_URL=missing` | `blocked` | Ask the user for the API endpoint; they set `DATALENS_BASE_URL` (non-secret — with their consent you may write it to the file at `ENV_FILE`). |
 | enterprise, `TOKEN=absent` | (unchanged) | Informational, not a blocker. Proceed without auth; if the deployment then rejects calls with 401, use `OAuthAuthProvider()` when the user has an OAuth token or `EnterpriseServiceAccountCredentialsAuthProvider` when they have service-account credentials. |
 
@@ -97,9 +97,46 @@ The installer downloads and executes a second-stage binary, so do not run it
 with the agent's inherited environment. Resolve the current user's home and
 login shell from the OS account record rather than `HOME` or `SHELL`, resolve
 `env` and `bash` to trusted absolute system paths, and create a mode-700
-temporary directory under a trusted system temporary root. Then use a clean
-environment containing only those resolved values and a fixed system-tool
-`PATH`:
+temporary directory under a trusted system temporary root.
+
+#### Protect a local destination
+
+Complete all checks in this section before executing the local installer.
+Global installation does not use this destination and can proceed to the next
+section.
+
+Before any local installation, inspect the destination from the user's project
+directory, whether or not it is a Git worktree. Stop if `.yandex-cloud` is a
+symbolic link or exists but is not a directory. If it is an existing non-empty
+directory, do not inspect file contents, execute a binary from it, delete it, or
+let the installer overwrite it. Report the conflict and ask the user to move or
+remove it themselves, or to choose the global scope. Continue only when the
+destination is absent or is an empty real directory.
+
+After that filesystem check, in a Git worktree use
+`git ls-files -- .yandex-cloud .yandex-cloud/` to check the exact destination
+and everything beneath it. If it prints any path, stop and report the conflict;
+do not overwrite or untrack it.
+
+Next run:
+
+```bash
+git check-ignore -q --no-index -- .yandex-cloud/
+```
+
+If that succeeds, an existing rule already covers the actual destination;
+leave all ignore files unchanged. If it fails, create or update
+`$PWD/.gitignore`, preserving its existing content and adding a terminating
+newline first when necessary, then append the exact rule
+`/.yandex-cloud/`. Do not put that root-relative rule in a higher-level
+`.gitignore`: it would refer to a different directory in a nested project.
+Rerun the same `git check-ignore` command and stop with the error if the probe
+is still not ignored. Outside a Git worktree, do not create `.gitignore`.
+
+#### Run the official installer
+
+After all checks required for the selected scope pass, use a clean environment
+containing only the resolved values and a fixed system-tool `PATH`:
 
 ```bash
 "$trusted_env" -i \
@@ -137,28 +174,6 @@ environment, and PATH behavior; do not reuse Bash flags with PowerShell. If the
 official workflow cannot meet these isolation rules, give the user the manual
 official instructions instead of executing it. A local installation must not
 modify the persistent user or system PATH.
-
-Before a local installation in a Git worktree, run the checks below from the
-user's project directory. First use
-`git ls-files -- .yandex-cloud .yandex-cloud/` to check the exact destination
-and everything beneath it. If it prints any path, stop and report the conflict;
-do not overwrite or untrack it. Also stop if an existing `.yandex-cloud` is a
-symbolic link or is not a directory.
-
-Next run:
-
-```bash
-git check-ignore -q --no-index -- .yandex-cloud/
-```
-
-If that succeeds, an existing rule already covers the actual destination;
-leave all ignore files unchanged. If it fails, create or update
-`$PWD/.gitignore`, preserving its existing content and adding a terminating
-newline first when necessary, then append the exact rule
-`/.yandex-cloud/`. Do not put that root-relative rule in a higher-level
-`.gitignore`: it would refer to a different directory in a nested project.
-Rerun the same `git check-ignore` command and stop with the error if the probe
-is still not ignored. Outside a Git worktree, do not create `.gitignore`.
 
 Verify installation using the installed executable's absolute path and
 `version` only. If installation fails, report the error before proceeding to
@@ -376,7 +391,7 @@ static-credential variables, and examples pass those explicitly.
 
 - One `.env` in the user's working directory — preflight reports its path as `ENV_FILE` when enterprise configuration is incomplete (and creates the empty file so the user appends to a ready file).
 - The **user** writes secret values into it. The agent never writes or echoes secrets; non-secret variables (`DATALENS_BASE_URL`, `DATALENS_INSTALLATION`, `DATALENS_ORG_ID`, `DATALENS_YC_BIN`, `DATALENS_YC_PROFILE`) may be added by the agent with the user's consent.
-- Preflight inspects selected `.env` keys for presence but does not export their values into the process environment, and the SDK does not read `.env`. A `DATALENS_YC_BIN` or `DATALENS_YC_PROFILE` stored there takes effect only when a wrapper explicitly loads it with the allowlisted reader below; the CLI installation workflow passes these values directly to every process instead.
+- Preflight inspects selected `.env` keys for presence but does not export their values into the process environment, and the SDK does not read `.env`. Any value stored there, including `DATALENS_ORG_ID` and `DATALENS_IAM_TOKEN`, takes effect in an SDK process only when a wrapper explicitly loads it with the allowlisted reader below. The CLI installation workflow passes its selected binary and profile directly to every process instead.
 - Both `KEY=value` and `export KEY=value` line styles are accepted by preflight.
 - **Never execute `.env`** (no `source`, no `.` — a crafted value would run as shell code). Load it in bash wrappers with this non-executing, allowlisted reader:
 
@@ -386,12 +401,26 @@ if [ -f ./.env ]; then
     # Environment wins: .env only fills variables that are unset or empty,
     # matching preflight precedence (TOKEN=env over TOKEN=dotenv).
     [ -n "${!key:-}" ] || export "$key=$value"
-  done < <(sed -E 's/^[[:space:]]*export[[:space:]]+//' ./.env |
+  done < <(sed -E 's/^[[:space:]]*(export[[:space:]]+)?//' ./.env |
     grep -E '^DATALENS_(OAUTH_TOKEN|BASE_URL|INSTALLATION|ORG_ID|IAM_TOKEN|YC_BIN|YC_PROFILE)=')
 fi
 ```
 
   Values are taken literally: quotes are not stripped and `$var`, `$(...)`, and backticks are never expanded — keep `.env` values unquoted plain strings. Only the allowlisted `DATALENS_*` variables above are exported, and a variable already set in the environment is never overwritten by `.env`.
+
+  Run this reader at the start of the same Bash wrapper that immediately invokes
+  one relevant process. Repeat it for each later tool call; environment changes
+  from one call do not carry into another. After the reader, finish the wrapper
+  with one of these commands:
+
+```bash
+exec bash "/absolute/path/to/datalens-sdk/scripts/preflight.sh" yc
+# or, for an SDK script:
+exec "$PYTHON" script.py
+```
+
+  Never print the loaded variables or pass their values as command-line
+  arguments.
 
 ## Tokens are opaque
 

@@ -12,10 +12,11 @@
 ### Changed
 
 - Guide agents through recovery when Yandex Cloud preflight finds neither the
-  `yc` CLI nor static IAM credentials: offer an informed global or
-  project-local CLI installation using the official installer, leave
-  initialization and authentication to the user, and pass the selected binary
-  and profile explicitly to subsequent preflight and SDK processes.
+  `yc` CLI nor static IAM credentials: safely load static credentials from the
+  current project's `.env`, offer an informed global or project-local CLI
+  installation using the official installer, refuse a non-empty local
+  destination, leave initialization and authentication to the user, and pass
+  the selected binary and profile explicitly to later processes.
 
 ## 3.0.0 - 2026-09-09
 
