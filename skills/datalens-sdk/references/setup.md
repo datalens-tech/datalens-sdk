@@ -93,29 +93,62 @@ for the host OS, architecture, and shell. On Linux/macOS, download the official
 read the downloaded file before execution, and confirm that it is the Yandex
 Cloud installer for the detected OS/architecture and documents the selected
 `-a` or `-i ... -n` flags. Never pipe the remote script directly into a shell.
-Run only the selected variant:
+The installer downloads and executes a second-stage binary, so do not run it
+with the agent's inherited environment. Resolve the current user's home and
+login shell from the OS account record rather than `HOME` or `SHELL`, resolve
+`env` and `bash` to trusted absolute system paths, and create a mode-700
+temporary directory under a trusted system temporary root. Then use a clean
+environment containing only those resolved values and a fixed system-tool
+`PATH`:
 
-| User choice | Installer invocation | Expected executable |
-|---|---|---|
-| Global for the current user, added to PATH | `bash "$yc_installer" -a` | `$HOME/yandex-cloud/bin/yc` |
-| Local to the current project, without shell-profile changes | `bash "$yc_installer" -i "$PWD/.yandex-cloud" -n` | `$PWD/.yandex-cloud/bin/yc` |
+```bash
+"$trusted_env" -i \
+  HOME="$yc_home" \
+  SHELL="$yc_shell" \
+  PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+  TMPDIR="$yc_tmpdir" \
+  "$trusted_bash" --noprofile --norc "$yc_installer" -a
 
-Here `yc_installer` is the downloaded script's absolute path, and `PWD` is the
-user's project directory. Global means available across this user's projects,
-not a system-wide installation requiring `sudo`. For Windows or another shell,
-use the matching official installer or archive instructions with the same
-scope and PATH behavior; do not reuse Bash flags with PowerShell. A local
-installation must not modify the persistent user or system PATH.
+"$trusted_env" -i \
+  HOME="$yc_home" \
+  SHELL="$yc_shell" \
+  PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+  TMPDIR="$yc_tmpdir" \
+  "$trusted_bash" --noprofile --norc "$yc_installer" \
+    -i "$PWD/.yandex-cloud" -n
+```
+
+Run only the command for the selected scope. Here `yc_installer`,
+`trusted_env`, and `trusted_bash` are verified absolute paths; `yc_home` and
+`yc_shell` come from the OS account record; `yc_tmpdir` is the safe temporary
+directory; and `PWD` is the user's project directory. Do not preserve
+`BASH_ENV`, `ENV`, exported shell functions, `CLI_*` installer overrides,
+`VERBOSE`, or installer test hooks. If required proxy or TLS settings are
+missing from the clean environment, stop and explain the failure rather than
+restoring the inherited environment; pass an individual setting only after
+the user approves that named exception.
+
+Global means available across this user's projects, not a system-wide
+installation requiring `sudo`; its expected executable is
+`$yc_home/yandex-cloud/bin/yc`. The local executable is
+`$PWD/.yandex-cloud/bin/yc`. For Windows or another shell, use the matching
+official installer or archive instructions with the same scope, clean
+environment, and PATH behavior; do not reuse Bash flags with PowerShell. If the
+official workflow cannot meet these isolation rules, give the user the manual
+official instructions instead of executing it. A local installation must not
+modify the persistent user or system PATH.
 
 Before a local installation in a Git worktree, run the checks below from the
-user's project directory. First use `git ls-files -- .yandex-cloud/` to check
-whether anything beneath the destination is already tracked. If it prints any
-path, stop and report the conflict; do not overwrite or untrack it.
+user's project directory. First use
+`git ls-files -- .yandex-cloud .yandex-cloud/` to check the exact destination
+and everything beneath it. If it prints any path, stop and report the conflict;
+do not overwrite or untrack it. Also stop if an existing `.yandex-cloud` is a
+symbolic link or is not a directory.
 
 Next run:
 
 ```bash
-git check-ignore -q --no-index -- .yandex-cloud/.ignore-probe
+git check-ignore -q --no-index -- .yandex-cloud/
 ```
 
 If that succeeds, an existing rule already covers the actual destination;
