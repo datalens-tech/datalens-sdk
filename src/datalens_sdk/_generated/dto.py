@@ -917,17 +917,17 @@ INSTALLATION_EDITOR_UPDATE_NODE_TYPES: dict[str, frozenset[str]] = {
 INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE: dict[str, dict[str, frozenset[str]]] = {
     'enterprise': {
         'advanced-chart_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
-        'control_node': frozenset(['controls', 'meta', 'params', 'sources']),
-        'd3_node': frozenset(['config', 'controls', 'meta', 'params', 'prepare', 'sources']),
+        'control_node': frozenset(['activities', 'controls', 'meta', 'params', 'sources']),
+        'd3_node': frozenset(['activities', 'config', 'controls', 'meta', 'params', 'prepare', 'sources']),
         'markdown_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
-        'table_node': frozenset(['config', 'controls', 'meta', 'params', 'prepare', 'sources']),
+        'table_node': frozenset(['activities', 'config', 'controls', 'meta', 'params', 'prepare', 'sources']),
     },
     'yacloud': {
         'advanced-chart_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
-        'control_node': frozenset(['controls', 'meta', 'params', 'sources']),
-        'd3_node': frozenset(['config', 'controls', 'meta', 'params', 'prepare', 'sources']),
+        'control_node': frozenset(['activities', 'controls', 'meta', 'params', 'sources']),
+        'd3_node': frozenset(['activities', 'config', 'controls', 'meta', 'params', 'prepare', 'sources']),
         'markdown_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
-        'table_node': frozenset(['config', 'controls', 'meta', 'params', 'prepare', 'sources']),
+        'table_node': frozenset(['activities', 'config', 'controls', 'meta', 'params', 'prepare', 'sources']),
     },
 }
 
@@ -3710,6 +3710,7 @@ class ControlNodeNodeDataDTO(BaseModel):
     meta: str
     params: str
     sources: str
+    activities: str | None = None
 
 class ControlNodeNodeEntryCreateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -3748,6 +3749,7 @@ class D3NodeNodeDataDTO(BaseModel):
     params: str
     prepare: str
     sources: str
+    activities: str | None = None
 
 class D3NodeNodeEntryCreateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -3823,6 +3825,7 @@ class TableNodeNodeDataDTO(BaseModel):
     params: str
     prepare: str
     sources: str
+    activities: str | None = None
 
 class TableNodeNodeEntryCreateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -3893,6 +3896,7 @@ class ControlNodeNodeUpdateDataDTO(BaseModel):
     meta: str
     params: str
     sources: str
+    activities: str | None = None
 
 class ControlNodeNodeEntryUpdateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -3928,6 +3932,7 @@ class D3NodeNodeUpdateDataDTO(BaseModel):
     params: str
     prepare: str
     sources: str
+    activities: str | None = None
 
 class D3NodeNodeEntryUpdateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -3997,6 +4002,7 @@ class TableNodeNodeUpdateDataDTO(BaseModel):
     params: str
     prepare: str
     sources: str
+    activities: str | None = None
 
 class TableNodeNodeEntryUpdateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)

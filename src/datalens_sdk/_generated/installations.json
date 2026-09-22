@@ -71,6 +71,9 @@
           "control_node": {
             "create_schema": "CreateEditorSelectorNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "controls": {
                 "required": true
               },
@@ -90,6 +93,9 @@
           "d3_node": {
             "create_schema": "CreateEditorGravityChartsNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -137,6 +143,9 @@
           "table_node": {
             "create_schema": "CreateEditorTableNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -207,6 +216,9 @@
           "control_node": {
             "create_schema": "UpdateEditorSelectorNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "controls": {
                 "required": true
               },
@@ -225,6 +237,9 @@
           "d3_node": {
             "create_schema": "UpdateEditorGravityChartsNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -270,6 +285,9 @@
           "table_node": {
             "create_schema": "UpdateEditorTableNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -19151,6 +19169,9 @@
           "control_node": {
             "create_schema": "CreateEditorSelectorNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "controls": {
                 "required": true
               },
@@ -19170,6 +19191,9 @@
           "d3_node": {
             "create_schema": "CreateEditorGravityChartsNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -19217,6 +19241,9 @@
           "table_node": {
             "create_schema": "CreateEditorTableNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -19287,6 +19314,9 @@
           "control_node": {
             "create_schema": "UpdateEditorSelectorNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "controls": {
                 "required": true
               },
@@ -19305,6 +19335,9 @@
           "d3_node": {
             "create_schema": "UpdateEditorGravityChartsNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -19350,6 +19383,9 @@
           "table_node": {
             "create_schema": "UpdateEditorTableNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },

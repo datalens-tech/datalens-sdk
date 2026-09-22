@@ -25,7 +25,7 @@ from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.specs.editor_chart import EditorChartCreateSpec
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
-from datalens_sdk.errors import DataLensValidationError, NotSupportedError
+from datalens_sdk.errors import DataLensValidationError, DTOValidationError, NotSupportedError
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -681,3 +681,63 @@ def test_editor_chart_update_raises_on_409() -> None:
         chart.update.sources("new").execute()
     update_requests = [r for r in recorder.requests if r.url.path == "/rpc/updateEditorChart"]
     assert len(update_requests) == 1
+
+
+@pytest.mark.parametrize("client_type", [dl.DataLensClientYC, dl.DataLensClientEnterprise])
+@pytest.mark.parametrize(
+    ("factory", "wire_type", "supported"),
+    [
+        ("selector", "control_node", True),
+        ("gravity_charts", "d3_node", True),
+        ("table", "table_node", True),
+        ("advanced_chart", "advanced-chart_node", False),
+        ("markdown", "markdown_node", False),
+    ],
+)
+def test_public_activities_create_update_contract(
+    client_type: type[dl.DataLensClientYC] | type[dl.DataLensClientEnterprise],
+    factory: str,
+    wire_type: str,
+    supported: bool,
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        entry = json.loads(request.content)["entry"]
+        return httpx.Response(200, json={"entryId": "activities-1", **entry})
+
+    client = client_type(auth=None, base_url="http://test", transport=httpx.MockTransport(handler))
+    builder = getattr(client.create.editor_chart, factory)(name="Activities", location=EntryLocation.path("/dir"))
+    assert hasattr(builder, "activities") is supported
+    if not supported:
+        chart = EditorChart(id="activities-1", wire_type=wire_type, _operations=client.chart_ops)
+        with pytest.raises(NotSupportedError, match="activities"):
+            chart.update.activities("module.exports = {};")
+        # Direct construction cannot bypass the generated write contract.
+        with pytest.raises(DTOValidationError, match="activities"):
+            EditorChartUpdate(chart=chart, operations=client.chart_ops).activities("unsupported").execute()
+        assert requests == []
+        return
+
+    source = "module.exports = {action: 'toast', title: 'Created'};"
+    changed = "module.exports = {action: 'toast', title: 'Updated'};"
+    chart = builder.activities(source).build()
+    assert chart.data["activities"] == source
+    chart = chart.update.params("module.exports = {p: ['1']};").execute()
+    assert chart.data["activities"] == source
+    chart = chart.update.activities(changed).execute()
+    assert chart.data["activities"] == changed
+    chart.update.activities(None).execute()
+
+    assert [request.url.path for request in requests] == [
+        "/rpc/createEditorChart",
+        "/rpc/updateEditorChart",
+        "/rpc/updateEditorChart",
+        "/rpc/updateEditorChart",
+    ]
+    payloads = [json.loads(request.content)["entry"] for request in requests]
+    assert all(payload["type"] == wire_type for payload in payloads)
+    assert [payload["data"].get("activities") for payload in payloads] == [source, source, changed, None]
+    assert "activities" not in payloads[-1]["data"]
+    assert payloads[-1]["data"]["params"] == "module.exports = {p: ['1']};"

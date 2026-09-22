@@ -11,6 +11,13 @@
 
 ### Changed
 
+- Refresh the Yandex Cloud API v3 specification and synchronize Enterprise
+  Editor schemas with it. The configured Enterprise spec endpoint returned
+  HTTP 404; its unrelated installation-specific schemas are preserved.
+- Support `activities(str | None)` on Selector, Table, and Gravity UI Charts
+  create and update builders for both public installations. Advanced and
+  Markdown continue to reject Activities before HTTP. Existing Activities
+  text is preserved when another supported tab is updated.
 - Generate separate Editor read, create, and update type catalogs from their
   operation-specific OpenAPI discriminators. Generic chart reads and dashboard
   dependency exports now use the read catalog, while raw create and replace
@@ -22,13 +29,6 @@
   update builder also retains its original renderer and rejects later
   `wire_type` changes before HTTP. The facade's Python autocomplete remains
   intentionally broad across installations and renderers.
-
-### Known limitations and follow-up
-
-- Editor Activities availability still follows the checked-in OpenAPI metadata
-  for runtime guards. Continue following the stricter renderer matrix in the
-  bundled Editor guidance; this change does not claim additional Activities
-  runtime support.
 
 ## 3.0.0 - 2026-09-09
 
