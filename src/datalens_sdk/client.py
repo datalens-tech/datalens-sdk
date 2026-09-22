@@ -17,6 +17,7 @@ from datalens_sdk.api.data import DataAPI
 from datalens_sdk.api.dataset import DatasetAPI, DatasetService
 from datalens_sdk.api.entries import EntriesAPI, EntriesDtoModule, EntriesService
 from datalens_sdk.api.folder import FolderAPI, FolderService
+from datalens_sdk.api.html_page import HtmlPageAPI, HtmlPageService
 from datalens_sdk.api.license import LicenseAPI, LicenseService
 from datalens_sdk.api.navigation import NavigationService
 from datalens_sdk.api.workbook import WorkbookAPI, WorkbookService
@@ -34,6 +35,7 @@ from datalens_sdk.converter.data import DatasetDataDtoModule
 from datalens_sdk.converter.dataset import DatasetDtoModule
 from datalens_sdk.converter.editor_chart import EditorChartDtoModule, editor_wire_types
 from datalens_sdk.converter.folder import FolderDtoModule
+from datalens_sdk.converter.html_page import HtmlPageDtoModule
 from datalens_sdk.converter.license import LicenseDtoModule
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
 from datalens_sdk.converter.workbook import WorkbookDtoModule
@@ -55,6 +57,7 @@ from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.entry_types import EntryBranch
 from datalens_sdk.domain.fields import FieldRef
 from datalens_sdk.domain.folder import Folder, FolderCreate
+from datalens_sdk.domain.html_page import HtmlPage, HtmlPageCreate
 from datalens_sdk.domain.license import (
     License,
     LicenseLimits,
@@ -76,6 +79,7 @@ from datalens_sdk.domain.ports import (
     DashboardOperations,
     DatasetOperations,
     FolderOperations,
+    HtmlPageOperations,
     LicenseOperations,
     NavigationOperations,
     WorkbookOperations,
@@ -269,6 +273,7 @@ class CreateNamespace(Generic[ConnectionFactoryT_co, SourceFactoryT_co, EditorCh
         collection_operations: CollectionOperations,
         workbook_operations: WorkbookOperations,
         folder_operations: FolderOperations,
+        html_page_operations: HtmlPageOperations,
         connection_factory: ConnectionFactoryT_co,
         source_factory_cls: SourceFactoryConstructor[SourceFactoryT_co],
         wizard_chart_factory: WizardChartCreateFactory,
@@ -280,6 +285,7 @@ class CreateNamespace(Generic[ConnectionFactoryT_co, SourceFactoryT_co, EditorCh
         self._dataset_operations = dataset_operations
         self._chart_operations = chart_operations
         self._folder_operations = folder_operations
+        self._html_page_operations = html_page_operations
         self._workbook_operations = workbook_operations
         self._source_factory_cls = source_factory_cls
         self._connection = connection_factory
@@ -340,6 +346,14 @@ class CreateNamespace(Generic[ConnectionFactoryT_co, SourceFactoryT_co, EditorCh
             operations=self._folder_operations,
         )
 
+    def html_page(self, *, name: str, location: EntryLocation) -> HtmlPageCreate:
+        return HtmlPageCreate(
+            installation=self._installation,
+            location=location,
+            name=name,
+            operations=self._html_page_operations,
+        )
+
 
 class GetNamespace:
     def __init__(
@@ -351,6 +365,7 @@ class GetNamespace:
         dashboard_operations: DashboardOperations,
         dataset_operations: DatasetOperations,
         folder_operations: FolderOperations,
+        html_page_operations: HtmlPageOperations,
         workbook_operations: WorkbookOperations,
     ) -> None:
         self._chart_operations = chart_operations
@@ -359,6 +374,7 @@ class GetNamespace:
         self._dashboard_operations = dashboard_operations
         self._dataset_operations = dataset_operations
         self._folder_operations = folder_operations
+        self._html_page_operations = html_page_operations
         self._workbook_operations = workbook_operations
 
     def connection(
@@ -489,6 +505,31 @@ class GetNamespace:
         if by_path is None:
             raise ValueError("by_path must be provided")
         return self._folder_operations.get_folder(by_path)
+
+    def html_page(
+        self,
+        *,
+        by_id: str | None = None,
+        branch: EntryBranch | None = None,
+        rev_id: str | None = None,
+        include_favorite: bool | None = None,
+        include_permissions: bool | None = None,
+    ) -> HtmlPage:
+        if by_id is None:
+            raise ValueError("by_id must be provided")
+        if rev_id is not None and branch is not None:
+            warnings.warn(
+                "branch is ignored because an explicit rev_id already pins the revision",
+                UserWarning,
+                stacklevel=2,
+            )
+        return self._html_page_operations.get_html_page(
+            by_id,
+            branch=branch,
+            rev_id=rev_id,
+            include_favorite=include_favorite,
+            include_permissions=include_permissions,
+        )
 
 
 class NavigationNamespace:
@@ -699,6 +740,11 @@ class DataLensClientBase:
             navigation_operations=self._navigation_service,
             dto_module=cast(FolderDtoModule, dto_module),
         )
+        self._html_page_service = HtmlPageService(
+            installation=self.INSTALLATION,
+            api=HtmlPageAPI(self._http),
+            dto_module=cast(HtmlPageDtoModule, dto_module),
+        )
         self._workbook_service = WorkbookService(
             installation=self.INSTALLATION,
             api=workbook_api,
@@ -730,6 +776,7 @@ class DataLensClientBase:
             dataset_operations=self._dataset_service,
             chart_operations=self._chart_service,
             folder_operations=self._folder_service,
+            html_page_operations=self._html_page_service,
             workbook_operations=self._workbook_service,
             connection_factory=connection_factory,
             source_factory_cls=source_factory_cls,
@@ -752,6 +799,7 @@ class DataLensClientBase:
             dashboard_operations=self._dashboard_service,
             dataset_operations=self._dataset_service,
             folder_operations=self._folder_service,
+            html_page_operations=self._html_page_service,
             workbook_operations=self._workbook_service,
         )
         self.navigation = NavigationNamespace(self._navigation_service)
