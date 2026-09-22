@@ -182,11 +182,17 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
    any `client.raw.replace` builder (last-write-wins, no conflict check), list
    what will be affected and get the user's confirmation. A missing typed
    update operation is not permission to prepare or attempt a raw replace.
-7. **No idempotency — adopt on conflict.** Re-running a create raises
-   `ConflictError`. Its context is usually 409, but legacy paths may report
-   status 400 with `ERR.US.DB.UNIQUE_VIOLATION`. Fetch the exact existing
-   entry, verify it, and reconcile it to the desired state; do not silently
-   create `name-2` copies.
+7. **Names are filters, not identities.** Keep the id returned by every
+   successful write. If a create result is lost or uncertain, do not repeat
+   the write blindly. Search inside the known container with
+   `workbook.list_entries()` or `folder.list_entries()`, then apply every
+   known discriminator: exact display-name leaf, scope, stable entry type when
+   the API exposes one, chart family or visualization, the exact dataset-id or
+   relation set when it is completely known, and creator when known.
+   Re-fetch through the typed getter and continue only for exactly one full
+   match. On zero or multiple matches, stop before any mutation and ask for
+   the exact id; never pick the first or newest result. A `ConflictError`
+   follows this same recovery rule; never create a `name-2` copy.
 8. **Probes go to tmp.** When experimenting, create scratch entities in a
    dedicated tmp folder/workbook, not next to the user's deliverables, and
    tell the user where the probes are.
@@ -224,7 +230,7 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
 
 | Do not | Use instead |
 |---|---|
-| Retry a create under a new name after `ConflictError` | Find and adopt the exact existing entry, verify it, then update it if needed |
+| Retry a create, pick the first name match, or create a new name after `ConflictError` | Search the known workbook or folder, require one fully verified match, then update it if needed |
 | Delete and recreate an entity to edit it | `get` → `update` → `.execute()` |
 | Assume a builder chain already persisted | Finish creates with `.build()` and updates with `.execute()` |
 | Rerun a successful mutation because a later local assertion crashed | Re-fetch current state and rerun only the verifier |
@@ -412,5 +418,5 @@ with the root-bootstrap-resolved `PYTHON`, config via env per the table above):
   structural plus remote-reference validation.
 - `serialization_roundtrip.py` — export an entity to a file and clone it
   back via `client.raw`.
-- `adopt_or_create.py` — the semantic conflict-adoption pattern (hard rule 7)
-  as executable code.
+- `adopt_or_create.py` — workbook- and folder-scoped conflict recovery
+  (hard rule 7) as executable code.

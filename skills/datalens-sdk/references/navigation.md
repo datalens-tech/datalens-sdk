@@ -21,7 +21,7 @@ pager = client.navigation.get_entries(
     created_by=[...],  # author filter
     name="Sales",  # name filter (narrows; do exact match client-side)
     scope="dataset",  # one EntryScope (single value; see the complete list below)
-    type=None,  # entry subtype, e.g. "graph_wizard_node"
+    type=None,  # entry subtype, e.g. "d3_wizard_node"
     exclude_locked=True,
     ignore_shared_entries=None,
     ignore_workbook_entries=None,  # skip entries that live inside workbooks
@@ -105,26 +105,81 @@ Folder filters are `created_by=`, `name=`, `include_permissions_info=`,
 or a sequence of them). For both folder and workbook listings, an empty scope
 sequence omits the filter.
 
-## Finding an entity by name
+## Finding or recovering an entity safely
 
-Entity getters are id-only (`client.get.folder(by_path=...)` is the single path-based exception), so find-by-name is always list-then-get. The server `name=` filter narrows the listing; compare exactly on the client, then `get` by the id you found:
+Names are not unique identities. Entity getters are id-only
+(`client.get.folder(by_path=...)` is the single path-based exception), so a
+find-by-name or post-create recovery is list, verify, then get by id. Keep the
+id returned by a successful `.build()` or `.execute()` whenever possible. If
+later local code fails, re-fetch that id instead of searching or repeating the
+write.
+
+When the id was lost or the write outcome is uncertain, start from the known
+destination container. Both container models are first-class:
 
 ```python
 def display_name(entry):
     return entry.name.rsplit("/", 1)[-1] if entry.name is not None else None
 
 
-matches = [
-    entry for entry in client.navigation.get_entries(scope="dataset", name="Sales") if display_name(entry) == "Sales"
+if workbook_id is not None:
+    container = client.get.workbook(by_id=workbook_id)
+elif folder_path is not None:
+    container = client.get.folder(by_path=folder_path)
+else:
+    raise LookupError("A workbook id or folder path is required to recover the entry safely")
+
+summaries = [
+    entry
+    for entry in container.list_entries(name="Sales", scope="widget")
+    if display_name(entry) == "Sales" and entry.type == "d3_wizard_node"
 ]
-if not matches:
-    raise LookupError("dataset 'Sales' not found")
-if len(matches) > 1:
-    raise LookupError(f"{len(matches)} datasets named 'Sales'; disambiguate by workbook_id or id")
-ds = client.get.dataset(by_id=matches[0].id)
 ```
 
-Scope the search when you can: inside a known workbook use `wb.list_entries(name=..., scope="dataset")` instead of the global listing. The server-side `name=` filter only narrows candidates; always compare the derived display leaf exactly. This is also the adopt-on-`ConflictError` lookup (hard rule 7).
+`workbook.list_entries()` and `folder.list_entries()` accept `name`, `scope`,
+and `created_by`, but not `type`; check `EntrySummary.type` on the returned
+candidates. The current SDK creates line charts as `d3_wizard_node`; when
+recovering a known legacy chart, use its exact expected legacy type rather than
+accepting every widget. Global `client.navigation.get_entries()` accepts
+`type`, but has no `workbook_id`, folder, or `dataset_id` filters. Use it only when the
+container is unknown, then verify `EntrySummary.workbook_id` or the full
+folder path in `EntrySummary.key` on every candidate.
+
+Apply every reliable discriminator already known from the attempted create or
+the surrounding task. For a Wizard line chart backed by a known dataset:
+
+```python
+verified = []
+for summary in summaries:
+    chart = client.get.wizard_chart(by_id=summary.id)
+    if chart.visualization_id != "line":
+        continue
+    if set(chart.dataset_ids) != {dataset_id}:
+        continue
+    verified.append(chart)
+
+if len(verified) != 1:
+    candidate_ids = [summary.id for summary in summaries]
+    raise LookupError(
+        f"Expected one fully verified chart, found {len(verified)}: {candidate_ids}; "
+        "require the exact id before mutating another object"
+    )
+chart = verified[0]
+```
+
+For another chart family or entity type, use its typed getter and stable
+properties. When the object does not expose direct dataset ids, compare the
+complete expected set with
+`{rel.id for rel in obj.get_relations(link_direction="from", scope="dataset")}`.
+If only part of the dependency set is known, membership can narrow candidates
+but cannot by itself prove identity. `created_by` and timestamps can narrow or
+support the search, but they do not override a remaining ambiguity.
+
+Continue to an update, dashboard attachment, or conflict adoption only when
+exactly one candidate matches the container, exact display-name leaf, scope,
+stable entry type when available, typed object kind, and every known dependency. Zero matches means
+the object was not recovered; multiple matches require the user to provide the
+exact id. Never choose the first, newest, or merely visible result.
 
 ## Relations: what an entry depends on
 

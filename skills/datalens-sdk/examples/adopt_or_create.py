@@ -1,15 +1,15 @@
-"""Adopt-on-conflict: try to create a dashboard, then adopt an existing entry.
+"""Adopt-on-conflict in either a workbook or a folder.
 
-Creates are not idempotent — re-running a create for a name that already
-exists in the same location raises ``ConflictError``. Depending on the API
+Creates are not idempotent: re-running a create for a name that already
+exists in the same container raises ``ConflictError``. Depending on the API
 path, its context can contain status 409 or a legacy status 400 with
-``ERR.US.DB.UNIQUE_VIOLATION``. This script tries the create, catches the
-conflict, finds the existing entry via ``client.navigation.get_entries()``,
-and continues with it instead of minting a ``name-2`` copy.
+``ERR.US.DB.UNIQUE_VIOLATION``. This script searches the original workbook or
+folder, requires exactly one exact match, and continues with it instead of
+minting a ``name-2`` copy.
 
 Skill hard rules demonstrated:
-  * Rule 7 (no idempotency — adopt on conflict): the whole script is this
-    rule as executable code.
+  * Rule 7 (names are filters, not identities): recovery is container-scoped
+    and fails closed on zero or multiple exact matches.
   * Rule 4 (validate, don't just create): the returned dashboard is checked
     for an id and validated before the script reports success.
   * Rule 9 (report request_id on API failures).
@@ -60,13 +60,31 @@ def make_client():
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--name", required=True, help="Dashboard name (rerun with the same name to see adoption)")
-    parser.add_argument("--workbook-id", required=True, help="Workbook the dashboard lives in")
+    destination = parser.add_mutually_exclusive_group(required=True)
+    destination.add_argument("--workbook-id", help="Workbook the dashboard lives in")
+    destination.add_argument("--folder-path", help="Folder path the dashboard lives in")
     return parser.parse_args()
 
 
-def create_or_adopt_dashboard(client, *, name: str, workbook_id: str):
-    """Create the dashboard; on a name conflict adopt the existing entry."""
-    location = EntryLocation.workbook(workbook_id)
+def create_or_adopt_dashboard(
+    client,
+    *,
+    name: str,
+    workbook_id: str | None,
+    folder_path: str | None,
+):
+    """Create the dashboard; on conflict adopt one exact match in its container."""
+    if workbook_id is not None:
+        location = EntryLocation.workbook(workbook_id)
+        container = client.get.workbook(by_id=workbook_id)
+        container_label = f"workbook {workbook_id!r}"
+    elif folder_path is not None:
+        location = EntryLocation.path(folder_path)
+        container = client.get.folder(by_path=folder_path)
+        container_label = f"folder {folder_path!r}"
+    else:
+        raise ValueError("Pass a workbook id or folder path")
+
     try:
         created = (
             client.create.dashboard(name=name, location=location)
@@ -78,15 +96,35 @@ def create_or_adopt_dashboard(client, *, name: str, workbook_id: str):
     except ConflictError as e:
         print(
             f"Entry already exists ({e.context.status_code} {e.context.code}, "
-            f"request_id={e.context.request_id}); adopting it"
+            f"request_id={e.context.request_id}); checking {container_label}"
         )
-        # Server name= filter narrows; compare exactly on the client.
-        for entry in client.navigation.get_entries(scope="dash", name=name):
-            display_name = entry.name.rsplit("/", 1)[-1] if entry.name is not None else None
-            if display_name == name and entry.workbook_id == workbook_id:
-                print(f"Adopted existing dashboard {entry.id!r}")
-                return client.get.dashboard(by_id=entry.id)
-        raise  # conflict but no match found — report e.context.request_id
+        summaries = [
+            entry
+            for entry in container.list_entries(scope="dash", name=name)
+            if entry.name is not None and entry.name.rsplit("/", 1)[-1] == name
+        ]
+        verified = []
+        for summary in summaries:
+            candidate = client.get.dashboard(by_id=summary.id, workbook_id=workbook_id)
+            tabs = candidate.tabs
+            has_expected_seed = (
+                candidate.name == name
+                and len(tabs) == 1
+                and tabs[0].title == "Main"
+                and any(item.item_type == "title" and item.data.get("text") == "Placeholder" for item in tabs[0].items)
+                and not candidate.validate()
+            )
+            if has_expected_seed:
+                verified.append(candidate)
+
+        if len(verified) != 1:
+            candidate_ids = [entry.id for entry in summaries]
+            raise LookupError(
+                f"Expected one fully verified dashboard named {name!r} in {container_label}, "
+                f"found {len(verified)}; container candidates: {candidate_ids}"
+            ) from e
+        print(f"Adopted existing dashboard {verified[0].id!r}")
+        return verified[0]
 
 
 def main() -> None:
@@ -98,6 +136,7 @@ def main() -> None:
                 client,
                 name=args.name,
                 workbook_id=args.workbook_id,
+                folder_path=args.folder_path,
             )
 
             # Hard rule 4: check the object we ended up with, whichever branch ran.

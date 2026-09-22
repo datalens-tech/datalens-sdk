@@ -11,6 +11,10 @@
 
 ### Changed
 
+- Make agent recovery of previously created entries fail closed: names only
+  narrow candidates; the bundled skill now searches the original workbook
+  or folder, verifies type and known dependencies, and requires exactly one
+  full match before a later mutation.
 - Guide agents through recovery when Yandex Cloud preflight finds neither the
   `yc` CLI nor static IAM credentials: safely load static credentials from the
   current project's `.env`, offer an informed global or project-local CLI

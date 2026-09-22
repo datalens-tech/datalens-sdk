@@ -15,7 +15,7 @@ Every configured client exposes the same namespace model:
 
 ### `client.get.*` — by id only
 
-Getters take keyword-only arguments and require an id. There is **no key- or name-based lookup** here — to find an entity by name, list with `client.navigation.get_entries(name=...)` and then `get` by the id you found.
+Getters take keyword-only arguments and require an id. There is **no key- or name-based lookup** here. When the destination is known, list with `workbook.list_entries(...)` or `folder.list_entries(...)`; use global `client.navigation.get_entries(...)` only when the container is unknown. Verify every known identity attribute, require exactly one match, then `get` by its id. See [navigation.md](navigation.md#finding-or-recovering-an-entity-safely).
 
 ```python
 conn = client.get.connection(by_id="...", workbook_id=None, rev_id=None)
@@ -199,7 +199,7 @@ unresolvable strings fail at build/execute time.
 
 ### No server idempotency — adopt on `ConflictError`
 
-Re-running a successful create raises `ConflictError`: same name in the same location. Its original context is usually status 409, but legacy API paths may retain status 400 with code `ERR.US.DB.UNIQUE_VIOLATION`. Catch the exception type, not a hard-coded status. Never work around it by creating `name-2` copies — find the exact existing entry (via `client.navigation.get_entries(name=..., scope=...)`), `get` and verify it, then update it if its state differs. The full pattern with code: [troubleshooting.md](troubleshooting.md).
+Re-running a successful create raises `ConflictError`: same name in the same location. Its original context is usually status 409, but legacy API paths may retain status 400 with code `ERR.US.DB.UNIQUE_VIOLATION`. Catch the exception type, not a hard-coded status. Never work around it by creating `name-2` copies. Search the original workbook or folder, verify all known identity attributes, and adopt only one full match; zero or multiple matches stop before mutation. The full pattern with code: [troubleshooting.md](troubleshooting.md).
 
 ### Re-`get` a dataset after creating it
 
