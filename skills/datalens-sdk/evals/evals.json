@@ -20,15 +20,15 @@
     {
       "id": 1,
       "name": "idempotency-rerun",
-      "prompt": "Run the same setup again please: create the dataset 'Sales facts' and the dashboard 'Sales overview' in workbook wb-7f3a1. (We did this yesterday, but I'm not sure the script finished — just make sure everything is there.)",
-      "expected_output": "The create calls raise ConflictError (409, ENTRY_ALREADY_EXISTS) because the entities already exist. The agent catches ConflictError, finds the existing entries via client.navigation.get_entries(name=..., scope=...), adopts them with client.get.*(by_id=...), and continues; it does not rename anything to work around the conflict.",
+      "prompt": "Run the same setup again please: create dataset 'Sales facts' in workbook wb-7f3a1 and dashboard 'Sales overview' in folder Users/me/reports. We did this yesterday, but I'm not sure the script finished. Other visible workbooks and folders contain entries with the same names; just make sure the intended ones are there.",
+      "expected_output": "The agent treats names only as filters. On ConflictError or an uncertain prior write it searches the original container with workbook.list_entries(...) for the dataset and folder.list_entries(...) for the dashboard, requires exactly one fully verified match, then adopts it by id. It never chooses a global first match or creates a renamed copy.",
       "files": [],
       "assertions": [
-        {"text": "Catches ConflictError (or checks for existing entries first) instead of letting the 409 fail the task", "type": "code"},
-        {"text": "Finds the existing entry via client.navigation.get_entries(name=..., scope=...) with an exact client-side name comparison, then adopts it via client.get.*(by_id=...)", "type": "code"},
-        {"text": "Does NOT silently create renamed copies such as 'Sales facts-2' or 'Sales overview copy'", "type": "code"},
-        {"text": "Does NOT delete the existing entries to make room for fresh creates", "type": "workflow"},
-        {"text": "Reports to the user that the entities already existed and were reused, including their ids", "type": "workflow"},
+        {"text": "Catches ConflictError or recovers an uncertain prior write instead of blindly repeating the create", "type": "code"},
+        {"text": "Uses workbook.list_entries(...) for the workbook entry and folder.list_entries(...) for the folder entry", "type": "code"},
+        {"text": "Checks exact display-name leaf and scope, re-fetches through the typed getter, verifies task-owned state, and requires exactly one full match", "type": "code"},
+        {"text": "Stops and asks for the exact id on zero or multiple matches; does not choose the first or newest result", "type": "workflow"},
+        {"text": "Does NOT create renamed copies or delete an existing entry to make room", "type": "workflow"},
         {"text": "Does NOT use httpx/requests or hand-built JSON payloads", "type": "code"}
       ]
     },
@@ -244,6 +244,34 @@
         {"text": "Uses the same sales alias in Meta and Sources via Editor.getId(...) according to the official sections", "type": "workflow"},
         {"text": "Uses Editor.getLoadedData() from Prepare and does not claim persistence proves rendering", "type": "workflow"},
         {"text": "Does NOT use shared(...), raw HTTP, or private imports", "type": "code"}
+      ]
+    },
+    {
+      "id": 17,
+      "name": "recover-chart-in-workbook-before-dashboard-update",
+      "prompt": "You attempted to create a Wizard line chart named 'Sales' from dataset ds-new in workbook wb-team. The write may have succeeded, but a later local exception lost the returned object. A global name search shows multiple visible same-named charts, including another user's chart. Add the intended chart to dashboard dash-1.",
+      "expected_output": "The agent does not repeat the create. It searches wb-team with workbook.list_entries, verifies exact name, widget scope, current Wizard entry type, line visualization, and the complete dataset set {ds-new}, and updates dash-1 only if exactly one candidate remains.",
+      "files": [],
+      "assertions": [
+        {"text": "Searches through client.get.workbook(by_id='wb-team').list_entries(name='Sales', scope='widget') rather than a global first match", "type": "code"},
+        {"text": "Checks the exact display-name leaf and EntrySummary.type == 'd3_wizard_node' for the current Wizard line chart", "type": "code"},
+        {"text": "Re-fetches each candidate with client.get.wizard_chart(by_id=...), checks visualization_id == 'line', and verifies the complete dataset-id set is exactly {'ds-new'} through dataset_ids or directed dataset relations", "type": "code"},
+        {"text": "Mutates dash-1 only for exactly one fully verified candidate; zero or multiple matches require the exact chart id", "type": "workflow"},
+        {"text": "Does NOT invent workbook_id or dataset_id filters for list_entries/get_entries, pass dataset_id to get.wizard_chart, choose the first/newest result, or rerun creation", "type": "code"}
+      ]
+    },
+    {
+      "id": 18,
+      "name": "recover-chart-in-folder-before-dashboard-update",
+      "prompt": "You attempted to create a Wizard line chart named 'Sales' from dataset ds-new in folder Users/me/reports. The write may have succeeded, but a later local exception lost the returned object. Other visible folders and workbooks contain same-named charts. Add the intended chart to dashboard dash-1.",
+      "expected_output": "The agent does not repeat the create. It searches Users/me/reports with folder.list_entries, verifies exact name, widget scope, current Wizard entry type, line visualization, and the complete dataset set {ds-new}, and updates dash-1 only if exactly one candidate remains.",
+      "files": [],
+      "assertions": [
+        {"text": "Searches through client.get.folder(by_path='Users/me/reports').list_entries(name='Sales', scope='widget') rather than a global first match", "type": "code"},
+        {"text": "Checks the exact display-name leaf and EntrySummary.type == 'd3_wizard_node' for the current Wizard line chart", "type": "code"},
+        {"text": "Re-fetches each candidate with client.get.wizard_chart(by_id=...), checks visualization_id == 'line', and verifies the complete dataset-id set is exactly {'ds-new'} through dataset_ids or directed dataset relations", "type": "code"},
+        {"text": "Mutates dash-1 only for exactly one fully verified candidate; zero or multiple matches require the exact chart id", "type": "workflow"},
+        {"text": "Does NOT invent a folder_id/dataset_id filter, choose the first/newest result, or rerun creation", "type": "code"}
       ]
     }
   ]

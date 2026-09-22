@@ -92,20 +92,45 @@ Creates are not idempotent. Re-running a create for a name that exists in the sa
 from datalens_sdk import ConflictError, EntryLocation
 
 
-def create_or_adopt_dataset(client, *, name, workbook_id):
-    location = EntryLocation.workbook(workbook_id)
+def create_or_adopt_dataset(client, *, name, workbook_id=None, folder_path=None):
+    if (workbook_id is None) == (folder_path is None):
+        raise ValueError("Pass exactly one of workbook_id or folder_path")
+    if workbook_id is not None:
+        location = EntryLocation.workbook(workbook_id)
+        container = client.get.workbook(by_id=workbook_id)
+    else:
+        location = EntryLocation.path(folder_path)
+        container = client.get.folder(by_path=folder_path)
+
     try:
         created = client.create.dataset(name=name, location=location).build()
         return client.get.dataset(by_id=created.id)  # re-get: create response omits fields
     except ConflictError as e:
-        for entry in client.navigation.get_entries(scope="dataset", name=name):
-            display_name = entry.name.rsplit("/", 1)[-1] if entry.name is not None else None
-            if display_name == name and entry.workbook_id == workbook_id:
-                return client.get.dataset(by_id=entry.id)  # adopt the existing entry
-        raise  # conflict but no match found — report e.context.request_id
+        summaries = [
+            entry
+            for entry in container.list_entries(scope="dataset", name=name)
+            if (entry.name is not None and entry.name.rsplit("/", 1)[-1] == name and entry.type == "dataset")
+        ]
+        verified = []
+        for summary in summaries:
+            candidate = client.get.dataset(by_id=summary.id, workbook_id=workbook_id)
+            # The attempted create above owns an exact name and an empty source set.
+            if candidate.name == name and len(candidate.sources) == 0:
+                verified.append(candidate)
+        if len(verified) != 1:
+            ids = [entry.id for entry in summaries]
+            raise LookupError(
+                f"Conflict recovery found {len(verified)} full matches; container candidate ids: {ids}"
+            ) from e
+        return verified[0]
 ```
 
-The same shape works for any entity kind (adjust `scope=` and the getter). Scope by workbook or folder when possible and verify location as well as the display-name leaf before adopting. Fetch the adopted object, compare and verify the properties your task owns, and use its `update` builder to reconcile any differences — never treat adoption alone as proof that the task is complete, and never delete-and-recreate.
+The same shape works for any entity kind: choose the original workbook or
+folder, adjust `scope=` and the typed getter, apply every other known
+discriminator, and require exactly one full match. Fetch the adopted object,
+compare and verify the properties your task owns, and use its `update` builder
+to reconcile any differences. Never treat adoption alone as proof that the
+task is complete, and never delete and recreate.
 
 **What NOT to do:** do not create `name-2`/`name (copy)` variants, and do not delete the existing entry to make room — it may be referenced by charts, dashboards, and permissions you cannot see.
 
