@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import json
 from typing import cast
 
@@ -192,6 +193,195 @@ def test_dataset_update_actions_validate_then_save_server_state_with_rls2() -> N
         ]
     }
     assert updated.fields.by_name("Sales Plus").formula == "[Sales] + 1"
+
+
+def _rls2_entries(field_guid: str, *values: str) -> list[dict[str, object]]:
+    return [
+        {
+            "subject": {"subject_id": "user-1", "subject_type": "user"},
+            "allowed_value": value,
+            "field_guid": field_guid,
+            "pattern_type": "value",
+        }
+        for value in values
+    ]
+
+
+@pytest.mark.parametrize("client_type", [dl.DataLensClientYC, dl.DataLensClientEnterprise])
+@pytest.mark.parametrize(
+    ("operations", "expected_dates", "keep_sales"),
+    [
+        pytest.param((), ("old",), True, id="unchanged"),
+        pytest.param(("add",), ("old", "new"), True, id="append"),
+        pytest.param(("update",), ("old", "new"), True, id="update-still-appends"),
+        pytest.param(("add", "add"), ("old", "new", "new"), True, id="repeated-append"),
+        pytest.param(("delete",), None, True, id="delete-field"),
+        pytest.param(("delete", "add"), ("new",), True, id="delete-add-replaces"),
+        pytest.param(("delete", "update"), ("new",), True, id="delete-update-replaces"),
+        pytest.param(("add", "delete"), None, True, id="add-delete"),
+        pytest.param(("add", "delete", "add"), ("new",), True, id="add-delete-add"),
+        pytest.param(("clear",), None, False, id="clear-all"),
+        pytest.param(("clear", "add"), ("new",), False, id="clear-add-replaces-all"),
+        pytest.param(("add", "clear"), None, False, id="add-clear"),
+        pytest.param(("clear", "delete", "add"), ("new",), False, id="clear-delete-add"),
+        pytest.param(("clear", "add", "clear"), None, False, id="clear-add-clear"),
+    ],
+)
+def test_dataset_rls_mutations_compose_in_one_save(
+    client_type: type[dl.DataLensClientYC] | type[dl.DataLensClientEnterprise],
+    operations: tuple[str, ...],
+    expected_dates: tuple[str, ...] | None,
+    keep_sales: bool,
+) -> None:
+    source = _dataset_payload()
+    source_dataset = cast(dict[str, object], source["dataset"])
+    source_dataset["rls2"] = {"date": _rls2_entries("date", "old"), "sales": _rls2_entries("sales", "100")}
+    expected_rls: dict[str, object] = {}
+    if expected_dates is not None:
+        expected_rls["date"] = _rls2_entries("date", *expected_dates)
+    if keep_sales:
+        expected_rls["sales"] = _rls2_entries("sales", "100")
+    saved_dataset = {**source_dataset, "rls2": expected_rls}
+    recorder = RecordedTransport(
+        {
+            "/rpc/getDataset": httpx.Response(200, json=source),
+            "/rpc/updateDataset": httpx.Response(200, json={**source, "dataset": saved_dataset}),
+        }
+    )
+    client = client_type(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+    dataset = client.get.dataset(by_id="ds-1")
+    raw_before = deepcopy(dataset.raw)
+    snapshot_before = deepcopy(dataset.response_snapshot)
+    update = dataset.update
+    for operation in operations:
+        if operation == "add":
+            update.add_rls(field=dataset.fields.by_name("Order Date"), subject_id="user-1", allowed_value="new")
+        elif operation == "update":
+            update.update_rls(field="date", subject_id="user-1", allowed_value="new")
+        elif operation == "delete":
+            update.delete_rls(field="date")
+        else:
+            assert operation == "clear"
+            update.clear_rls()
+
+    updated = update.execute()
+
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getDataset", "/rpc/updateDataset"]
+    assert recorder.request_json(1) == {"datasetId": "ds-1", "data": {"dataset": saved_dataset}}
+    assert updated.rls2 == expected_rls
+    assert dataset.raw == raw_before
+    assert dataset.response_snapshot == snapshot_before
+    assert dataset.rls2 == source_dataset["rls2"]
+
+
+@pytest.mark.parametrize("has_rls2", [False, True], ids=["absent", "empty"])
+@pytest.mark.parametrize("clear", [False, True], ids=["unchanged", "clear"])
+def test_dataset_rls_clear_is_explicit_even_without_existing_rules(has_rls2: bool, clear: bool) -> None:
+    source = _dataset_payload()
+    source_dataset = cast(dict[str, object], source["dataset"])
+    if not has_rls2:
+        source_dataset.pop("rls2")
+    recorder = RecordedTransport(
+        {
+            "/rpc/getDataset": httpx.Response(200, json=source),
+            "/rpc/updateDataset": httpx.Response(200, json=source),
+        }
+    )
+    client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+    update = client.get.dataset(by_id="ds-1").update
+    if clear:
+        update.clear_rls().clear_rls()
+
+    update.execute()
+
+    expected_dataset = {**source_dataset, "rls2": {}} if clear else source_dataset
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getDataset", "/rpc/updateDataset"]
+    assert recorder.request_json(1) == {"datasetId": "ds-1", "data": {"dataset": expected_dataset}}
+
+
+@pytest.mark.parametrize("clear_all", [False, True], ids=["replace-field", "replace-all"])
+def test_dataset_rls_changes_apply_to_validated_state(clear_all: bool) -> None:
+    source = _dataset_payload()
+    source_dataset = cast(dict[str, object], source["dataset"])
+    source_dataset["rls2"] = {"date": _rls2_entries("date", "old")}
+    validated_dataset = {
+        **source_dataset,
+        "description": "Normalized description",
+        "load_preview_by_default": False,
+        "rls2": {"date": _rls2_entries("date", "old"), "sales": _rls2_entries("sales", "100")},
+    }
+    expected_rls: dict[str, object] = {"date": _rls2_entries("date", "new")}
+    if not clear_all:
+        expected_rls["sales"] = _rls2_entries("sales", "100")
+    saved_dataset = {**validated_dataset, "rls2": expected_rls}
+    recorder = RecordedTransport(
+        {
+            "/rpc/getDataset": httpx.Response(200, json=source),
+            "/rpc/validateDataset": httpx.Response(200, json={**source, "dataset": validated_dataset}),
+            "/rpc/updateDataset": httpx.Response(200, json={**source, "dataset": saved_dataset}),
+        }
+    )
+    client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+    dataset = client.get.dataset(by_id="ds-1")
+    raw_before = deepcopy(dataset.raw)
+    update = dataset.update.description("Requested description")
+    if clear_all:
+        update.clear_rls()
+    else:
+        update.delete_rls(field="date")
+
+    update.add_rls(field="date", subject_id="user-1", allowed_value="new").execute()
+
+    assert [request.url.path for request in recorder.requests] == [
+        "/rpc/getDataset",
+        "/rpc/validateDataset",
+        "/rpc/updateDataset",
+    ]
+    assert recorder.request_json(1) == {
+        "datasetId": "ds-1",
+        "data": {
+            "dataset": source_dataset,
+            "updates": [{"action": "update_description", "description": "Requested description"}],
+        },
+    }
+    assert recorder.request_json(2) == {"datasetId": "ds-1", "data": {"dataset": saved_dataset}}
+    assert dataset.raw == raw_before
+
+
+@pytest.mark.parametrize("with_validation", [False, True], ids=["direct-create", "validated-create"])
+def test_dataset_create_still_appends_rls_rules(with_validation: bool) -> None:
+    validated_dataset: dict[str, object] = {
+        "description": "",
+        "sources": [],
+        "source_avatars": [],
+        "avatar_relations": [],
+        "result_schema": [],
+        "obligatory_filters": [],
+        "rls2": {},
+        "load_preview_by_default": False,
+    }
+    recorder = RecordedTransport(
+        {
+            "/rpc/validateDataset": httpx.Response(200, json={"dataset": validated_dataset}),
+            "/rpc/createDataset": httpx.Response(200, json={"id": "ds-created", "dataset": validated_dataset}),
+        }
+    )
+    client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+    builder = client.create.dataset(name="Created", location=dl.EntryLocation.path("/Users/me"))
+    if with_validation:
+        builder.update_setting(name="load_preview_by_default", value=False)
+
+    created = (
+        builder.add_rls(field="date", subject_id="user-1", allowed_value="first")
+        .add_rls(field="date", subject_id="user-1", allowed_value="second")
+        .build()
+    )
+
+    expected_paths = ["/rpc/validateDataset", "/rpc/createDataset"] if with_validation else ["/rpc/createDataset"]
+    assert [request.url.path for request in recorder.requests] == expected_paths
+    created_dataset = cast(dict[str, object], recorder.request_json(-1)["dataset"])
+    assert created_dataset["rls2"] == {"date": _rls2_entries("date", "first", "second")}
+    assert created.id == "ds-created"
 
 
 def test_dataset_read_and_update_keep_only_rls2_from_backend_state() -> None:

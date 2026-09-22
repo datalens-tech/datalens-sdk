@@ -671,6 +671,8 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
     assert_type(dataset.parameters, FieldsProxy)
     assert_type(dataset.find_source_avatar("source-1"), Mapping[str, object] | None)
     assert_type(dataset.update, DatasetUpdate)
+    assert_type(dataset.update.clear_rls(), DatasetUpdate)
+    assert_type(dataset.update.clear_rls().add_rls(field="region", subject_id="user-1"), DatasetUpdate)
     assert_type(
         dataset.get_dataset_data(
             columns=["region", "sales"],

@@ -8,6 +8,15 @@
   connections, datasets, dashboards, and every chart family. The SDK validates
   the `moveFolderEntry` result against the moved entry id and returns the
   refreshed resource with its current name and location.
+- Add `DatasetUpdate.clear_rls()` to remove all dataset RLS2 rules or replace
+  them with subsequent `add_rls(...)` calls in a single `.execute()`.
+
+### Fixed
+
+- Preserve RLS deletion when `delete_rls(field=...)` is followed by
+  `add_rls(...)` in the same update: the new rules now replace that field's
+  saved rules while other fields retain theirs. `add_rls` and `update_rls`
+  continue to append rules.
 
 ### Changed
 
