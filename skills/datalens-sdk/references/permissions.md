@@ -1,121 +1,73 @@
 # Permissions
 
-Use `client.permissions` for explicit access operations by ID. The caller
-selects the management target:
+Use `client.permissions` for explicit access operations by ID. Select the
+resource's access model before choosing an API:
 
 | Target | API |
 |---|---|
-| A folder-model entry ACL, including folders and dashboards | `entry_acl.get`, `modify`, `copy`, `suggest_subjects` |
-| Ordinary workbook content | `workbook.list`, `modify` on its workbook ID |
-| Collection roles | `collection.list`, `modify` |
-| Shared-object roles | `shared_entry.list` on the original entry ID |
-| Effective action checks | `effective.get_entries`, `get_bulk`, `get_root_collection` |
-| Identity directory | `list_subjects` |
+| Folder-model entry, including a folder or dashboard | `entry_acl.get/modify/copy/suggest_subjects` |
+| Ordinary workbook content | `workbook.list/modify` on its **workbook ID** |
+| Collection roles | `collection.list/modify` |
+| Shared-object roles | `shared_entry.list` on the original entry ID; no write RPC |
+| Authenticated caller's effective actions | `effective.get_entries/get_bulk/get_root_collection` |
+| Installation identity directory | `list_subjects` |
 
-Select the target from known container metadata or an explicit navigation
-lookup, as shown below. `entry_acl.get`, `modify`, and `copy` do not perform
-hidden metadata lookups or redirect to a parent. Shared-entry writes are
-unavailable because the selected contracts contain no matching update RPC.
-RLS, publication, embedding, and service roles are outside this namespace.
-
-These contracts are generated for every supported installation. Matching
-schemas do not establish runtime parity. Use verified principal/role IDs for
-the selected installation, and follow the base skill's result-handling rule
-before running or inspecting reads.
+These contracts are generated for every supported installation; matching
+schemas do not prove live parity. Use verified principal and role IDs for that
+installation. RLS, publication, embedding, and service roles are outside this
+namespace. Follow the base skill's result-handling rule before any read.
 
 ## Product documentation and SDK contract
 
-Use the official Yandex Cloud DataLens documentation to determine which access
-model and grant level fit a Cloud user's goal: [access model overview](https://yandex.cloud/ru/docs/datalens/security/workbooks-access),
-[folder-model ACLs](https://yandex.cloud/ru/docs/datalens/security/manage-access),
-[workbook and collection access](https://yandex.cloud/ru/docs/datalens/security/workbooks-access-basic),
-[shared objects and delegation](https://yandex.cloud/ru/docs/datalens/security/workbooks-access-advanced),
-[service and resource roles](https://yandex.cloud/ru/docs/datalens/security/roles),
-[granting access and related objects](https://yandex.cloud/ru/docs/datalens/operations/permission/grant),
-and [access requests](https://yandex.cloud/ru/docs/datalens/operations/permission/request).
-The installed SDK surface and its bundled OpenAPI specifications define which
-RPCs and write fields it can send. Product role names do not by themselves
-verify RPC role IDs or behavior on another installation; for Enterprise,
-confirm access semantics against that installation's documentation and live
+For Yandex Cloud, choose the access model and grant level using the official
+[access overview](https://yandex.cloud/ru/docs/datalens/security/workbooks-access),
+[folder ACLs](https://yandex.cloud/ru/docs/datalens/security/manage-access),
+[workbook/collection roles](https://yandex.cloud/ru/docs/datalens/security/workbooks-access-basic),
+[shared-object rules](https://yandex.cloud/ru/docs/datalens/security/workbooks-access-advanced),
+[service/resource roles](https://yandex.cloud/ru/docs/datalens/security/roles),
+[folder-model grant procedure](https://yandex.cloud/ru/docs/datalens/operations/permission/grant),
+and [folder-model access requests](https://yandex.cloud/ru/docs/datalens/operations/permission/request).
+The installed SDK and bundled OpenAPI specs define available RPCs and write
+fields. Product role names alone do not establish RPC role IDs or behavior on
+Enterprise or another installation; verify against its documentation and live
 contract. `entry_acl.copy` is an SDK helper, not a product UI operation.
 
 ## Resolve the permission target explicitly
 
-An existing connection, dataset, chart, or dashboard can belong to a workbook
-and reject folder-model ACL calls with `NotFoundError`. Its entity class and
-the ACL 404 alone establish neither its access model nor whether it exists.
-An ACL response or exception carries no container metadata.
+An entry's type and an ACL 404 do not identify its access model or prove
+deletion. ACL methods accept IDs; they never look up a container or redirect
+to a parent. Reuse an `EntrySummary` obtained for this ID and installation, or
+explicitly call `client.navigation.get_entries(ids=(entry_id,))`. Require
+**one exact ID match**; zero or multiple matches leave the container unknown.
 
-Reuse an `EntrySummary` already obtained for the same ID and installation.
-Otherwise, make an explicit `navigation.get_entries` lookup. Require one
-exact ID match; an empty result means the lookup did not establish the
-container, and multiple matches are ambiguous. Do not infer deletion or
-fall back to another permission API in either case.
+| Verified metadata | Management target |
+|---|---|
+| `entry.workbook_id is not None` | `permissions.workbook` on that workbook ID |
+| No workbook or collection ID, and a folder `entry.key` | `permissions.entry_acl` on the entry ID |
+| `collection_id` without `workbook_id`, or unresolved location | Establish the model separately; do not guess an API |
 
-This example reads the selected target's permissions. Run it only when those
-reads and their result handling are within the task's authorized scope:
+A workbook's parent collection requires
+`client.get.workbook(by_id=entry.workbook_id).collection_id`; an absent
+`entry.collection_id` does not prove there is none. Inspecting an ancestor
+does not authorize writing there. A resolved workbook ID still does not
+provide the role ID, `RoleSubject` ID/type, or scope authorization. Never
+translate ACL levels or participant names into role bindings. If the mapping
+is unknown, stop with the resolved IDs and missing inputs.
 
-```python
-from datalens_sdk import EntryPermissions, SubjectRoleAssignments
-
-# If this task already obtained an EntrySummary for this ID and installation,
-# reuse it as `entry` and skip this lookup.
-matches = [item for item in client.navigation.get_entries(ids=(entry_id,)) if item.id == entry_id]
-if not matches:
-    raise LookupError(f"Entry {entry_id!r} was not returned; container unknown")
-if len(matches) != 1:
-    raise LookupError(f"Ambiguous metadata for entry {entry_id!r}")
-entry = matches[0]
-permissions: EntryPermissions | tuple[SubjectRoleAssignments, ...]
-if entry.workbook_id is not None:
-    permissions = tuple(
-        client.permissions.workbook.list(
-            workbook_id=entry.workbook_id,
-            include_inherited=True,
-        )
-    )
-elif entry.collection_id is None and entry.key:
-    permissions = client.permissions.entry_acl.get(entry_id=entry.id)
-else:
-    raise LookupError(
-        f"Resolve the access model for {entry.id!r} before choosing an API: "
-        f"workbook_id={entry.workbook_id!r}, collection_id={entry.collection_id!r}, "
-        f"key={entry.key!r}"
-    )
-```
-
-The workbook branch uses the actual `entry.workbook_id`, never the entry ID.
-The ACL branch requires a folder path and no workbook or collection container;
-absence of `workbook_id` by itself is insufficient. Entries with a
-`collection_id` but no `workbook_id`, or unresolved location, need their access model established
-separately; do not substitute a collection ACL for an entry ACL. Reusing a
-summary is local to the calling code; `entry_acl` still accepts only IDs.
-
-In the folder model, an entry receives its parent's ACL when created or
-copied. Moving it later does not automatically replace that ACL with the
-destination folder's ACL. Read and change the moved entry's ACL separately
-when the requested access outcome requires it.
-
-If the task needs the workbook's parent collection, explicitly fetch
-`client.get.workbook(by_id=entry.workbook_id).collection_id` when
-`entry.workbook_id` is present. A missing `entry.collection_id` does not prove
-the workbook has no parent collection. Inspecting that parent does not select
-it as a write target.
-
-For a requested grant, resolution identifies the management target only.
-Before using `workbook.modify`, verify the intended scope and the
-installation's exact role ID and `RoleSubject` ID/type. Do not translate
-`acl_view`/`acl_edit` or ACL participant names into role bindings. If that
-mapping is unknown, stop with the resolved entry/workbook IDs and missing
-inputs; do not guess a grant. See [identity rules](#identity-and-acl-suggestions).
+On the folder model, creation or copying inherits the parent's ACL **at that
+time**. Moving an entry does not refresh its ACL. Read and change the moved
+entry's ACL separately if the requested outcome requires it.
 
 ### Diagnose an ACL 404 without replacing the original error
 
-Use an explicit authorized metadata lookup after a failed ACL call when
-needed. Reuse an existing summary instead when it
-already establishes the container. This diagnostic reports metadata and
-re-raises the original exception; it sends no permission mutation or fallback
-permission read:
+After an ACL `NotFoundError`, an authorized exact-ID navigation lookup can
+diagnose the container. Report its metadata or the separate lookup failure,
+then preserve and re-raise the original ACL exception, including status, code,
+message, details, URL, and request ID. A failed lookup does not prove deletion
+or justify trying a different permission API. For `copy`, inspect both
+entries: it reads source and target ACLs before writing, so either read
+failure prevents the diff. Never convert a failed ACL copy into a workbook or
+collection role mutation.
 
 ```python
 from datalens_sdk import DataLensError, NotFoundError
@@ -123,350 +75,222 @@ from datalens_sdk import DataLensError, NotFoundError
 try:
     acl = client.permissions.entry_acl.get(entry_id=entry_id)
 except NotFoundError as original:
-    print(f"ACL read failed for {entry_id!r}: code={original.context.code}, request_id={original.context.request_id}")
     try:
-        matches = [item for item in client.navigation.get_entries(ids=(entry_id,)) if item.id == entry_id]
-        if not matches:
-            raise LookupError(f"Entry {entry_id!r} was not returned; container unknown")
+        matches = [e for e in client.navigation.get_entries(ids=(entry_id,)) if e.id == entry_id]
         if len(matches) != 1:
-            raise LookupError(f"Ambiguous metadata for entry {entry_id!r}")
-        entry = matches[0]
-    except (DataLensError, LookupError) as metadata_error:
-        print(f"Separate metadata lookup failed: {metadata_error}")
+            raise LookupError(f"Expected one exact ID match; found {len(matches)}")
+    except (DataLensError, LookupError) as diagnostic:
+        print(f"Separate metadata lookup failed: {diagnostic}")
     else:
-        print(
-            f"Entry metadata: workbook_id={entry.workbook_id!r}, "
-            f"collection_id={entry.collection_id!r}, key={entry.key!r}"
-        )
-    raise
+        entry = matches[0]  # Choose the API using the table above; no fallback call here.
+        print(f"workbook={entry.workbook_id!r}, collection={entry.collection_id!r}, key={entry.key!r}")
+    raise  # Keep the original ACL error and its request_id.
 ```
 
-Keep the original status, code, message, details, URL, and request ID. A failed
-diagnostic lookup does not replace the ACL error or establish absence. For
-`copy`, inspect source and target metadata explicitly: it reads source ACL,
-then target ACL, before sending any diff, so either read failing prevents the
-write. Do not automatically convert a failed ACL copy into workbook or
-collection role changes.
-
-## Read granted permissions and pending requests
+## Read and change an entry ACL
 
 ```python
 acl = client.permissions.entry_acl.get(entry_id=entry_id)
-editable = acl.editable
-viewers = acl.permissions.acl_view
-pending_viewers = acl.pending_permissions.acl_view
-```
+can_edit = acl.editable
+granted = acl.permissions.acl_view
+pending = acl.pending_permissions.acl_view
 
-The four groups are `acl_view`, `acl_execute`, `acl_edit`, and `acl_adm`.
-Absent groups are empty tuples. `permissions` contains
-`EntryPermissionParticipant`; `pending_permissions` contains
-`PendingEntryPermissionParticipant`. Pending `approver` is always `None`.
-Each participant preserves `name`, `kind`, `description`, `subject`,
-`requester`, `approver`, and `extras`. The participant's `name` is the subject
-identifier used in mutations; optional `subject.name` may be absent.
-Subject metadata includes parent, cloud fields, `rls_id`, and `source`.
-Read DTOs accept omitted granted participant `description` and `extras`
-as `None` for compatibility with live responses. Supplied values remain
-validated, and these fields remain required for pending participants.
-The bundled upstream specifications retain their original required fields.
+from datalens_sdk import EntryPermissionGrant, EntryPermissionsDiff
 
-This is one read with no pagination. The SDK does not expand groups or
-calculate effective inherited access. Navigation permission booleans describe
-access checks; use this ACL surface when you need participants. Follow the
-base skill's result-handling rule before running or inspecting a read.
-
-## Apply an explicit diff
-
-Use IDs and intended permission changes supplied by the user or established
-by an authorized read. The strings below are placeholders, not ID formats.
-`acl_execute` is documented only for connections and datasets; verify the
-target's kind before using this example. A server accepting that ACL field on
-another kind is not proof that Execute grants a usable action there.
-
-```python
-from datalens_sdk import EntryPermissionsDiff, EntryPermissionGrant, EntryPermissionModification
-
-connection_or_dataset_id = "verified-connection-or-dataset-id"
+# Supply a verified ACL subject ID for this installation.
 diff = EntryPermissionsDiff(
-    added=(
-        EntryPermissionGrant(
-            subject="subject-to-add",
-            grant_type="acl_execute",
-            comment="Allow execution",
-        ),
-    ),
-    removed=(EntryPermissionGrant(subject="subject-to-remove", grant_type="acl_view"),),
-    modified=(
-        EntryPermissionModification(
-            subject="existing-subject",
-            grant_type="acl_edit",
-            new_subject="replacement-subject",
-            new_grant_type="acl_adm",
-            comment="Transfer administration",
-        ),
-    ),
+    added=(EntryPermissionGrant(subject=verified_acl_subject, grant_type="acl_view"),),
 )
-result = client.permissions.entry_acl.modify(entry_id=connection_or_dataset_id, diff=diff)
-if result.continuation_required:
-    raise RuntimeError("The server returned continuation information; do not repeat the diff")
+receipt = client.permissions.entry_acl.modify(entry_id=entry_id, diff=diff)
+if receipt.continuation_required:
+    raise RuntimeError("Continuation returned; completion unconfirmed; do not repeat the diff")
 ```
 
-`grant_type` identifies the existing group for a removal or modification;
-`new_grant_type` identifies the replacement group. To change only the level,
-keep `new_subject` equal to `subject`. Comments are optional: `None` omits
-the field and `""` sends an empty comment. The read-side `description` is a
-separate server field; do not assume it equals the last submitted comment.
+The four groups are `acl_view`, `acl_execute`, `acl_edit`, and
+`acl_adm`. The product documents Execute only for **connections and
+datasets**; verify the target kind before granting it. Server acceptance on
+another kind does not prove a usable action.
 
-One call sends one non-recursive mutation (`nested: false`) through the shared
-client. It does not fetch or replace the whole ACL. It does not retry a
-transient server response automatically. Empty diffs are permitted by the
-contract and are sent as an empty `diff` object.
+Missing groups are empty tuples. `permissions` contains
+`EntryPermissionParticipant`; `pending_permissions` contains
+`PendingEntryPermissionParticipant`. Each retains `name`, `kind`,
+`description`, `subject`, `requester`, `approver`, and `extras`.
+Participant `name` is the ACL write ID; optional `subject.name` can be
+absent. Subject metadata includes parent/cloud fields, `rls_id`, and
+`source`. Pending `approver` is always `None`. Live reads can omit a
+granted participant's `description` or `extras` (then `None`), although
+the bundled specs still require them; supplied values and pending participants
+remain validated. This read is unpaged and does not expand groups or compute
+effective inherited access; navigation permission booleans are access checks,
+not participant lists.
 
-The typed result preserves `result` and `next_page_token`.
-`continuation_required` means the token was present, including an empty string.
-The API has no documented input token for resuming this mutation, so the SDK
-does not continue automatically or promise full completion when a token is
-returned. Do not repeat a successful mutation because subsequent verification
-failed. Recursive changes and approval/rejection of pending requests are not
-exposed by this surface. API failures raise typed exceptions with error code
-and request ID; malformed responses raise `InvalidResponseError`.
+`EntryPermissionsDiff` also accepts `removed` grants and `modified`
+`EntryPermissionModification` values. For a modification, `grant_type`
+identifies the existing group and `new_grant_type` its replacement; keep
+`new_subject=subject` to change only the level. `comment=None` omits it,
+whereas `""` sends an empty comment; read-side `description` is distinct.
+One call sends one non-recursive diff (`nested: false`), even when empty (as
+an empty `diff` object);
+it neither fetches/replaces the full ACL nor retries a server error.
+Recursive writes and pending-request approval/rejection are unavailable.
+
+The receipt preserves `result` and `next_page_token`.
+`continuation_required` means a token was present, **even `""`**. No
+resumption input is documented, so a token does not prove full completion.
+Do not resend a successful mutation because later verification failed. API
+errors retain code and request ID.
 
 ## Copy permissions between entries
 
-Choose the outcome before sending a copy. Use `replace` only when the user
-explicitly wants the target's granted ACL to match the source and accepts
-removal of target-only grants, including administrator grants. Use `merge`
-when the user explicitly wants to add source grants while retaining
-target-only grants; the server can still normalize levels for a subject.
-"Copy permissions" without that distinction is ambiguous: clarify the
-intended effect before writing. Inspect both IDs and existing grants within
-the authorized scope before deciding whether either mode meets the request.
-
-For an explicitly additive request:
+Decide the intended effect first. `mode="replace"` makes the target's
+**granted** ACL match the source, removing target-only grants including admins;
+use it only with explicit replacement intent. `mode="merge"` adds missing
+source grants without explicit removal, but the server may normalize a
+subject's levels. `mode` is required and accepts only these two values. An
+unspecified “copy permissions” request is ambiguous:
+clarify before writing, and inspect both IDs and grants within the authorized
+scope.
 
 ```python
 result = client.permissions.entry_acl.copy(
     source_entry_id=source_entry_id,
     target_entry_id=target_entry_id,
-    mode="merge",
+    mode="merge",  # Only for an explicitly additive request.
 )
 ```
 
-`mode` is required and accepts only `"replace"` or `"merge"`:
+The comparison uses participant `name` and ACL level. Matching pairs are
+untouched. On merge, adding `acl_view` to an `acl_edit` subject can keep
+only `acl_edit`; adding `acl_edit` to `acl_view` can replace the latter.
+Do not retry to force a literal union; the SDK has no ACL-level hierarchy.
+For an explicit level replacement, use `modified` instead of adding the
+lower level and removing the higher in one diff: the addition can be ignored
+before removal. Replace-mode copy pairs levels for the same subject in ACL
+field order (`acl_view`, `acl_execute`, `acl_edit`, `acl_adm`) and
+sends surplus additions/removals, including for subjects with multiple levels.
 
-- `replace` adds source grants missing from the target and removes target
-  grants absent from the source, including administrative grants. A level
-  change for the same subject is sent through `modified`.
-- `merge` submits missing source grants without explicit removals. The server
-  can normalize levels for an existing subject rather than retain both grants.
+Copy excludes pending requests, participant metadata, and source
+descriptions/comments. Both entries use the same client installation and
+organization. It rejects identical IDs before HTTP, reads both ACLs, then
+sends at most one non-recursive diff to the target. It is not atomic with
+concurrent changes. `result.modification is None` means matching snapshots
+and **no write receipt**; otherwise inspect its
+`EntryPermissionsModificationResult.continuation_required`. A failure raises,
+rather than fabricating a result. Neither outcome proves current equality.
 
-The SDK compares participant `name` and ACL level; matching pairs are left
-untouched. Server normalization means the result need not contain the literal
-union of ACL records. For example, adding `acl_view` to a subject with
-`acl_edit` returns `ok` and keeps only `acl_edit`. Adding `acl_edit` to a
-subject with `acl_view` replaces it with `acl_edit`. This is accepted
-behavior for `merge`; do not retry the addition to force a redundant level.
-The SDK does not implement its own ACL-level hierarchy.
+## Resolve identities and role IDs
 
-For a level replacement, use `modified` rather than adding a lower grant and
-removing the higher one in the same diff: the addition can be ignored before
-the old grant is removed, leaving neither grant. `copy(mode="replace")`
-handles this by pairing unmatched levels for the same subject in ACL field
-order (`acl_view`, `acl_execute`, `acl_edit`, `acl_adm`) and sending any
-surplus additions or removals in the same mutation. This also supports
-participants present at multiple levels. Redundant source levels can still be
-normalized by the server.
+`entry_acl.suggest_subjects(search_text=...)` returns ACL candidates.
+For role identities, `list_subjects(search=..., subject_type=..., language=...,
+filter=..., page_size=...)` returns a lazy `Pager[DirectorySubject]` over the
+installation directory, not resource membership. `filter` has
+server-specific syntax; use only verified expressions. `None`
+omits a parameter while `""` sends it.
 
-Only granted permissions are copied. Pending requests and participant
-metadata are excluded; source descriptions are not submitted as comments.
-Both entries belong to the same client installation and organization.
+Binding `subject_claims`, directory subjects, and write
+`RoleSubject(id=..., type=...)` have different type vocabularies. Never
+lowercase read enums, use display names/email as IDs, or automatically convert
+a read identity to a write identity. Obtain the exact write ID/type **and
+resource-specific role ID** from a verified installation mapping or explicit
+verified caller input. A read role's occurrence does not define its meaning on
+another resource.
 
-The method reads the source and target, then sends at most one non-recursive
-diff only to the target. Identical source/target IDs are rejected before any
-request. The returned `EntryPermissionsCopyResult.modification` is `None` when
-the granted subject/level pairs already match: no mutation was sent, so there
-is no server write receipt. Otherwise it holds the actual
-`EntryPermissionsModificationResult`, including continuation information.
-A failure raises instead of fabricating a result. Copy uses two read snapshots
-and is not atomic with concurrent changes; it does not prove current equality.
+For a new ACL grant, use the caller's opaque ACL subject ID or
+`suggest_subjects` for an exact known login/ID. Choose a single candidate
+whose nonempty `name` exactly matches, and inspect type/profile metadata.
+A fuzzy hit, display `title`, or missing `name` is insufficient; ask the
+caller to disambiguate. That ACL `name` does not imply a `RoleSubject` ID or
+type.
 
-```python
-if result.modification is None:
-    outcome = "Matching snapshots; no write sent"
-elif result.modification.continuation_required:
-    outcome = "Acknowledged with continuation information; completion unconfirmed"
-else:
-    outcome = "One ACL diff acknowledged"
-```
+Yandex Cloud documents `datalens.workbooks.limitedViewer` for charts,
+dashboards, and reports, and `datalens.workbooks.viewer` for all workbook
+objects. Choose the needed scope; these product labels do not verify RPC role
+IDs, especially on another installation. A Yandex Cloud service role is a
+separate prerequisite to object access. Confirm it through an authorized
+source or report it unverified; an object grant alone does not prove usable
+service access.
 
-
-## Identity and ACL suggestions
-
-`entry_acl.suggest_subjects(search_text=...)` returns an ACL-specific
-snapshot. For role identities, `list_subjects(search=..., subject_type=...,
-language=..., filter=..., page_size=...)` returns a lazy `Pager[DirectorySubject]`.
-It searches the installation identity directory, not resource membership.
-`filter` is an opaque server expression; use only syntax verified for the
-selected installation. `None` omits an option; `""` remains an explicit value.
-
-Keep three records distinct: binding `subject_claims`, directory subjects, and
-write `RoleSubject(id=..., type=...)`. Their type vocabularies differ. Do not
-lowercase read enums, use display names as IDs, or infer a mutation identity
-from email. There is no general automatic read-to-write conversion. Supply the
-exact write ID/type pair and resource-specific role ID from an authoritative
-installation mapping or explicit verified caller input. A role seen in a read
-establishes its occurrence, not its meaning for another resource kind.
-
-For a new folder-model ACL grant, use a caller-supplied opaque ACL subject ID
-for this installation, or use `entry_acl.suggest_subjects` to resolve an exact
-known login/ID. Select only one candidate whose nonempty `name` exactly
-matches that identifier; inspect its available type/profile metadata as well.
-Suggestions may omit `name`, and a unique display `title` or fuzzy search hit
-does not establish a write ID. If the request names only a person, present
-the candidates for the caller to disambiguate or ask for the exact ID before
-writing. The suggestion's `name` is for ACL writes only: never transform it
-into `RoleSubject.id` or infer `RoleSubject.type` from it.
-
-Yandex Cloud documents roles including `datalens.workbooks.viewer` while
-recommending UI assignment; that alone does not establish an Enterprise or
-other installation's RPC role mapping. The examples below require verified
-inputs and make no ordinary-human grant claim for an unverified installation.
-On Yandex Cloud, service access is a separate prerequisite to object access:
-establish the recipient's DataLens service role through an authorized source
-or report it as unverified. An ACL or workbook binding alone does not prove
-the service is usable. See the
-[official role guide](https://yandex.cloud/ru/docs/datalens/security/roles).
-
-## Enumerate direct and inherited roles
+## List and change workbook or collection roles
 
 ```python
-from datalens_sdk import DataLensError, SubjectRoleAssignments
+assignments = tuple(client.permissions.workbook.list(
+    workbook_id=workbook_id, include_inherited=True,
+))
 
-assignments: list[SubjectRoleAssignments] = []
-try:
-    for assignment in client.permissions.workbook.list(
-        workbook_id=workbook_id,
-        include_inherited=True,
-    ):
-        assignments.append(assignment)
-except DataLensError:
-    # This is a partial traversal, even when previous pages were successful.
-    raise
-```
+from datalens_sdk import RoleBindingDelta, RoleSubject
 
-Use the equivalent `collection.list(collection_id=...)` or
-`shared_entry.list(entry_id=...)` for their explicit targets. Each item retains
-`subject_claims`, `access_bindings` (direct), and `inherited_access_bindings`.
-Each binding has `role_id` and nullable `inherited_from`. A missing origin is
-unknown, not the immediate parent. An origin can be a more distant ancestor;
-changing its grant affects that wider scope and needs corresponding authority.
-
-`include_inherited=None` omits the field; `False` is explicitly sent.
-`page_size` is an integer count; the SDK does not impose a server range. Pager construction performs no HTTP;
-each traversal starts fresh. `.pages()` exposes items and continuation tokens.
-An empty page can have a following page. A later-page failure is an error and
-leaves the audit incomplete. Enumeration is not an atomic snapshot and does not
-expand group membership or enumerate all people who can access data.
-Use the server default or a verified practical page size for ordinary audits;
-`page_size=1` is useful for pagination tests, but can cause one RPC per subject.
-
-## Change explicit workbook or collection roles
-
-```python
-from datalens_sdk import DataLensOperation, RoleBindingDelta, RoleSubject, RoleSubjectType
-
-
-# Values supplied and verified for this installation and resource kind.
-def add_workbook_role(
-    workbook_id: str,
-    principal_id: str,
-    principal_type: RoleSubjectType,
-    role_id: str,
-) -> DataLensOperation:
-    return client.permissions.workbook.modify(
-        workbook_id=workbook_id,
-        deltas=(
-            RoleBindingDelta(
-                action="ADD",
-                role_id=role_id,
-                subject=RoleSubject(id=principal_id, type=principal_type),
-            ),
-        ),
-    )
-```
-
-`collection.modify(collection_id=..., deltas=...)` uses the same values. Use
-`action="REMOVE"` with the exact direct binding identity/role to remove it.
-Delta order and duplicates are preserved. Removing a direct grant does not
-revoke access still available through inheritance, groups, shared delegation,
-or other mechanisms. Do not modify an ancestor just to remove a child's
-inherited row without authorization for that ancestor's scope.
-
-The returned `DataLensOperation` preserves `id`, `description`, `created_by`,
-`created_at`, `modified_at`, opaque `metadata`, and `done`. Timestamps retain
-`seconds` as a string and optional `nanos`. `done=False` means unfinished.
-`done=True` means completed, but this schema contains no separate success/error
-result. Report that receipt state; do not claim access was granted solely
-because the call returned. An authorized later binding read can observe the
-requested assignment without proving causality or every person's access.
-No operation polling endpoint, `.wait()`, automatic rollback, or binding-copy
-operation is exposed.
-
-### Grants for dashboards and related objects
-
-An `entry_acl.modify` call changes only its named entry (`nested: false`).
-Access to a dashboard may also depend on charts, datasets, and connections.
-Inspect permitted relations through `get_relations()` or known links, identify
-each management target, and check the caller's authority for each proposed
-change. Issue only the separately authorized grants that the user requested.
-Report which direct ACL changes the server acknowledged, and state any
-unresolved dependencies or pending access requests. `effective` checks describe
-the authenticated caller, so they cannot verify the recipient's access.
-
-Every permission write has one mutation attempt. Timeout after dispatch,
-malformed HTTP 200, or an opaque 5xx can leave the write outcome unknown.
-Preserve available error details and reconcile through separately authorized
-reads; do not resend the write after an uncertain failure or failed verification.
-If read propagation retries are needed, bound them explicitly and retry valid
-stale states only; authorization, validation, malformed responses, and 500
-errors are failures, not evidence of propagation.
-
-Invalid permission arguments raise `DataLensValidationError` before HTTP.
-Malformed ACL responses raise `InvalidResponseError`; other permission DTO
-failures raise `DTOValidationError`. These response errors use the SDK's
-synthetic 502 context and may lack the original HTTP status and request ID.
-See [troubleshooting](troubleshooting.md) for the existing error categories.
-
-## Check effective actions
-
-```python
-from datalens_sdk import EffectivePermissionError
-
-checks = client.permissions.effective.get_entries(entry_ids=(entry_id,))
-check = checks.get(entry_id)
-if check is None:
-    outcome = "ID omitted by the server"
-elif isinstance(check, EffectivePermissionError):
-    outcome = check.error  # Explicit NOT_FOUND
-else:
-    outcome = check.permissions.read  # False is an actual reported denial.
-
-bulk = client.permissions.effective.get_bulk(
-    entry_ids=(entry_id,),
-    workbook_ids=(workbook_id,),
+receipt = client.permissions.workbook.modify(
+    workbook_id=workbook_id,
+    deltas=(RoleBindingDelta(
+        action="ADD",
+        role_id=verified_role_id,
+        subject=RoleSubject(id=verified_subject_id, type=verified_subject_type),
+    ),),
 )
-root = client.permissions.effective.get_root_collection()
 ```
 
-Effective checks report the current authenticated caller's permissions.
-Bulk results keep separate
-`entries`, `workbooks`, and `collections` maps even if IDs coincide. A present
-projection may omit `permissions` or, for entries, `full_permissions`; absent
-projections are not all-false permissions. Explicit `NOT_FOUND`, an omitted ID,
-a missing projection, and a false action flag mean different things.
+Use `collection.list/modify(collection_id=...)` for collections and
+`shared_entry.list(entry_id=...)` to read shared-object roles. List items
+retain `subject_claims`, direct `access_bindings`, and
+`inherited_access_bindings`. Each binding has a `role_id` and nullable
+`inherited_from`; an absent origin is unknown, and a present one may be a
+distant ancestor. Changing that ancestor requires authority for its wider
+scope. `include_inherited=None` omits the field; `False` explicitly sends
+it.
 
-Each supplied bulk ID sequence must contain 1–1000 IDs. `None` omits it; all
-three omitted sends `{}` as permitted by the contract. No hidden fan-out or
-useful result is promised for that empty request. These bulk limits do not
-apply to `get_entries`. Effective actions come from the
-server; the SDK does not calculate them from ACLs or assignments.
+These lists are lazy pagers: constructing one makes no HTTP call, each
+traversal starts fresh, and `.pages()` exposes continuation tokens. An empty
+page can have a successor. A later-page error makes the audit incomplete;
+listing is not an atomic snapshot and does not expand groups. Use the server
+default or a verified practical integer `page_size` for audits; `page_size=1`
+is useful for pagination tests but can mean one RPC per subject. The SDK
+imposes no local page-size range.
+
+For removal, use `action="REMOVE"` with the exact direct binding subject
+and role. Deltas retain order and duplicates. Removing a direct grant need
+not revoke inherited, group, or shared access. Do not modify an ancestor to
+remove a child's inherited row without authority for that ancestor.
+
+`DataLensOperation` retains `id`, `description`, `created_by`,
+`created_at`, `modified_at`, opaque `metadata`, and `done`; timestamps
+retain string `seconds` and optional `nanos`. `done=False` is unfinished;
+`done=True` means completed but this schema has no separate success/error
+result. Report the receipt state. A later authorized binding read may observe
+the assignment but does not prove causality or every person's access. No
+polling endpoint, `.wait()`, automatic rollback, or binding-copy operation
+is exposed.
+
+## Effective actions, dependencies, and write outcomes
+
+`effective.get_entries(entry_ids=...)`, `get_bulk(entry_ids=...,
+workbook_ids=..., collection_ids=...)`, and `get_root_collection()` report
+actions for the **authenticated caller**, not a recipient. Bulk results keep
+separate `entries`, `workbooks`, and `collections` maps even for equal
+IDs. Distinguish an `EffectivePermissionError` such as explicit
+`NOT_FOUND`, an omitted ID, a present projection without `permissions`
+(or an entry projection without `full_permissions`), and an actual `False` flag.
+The SDK does not derive effective actions from ACLs or bindings. Each supplied
+bulk ID list must have 1–1000 IDs; `None` omits it. Omitting all three sends
+`{}` but promises no useful result. `get_entries` has no such bulk limit.
+
+An entry ACL mutation changes only that entry. Dashboard access may require
+separate rights to charts, datasets, and connections: inspect permitted
+`get_relations()` or known links, check authority for each target, and issue
+only separately authorized grants. Report acknowledged direct changes and
+unresolved dependencies or pending requests.
+
+For a shared connection or dataset bound to a workbook, inspect delegation.
+With delegation, access inside that workbook skips the original shared-object
+check; without it, the recipient also needs access to the original. A shared
+dataset can depend on a shared connection, so inspect both bindings.
+
+Attempt each permission write once. A post-dispatch timeout, malformed HTTP
+200, or opaque 5xx can leave the outcome unknown: preserve error details,
+reconcile with authorized reads, and do not resend after an uncertain failure
+or failed verification. Bound any read-propagation retry to valid stale
+states; 403, validation errors, malformed responses, and 500s are failures.
+Invalid arguments raise `DataLensValidationError` before HTTP. Malformed ACL
+responses raise `InvalidResponseError`; other permission DTO failures raise
+`DTOValidationError`. Response-validation errors have synthetic 502 context
+and may lack the original status/request ID. See
+[troubleshooting](troubleshooting.md).

@@ -4,40 +4,18 @@
 
 ### Added
 
-- Complete `client.permissions` with explicit `entry_acl`, `workbook`,
-  `collection`, `shared_entry`, and `effective` namespaces plus `list_subjects`:
-  12 RPC contracts and ACL copy, using installation-specific generated DTOs.
-- Preserve lazy binding/directory pagination, direct/inherited assignments,
-  nullable origins, explicit identity inputs, ordered role deltas, opaque
-  operation metadata and lossless timestamps. Effective checks distinguish
-  missing IDs/projections, explicit `NOT_FOUND`, and false action flags.
-- Add shared permission recipes and document runtime evidence separately from
-  deterministic contract validation; the companion YaTeam suite supplies
-  isolated opt-in lifecycle coverage.
+- Add typed `client.permissions` APIs for entry ACL reads, changes and copy;
+  workbook and collection role reads and changes; shared-entry role reads;
+  effective access checks; and identity lookup. Results preserve pagination,
+  inherited bindings, operation receipts and API errors.
+- Validate permission arguments before HTTP. ACL copy distinguishes an unchanged
+  target from a mutation receipt; write receipts alone do not prove effective
+  access. Bundle guidance for selecting the access model and verifying results.
 
 - Add ID-preserving `.move(EntryLocation.path(...), name=...)` operations for
   connections, datasets, dashboards, and every chart family. The SDK validates
   the `moveFolderEntry` result against the moved entry id and returns the
   refreshed resource with its current name and location.
-
-### Migration from the unreleased permissions preview
-
-- Remove `permissions.effective.get_entries_for_user`; other-user entry audits
-  are no longer exposed. Effective checks use the current authenticated caller.
-
-- Replace `client.permissions.get/modify/copy` with
-  `client.permissions.entry_acl.get/modify/copy`. ACL model exports now use
-  `EntryPermission*` / `EntryPermissions*`, for example `EntryPermissionsDiff`
-  replaces `PermissionDiff`.
-- Copy returns `EntryPermissionsCopyResult`: `.modification is None` means
-  matching snapshots caused no write; otherwise it is the actual ACL receipt.
-  Equal source/target IDs are rejected before requests. Existing level-pairing,
-  pending-request preservation and server merge normalization remain intact.
-- Permission writes are attempted once. ACL continuation tokens and role
-  operation `done` values do not prove effective access; malformed or lost
-  responses can leave the outcome unknown. Invalid permission arguments raise
-  `DataLensValidationError` before HTTP.
-
 
 ### Changed
 

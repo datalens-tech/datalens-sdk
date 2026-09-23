@@ -262,11 +262,12 @@ Read this file, then follow only the references routed for the task. Chart
 families may require an index, one renderer reference, and a shared lifecycle
 reference; do not read unrelated files.
 
-The packaged [`../env-specific.yaml`](../env-specific.yaml) manifest marks the
-public skill files that an installation-specific skill may replace. If the
-active agent installation loads such a replacement, use its route instead of
-opening the corresponding public reference. In particular, an overlay-provided
-Editor index replaces the public Editor subtree for that installation.
+The packaged [`../env-specific.yaml`](../env-specific.yaml) manifest marks
+files with installation-specific variants. This base `SKILL.md` is the shared
+starting point even though it appears in the manifest: read it first, then the
+active overlay's `SKILL.md`. For other listed paths, use the overlay's route
+when it provides a replacement. In particular, an overlay-provided Editor
+index replaces the public Editor subtree for that installation.
 
 | Task involves                                                              | Read                                                                     |
 |----------------------------------------------------------------------------|--------------------------------------------------------------------------|

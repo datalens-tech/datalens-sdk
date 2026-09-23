@@ -3,10 +3,10 @@
 Read this when you need to find, list, move, or rename entities, or manage the containers they live in: collections, workbooks, and folders.
 
 For ACL participants, roles and effective checks, use the
-[permission-target resolution example](permissions.md#resolve-the-permission-target-explicitly).
+[permission-target resolution guide](permissions.md#resolve-the-permission-target-explicitly).
 It reuses an existing `EntrySummary` or explicitly calls
 `navigation.get_entries(ids=(entry_id,))`, checks for one exact match, and
-selects a permission read from container metadata. Ordinary workbook contents
+selects a management target from container metadata. Ordinary workbook contents
 use the actual `workbook_id`; shared-object roles target the original entry.
 Neither an ACL 404 nor an entry class proves its access model. Permission
 methods do not perform hidden metadata lookups or redirect writes.
