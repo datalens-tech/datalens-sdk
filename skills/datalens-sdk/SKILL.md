@@ -61,9 +61,26 @@ the configuration state from malformed output.
 
 | STATUS        | Meaning                             | What to do                                                                                                                                       |
 |---------------|-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ready`       | installation and credentials configured | proceed with the supplied `PYTHON`                                                                                                 |
+| `ready`       | local configuration prerequisites detected | proceed with the supplied `PYTHON` after any pending user confirmation of CLI initialization |
 | `needs_input` | installation choice is unresolved       | ask the one missing question (yc or Enterprise), then rerun preflight                                                              |
-| `blocked`     | configuration action required           | relay the one-line instruction (install `yc` CLI, provide static YC credentials, or provide the Enterprise base URL); do not work around it |
+| `blocked`     | configuration action required           | for YC, offer both recovery options below; for Enterprise, request the base URL; do not work around it |
+
+For YC with `YC_CLI=missing` and `YC_STATIC=absent`, offer both paths:
+
+1. **Recommended — install `yc`:** link the [official guide](https://yandex.cloud/docs/cli/operations/install-cli).
+   Global installation edits the user's shell profile for `PATH` and completion;
+   local installation creates project `.yandex-cloud/`, may update
+   `$PWD/.gitignore`, and leaves shell profiles unchanged. Ask for the scope,
+   then follow [the CLI workflow](references/setup.md#installing-yc-for-the-user).
+   The agent installs only; the user initializes. Wait for clear completion
+   confirmation even when preflight reports `ready`.
+2. **Without CLI:** use `DATALENS_ORG_ID` and `DATALENS_IAM_TOKEN` from the
+   process environment or project `.env` with `StaticYCIAMAuthProvider`. For
+   `.env`, follow [its rules](references/setup.md#env-rules) before repeated
+   preflight and every SDK process; the SDK does not load it. Never request the
+   token in chat.
+
+After either change, rerun preflight.
 
 Key output fields: `INSTALLATION`, `TOKEN`/`YC_CLI`/`YC_STATIC`/`BASE_URL`
 (per installation), and `ENV_FILE`. Full state table and interpretation:
@@ -78,7 +95,8 @@ The only code this file shows — everything else lives in references.
 from datalens_sdk import DataLensClientYC, StaticYCIAMAuthProvider
 
 client = DataLensClientYC()  # YCIAMAuthProvider; configurable via environment
-# or, with static credentials from env:
+# or, with static credentials already loaded into the process environment
+# (`.env` is not loaded by the SDK):
 import os
 
 client = DataLensClientYC(
@@ -144,9 +162,10 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
    supplied by the calling bootstrap. Run this bundled
    `scripts/preflight.sh` through its absolute path, from the user's project
    directory, before the first SDK call of a session.
-2. **No package management here.** Never run pip, uv, or Poetry from this
-   bundled skill and never suggest `--break-system-packages`; installation
-   and version decisions belong to the calling bootstrap.
+2. **No Python package management here.** Never run pip, uv, or Poetry from
+   this bundled skill and never suggest `--break-system-packages`; Python
+   package installation and version decisions belong to the calling bootstrap.
+   Installing the external `yc` CLI follows the user-selected scope above.
 3. **Tokens are opaque.** Never print, log, echo, hash, or measure a token;
    never ask the user to paste one into chat. Secrets live in `.env`, which
    the user edits themselves. The only permitted checks are existence
@@ -352,11 +371,8 @@ Explicit `OAuthAuthProvider(token=...)` and `YCIAMAuthProvider(org_id=...,
 profile=...)` arguments take precedence over environment values. Empty
 environment values are treated as unset.
 
-`.env` rules: one `.env` in the user's working directory; the **user**
-writes secret values into it (the agent never writes or echoes secrets;
-non-secret vars may be added with the user's consent); never execute it
-with `source` or `.` — load it with the non-executing allowlisted reader
-from [references/setup.md](references/setup.md).
+`.env` rules: the user writes secrets; never execute or reveal the file.
+Use the non-executing allowlisted reader from [references/setup.md](references/setup.md) in every process that needs its values.
 
 ## Reference map
 

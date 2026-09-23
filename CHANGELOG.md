@@ -28,6 +28,15 @@
   the `moveFolderEntry` result against the moved entry id and returns the
   refreshed resource with its current name and location.
 
+### Changed
+
+- Guide agents through recovery when Yandex Cloud preflight finds neither the
+  `yc` CLI nor static IAM credentials: safely load static credentials from the
+  current project's `.env`, offer an informed global or project-local CLI
+  installation using the official installer, refuse a non-empty local
+  destination, leave initialization and authentication to the user, and pass
+  the selected binary and profile explicitly to later processes.
+
 ## 3.0.0 - 2026-09-09
 
 ### Breaking changes
