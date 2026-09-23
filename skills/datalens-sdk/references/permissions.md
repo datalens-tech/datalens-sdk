@@ -213,19 +213,24 @@ service access.
 ## List and change workbook or collection roles
 
 ```python
-assignments = tuple(client.permissions.workbook.list(
-    workbook_id=workbook_id, include_inherited=True,
-))
+assignments = tuple(
+    client.permissions.workbook.list(
+        workbook_id=workbook_id,
+        include_inherited=True,
+    )
+)
 
 from datalens_sdk import RoleBindingDelta, RoleSubject
 
 receipt = client.permissions.workbook.modify(
     workbook_id=workbook_id,
-    deltas=(RoleBindingDelta(
-        action="ADD",
-        role_id=verified_role_id,
-        subject=RoleSubject(id=verified_subject_id, type=verified_subject_type),
-    ),),
+    deltas=(
+        RoleBindingDelta(
+            action="ADD",
+            role_id=verified_role_id,
+            subject=RoleSubject(id=verified_subject_id, type=verified_subject_type),
+        ),
+    ),
 )
 ```
 
