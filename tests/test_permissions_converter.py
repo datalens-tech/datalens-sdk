@@ -278,6 +278,7 @@ def test_bulk_projects_all_resource_specific_flags() -> None:
                 "id": {
                     "permissions": {
                         **common,
+                        "browse": True,
                         "createSharedEntry": False,
                         "createCollection": True,
                         "createWorkbook": False,
@@ -300,6 +301,7 @@ def test_bulk_projects_all_resource_specific_flags() -> None:
     assert workbook.permissions.copy is True
     assert workbook.permissions.embed is False
     assert collection.permissions is not None
+    assert collection.permissions.browse is True
     assert collection.permissions.copy is True
     assert collection.permissions.create_collection is True
 

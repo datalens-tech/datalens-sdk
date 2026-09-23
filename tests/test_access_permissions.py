@@ -251,6 +251,45 @@ def test_effective_bulk_preserves_independent_maps_and_absent_projections() -> N
     assert recorder.body() == {"entryIds": ["same", "error", "missing"]}
 
 
+def test_effective_bulk_preserves_collection_transit_permission() -> None:
+    recorder = Recorder(
+        httpx.Response(
+            200,
+            json={
+                "entries": {},
+                "workbooks": {},
+                "collections": {
+                    "transit": {
+                        "permissions": {
+                            "listAccessBindings": False,
+                            "updateAccessBindings": False,
+                            "createSharedEntry": False,
+                            "createCollection": False,
+                            "createWorkbook": False,
+                            "limitedView": False,
+                            "browse": True,
+                            "view": False,
+                            "update": False,
+                            "copy": False,
+                            "move": False,
+                            "delete": False,
+                        }
+                    }
+                },
+            },
+        )
+    )
+
+    result = client(recorder).permissions.effective.get_bulk(collection_ids=["transit"])
+
+    collection = result.collections["transit"]
+    assert isinstance(collection, dl.CollectionEffectivePermissionResult)
+    assert collection.permissions is not None
+    assert collection.permissions.browse is True
+    assert collection.permissions.view is False
+    assert recorder.body() == {"collectionIds": ["transit"]}
+
+
 @pytest.mark.parametrize("family", ["entries", "workbooks", "collections"])
 @pytest.mark.parametrize("item", [{"error": "OTHER"}, {"error": "OTHER", "permissions": {}}, {"permissions": None}])
 def test_effective_bulk_rejects_unknown_errors_and_explicit_null(family: str, item: object) -> None:

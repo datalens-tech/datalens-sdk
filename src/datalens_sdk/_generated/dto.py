@@ -463,6 +463,7 @@ class GetEntriesPermissionsResultReadDTO(RootModel[dict[str, Annotated[GetEntrie
 class GetPermissionsBulkResultCollectionsValueAnyOf1PermissionsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
+    browse: bool
     can_copy: bool = Field(alias='copy')
     create_collection: bool = Field(alias='createCollection')
     create_shared_entry: bool = Field(alias='createSharedEntry')

@@ -277,6 +277,10 @@ IDs. Distinguish an `EffectivePermissionError` such as explicit
 The SDK does not derive effective actions from ACLs or bindings. Each supplied
 bulk ID list must have 1–1000 IDs; `None` omits it. Omitting all three sends
 `{}` but promises no useful result. `get_entries` has no such bulk limit.
+For a collection, `browse` reports whether the caller can traverse it as a
+transit node; `view` separately reports whether the collection itself can be
+viewed. Preserve the distinction when deciding whether to navigate to a
+descendant.
 
 An entry ACL mutation changes only that entry. Dashboard access may require
 separate rights to charts, datasets, and connections: inspect permitted

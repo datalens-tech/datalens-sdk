@@ -274,6 +274,7 @@ class CollectionEffectivePermissions:
     create_collection: bool
     create_workbook: bool
     limited_view: bool
+    browse: bool
     view: bool
     update: bool
     copy: bool

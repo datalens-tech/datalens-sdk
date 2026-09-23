@@ -4,6 +4,8 @@
 
 ### Added
 
+- Preserve the collection `browse` effective permission returned by
+  `client.permissions.effective.get_bulk()`, distinct from `view`.
 - Add typed `client.permissions` APIs for entry ACL reads, changes and copy;
   workbook and collection role reads and changes; shared-entry role reads;
   effective access checks; and identity lookup. Results preserve pagination,

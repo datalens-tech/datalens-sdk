@@ -158,6 +158,7 @@ class CollectionEffectiveReadDTO(Protocol):
     create_collection: bool
     create_workbook: bool
     limited_view: bool
+    browse: bool
     view: bool
     update: bool
     can_copy: bool
@@ -477,6 +478,7 @@ def _collection_effective(dto: CollectionEffectiveReadDTO) -> CollectionEffectiv
         list_access_bindings=dto.list_access_bindings,
         update_access_bindings=dto.update_access_bindings,
         limited_view=dto.limited_view,
+        browse=dto.browse,
         view=dto.view,
         update=dto.update,
         copy=dto.can_copy,
