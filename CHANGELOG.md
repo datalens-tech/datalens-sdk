@@ -4,6 +4,16 @@
 
 ### Added
 
+- Preserve the collection `browse` effective permission returned by
+  `client.permissions.effective.get_bulk()`, distinct from `view`.
+- Add typed `client.permissions` APIs for entry ACL reads, changes and copy;
+  workbook and collection role reads and changes; shared-entry role reads;
+  effective access checks; and identity lookup. Results preserve pagination,
+  inherited bindings, operation receipts and API errors.
+- Validate permission arguments before HTTP. ACL copy distinguishes an unchanged
+  target from a mutation receipt; write receipts alone do not prove effective
+  access. Bundle guidance for selecting the access model and verifying results.
+
 - Add ID-preserving `.move(EntryLocation.path(...), name=...)` operations for
   connections, datasets, dashboards, and every chart family. The SDK validates
   the `moveFolderEntry` result against the moved entry id and returns the

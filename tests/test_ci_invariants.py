@@ -407,7 +407,10 @@ def test_shared_entry_routes_are_owned_by_entries_api() -> None:
     users = sorted(
         path.relative_to(SRC).as_posix()
         for path in _python_files("api")
-        if any(route in path.read_text() for route in routes)
+        if any(
+            isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value in routes
+            for node in ast.walk(ast.parse(path.read_text(), filename=str(path)))
+        )
     )
 
     assert users == ["api/entries.py"]

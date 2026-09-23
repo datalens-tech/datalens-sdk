@@ -11299,6 +11299,10 @@
             "permissions": {
               "description": "Permissions for the collection.",
               "properties": {
+                "browse": {
+                  "description": "Indicates if the collection can be browsed as a transit node.",
+                  "type": "boolean"
+                },
                 "copy": {
                   "description": "Indicates if the collection can be copied.",
                   "type": "boolean"
@@ -11355,7 +11359,8 @@
                 "update",
                 "copy",
                 "move",
-                "delete"
+                "delete",
+                "browse"
               ],
               "type": "object"
             },
@@ -11428,6 +11433,10 @@
           "permissions": {
             "description": "Permissions for the collection.",
             "properties": {
+              "browse": {
+                "description": "Indicates if the collection can be browsed as a transit node.",
+                "type": "boolean"
+              },
               "copy": {
                 "description": "Indicates if the collection can be copied.",
                 "type": "boolean"
@@ -11484,7 +11493,8 @@
               "update",
               "copy",
               "move",
-              "delete"
+              "delete",
+              "browse"
             ],
             "type": "object"
           },
@@ -12665,6 +12675,10 @@
                     "permissions": {
                       "description": "Permissions for the collection.",
                       "properties": {
+                        "browse": {
+                          "description": "Indicates if the collection can be browsed as a transit node.",
+                          "type": "boolean"
+                        },
                         "copy": {
                           "description": "Indicates if the collection can be copied.",
                           "type": "boolean"
@@ -12721,7 +12735,8 @@
                         "update",
                         "copy",
                         "move",
-                        "delete"
+                        "delete",
+                        "browse"
                       ],
                       "type": "object"
                     }
@@ -13245,6 +13260,10 @@
                     "permissions": {
                       "description": "Permissions for the collection.",
                       "properties": {
+                        "browse": {
+                          "description": "Indicates if the collection can be browsed as a transit node.",
+                          "type": "boolean"
+                        },
                         "copy": {
                           "description": "Indicates if the collection can be copied.",
                           "type": "boolean"
@@ -13301,7 +13320,8 @@
                         "update",
                         "copy",
                         "move",
-                        "delete"
+                        "delete",
+                        "browse"
                       ],
                       "type": "object"
                     },

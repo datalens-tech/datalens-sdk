@@ -27,6 +27,7 @@ from datalens_sdk import (
     DirectoryPager,
     EditorChart,
     EntryLocation,
+    EntryPermissionsCopyResult,
     EntryRelation,
     EntrySummary,
     FieldLike,
@@ -665,6 +666,11 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
     assert_type(client.navigation.get_entries(), Pager[EntrySummary])
     assert_type(client.licenses, LicensesNamespace)
     assert_type(client.licenses.list(), Pager[License])
+    if TYPE_CHECKING:
+        assert_type(
+            client.permissions.entry_acl.copy(source_entry_id="source-1", target_entry_id="target-1", mode="replace"),
+            EntryPermissionsCopyResult,
+        )
     dataset = client.get.dataset(by_id="ds-1")
     assert_type(dataset, Dataset)
     assert_type(dataset.fields, FieldsProxy)
@@ -768,6 +774,11 @@ def test_enterprise_client_namespaces_are_visible_to_static_tools() -> None:
     assert_type(client.create.source(using=connection), EnterpriseSourceCreateFactory)
     clickhouse_builder = client.create.connection.clickhouse(name="CH", location=EntryLocation.path("/sdk"))
     assert_type(clickhouse_builder.secure("on"), EnterpriseClickhouseConnectionCreate)
+    if TYPE_CHECKING:
+        assert_type(
+            client.permissions.entry_acl.copy(source_entry_id="source-1", target_entry_id="target-1", mode="merge"),
+            EntryPermissionsCopyResult,
+        )
 
 
 def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> None:

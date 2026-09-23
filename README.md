@@ -117,6 +117,12 @@ The client groups operations by intent:
 - `client.create` exposes typed builders. Configure a builder fluently and call `.build()` to send it.
 - Returned resources provide operations such as `.move()`, `.rename()`, `.update`, and `.delete()`.
 - `EntryLocation` identifies a destination path, workbook, or collection.
+- `client.permissions.entry_acl` reads, modifies and copies folder-model ACLs.
+  `permissions.workbook` and `.collection` list roles and apply explicit deltas;
+  `.shared_entry` lists original-object roles, `.effective` checks server-reported
+  actions, and `.list_subjects()` searches the identity directory. See the
+  [permissions guide](skills/datalens-sdk/references/permissions.md) for target
+  selection, verified identity inputs, pagination and operation receipts.
 
 For example, create a workbook and use the returned object directly as a destination:
 

@@ -2,6 +2,15 @@
 
 Read this when you need to find, list, move, or rename entities, or manage the containers they live in: collections, workbooks, and folders.
 
+For ACL participants, roles and effective checks, use the
+[permission-target resolution guide](permissions.md#resolve-the-permission-target-explicitly).
+It reuses an existing `EntrySummary` or explicitly calls
+`navigation.get_entries(ids=(entry_id,))`, checks for one exact match, and
+selects a management target from container metadata. Ordinary workbook contents
+use the actual `workbook_id`; shared-object roles target the original entry.
+Neither an ACL 404 nor an entry class proves its access model. Permission
+methods do not perform hidden metadata lookups or redirect writes.
+
 ## The container model
 
 Two organizational schemes coexist, per installation:
@@ -37,6 +46,15 @@ for entry in pager:  # EntrySummary
 ```
 
 `EntrySummary` carries `.id`, `.scope`, `.type`, `.name`, `.key` (path, on folder installations), `.workbook_id`, `.collection_id`, `.created_by`/`.created_at`, `.updated_by`/`.updated_at`, `.saved_id`/`.published_id`, `.hidden`, `.is_favorite`, `.is_locked`, plus `.data`/`.links`/`.permissions` (populated only when the matching `include_*` flag is on) and `.raw`. Some listing endpoints return a path-qualified `.name` such as `Folder/Sales`; derive the display leaf with `entry.name.rsplit("/", 1)[-1]` when matching by the user-visible name.
+
+`entry.workbook_id` identifies the workbook containing the entry. To find
+that workbook's parent collection when needed, explicitly fetch
+`client.get.workbook(by_id=entry.workbook_id).collection_id`. A missing
+`entry.collection_id` does not mean the workbook has no parent collection.
+Locating the workbook's parent does not make that collection the target of
+the requested permission change.
+Use metadata already obtained in this task when it establishes the target;
+iterating the original pager again issues new requests.
 
 `EntryScope` accepts `"dash"`, `"report"`, `"widget"`, `"dataset"`,
 `"folder"`, `"connection"`, `"compute"`, `"artifact"`, and `"sql_query"`.
@@ -188,6 +206,13 @@ fld = fld.move(EntryLocation.path("Users/me/archive"))  # keep the name
 ```
 
 Every `move()` returns the updated object — rebind the variable, and verify via `parent_id` / `collection_id` / `key`. Ordinary entries keep their id and may be renamed atomically while moving between paths. Moving an ordinary entry into or out of a workbook is unsupported and raises `NotSupportedError`; use the export/clone workflow when crossing that boundary, and remember the copy gets a new id. Other wrong destination kinds raise `DataLensValidationError`, and a destination from another installation raises `NotSupportedError`.
+
+In the folder model, an object receives its parent folder's ACL when created
+or copied. [Moving it later does not automatically update that ACL](https://yandex.cloud/ru/docs/datalens/security/manage-access).
+Verifying the new path therefore does not verify access. If the task requires
+the destination's access policy, read the moved object's ACL, make a separate
+authorized change using [permissions](permissions.md), and verify what the
+server acknowledged. Do not assume the destination folder's ACL now applies.
 
 For a path-located create or move, `name` must not contain `/` — the directory goes in the location, the leaf name in `name=`.
 

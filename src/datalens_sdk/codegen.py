@@ -41,8 +41,27 @@ INSTALLATIONS = {
 }
 
 NAMESPACES = {
-    "enterprise": ["collections", "connections", "dashboards", "data", "datasets", "folders", "workbooks"],
-    "yacloud": ["collections", "connections", "dashboards", "data", "datasets", "folders", "licenses", "workbooks"],
+    "enterprise": [
+        "collections",
+        "connections",
+        "dashboards",
+        "data",
+        "datasets",
+        "folders",
+        "permissions",
+        "workbooks",
+    ],
+    "yacloud": [
+        "collections",
+        "connections",
+        "dashboards",
+        "data",
+        "datasets",
+        "folders",
+        "licenses",
+        "permissions",
+        "workbooks",
+    ],
 }
 
 READ_ONLY_FIELDS = {"id", "key", "created_at", "updated_at", "meta"}
@@ -82,6 +101,23 @@ _DASHBOARD_V2_ROOTS = (
 )
 _DATASET_DATA_ROUTE = "/rpc/getDatasetData"
 _DATASET_DATA_ROOTS = ("DatasetDataArgs", "DatasetData")
+_PERMISSIONS_ROUTES: dict[str, tuple[str | None, str]] = {
+    "/rpc/getPermissions": ("GetPermissionsArgs", "GetPermissionsResult"),
+    "/rpc/modifyPermissions": ("ModifyPermissionsArgs", "ModifyPermissionsResult"),
+    "/rpc/dlsSuggest": ("DlsSuggestArgs", "DlsSuggestResult"),
+    "/rpc/listCollectionAccessBindings": ("ListCollectionAccessBindingsArgs", "ListIamAccessBindingsResult"),
+    "/rpc/listWorkbookAccessBindings": ("ListWorkbookAccessBindingsArgs", "ListIamAccessBindingsResult"),
+    "/rpc/listSharedEntryAccessBindings": ("ListSharedEntryAccessBindingsArgs", "ListIamAccessBindingsResult"),
+    "/rpc/updateCollectionAccessBindings": ("UpdateCollectionAccessBindingsArgs", "DatalensOperation"),
+    "/rpc/updateWorkbookAccessBindings": ("UpdateWorkbookAccessBindingsArgs", "DatalensOperation"),
+    "/rpc/getEntriesPermissions": ("GetEntriesPermissionsArgs", "GetEntriesPermissionsResult"),
+    "/rpc/getPermissionsBulk": ("GetPermissionsBulkArgs", "GetPermissionsBulkResult"),
+    "/rpc/getRootCollectionPermissions": (None, "GetRootCollectionPermissionsResult"),
+    "/rpc/batchListMembers": ("AccessExtBatchListMembersArgs", "AccessExtBatchListMembersResult"),
+}
+_PERMISSIONS_ROOTS = tuple(
+    dict.fromkeys(root for roots in _PERMISSIONS_ROUTES.values() for root in roots if root is not None)
+)
 _ENTRY_MOVE_ROUTE = "/rpc/moveFolderEntry"
 _ENTRY_MOVE_ROOTS = ("MoveEntryArgs", "MoveEntryResult", "MoveEntryResultEntry")
 _SCHEMA_REF_PREFIX = "#/components/schemas/"
@@ -105,6 +141,7 @@ _SCHEMA_SUPPORTED_KEYS = frozenset(
     }
 )
 _DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "maxItems", "minItems", "minLength", "minimum"})
+_PERMISSIONS_SCHEMA_SUPPORTED_KEYS = frozenset({"minItems", "maxItems"})
 _DATASET_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"maximum", "minItems", "minLength", "minimum"})
 
 
@@ -215,6 +252,11 @@ class DatasetDataContractMeta(TypedDict):
     schemas: dict[str, JsonValue]
 
 
+class PermissionsContractMeta(TypedDict):
+    roots: list[str]
+    schemas: dict[str, JsonValue]
+
+
 class EntryMoveContractMeta(TypedDict):
     roots: list[str]
     schemas: dict[str, JsonValue]
@@ -234,6 +276,7 @@ class Metadata(TypedDict):
     installations: dict[str, InstallationMetadata]
     dashboard: NotRequired[DashboardContractMeta]
     dataset_data: NotRequired[DatasetDataContractMeta]
+    permissions: NotRequired[PermissionsContractMeta]
     entry_move: NotRequired[EntryMoveContractMeta]
 
 
@@ -391,8 +434,10 @@ def _audit_pydantic_schema_features(
         if not isinstance(key, str):
             raise TypeError(f"{contract} schema node at {pointer} contains a non-string key")
         state = _wizard_schema_feature_state(key)
-        contract_extension = (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS) or (
-            contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS
+        contract_extension = (
+            (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS)
+            or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
+            or (contract == "Permissions" and key in _PERMISSIONS_SCHEMA_SUPPORTED_KEYS)
         )
         if state is _WizardSchemaFeatureState.SEMANTIC_UNSUPPORTED and not contract_extension:
             raise ValueError(
@@ -535,6 +580,7 @@ def _audit_pydantic_schema_features(
                         _wizard_schema_feature_state(str(key)) is _WizardSchemaFeatureState.SUPPORTED
                         or (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS)
                         or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
+                        or (contract == "Permissions" and key in _PERMISSIONS_SCHEMA_SUPPORTED_KEYS)
                     )
                     and key not in {"$ref", "properties", "required", "type"}
                 }
@@ -999,6 +1045,53 @@ def build_dataset_data_contract_meta(spec: Mapping[str, object]) -> DatasetDataC
     _widen_dataset_data_column_type(normalized_schemas)
     return {
         "roots": list(_DATASET_DATA_ROOTS),
+        "schemas": dict(sorted(normalized_schemas.items())),
+    }
+
+
+def build_permissions_contract_meta(spec: Mapping[str, object]) -> PermissionsContractMeta:
+    """Extract the selected permissions RPC contracts from each installation."""
+
+    paths = _string_object_dict(spec.get("paths"), context="paths")
+    missing = sorted(set(_PERMISSIONS_ROUTES) - paths.keys())
+    if missing:
+        raise ValueError(f"Permissions contract is missing routes: {missing}")
+    for route, expected_roots in _PERMISSIONS_ROUTES.items():
+        path_item = _string_object_dict(paths[route], context=route)
+        operation = _string_object_dict(path_item.get("post"), context=f"{route}.post")
+        request_schema = None
+        if "requestBody" in operation:
+            request_schema, _ = _route_schema(operation, route=route, request=True)
+        result_schema, _ = _route_schema(operation, route=route, request=False)
+        if (request_schema, result_schema) != expected_roots:
+            raise ValueError(
+                f"Permissions route {route!r} must reference {expected_roots!r}, "
+                f"got {(request_schema, result_schema)!r}"
+            )
+
+    schemas = _schemas(spec)
+    reached: set[str] = set()
+    queue = list(_PERMISSIONS_ROOTS)
+    normalized_schemas: dict[str, JsonValue] = {}
+    while queue:
+        name = queue.pop(0)
+        if name in reached:
+            continue
+        schema = schemas.get(name)
+        if schema is None:
+            raise ValueError(f"Permissions schema graph references missing component {name!r}")
+        normalized = _normalize_wizard_schema(schema)
+        _audit_pydantic_schema_features(
+            normalized,
+            pointer=f"/schemas/{_json_pointer_token(name)}",
+            contract="Permissions",
+            require_provably_disjoint_one_of=True,
+        )
+        reached.add(name)
+        normalized_schemas[name] = normalized
+        queue.extend(sorted(_schema_refs(normalized) - reached - set(queue)))
+    return {
+        "roots": list(_PERMISSIONS_ROOTS),
         "schemas": dict(sorted(normalized_schemas.items())),
     }
 
@@ -1675,6 +1768,7 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
     dashboard_contracts: list[tuple[str, DashboardContractMeta]] = []
     dataset_data_contracts: list[tuple[str, DatasetDataContractMeta]] = []
     dataset_data_missing: list[str] = []
+    permissions_contracts: list[tuple[str, PermissionsContractMeta]] = []
     entry_move_contracts: list[tuple[str, EntryMoveContractMeta]] = []
     entry_move_missing: list[str] = []
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
@@ -1693,6 +1787,7 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
             dataset_data_missing.append(installation)
         else:
             dataset_data_contracts.append((installation, dataset_data_contract))
+        permissions_contracts.append((installation, build_permissions_contract_meta(spec)))
         connection_discriminator = _string_object_dict(
             schemas["ConnectionCreate"].get("discriminator"),
             context="ConnectionCreate.discriminator",
@@ -1761,6 +1856,12 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
                     f"getDatasetData schemas differ between {canonical_installation!r} and {installation!r}"
                 )
         out["dataset_data"] = canonical_dataset_data
+    if permissions_contracts:
+        canonical_installation, canonical_permissions = permissions_contracts[0]
+        for installation, candidate in permissions_contracts[1:]:
+            if candidate != canonical_permissions:
+                raise ValueError(f"Permissions schemas differ between {canonical_installation!r} and {installation!r}")
+        out["permissions"] = canonical_permissions
     if entry_move_missing:
         raise ValueError(f"moveFolderEntry is missing from installations: {entry_move_missing!r}")
     if entry_move_contracts:
@@ -1832,6 +1933,8 @@ class _PydanticSchemaEmitter:
         contract: str,
         open_schema_refs: Mapping[str, str] | frozenset[str] = frozenset(),
         field_name_overrides: Mapping[tuple[str, ...], str] | None = None,
+        wire_name_overrides: Mapping[str, str] | None = None,
+        root_models: frozenset[str] = frozenset(),
     ) -> None:
         self._schemas = schemas
         self._read = read
@@ -1842,6 +1945,8 @@ class _PydanticSchemaEmitter:
             else dict.fromkeys(open_schema_refs, "dict[str, JsonValue]")
         )
         self._field_name_overrides = dict(field_name_overrides or {})
+        self._wire_name_overrides = dict(wire_name_overrides or {})
+        self._root_models = root_models
         self._lines: list[str] = []
         self._emitted: set[str] = set()
         self._emitting: set[str] = set()
@@ -1874,7 +1979,11 @@ class _PydanticSchemaEmitter:
         self._emitting.add(name)
         annotation = self._annotation(schema, path=(schema_name,), preferred_name=name)
         if annotation != name:
-            self._lines.append(f"{name} = {annotation}")
+            if schema_name in self._root_models:
+                self._lines.append(f"class {name}(RootModel[{annotation}]):")
+                self._lines.append("    model_config = ConfigDict(strict=True)")
+            else:
+                self._lines.append(f"{name} = {annotation}")
             self._lines.append("")
             self._emitted.add(name)
         self._emitting.remove(name)
@@ -1968,6 +2077,18 @@ class _PydanticSchemaEmitter:
                 if isinstance(discriminator_property, str) and self._contract != "Dashboard":
                     property_name = _wizard_python_field_name(discriminator_property)
                     return f"Annotated[{annotation}, Field(discriminator={property_name!r})]"
+                if self._read and self._contract == "Permissions":
+                    # The success projection can be empty. Discriminate explicit errors
+                    # before tolerant success parsing, including unknown error codes.
+                    for index, branch in enumerate(branch_schemas):
+                        properties = branch.get("properties")
+                        if isinstance(properties, dict) and "error" in properties:
+                            error_model = annotations[index]
+                            return (
+                                f"Annotated[{annotation}, BeforeValidator("
+                                f"lambda value: {error_model}.model_validate(value) "
+                                "if isinstance(value, dict) and 'error' in value else value)]"
+                            )
                 return annotation
 
         if isinstance(schema.get("allOf"), list):
@@ -2000,7 +2121,9 @@ class _PydanticSchemaEmitter:
         if raw_type == "integer":
             return self._with_constraints("int", schema, minimum=True)
         if raw_type == "number":
-            return self._with_constraints("float", schema, minimum=True)
+            return self._with_constraints(
+                "int | float" if self._contract == "Permissions" else "float", schema, minimum=True
+            )
         if raw_type == "boolean":
             return "bool"
         if raw_type == "null":
@@ -2119,7 +2242,7 @@ class _PydanticSchemaEmitter:
                 raise TypeError(f"{self._contract} schema {'.'.join(path)}.{wire_name} must be an object")
             python_name = self._field_name_overrides.get(
                 (*path, wire_name),
-                _wizard_python_field_name(wire_name),
+                self._wire_name_overrides.get(wire_name, _wizard_python_field_name(wire_name)),
             )
             annotation = self._annotation(raw_field_schema, path=(*path, wire_name))
             alias_in_annotation = False
@@ -3138,6 +3261,30 @@ def _emit_dataset_data_dto(metadata: Metadata) -> str:
     return f"\n{request_models}\n{response_models}\n"
 
 
+def _emit_permissions_dto(metadata: Metadata) -> str:
+    schemas = metadata["permissions"]["schemas"]
+    request_models = _PydanticSchemaEmitter(
+        schemas,
+        read=False,
+        contract="Permissions",
+    ).emit(root for root, _ in _PERMISSIONS_ROUTES.values() if root is not None)
+    # Live responses can omit granted metadata required by the published schema.
+    # Keep the upstream contract intact and relax only these read DTO fields.
+    read_schemas = dict(schemas)
+    participant = _string_object_dict(schemas["DlsPermissionParticipant"], context="DlsPermissionParticipant")
+    required = _string_list(participant["required"], context="DlsPermissionParticipant.required")
+    participant["required"] = [field for field in required if field not in {"description", "extras"}]
+    read_schemas["DlsPermissionParticipant"] = cast(JsonValue, participant)
+    response_models = _PydanticSchemaEmitter(
+        read_schemas,
+        read=True,
+        contract="Permissions",
+        wire_name_overrides={"__rlsid": "rls_id", "__source": "source", "copy": "can_copy"},
+        root_models=frozenset({"DlsSuggestResult", "GetEntriesPermissionsResult"}),
+    ).emit(dict.fromkeys(root for _, root in _PERMISSIONS_ROUTES.values()))
+    return f"\n{request_models}\n{response_models}\n"
+
+
 def _emit_entry_move_result_dto(metadata: Metadata) -> str:
     contract = metadata.get("entry_move")
     if contract is None:
@@ -3163,6 +3310,7 @@ def emit_dto(metadata: Metadata) -> str:
     chart_dto_block = _emit_chart_dto(metadata)
     dashboard_dto_block = _emit_dashboard_dto(metadata)
     dataset_data_dto_block = _emit_dataset_data_dto(metadata)
+    permissions_dto_block = _emit_permissions_dto(metadata)
     entry_move_result_dto_block = _emit_entry_move_result_dto(metadata)
     navigation_dto_block = _emit_navigation_dto()
     return f"""# AUTOGENERATED by scripts/generate_sdk.py. Do not edit by hand.
@@ -3171,7 +3319,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Annotated, Any, Literal
-from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field, RootModel, model_validator
 
 from datalens_sdk._runtime.wizard_structure import WizardFieldStructure, WizardVisualizationRegistry
 from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
@@ -3357,6 +3505,7 @@ class DatasetReadDTO(BaseModel):
         return value
 
 
+{permissions_dto_block}
 {dataset_data_dto_block}
 class DatasetValidateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)

@@ -4,7 +4,8 @@ description: >-
   Use this skill for any Yandex DataLens automation task through the Python
   package `datalens-sdk`. Trigger on: DataLens, datalens, даталенс, chart,
   чарт, график, dashboard, дашборд, dataset, датасет, connection, подключение,
-  workbook, воркбук, collection, коллекция, wizard chart, QL chart, editor
+  workbook, воркбук, collection, коллекция, permissions, ACL, доступ, права,
+  wizard chart, QL chart, editor
   chart, BI automation, автоматизация DataLens, "create a dashboard",
   "построй дашборд", "создай чарт", "export dataset", or "clone dashboard";
   entity ids such as dataset_id, chart_id, dashboard_id, or workbook_id; and
@@ -126,7 +127,7 @@ connection -> source -> dataset -> chart -> dashboard
                         (fields)    (wizard | ql | editor)
 ```
 
-One client, four namespaces:
+One client, purpose-specific namespaces:
 
 | Namespace                          | Role                              | Terminal call         |
 |------------------------------------|-----------------------------------|-----------------------|
@@ -134,15 +135,16 @@ One client, four namespaces:
 | `client.create.*`                  | fluent builders                   | `.build()` persists   |
 | `obj.update...`                    | fluent update on a fetched object | `.execute()` persists |
 | `client.navigation` / `client.raw` | listing / snapshot import-export  | —                     |
+| `client.permissions` | explicit ACL, roles, identity and effective access | resource namespaces; see permissions reference |
 
 Forgetting the terminal call is the #1 mistake: a builder chain without
 `.build()` or `.execute()` runs "successfully" and persists nothing.
-Two more rules of the object model:
+Content lifecycle rules:
 
 - A successful `.build()`/`.execute()` confirms **persistence, not
   correctness** — the entity may still render empty or wrong. Verify the
   result (re-`get` it, check fields/placeholders) before reporting done.
-- Once a terminal write call returns successfully, treat that write as
+- Once a content builder write call returns successfully, treat that write as
   persisted. If later local verification code raises or asserts, re-fetch and
   rerun only the verifier; do not blindly execute the mutation again.
 - After `client.create.dataset(...).build()`, re-fetch with
@@ -260,11 +262,12 @@ Read this file, then follow only the references routed for the task. Chart
 families may require an index, one renderer reference, and a shared lifecycle
 reference; do not read unrelated files.
 
-The packaged [`../env-specific.yaml`](../env-specific.yaml) manifest marks the
-public skill files that an installation-specific skill may replace. If the
-active agent installation loads such a replacement, use its route instead of
-opening the corresponding public reference. In particular, an overlay-provided
-Editor index replaces the public Editor subtree for that installation.
+The packaged [`../env-specific.yaml`](../env-specific.yaml) manifest marks
+files with installation-specific variants. This base `SKILL.md` is the shared
+starting point even though it appears in the manifest: read it first, then the
+active overlay's `SKILL.md`. For other listed paths, use the overlay's route
+when it provides a replacement. In particular, an overlay-provided Editor
+index replaces the public Editor subtree for that installation.
 
 | Task involves                                                              | Read                                                                     |
 |----------------------------------------------------------------------------|--------------------------------------------------------------------------|
@@ -279,6 +282,7 @@ Editor index replaces the public Editor subtree for that installation.
 | A custom-code (JavaScript) chart or selector                               | [references/editor-charts/_index.md](references/editor-charts/_index.md) |
 | Parameters across Dataset/Wizard, QL, Editor, widgets, dashboards, selectors, or chart clicks | [references/parameters.md](references/parameters.md) |
 | Dashboards: tabs, widgets, selectors, layout, read model                   | [references/dashboards.md](references/dashboards.md)                     |
+| DataLens access: entry ACLs, workbook/collection/shared-object roles, identity, effective checks, or ACL 404 | [references/permissions.md](references/permissions.md) |
 | Finding, listing, moving, renaming entities; collections/workbooks/folders | [references/navigation.md](references/navigation.md)                     |
 | Export, import, clone, copy across workbooks                               | [references/serialization.md](references/serialization.md)               |
 | Any `DataLensAPIError` or unexpected SDK exception                         | [references/troubleshooting.md](references/troubleshooting.md)           |
@@ -299,6 +303,15 @@ skill-specific workflow narrow:
    stored formula.
 5. Treat semantic validation/rendering as separate from successful
    `.execute()`.
+
+Permissions use their own completion contract: ACL acknowledgements can carry
+continuation information; copy can return a local no-op without a receipt;
+role operations report `done` without a success/error result. A returned
+receipt alone does not prove effective access. Read
+[references/permissions.md](references/permissions.md) before any access task,
+select its management target explicitly, and preserve partial/unknown outcomes.
+Permission writes are attempted once. After a timeout, malformed response or
+opaque 5xx, reconcile through authorized reads without resubmitting the write.
 
 ## Capability stops
 
@@ -393,6 +406,7 @@ Use the non-executing allowlisted reader from [references/setup.md](references/s
 | `references/editor-charts/<renderer>.md`        | one minimal working payload, the renderer's SDK contract, and exact runtime-documentation sections  |
 | `references/parameters.md`                      | parameter definitions, override precedence, selectors, global/widget/action params                 |
 | `references/dashboards.md`                      | building or editing dashboards; discovering existing item, selector, and chart-tab ids             |
+| `references/permissions.md` | ACL edits/copy, workbook/collection roles, shared originals, identity, inheritance, effective checks and write receipts |
 | `references/navigation.md`                      | listing/finding/moving entities; collections, workbooks, folders                                   |
 | `references/serialization.md`                   | export/import/clone via `to_file` and `client.raw`                                                 |
 | `references/troubleshooting.md`                 | any API error; before retrying anything                                                            |

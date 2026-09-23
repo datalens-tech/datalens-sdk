@@ -19,6 +19,7 @@ from datalens_sdk.api.entries import EntriesAPI, EntriesDtoModule, EntriesServic
 from datalens_sdk.api.folder import FolderAPI, FolderService
 from datalens_sdk.api.license import LicenseAPI, LicenseService
 from datalens_sdk.api.navigation import NavigationService
+from datalens_sdk.api.permissions import PermissionsAPI, PermissionsService
 from datalens_sdk.api.workbook import WorkbookAPI, WorkbookService
 from datalens_sdk.auth import (
     AuthProviderProtocol,
@@ -35,6 +36,7 @@ from datalens_sdk.converter.dataset import DatasetDtoModule
 from datalens_sdk.converter.editor_chart import EditorChartDtoModule, editor_wire_types
 from datalens_sdk.converter.folder import FolderDtoModule
 from datalens_sdk.converter.license import LicenseDtoModule
+from datalens_sdk.converter.permissions import PermissionsDtoModule
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
 from datalens_sdk.converter.workbook import WorkbookDtoModule
 from datalens_sdk.domain.collection import Collection, CollectionCreate
@@ -89,6 +91,7 @@ from datalens_sdk.http import (
     HTTPClientProtocol,
     HTTPEventHooks,
 )
+from datalens_sdk.permissions import PermissionsNamespace as PermissionsNamespace
 from datalens_sdk.raw import RawNamespace
 from datalens_sdk.recipes.dashboard_export import DashboardBundleExporter
 
@@ -580,6 +583,7 @@ class DataLensClientBase:
     data: DataNamespace
     get: GetNamespace
     navigation: NavigationNamespace
+    permissions: PermissionsNamespace
     raw: RawNamespace
 
     @classmethod
@@ -755,6 +759,10 @@ class DataLensClientBase:
             workbook_operations=self._workbook_service,
         )
         self.navigation = NavigationNamespace(self._navigation_service)
+        self.permissions = PermissionsNamespace(
+            entries_service,
+            PermissionsService(api=PermissionsAPI(self._http), dto_module=cast(PermissionsDtoModule, dto_module)),
+        )
         if "licenses" in self._installation_info["namespaces"]:
             self._license_service = LicenseService(
                 api=LicenseAPI(self._http),

@@ -2,7 +2,7 @@
 
 Read this when the object model is unclear: client namespaces, the entity lifecycle, locations, field references, retries, pagination, or the update sentinels.
 
-## One client, four namespaces
+## One client, purpose-specific namespaces
 
 Every configured client exposes the same namespace model:
 
@@ -12,6 +12,7 @@ Every configured client exposes the same namespace model:
 | `client.create.*`                        | fluent builders for new entities | `.build()`                 |
 | `obj.update` / `.rename()` / `.delete()` | mutate a fetched object          | `.execute()` (update only) |
 | `client.navigation` / `client.raw`       | listing / snapshot import-export | —                          |
+| `client.permissions`                     | [ACLs, roles, identity and effective checks](permissions.md) | result or lazy pager |
 
 ### `client.get.*` — by id only
 
