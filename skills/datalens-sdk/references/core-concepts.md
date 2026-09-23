@@ -12,7 +12,7 @@ Every configured client exposes the same namespace model:
 | `client.create.*`                        | fluent builders for new entities | `.build()`                 |
 | `obj.update` / `.rename()` / `.delete()` | mutate a fetched object          | `.execute()` (update only) |
 | `client.navigation` / `client.raw`       | listing / snapshot import-export | —                          |
-| `client.permissions`                     | entry ACL read / diff / copy     | direct result              |
+| `client.permissions`                     | [ACLs, roles, identity and effective checks](permissions.md) | result or lazy pager |
 
 ### `client.get.*` — by id only
 

@@ -207,6 +207,13 @@ fld = fld.move(EntryLocation.path("Users/me/archive"))  # keep the name
 
 Every `move()` returns the updated object — rebind the variable, and verify via `parent_id` / `collection_id` / `key`. Ordinary entries keep their id and may be renamed atomically while moving between paths. Moving an ordinary entry into or out of a workbook is unsupported and raises `NotSupportedError`; use the export/clone workflow when crossing that boundary, and remember the copy gets a new id. Other wrong destination kinds raise `DataLensValidationError`, and a destination from another installation raises `NotSupportedError`.
 
+In the folder model, an object receives its parent folder's ACL when created
+or copied. [Moving it later does not automatically update that ACL](https://yandex.cloud/ru/docs/datalens/security/manage-access).
+Verifying the new path therefore does not verify access. If the task requires
+the destination's access policy, read the moved object's ACL, make a separate
+authorized change using [permissions](permissions.md), and verify what the
+server acknowledged. Do not assume the destination folder's ACL now applies.
+
 For a path-located create or move, `name` must not contain `/` — the directory goes in the location, the leaf name in `name=`.
 
 ## Related references

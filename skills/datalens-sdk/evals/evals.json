@@ -245,6 +245,143 @@
         {"text": "Uses Editor.getLoadedData() from Prepare and does not claim persistence proves rendering", "type": "workflow"},
         {"text": "Does NOT use shared(...), raw HTTP, or private imports", "type": "code"}
       ]
+    },
+    {
+      "id": 17,
+      "name": "acl-copy-mode-ambiguous",
+      "prompt": "Copy the permissions from folder entry src-7 to dashboard dst-8. The target already has an administrator who is absent from the source. I did not say whether that administrator should remain.",
+      "expected_output": "Explains that replace removes target-only grants, including administrators, while merge keeps target-only grants subject to server level normalization. Clarifies the intended result before any copy write instead of taking a mode from an example.",
+      "files": [],
+      "assertions": [
+        {"text": "Does not call entry_acl.copy until the requested replace-or-additive outcome is explicit", "type": "workflow"},
+        {"text": "Identifies that mode='replace' removes the target-only administrator grant", "type": "workflow"},
+        {"text": "Explains that mode='merge' preserves target-only grants but may normalize levels for the same subject", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 18,
+      "name": "acl-404-container-resolution",
+      "prompt": "entry_acl.get on existing chart ch-404 returned NotFoundError. Find its permission model. An explicit navigation.get_entries(ids=('ch-404',)) lookup returns no exact match.",
+      "expected_output": "Preserves and reports the original ACL error, treats the empty navigation result as unresolved metadata rather than proof of deletion, and does not guess a workbook ID or silently switch to workbook role APIs.",
+      "files": [],
+      "assertions": [
+        {"text": "Uses an explicit authorized navigation lookup or existing exact summary, requiring exactly one matching entry ID", "type": "workflow"},
+        {"text": "Does not infer deletion from the ACL 404 or empty metadata response", "type": "workflow"},
+        {"text": "Does not guess a workbook ID or mutate workbook roles", "type": "workflow"},
+        {"text": "Keeps the original ACL error status, code, and request_id when reporting the diagnostic failure", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 19,
+      "name": "permission-identity-and-role-id",
+      "prompt": "Give Alice view access to workbook wb-9. The identity directory returns two Alices; one ACL suggestion has only a display title, and the role listing reports USER_ACCOUNT claims. I found datalens.workbooks.viewer in the Cloud documentation but have no installation-verified RPC role mapping.",
+      "expected_output": "Resolves the workbook target but stops before the write. Requests an exact verified RoleSubject ID/type and workbook role ID for this installation; it does not derive them from display names, ACL suggestions, read-side USER_ACCOUNT claims, or the product documentation alone.",
+      "files": [],
+      "assertions": [
+        {"text": "Uses wb-9 as the workbook role-management target, not a chart or ACL ID", "type": "workflow"},
+        {"text": "Does not use a display title, email, or ACL suggestion as RoleSubject.id", "type": "workflow"},
+        {"text": "Does not lowercase USER_ACCOUNT into RoleSubject.type", "type": "code"},
+        {"text": "Does not claim the Cloud documentation verifies the runtime RPC role ID for every installation", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 20,
+      "name": "inherited-role-scope",
+      "prompt": "Remove Bob's viewer access to workbook wb-child. Its role list shows only an inherited binding from collection col-parent; no direct workbook binding exists. I have not authorized changes to col-parent.",
+      "expected_output": "Explains that removing a direct workbook binding cannot remove this inherited grant and that modifying col-parent affects a broader scope. Stops without an ancestor mutation until that broader change is explicitly authorized.",
+      "files": [],
+      "assertions": [
+        {"text": "Distinguishes access_bindings from inherited_access_bindings and retains inherited_from origin", "type": "workflow"},
+        {"text": "Does not send workbook.modify REMOVE for a nonexistent direct binding", "type": "code"},
+        {"text": "Does not change col-parent without authorization for its wider scope", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 21,
+      "name": "role-audit-later-page-error",
+      "prompt": "Audit every direct and inherited role assignment on workbook wb-audit. The first page is successful, but the next page raises a server error.",
+      "expected_output": "Uses the server default or a practical page size and reports an incomplete audit. Preserves the later-page error and does not treat the first page as a complete snapshot or return an empty set for the failed page.",
+      "files": [],
+      "assertions": [
+        {"text": "Does not set page_size=1 for an ordinary audit", "type": "code"},
+        {"text": "Propagates or reports the later-page failure with available request_id", "type": "workflow"},
+        {"text": "Does not claim complete role coverage from earlier pages", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 22,
+      "name": "permission-write-unknown-outcome",
+      "prompt": "An ACL mutation for entry dash-7 timed out after dispatch. A later read also failed with HTTP 500. Please make sure the grant took effect.",
+      "expected_output": "Reports an unknown write outcome, keeps the timeout and read failure separate, and does not replay the diff. It proposes a later authorized read or administrator inspection without claiming the recipient has effective access.",
+      "files": [],
+      "assertions": [
+        {"text": "Does not resend the uncertain permission mutation", "type": "workflow"},
+        {"text": "Does not interpret HTTP 500 as propagation or as proof of failed/successful grant", "type": "workflow"},
+        {"text": "Does not use effective checks for the current caller to infer the recipient's permissions", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 23,
+      "name": "folder-move-acl-snapshot",
+      "prompt": "Move folder-model dashboard dash-3 into private folder Users/team/private and ensure it has that folder's access policy.",
+      "expected_output": "Moves and re-gets the dashboard to verify location, then separately reads its ACL because a folder-model move does not refresh inherited ACL. It changes the ACL only with the necessary authority and explicit intended outcome, and does not equate the new path with the new policy.",
+      "files": [],
+      "assertions": [
+        {"text": "Uses the typed move and verifies the resulting path or metadata", "type": "workflow"},
+        {"text": "Recognizes that ACL inheritance is copied at creation or copy, not automatically on move", "type": "workflow"},
+        {"text": "Reads and, where authorized, separately changes the moved object's ACL before claiming the destination policy applies", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 24,
+      "name": "dashboard-grant-dependencies-and-execute",
+      "prompt": "Give Carol Execute on dashboard dash-9 so she can view all its charts. The charts use datasets and connections in other folders; you only have administrator rights on the dashboard.",
+      "expected_output": "Explains that Execute is documented only for connections and datasets and selects a suitable dashboard view grant only after the intended scope is clear. Inspects permitted relations, identifies dependent charts/datasets/connections and missing authority, and does not claim that one non-recursive dashboard ACL write gives Carol working access to all of them.",
+      "files": [],
+      "assertions": [
+        {"text": "Does not assign acl_execute to the dashboard or treat a stored field as proof of usable access", "type": "workflow"},
+        {"text": "Does not mutate related entries without authority for each target", "type": "workflow"},
+        {"text": "Reports exactly which direct grants were acknowledged and which dependencies remain unresolved", "type": "workflow"},
+        {"text": "Does not use caller effective checks as proof of Carol's access", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 25,
+      "name": "acl-suggestion-exact-subject",
+      "prompt": "Grant view on folder-model dataset ds-8 to the exact ACL login alice.smith. An authorized dlsSuggest read returns two subjects: {name: 'alice.smith', title: 'Alice Smith'} and {name: 'alice.jones', title: 'Alice Smith'}. The recipient's Yandex Cloud service role has already been verified.",
+      "expected_output": "Selects only the suggestion whose nonempty name exactly matches alice.smith, sends one entry_acl.modify addition for acl_view on ds-8, and reports the direct ACL receipt without claiming the recipient's effective access.",
+      "files": [],
+      "assertions": [
+        {"text": "Matches the requested opaque ACL login against suggestion.name rather than the duplicate display title", "type": "workflow"},
+        {"text": "Uses EntryPermissionGrant(subject='alice.smith', grant_type='acl_view') for the folder-model dataset target", "type": "code"},
+        {"text": "Does not derive a RoleSubject ID/type from the ACL suggestion", "type": "workflow"},
+        {"text": "Reports only the server-acknowledged direct change, not the recipient's effective access", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 26,
+      "name": "acl-ambiguous-container-metadata",
+      "prompt": "entry_acl.get on ch-5 returned NotFoundError. An explicit navigation.get_entries(ids=('ch-5',)) lookup returns two summaries with the exact ID but different workbook IDs. Please grant a workbook viewer role for the chart.",
+      "expected_output": "Keeps the access model unresolved and preserves the ACL error context. It does not choose either workbook ID, invent a role mapping, or send a mutation from contradictory metadata.",
+      "files": [],
+      "assertions": [
+        {"text": "Recognizes that two exact ID matches are ambiguous metadata", "type": "workflow"},
+        {"text": "Preserves the original ACL error and reports the separate lookup conflict", "type": "workflow"},
+        {"text": "Does not pick a workbook target or role ID for a write", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 27,
+      "name": "forbidden-permission-target",
+      "prompt": "The SDK gets ForbiddenError while reading dashboard dash-3. Its metadata says it is in workbook wb-4. Tell me how an authorized administrator could grant access using the SDK.",
+      "expected_output": "Reports the denied operation and request ID, routes the administrator to workbook roles on wb-4 with verified subject and role IDs, and does not claim the current caller can self-grant or use entry_acl on the dashboard.",
+      "files": [],
+      "assertions": [
+        {"text": "Reports the 403 and request_id without silently switching credentials", "type": "workflow"},
+        {"text": "Routes to client.permissions.workbook on wb-4 rather than entry_acl.modify on dash-3", "type": "workflow"},
+        {"text": "Requires an authorized administrator and verified RoleSubject ID/type and workbook role ID", "type": "workflow"},
+        {"text": "Does not claim a role mutation is already performed or that a receipt proves effective access", "type": "workflow"}
+      ]
     }
   ]
 }

@@ -61,7 +61,9 @@ exception, classify that exception below.
 
 **401 `UnauthorizedError`:** the server does not accept your identity at all — token missing, malformed, expired, or issued for a different installation. Signature: *every* call fails with 401, including cheap reads.
 
-**403 `ForbiddenError`:** identity accepted, ACL says no for *this* entity or operation. Signature: some calls work, one specific entity fails.
+**403 `ForbiddenError`:** identity accepted, but this operation is denied by
+the applicable service role or resource permissions. Some calls may work while
+one target fails; an absent service role can affect many calls.
 
 **How to tell apart in one probe:** run a harmless listing —
 
@@ -69,7 +71,7 @@ exception, classify that exception below.
 next(iter(client.navigation.get_entries(scope="dataset", page_size=1)), None)
 ```
 
-If that also raises 401, the token is the problem (route to [setup.md](setup.md); note IAM tokens expire — the default `yc`-CLI provider refreshes them, a `StaticYCIAMAuthProvider` token goes stale). If the listing works but your target call raises 403, it is permissions: tell the user which entity and which operation was denied (from `e.context.request_url` and `message`) and that they need access granted in DataLens — the SDK cannot grant it.
+If that also raises 401, the token is the problem (route to [setup.md](setup.md); note IAM tokens expire — the default `yc`-CLI provider refreshes them, a `StaticYCIAMAuthProvider` token goes stale). If the listing works but your target call raises 403, report the denied entity and operation (from `e.context.request_url` and `message`). The current caller cannot bypass that denial. An administrator with separate authority can grant the appropriate entry ACL or workbook/collection role through `client.permissions` where the installed SDK supports it, or through DataLens. Resolve the [correct permission target](permissions.md#resolve-the-permission-target-explicitly) before recommending a change; do not silently switch identities or retry the denied call.
 
 **What NOT to do:** do not retry either in a loop (the answer will not change), do not "fix" 403 by switching accounts silently, and never print the token while debugging.
 
@@ -169,7 +171,7 @@ exception raised
    ├─ 400 BadRequestError     → server rejected payload → fix code; never retry
    ├─ ConflictError           → entry exists; status may be legacy 400 or 409 → adopt (sec. 4)
    ├─ 401 UnauthorizedError   → token invalid/expired → setup.md
-   ├─ 403 ForbiddenError      → token fine, ACL denies → user must grant access
+   ├─ 403 ForbiddenError      → operation denied → report target; authorized admin may use permissions.md or DataLens
    ├─ 404 NotFoundError       → verify id, installation endpoint, and permission target
    ├─ 423 LockedError         → locked, no lock API → report and wait for the user
    ├─ 429 RateLimitError      → back off, serialize; retry reads, verify rejection before write retries

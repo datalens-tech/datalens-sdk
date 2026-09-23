@@ -16,12 +16,28 @@ Select the target from known container metadata or an explicit navigation
 lookup, as shown below. `entry_acl.get`, `modify`, and `copy` do not perform
 hidden metadata lookups or redirect to a parent. Shared-entry writes are
 unavailable because the selected contracts contain no matching update RPC.
-RLS, publication, embedding, and service roles are separate APIs.
+RLS, publication, embedding, and service roles are outside this namespace.
 
 These contracts are generated for every supported installation. Matching
 schemas do not establish runtime parity. Use verified principal/role IDs for
 the selected installation, and follow the base skill's result-handling rule
 before running or inspecting reads.
+
+## Product documentation and SDK contract
+
+Use the official Yandex Cloud DataLens documentation to determine which access
+model and grant level fit a Cloud user's goal: [access model overview](https://yandex.cloud/ru/docs/datalens/security/workbooks-access),
+[folder-model ACLs](https://yandex.cloud/ru/docs/datalens/security/manage-access),
+[workbook and collection access](https://yandex.cloud/ru/docs/datalens/security/workbooks-access-basic),
+[shared objects and delegation](https://yandex.cloud/ru/docs/datalens/security/workbooks-access-advanced),
+[service and resource roles](https://yandex.cloud/ru/docs/datalens/security/roles),
+[granting access and related objects](https://yandex.cloud/ru/docs/datalens/operations/permission/grant),
+and [access requests](https://yandex.cloud/ru/docs/datalens/operations/permission/request).
+The installed SDK surface and its bundled OpenAPI specifications define which
+RPCs and write fields it can send. Product role names do not by themselves
+verify RPC role IDs or behavior on another installation; for Enterprise,
+confirm access semantics against that installation's documentation and live
+contract. `entry_acl.copy` is an SDK helper, not a product UI operation.
 
 ## Resolve the permission target explicitly
 
@@ -74,6 +90,11 @@ absence of `workbook_id` by itself is insufficient. Entries with a
 `collection_id` but no `workbook_id`, or unresolved location, need their access model established
 separately; do not substitute a collection ACL for an entry ACL. Reusing a
 summary is local to the calling code; `entry_acl` still accepts only IDs.
+
+In the folder model, an entry receives its parent's ACL when created or
+copied. Moving it later does not automatically replace that ACL with the
+destination folder's ACL. Read and change the moved entry's ACL separately
+when the requested access outcome requires it.
 
 If the task needs the workbook's parent collection, explicitly fetch
 `client.get.workbook(by_id=entry.workbook_id).collection_id` when
@@ -158,10 +179,14 @@ base skill's result-handling rule before running or inspecting a read.
 
 Use IDs and intended permission changes supplied by the user or established
 by an authorized read. The strings below are placeholders, not ID formats.
+`acl_execute` is documented only for connections and datasets; verify the
+target's kind before using this example. A server accepting that ACL field on
+another kind is not proof that Execute grants a usable action there.
 
 ```python
 from datalens_sdk import EntryPermissionsDiff, EntryPermissionGrant, EntryPermissionModification
 
+connection_or_dataset_id = "verified-connection-or-dataset-id"
 diff = EntryPermissionsDiff(
     added=(
         EntryPermissionGrant(
@@ -181,7 +206,7 @@ diff = EntryPermissionsDiff(
         ),
     ),
 )
-result = client.permissions.entry_acl.modify(entry_id=entry_id, diff=diff)
+result = client.permissions.entry_acl.modify(entry_id=connection_or_dataset_id, diff=diff)
 if result.continuation_required:
     raise RuntimeError("The server returned continuation information; do not repeat the diff")
 ```
@@ -208,11 +233,22 @@ and request ID; malformed responses raise `InvalidResponseError`.
 
 ## Copy permissions between entries
 
+Choose the outcome before sending a copy. Use `replace` only when the user
+explicitly wants the target's granted ACL to match the source and accepts
+removal of target-only grants, including administrator grants. Use `merge`
+when the user explicitly wants to add source grants while retaining
+target-only grants; the server can still normalize levels for a subject.
+"Copy permissions" without that distinction is ambiguous: clarify the
+intended effect before writing. Inspect both IDs and existing grants within
+the authorized scope before deciding whether either mode meets the request.
+
+For an explicitly additive request:
+
 ```python
 result = client.permissions.entry_acl.copy(
     source_entry_id=source_entry_id,
     target_entry_id=target_entry_id,
-    mode="replace",  # Or "merge" to add missing grants.
+    mode="merge",
 )
 ```
 
@@ -281,10 +317,25 @@ exact write ID/type pair and resource-specific role ID from an authoritative
 installation mapping or explicit verified caller input. A role seen in a read
 establishes its occurrence, not its meaning for another resource kind.
 
+For a new folder-model ACL grant, use a caller-supplied opaque ACL subject ID
+for this installation, or use `entry_acl.suggest_subjects` to resolve an exact
+known login/ID. Select only one candidate whose nonempty `name` exactly
+matches that identifier; inspect its available type/profile metadata as well.
+Suggestions may omit `name`, and a unique display `title` or fuzzy search hit
+does not establish a write ID. If the request names only a person, present
+the candidates for the caller to disambiguate or ask for the exact ID before
+writing. The suggestion's `name` is for ACL writes only: never transform it
+into `RoleSubject.id` or infer `RoleSubject.type` from it.
+
 Yandex Cloud documents roles including `datalens.workbooks.viewer` while
 recommending UI assignment; that alone does not establish an Enterprise or
 other installation's RPC role mapping. The examples below require verified
 inputs and make no ordinary-human grant claim for an unverified installation.
+On Yandex Cloud, service access is a separate prerequisite to object access:
+establish the recipient's DataLens service role through an authorized source
+or report it as unverified. An ACL or workbook binding alone does not prove
+the service is usable. See the
+[official role guide](https://yandex.cloud/ru/docs/datalens/security/roles).
 
 ## Enumerate direct and inherited roles
 
@@ -296,7 +347,6 @@ try:
     for assignment in client.permissions.workbook.list(
         workbook_id=workbook_id,
         include_inherited=True,
-        page_size=1,
     ):
         assignments.append(assignment)
 except DataLensError:
@@ -317,6 +367,8 @@ each traversal starts fresh. `.pages()` exposes items and continuation tokens.
 An empty page can have a following page. A later-page failure is an error and
 leaves the audit incomplete. Enumeration is not an atomic snapshot and does not
 expand group membership or enumerate all people who can access data.
+Use the server default or a verified practical page size for ordinary audits;
+`page_size=1` is useful for pagination tests, but can cause one RPC per subject.
 
 ## Change explicit workbook or collection roles
 
@@ -359,6 +411,17 @@ because the call returned. An authorized later binding read can observe the
 requested assignment without proving causality or every person's access.
 No operation polling endpoint, `.wait()`, automatic rollback, or binding-copy
 operation is exposed.
+
+### Grants for dashboards and related objects
+
+An `entry_acl.modify` call changes only its named entry (`nested: false`).
+Access to a dashboard may also depend on charts, datasets, and connections.
+Inspect permitted relations through `get_relations()` or known links, identify
+each management target, and check the caller's authority for each proposed
+change. Issue only the separately authorized grants that the user requested.
+Report which direct ACL changes the server acknowledged, and state any
+unresolved dependencies or pending access requests. `effective` checks describe
+the authenticated caller, so they cannot verify the recipient's access.
 
 Every permission write has one mutation attempt. Timeout after dispatch,
 malformed HTTP 200, or an opaque 5xx can leave the write outcome unknown.

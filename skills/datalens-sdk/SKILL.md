@@ -4,7 +4,8 @@ description: >-
   Use this skill for any Yandex DataLens automation task through the Python
   package `datalens-sdk`. Trigger on: DataLens, datalens, даталенс, chart,
   чарт, график, dashboard, дашборд, dataset, датасет, connection, подключение,
-  workbook, воркбук, collection, коллекция, wizard chart, QL chart, editor
+  workbook, воркбук, collection, коллекция, permissions, ACL, доступ, права,
+  wizard chart, QL chart, editor
   chart, BI automation, автоматизация DataLens, "create a dashboard",
   "построй дашборд", "создай чарт", "export dataset", or "clone dashboard";
   entity ids such as dataset_id, chart_id, dashboard_id, or workbook_id; and
@@ -280,7 +281,7 @@ Editor index replaces the public Editor subtree for that installation.
 | A custom-code (JavaScript) chart or selector                               | [references/editor-charts/_index.md](references/editor-charts/_index.md) |
 | Parameters across Dataset/Wizard, QL, Editor, widgets, dashboards, selectors, or chart clicks | [references/parameters.md](references/parameters.md) |
 | Dashboards: tabs, widgets, selectors, layout, read model                   | [references/dashboards.md](references/dashboards.md)                     |
-| Entry ACL participants, permission changes/copying, workbook roles, or ACL 404 on an existing entry | [references/permissions.md](references/permissions.md) |
+| DataLens access: entry ACLs, workbook/collection/shared-object roles, identity, effective checks, or ACL 404 | [references/permissions.md](references/permissions.md) |
 | Finding, listing, moving, renaming entities; collections/workbooks/folders | [references/navigation.md](references/navigation.md)                     |
 | Export, import, clone, copy across workbooks                               | [references/serialization.md](references/serialization.md)               |
 | Any `DataLensAPIError` or unexpected SDK exception                         | [references/troubleshooting.md](references/troubleshooting.md)           |
