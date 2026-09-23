@@ -134,16 +134,16 @@ One client, purpose-specific namespaces:
 | `client.create.*`                  | fluent builders                   | `.build()` persists   |
 | `obj.update...`                    | fluent update on a fetched object | `.execute()` persists |
 | `client.navigation` / `client.raw` | listing / snapshot import-export  | —                     |
-| `client.permissions` | entry ACL read / explicit diff / copy | `get()` / `modify()` / `copy()` |
+| `client.permissions` | explicit ACL, roles, identity and effective access | resource namespaces; see permissions reference |
 
 Forgetting the terminal call is the #1 mistake: a builder chain without
 `.build()` or `.execute()` runs "successfully" and persists nothing.
-Two more rules of the object model:
+Content lifecycle rules:
 
 - A successful `.build()`/`.execute()` confirms **persistence, not
   correctness** — the entity may still render empty or wrong. Verify the
   result (re-`get` it, check fields/placeholders) before reporting done.
-- Once a terminal write call returns successfully, treat that write as
+- Once a content builder write call returns successfully, treat that write as
   persisted. If later local verification code raises or asserts, re-fetch and
   rerun only the verifier; do not blindly execute the mutation again.
 - After `client.create.dataset(...).build()`, re-fetch with
@@ -280,7 +280,7 @@ Editor index replaces the public Editor subtree for that installation.
 | A custom-code (JavaScript) chart or selector                               | [references/editor-charts/_index.md](references/editor-charts/_index.md) |
 | Parameters across Dataset/Wizard, QL, Editor, widgets, dashboards, selectors, or chart clicks | [references/parameters.md](references/parameters.md) |
 | Dashboards: tabs, widgets, selectors, layout, read model                   | [references/dashboards.md](references/dashboards.md)                     |
-| Entry ACL participants, pending requests, explicit permission changes or copying | [references/permissions.md](references/permissions.md) |
+| Entry ACL participants, permission changes/copying, workbook roles, or ACL 404 on an existing entry | [references/permissions.md](references/permissions.md) |
 | Finding, listing, moving, renaming entities; collections/workbooks/folders | [references/navigation.md](references/navigation.md)                     |
 | Export, import, clone, copy across workbooks                               | [references/serialization.md](references/serialization.md)               |
 | Any `DataLensAPIError` or unexpected SDK exception                         | [references/troubleshooting.md](references/troubleshooting.md)           |
@@ -301,6 +301,15 @@ skill-specific workflow narrow:
    stored formula.
 5. Treat semantic validation/rendering as separate from successful
    `.execute()`.
+
+Permissions use their own completion contract: ACL acknowledgements can carry
+continuation information; copy can return a local no-op without a receipt;
+role operations report `done` without a success/error result. A returned
+receipt alone does not prove effective access. Read
+[references/permissions.md](references/permissions.md) before any access task,
+select its management target explicitly, and preserve partial/unknown outcomes.
+Permission writes are attempted once. After a timeout, malformed response or
+opaque 5xx, reconcile through authorized reads without resubmitting the write.
 
 ## Capability stops
 
@@ -395,7 +404,7 @@ Use the non-executing allowlisted reader from [references/setup.md](references/s
 | `references/editor-charts/<renderer>.md`        | one minimal working payload, the renderer's SDK contract, and exact runtime-documentation sections  |
 | `references/parameters.md`                      | parameter definitions, override precedence, selectors, global/widget/action params                 |
 | `references/dashboards.md`                      | building or editing dashboards; discovering existing item, selector, and chart-tab ids             |
-| `references/permissions.md` | entry ACL read, non-recursive explicit diff, and copying |
+| `references/permissions.md` | ACL edits/copy, workbook/collection roles, shared originals, identity, inheritance, effective checks and write receipts |
 | `references/navigation.md`                      | listing/finding/moving entities; collections, workbooks, folders                                   |
 | `references/serialization.md`                   | export/import/clone via `to_file` and `client.raw`                                                 |
 | `references/troubleshooting.md`                 | any API error; before retrying anything                                                            |

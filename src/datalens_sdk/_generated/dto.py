@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Annotated, Any, Literal
-from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field, RootModel, model_validator
 
 from datalens_sdk._runtime.wizard_structure import WizardFieldStructure, WizardVisualizationRegistry
 from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
@@ -234,10 +234,61 @@ class DatasetReadDTO(BaseModel):
 
 
 
+class AccessExtBatchListMembersArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    filter: str = _UNVALIDATED_NONE_DEFAULT
+    language: Literal['en', 'ru'] = _UNVALIDATED_NONE_DEFAULT
+    page_size: int | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageSize')
+    page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
+    search: str = _UNVALIDATED_NONE_DEFAULT
+    tab_id: Literal['GROUP', 'INVITEE', 'SERVICE_ACCOUNT', 'SUBJECT_TYPE_UNSPECIFIED', 'USER_ACCOUNT', '_system'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tabId')
+
+class DlsSuggestArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    search_text: str = Field(alias='searchText')
+
+class GetEntriesPermissionsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    entry_ids: list[str] = Field(alias='entryIds')
+
 class GetPermissionsArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     entry_id: str = Field(alias='entryId')
+
+class GetPermissionsBulkArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    collection_ids: Annotated[list[str], Field(min_length=1, max_length=1000, alias='collectionIds')] = _UNVALIDATED_NONE_DEFAULT
+    entry_ids: Annotated[list[str], Field(min_length=1, max_length=1000, alias='entryIds')] = _UNVALIDATED_NONE_DEFAULT
+    workbook_ids: Annotated[list[str], Field(min_length=1, max_length=1000, alias='workbookIds')] = _UNVALIDATED_NONE_DEFAULT
+
+class ListCollectionAccessBindingsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    collection_id: str = Field(alias='collectionId')
+    get_inherited_bindings: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='getInheritedBindings')
+    page_size: int | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageSize')
+    page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
+
+class ListSharedEntryAccessBindingsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    entry_id: str = Field(alias='entryId')
+    get_inherited_bindings: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='getInheritedBindings')
+    page_size: int | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageSize')
+    page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
+
+class ListWorkbookAccessBindingsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    get_inherited_bindings: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='getInheritedBindings')
+    page_size: int | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageSize')
+    page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
+    workbook_id: str = Field(alias='workbookId')
 
 class ModifyPermissionsArgsBodyDiffAddedAclAdmItemDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
@@ -293,21 +344,84 @@ class ModifyPermissionsArgsDTO(BaseModel):
     check_type: Literal['hierarchical', 'root', 'straight'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='checkType')
     entry_id: str = Field(alias='entryId')
     nested: bool = _UNVALIDATED_NONE_DEFAULT
-    page: float = _UNVALIDATED_NONE_DEFAULT
-    page_size: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageSize')
+    page: int | float = _UNVALIDATED_NONE_DEFAULT
+    page_size: int | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageSize')
 
-class DlsPermissionPendingParticipantExtrasAnyOf0ReadDTO(BaseModel):
+class USAccessBindingDeltaAccessBindingSubjectDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    id: str
+    type: Literal['federatedUser', 'group', 'invitee', 'serviceAccount', 'system', 'userAccount']
+
+class USAccessBindingDeltaAccessBindingDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    role_id: str = Field(alias='roleId')
+    subject: USAccessBindingDeltaAccessBindingSubjectDTO
+
+class USAccessBindingDeltaDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    access_binding: USAccessBindingDeltaAccessBindingDTO = Field(alias='accessBinding')
+    action: Literal['ADD', 'REMOVE']
+
+class UpdateCollectionAccessBindingsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    collection_id: str = Field(alias='collectionId')
+    deltas: list[USAccessBindingDeltaDTO]
+
+class UpdateWorkbookAccessBindingsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    deltas: list[USAccessBindingDeltaDTO]
+    workbook_id: str = Field(alias='workbookId')
+
+class AccessExtSubjectClaimsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
-    initial_on_create: bool = _UNVALIDATED_NONE_DEFAULT
+    email: str
+    family_name: str = Field(alias='familyName')
+    federation: JsonValue = _UNVALIDATED_NONE_DEFAULT
+    given_name: str = Field(alias='givenName')
+    idp_type: None | str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='idpType')
+    name: str
+    picture: str = _UNVALIDATED_NONE_DEFAULT
+    picture_data: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pictureData')
+    preferred_username: str = Field(alias='preferredUsername')
+    sub: str
+    sub_type: Literal['GROUP', 'INVITEE', 'SERVICE_ACCOUNT', 'SUBJECT_TYPE_UNSPECIFIED', 'USER_ACCOUNT', '_system'] = Field(alias='subType')
 
-class DlsPermissionPendingParticipantRequesterObjectParentReadDTO(BaseModel):
+class AccessExtBatchListMembersResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    members: list[AccessExtSubjectClaimsReadDTO]
+    next_page_token: str = Field(alias='nextPageToken')
+
+class DatalensOperationCreatedAtReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    nanos: int | float = _UNVALIDATED_NONE_DEFAULT
+    seconds: str
+
+class DatalensOperationReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    created_at: DatalensOperationCreatedAtReadDTO = Field(alias='createdAt')
+    created_by: str = Field(alias='createdBy')
+    description: str
+    done: bool
+    id: str
+    metadata: dict[str, JsonValue]
+    modified_at: DatalensOperationCreatedAtReadDTO = Field(alias='modifiedAt')
+
+class DlsPermissionUnitParentReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     link: str
     title: str
 
-class DlsPermissionPendingParticipantRequesterObjectReadDTO(BaseModel):
+class DlsPermissionUnitReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     rls_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='__rlsid')
@@ -318,9 +432,104 @@ class DlsPermissionPendingParticipantRequesterObjectReadDTO(BaseModel):
     icon: str = _UNVALIDATED_NONE_DEFAULT
     link: str = _UNVALIDATED_NONE_DEFAULT
     name: str = _UNVALIDATED_NONE_DEFAULT
-    parent: DlsPermissionPendingParticipantRequesterObjectParentReadDTO = _UNVALIDATED_NONE_DEFAULT
+    parent: DlsPermissionUnitParentReadDTO = _UNVALIDATED_NONE_DEFAULT
     title: str = _UNVALIDATED_NONE_DEFAULT
     type: Literal['group-staff-department', 'group-staff-service', 'group-staff-servicerole', 'group-staff-wiki', 'group-system', 'user', 'user-staff', 'user-system'] = _UNVALIDATED_NONE_DEFAULT
+
+class DlsSuggestResultReadDTO(RootModel[list[DlsPermissionUnitReadDTO]]):
+    model_config = ConfigDict(strict=True)
+
+class GetEntriesPermissionsResultValueAnyOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    error: Literal['NOT_FOUND']
+
+class GetEntriesPermissionsResultValueAnyOf1PermissionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    admin: bool
+    edit: bool
+    execute: bool
+    read: bool
+
+class GetEntriesPermissionsResultValueAnyOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    permissions: GetEntriesPermissionsResultValueAnyOf1PermissionsReadDTO
+
+class GetEntriesPermissionsResultReadDTO(RootModel[dict[str, Annotated[GetEntriesPermissionsResultValueAnyOf0ReadDTO | GetEntriesPermissionsResultValueAnyOf1ReadDTO, BeforeValidator(lambda value: GetEntriesPermissionsResultValueAnyOf0ReadDTO.model_validate(value) if isinstance(value, dict) and 'error' in value else value)]]]):
+    model_config = ConfigDict(strict=True)
+
+class GetPermissionsBulkResultCollectionsValueAnyOf1PermissionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    can_copy: bool = Field(alias='copy')
+    create_collection: bool = Field(alias='createCollection')
+    create_shared_entry: bool = Field(alias='createSharedEntry')
+    create_workbook: bool = Field(alias='createWorkbook')
+    delete: bool
+    limited_view: bool = Field(alias='limitedView')
+    list_access_bindings: bool = Field(alias='listAccessBindings')
+    move: bool
+    update: bool
+    update_access_bindings: bool = Field(alias='updateAccessBindings')
+    view: bool
+
+class GetPermissionsBulkResultCollectionsValueAnyOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    permissions: GetPermissionsBulkResultCollectionsValueAnyOf1PermissionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class GetPermissionsBulkResultEntriesValueAnyOf1FullPermissionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    can_copy: bool = Field(alias='copy')
+    create_entry_binding: bool = Field(alias='createEntryBinding')
+    create_limited_entry_binding: bool = Field(alias='createLimitedEntryBinding')
+    delete: bool
+    limited_view: bool = Field(alias='limitedView')
+    list_access_bindings: bool = Field(alias='listAccessBindings')
+    move: bool
+    update: bool
+    update_access_bindings: bool = Field(alias='updateAccessBindings')
+    view: bool
+
+class GetPermissionsBulkResultEntriesValueAnyOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    full_permissions: GetPermissionsBulkResultEntriesValueAnyOf1FullPermissionsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fullPermissions')
+    permissions: GetEntriesPermissionsResultValueAnyOf1PermissionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class GetPermissionsBulkResultWorkbooksValueAnyOf1PermissionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    can_copy: bool = Field(alias='copy')
+    delete: bool
+    embed: bool
+    limited_view: bool = Field(alias='limitedView')
+    list_access_bindings: bool = Field(alias='listAccessBindings')
+    move: bool
+    publish: bool
+    update: bool
+    update_access_bindings: bool = Field(alias='updateAccessBindings')
+    view: bool
+
+class GetPermissionsBulkResultWorkbooksValueAnyOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    permissions: GetPermissionsBulkResultWorkbooksValueAnyOf1PermissionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class GetPermissionsBulkResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    collections: dict[str, Annotated[GetEntriesPermissionsResultValueAnyOf0ReadDTO | GetPermissionsBulkResultCollectionsValueAnyOf1ReadDTO, BeforeValidator(lambda value: GetEntriesPermissionsResultValueAnyOf0ReadDTO.model_validate(value) if isinstance(value, dict) and 'error' in value else value)]]
+    entries: dict[str, Annotated[GetEntriesPermissionsResultValueAnyOf0ReadDTO | GetPermissionsBulkResultEntriesValueAnyOf1ReadDTO, BeforeValidator(lambda value: GetEntriesPermissionsResultValueAnyOf0ReadDTO.model_validate(value) if isinstance(value, dict) and 'error' in value else value)]]
+    workbooks: dict[str, Annotated[GetEntriesPermissionsResultValueAnyOf0ReadDTO | GetPermissionsBulkResultWorkbooksValueAnyOf1ReadDTO, BeforeValidator(lambda value: GetEntriesPermissionsResultValueAnyOf0ReadDTO.model_validate(value) if isinstance(value, dict) and 'error' in value else value)]]
+
+class DlsPermissionPendingParticipantExtrasAnyOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    initial_on_create: bool = _UNVALIDATED_NONE_DEFAULT
 
 class DlsPermissionPendingParticipantReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
@@ -330,8 +539,8 @@ class DlsPermissionPendingParticipantReadDTO(BaseModel):
     extras: DlsPermissionPendingParticipantExtrasAnyOf0ReadDTO | None
     kind: Literal['group', 'user']
     name: str
-    requester: None | DlsPermissionPendingParticipantRequesterObjectReadDTO
-    subject: DlsPermissionPendingParticipantRequesterObjectReadDTO
+    requester: None | DlsPermissionUnitReadDTO
+    subject: DlsPermissionUnitReadDTO
 
 class GetPermissionsResultPendingPermissionsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
@@ -344,13 +553,13 @@ class GetPermissionsResultPendingPermissionsReadDTO(BaseModel):
 class DlsPermissionParticipantReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
-    approver: None | DlsPermissionPendingParticipantRequesterObjectReadDTO
+    approver: None | DlsPermissionUnitReadDTO
     description: str = _UNVALIDATED_NONE_DEFAULT
     extras: DlsPermissionPendingParticipantExtrasAnyOf0ReadDTO | None = _UNVALIDATED_NONE_DEFAULT
     kind: Literal['group', 'user']
     name: str
-    requester: None | DlsPermissionPendingParticipantRequesterObjectReadDTO
-    subject: DlsPermissionPendingParticipantRequesterObjectReadDTO
+    requester: None | DlsPermissionUnitReadDTO
+    subject: DlsPermissionUnitReadDTO
 
 class GetPermissionsResultPermissionsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
@@ -366,6 +575,44 @@ class GetPermissionsResultReadDTO(BaseModel):
     editable: bool
     pending_permissions: GetPermissionsResultPendingPermissionsReadDTO = Field(alias='pendingPermissions')
     permissions: GetPermissionsResultPermissionsReadDTO
+
+class GetRootCollectionPermissionsResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    create_collection_in_root: bool = Field(alias='createCollectionInRoot')
+    create_workbook_in_root: bool = Field(alias='createWorkbookInRoot')
+
+class IamAccessBindingInheritedFromObjectReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    id: str
+    type: str
+
+class IamAccessBindingReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    inherited_from: None | IamAccessBindingInheritedFromObjectReadDTO = Field(alias='inheritedFrom')
+    role_id: str = Field(alias='roleId')
+
+class IamSubjectWithBindingsSubjectClaimsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    email: str
+    sub: str
+    sub_type: Literal['GROUP', 'INVITEE', 'SERVICE_ACCOUNT', 'SUBJECT_TYPE_UNSPECIFIED', 'USER_ACCOUNT'] = Field(alias='subType')
+
+class IamSubjectWithBindingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    access_bindings: list[IamAccessBindingReadDTO] = Field(alias='accessBindings')
+    inherited_access_bindings: list[IamAccessBindingReadDTO] = Field(alias='inheritedAccessBindings')
+    subject_claims: IamSubjectWithBindingsSubjectClaimsReadDTO = Field(alias='subjectClaims')
+
+class ListIamAccessBindingsResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    next_page_token: str = Field(alias='nextPageToken')
+    subjects_with_bindings: list[IamSubjectWithBindingsReadDTO] = Field(alias='subjectsWithBindings')
 
 class ModifyPermissionsResultReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)

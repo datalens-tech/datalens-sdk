@@ -73,14 +73,19 @@ If that also raises 401, the token is the problem (route to [setup.md](setup.md)
 
 **What NOT to do:** do not retry either in a loop (the answer will not change), do not "fix" 403 by switching accounts silently, and never print the token while debugging.
 
-## 3. `NotFoundError` (404) — wrong id, or right id on the wrong installation
+## 3. `NotFoundError` (404) — verify the ID, installation, and permission target
 
-Two very different causes, same status:
+Different causes can have the same status:
 
-1. **Wrong id** — a typo, a deleted entity, or an id of a different entity kind (e.g. a dataset id passed to `client.get.wizard_chart`). Verify with `client.navigation.get_entries(ids=[the_id])`.
+1. **Wrong id** — a typo, a deleted entity, or an id of a different entity kind (e.g. a dataset id passed to `client.get.wizard_chart`). Verify with an explicit `client.navigation.get_entries(ids=(the_id,))` lookup, requiring one exact ID match.
 2. **Wrong installation endpoint** — the id is real, but your client points elsewhere: an enterprise id queried against `https://api.datalens.tech`, or vice versa. Check which client class you built and its `base_url`, and compare with where the user sees the entity in the browser (the URL host tells you the installation).
+3. **Workbook content passed to `entry_acl`** — folder-model ACL operations can return 404 for an existing workbook entry. An ACL 404 alone does not establish that the entry is missing or belongs to a workbook.
 
-**Handling:** confirm both dimensions before concluding the entity is gone. Report the id, the base URL, and `e.context.request_id`.
+**Handling:** confirm the ID, installation, and operation target before concluding the entity is gone. For ACL failures, reuse known entry metadata or follow the [explicit permission-target resolution and diagnostic example](permissions.md#resolve-the-permission-target-explicitly). The SDK makes no hidden container lookup. A known `workbook_id` selects `permissions.workbook` on that ID; it does not supply a role or principal mapping or authorize a wider write. Preserve the original ACL error if the separate metadata lookup fails, and report that diagnostic failure separately. An empty or ambiguous metadata result leaves the access model unresolved.
+
+Report the entry ID, operation URL, original status/code/message, and
+`e.context.request_id`; retain `e.context.details`. Do not replace the server
+error with a guessed diagnosis based on 404 or its code.
 
 **What NOT to do:** do not recreate the "missing" entity as a fix — if the id was merely pointed at the wrong installation you will create a duplicate in the wrong place.
 
@@ -105,7 +110,7 @@ def create_or_adopt_dataset(client, *, name, workbook_id):
         raise  # conflict but no match found — report e.context.request_id
 ```
 
-The same shape works for any entity kind (adjust `scope=` and the getter). Scope by workbook or folder when possible and verify location as well as the display-name leaf before adopting. Fetch the adopted object, compare and verify the properties your task owns, and use its `update` builder to reconcile any differences — never treat adoption alone as proof that the task is complete, and never delete-and-recreate.
+The same shape works for any entity kind (adjust `scope=` and the getter). Scope by workbook or folder when possible and verify location as well as the display-name leaf before adopting. Fetch the adopted object, compare and verify the properties your task owns, and use its `update` builder to reconcile any differences — never treat adoption alone as proof that the task is complete, and never delete-and-recreate. A conflict establishes that an entry exists; it does not prove that an earlier timed-out attempt created it.
 
 **What NOT to do:** do not create `name-2`/`name (copy)` variants, and do not delete the existing entry to make room — it may be referenced by charts, dashboards, and permissions you cannot see.
 
@@ -119,9 +124,9 @@ The entity is locked, typically because a person has it open for editing in the 
 
 ## 6. `RateLimitError` (429) — back off, then retry deliberately
 
-429 means the request was **rejected before doing anything**, so a later retry is safe for reads and writes alike. Keep in mind what already happened automatically: reads are retried up to 3 times with backoff inside the SDK, so a 429 that reaches your code on a read means the burst is real; writes are never retried automatically (`max_attempts=1`), so a write 429 was a single attempt.
+429 reports rate limiting. Reads are retried up to 3 times with backoff inside the SDK; writes are never retried automatically (`max_attempts=1`), so a write 429 was a single attempt.
 
-**Handling:** wait meaningfully (seconds, not milliseconds), reduce concurrency and `page_size`-driven fan-out, then re-run the failed call once. If you are batch-creating entities, serialize the loop instead of parallelizing.
+**Handling:** wait meaningfully (seconds, not milliseconds), reduce concurrency and `page_size`-driven fan-out, then retry a failed read once. For writes, a retry requires a known rejection without application; do not replay a permission mutation whose outcome is unknown. If you are batch-creating entities, serialize the loop instead of parallelizing.
 
 **What NOT to do:** do not wrap calls in an unbounded `while: retry` — you will extend the throttling window — and do not raise write retry counts globally via a custom `http_client` just to push through a 429.
 
@@ -137,17 +142,17 @@ Raised client-side at build/execute time (and sometimes at the offending builder
 
 DNS failure, connection refused, TLS problems, timeouts. There is **no `e.context` and no `request_id`** — use `e.method`, `e.url`, `e.attempts`, `e.reason`. Reads were already retried up to 3 times before this surfaced.
 
-**Handling:** verify `e.url` is the endpoint you expect (typos in `DATALENS_BASE_URL` show up here), check VPN/proxy/network, then re-run. For a **write**, remember a timeout is ambiguous — the create may have landed. If the re-run raises `ConflictError`, that is your answer: the first attempt succeeded; switch to the adopt pattern from section 4.
+**Handling:** verify `e.url` is the endpoint you expect (typos in `DATALENS_BASE_URL` show up here) and check VPN/proxy/network before retrying a read. A failed **write** may have been applied: use authorized reads to inspect current state before deciding the next action. Do not resubmit an uncertain permission mutation. A later create conflict does not establish which attempt or actor created the existing entry; verify it using section 4.
 
-**What NOT to do:** do not blind-loop retries on writes without watching for `ConflictError`, and do not "fix" a wrong base URL by disabling TLS verification or hand-rolling HTTP.
+**What NOT to do:** do not use write retries to discover whether the first attempt succeeded, and do not "fix" a wrong base URL by disabling TLS verification or hand-rolling HTTP.
 
 ## 9. `InvalidResponseError` / `DTOValidationError` — the server answered, but not in the API's language
 
-Both are `DataLensAPIError` subclasses with a **synthetic 502** context (`e.context.status_code == 502`), codes `ERR.DATALENS_SDK.INVALID_RESPONSE` and `ERR.DATALENS_SDK.DTO_VALIDATION`. They mean the HTTP exchange succeeded but the body was unusable: not JSON at all / wrong root shape (`InvalidResponseError`), or JSON that fails the SDK's response schema (`DTOValidationError`).
+Both are `DataLensAPIError` subclasses with a **synthetic 502** context (`e.context.status_code == 502`), codes `ERR.DATALENS_SDK.INVALID_RESPONSE` and `ERR.DATALENS_SDK.DTO_VALIDATION`. They mean the response body was unusable: invalid JSON or root shape raises `InvalidResponseError`; response DTO validation generally raises `DTOValidationError`. ACL response validation also uses `InvalidResponseError`. The synthetic status does not establish that the server returned HTTP 502.
 
 **Typical causes:** `base_url` pointing at a web UI, a proxy, or a captive portal that returns an HTML page; an enterprise API version the pinned SDK does not understand; a corporate middlebox rewriting responses.
 
-**Handling:** check `e.context.message` — it names the operation and reason. Confirm `base_url` is the API origin, not the UI. If the endpoint is right, this is version drift or a server bug: report the operation, `e.context.request_id` (may be `None` when the response never carried one), and the SDK version to the user.
+**Handling:** check `e.context.message` — it names the operation and reason. Confirm `base_url` is the API origin, not the UI. If the endpoint is right, this is version drift or a server bug: report the operation, available `e.context.request_id`, and the SDK version. Response validation may not retain the original status or request ID. A malformed write response can leave the outcome unknown; do not replay a permission mutation to obtain a valid receipt.
 
 **What NOT to do:** do not parse the raw body yourself and continue, and do not change the SDK version to "match the server" — package installation and upgrades belong to the calling bootstrap.
 
@@ -158,19 +163,19 @@ exception raised
 ├─ DataLensConfigurationError → env/wiring problem → fix per message, see setup.md; never retry
 ├─ DataLensValidationError    → builder input wrong → fix code; never retry
 ├─ NotSupportedError          → surface absent on this installation → check client.capabilities
-├─ DataLensTransportError     → network; no request_id → verify url/VPN, re-run;
-│                                write re-run conflicts? → first attempt landed → adopt (sec. 4)
+├─ DataLensTransportError     → verify url/VPN; reads may retry;
+│                                write outcome unknown → inspect state, do not replay permission writes
 └─ DataLensAPIError           → report e.context.request_id, then branch on type:
    ├─ 400 BadRequestError     → server rejected payload → fix code; never retry
    ├─ ConflictError           → entry exists; status may be legacy 400 or 409 → adopt (sec. 4)
    ├─ 401 UnauthorizedError   → token invalid/expired → setup.md
    ├─ 403 ForbiddenError      → token fine, ACL denies → user must grant access
-   ├─ 404 NotFoundError       → wrong id OR wrong installation endpoint → verify both
+   ├─ 404 NotFoundError       → verify id, installation endpoint, and permission target
    ├─ 423 LockedError         → locked, no lock API → report and wait for the user
-   ├─ 429 RateLimitError      → back off seconds, serialize, retry once
-   ├─ 5xx ServerError         → transient? reads auto-retried already → retry once, then report
+   ├─ 429 RateLimitError      → back off, serialize; retry reads, verify rejection before write retries
+   ├─ 5xx ServerError         → reads already retried; report uncertain permission writes, do not replay
    └─ synthetic 502 InvalidResponseError / DTOValidationError
-                               → base_url wrong or version drift → check endpoint, report
+                               → check endpoint, report; permission write outcome may be unknown
 ```
 
 ## Related references

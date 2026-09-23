@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from importlib import import_module, resources
 from importlib.metadata import PackageNotFoundError, version
 import json
-from typing import TYPE_CHECKING, ClassVar, Generic, Literal, Protocol, TypedDict, TypeVar, cast
+from typing import TYPE_CHECKING, ClassVar, Generic, Protocol, TypedDict, TypeVar, cast
 import warnings
 
 import httpx
@@ -19,6 +19,7 @@ from datalens_sdk.api.entries import EntriesAPI, EntriesDtoModule, EntriesServic
 from datalens_sdk.api.folder import FolderAPI, FolderService
 from datalens_sdk.api.license import LicenseAPI, LicenseService
 from datalens_sdk.api.navigation import NavigationService
+from datalens_sdk.api.permissions import PermissionsAPI, PermissionsService
 from datalens_sdk.api.workbook import WorkbookAPI, WorkbookService
 from datalens_sdk.auth import (
     AuthProviderProtocol,
@@ -35,6 +36,7 @@ from datalens_sdk.converter.dataset import DatasetDtoModule
 from datalens_sdk.converter.editor_chart import EditorChartDtoModule, editor_wire_types
 from datalens_sdk.converter.folder import FolderDtoModule
 from datalens_sdk.converter.license import LicenseDtoModule
+from datalens_sdk.converter.permissions import PermissionsDtoModule
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
 from datalens_sdk.converter.workbook import WorkbookDtoModule
 from datalens_sdk.domain.collection import Collection, CollectionCreate
@@ -69,12 +71,6 @@ from datalens_sdk.domain.navigation import (
     GetEntriesOptions,
     Pager,
 )
-from datalens_sdk.domain.permissions import (
-    EntryPermissions,
-    PermissionDiff,
-    PermissionModificationResult,
-    _copy_permissions_diff,
-)
 from datalens_sdk.domain.ports import (
     ChartOperations,
     CollectionOperations,
@@ -84,7 +80,6 @@ from datalens_sdk.domain.ports import (
     FolderOperations,
     LicenseOperations,
     NavigationOperations,
-    PermissionsOperations,
     WorkbookOperations,
 )
 from datalens_sdk.domain.ql_chart import QLChart
@@ -96,6 +91,7 @@ from datalens_sdk.http import (
     HTTPClientProtocol,
     HTTPEventHooks,
 )
+from datalens_sdk.permissions import PermissionsNamespace as PermissionsNamespace
 from datalens_sdk.raw import RawNamespace
 from datalens_sdk.recipes.dashboard_export import DashboardBundleExporter
 
@@ -540,45 +536,6 @@ class NavigationNamespace:
         )
 
 
-class PermissionsNamespace:
-    """Read, modify, or copy granted permissions for entry objects."""
-
-    def __init__(self, operations: PermissionsOperations) -> None:
-        self._operations = operations
-
-    def get(self, *, entry_id: str) -> EntryPermissions:
-        return self._operations.get_permissions(entry_id=entry_id)
-
-    def modify(self, *, entry_id: str, diff: PermissionDiff) -> PermissionModificationResult:
-        """Apply one non-recursive diff; preserve any server continuation token."""
-        return self._operations.modify_permissions(entry_id=entry_id, diff=diff)
-
-    def copy(
-        self,
-        *,
-        source_entry_id: str,
-        target_entry_id: str,
-        mode: Literal["replace", "merge"],
-    ) -> PermissionModificationResult:
-        """Copy granted subject/level pairs using two reads and at most one mutation.
-
-        ``replace`` removes target grants absent from the source, including
-        administrative grants, and modifies differing levels of the same subject.
-        ``merge`` adds missing grants without explicit removals; the server may
-        retain or upgrade an existing level instead of keeping both grants.
-        Pending requests and participant metadata are not copied. This operation
-        uses read snapshots and is not atomic with concurrent ACL changes.
-        """
-        if mode not in ("replace", "merge"):
-            raise DataLensValidationError("mode must be 'replace' or 'merge'")
-        source = self.get(entry_id=source_entry_id)
-        target = self.get(entry_id=target_entry_id)
-        diff = _copy_permissions_diff(source.permissions, target.permissions, mode=mode)
-        if not (diff.added or diff.removed or diff.modified):
-            return PermissionModificationResult(result="ok")
-        return self.modify(entry_id=target_entry_id, diff=diff)
-
-
 class LicensesNamespace:
     def __init__(self, operations: LicenseOperations) -> None:
         self._operations = operations
@@ -802,7 +759,10 @@ class DataLensClientBase:
             workbook_operations=self._workbook_service,
         )
         self.navigation = NavigationNamespace(self._navigation_service)
-        self.permissions = PermissionsNamespace(entries_service)
+        self.permissions = PermissionsNamespace(
+            entries_service,
+            PermissionsService(api=PermissionsAPI(self._http), dto_module=cast(PermissionsDtoModule, dto_module)),
+        )
         if "licenses" in self._installation_info["namespaces"]:
             self._license_service = LicenseService(
                 api=LicenseAPI(self._http),

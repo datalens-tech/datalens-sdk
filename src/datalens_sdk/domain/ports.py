@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from datalens_sdk._runtime.builder_base import BaseConnectionCreate
@@ -39,7 +39,21 @@ if TYPE_CHECKING:
         StructureSummary,
         WorkbookListOptions,
     )
-    from datalens_sdk.domain.permissions import EntryPermissions, PermissionDiff, PermissionModificationResult
+    from datalens_sdk.domain.permissions import (
+        BulkPermissionsResult,
+        DataLensOperation,
+        DirectorySubject,
+        DirectorySubjectType,
+        EffectivePermissionError,
+        EntryEffectivePermissionResult,
+        EntryPermissions,
+        EntryPermissionsDiff,
+        EntryPermissionsModificationResult,
+        EntryPermissionSubject,
+        RoleBindingDelta,
+        RootCollectionPermissions,
+        SubjectRoleAssignments,
+    )
     from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate
     from datalens_sdk.domain.specs.raw_resource import (
         RawCreateSpec,
@@ -55,7 +69,54 @@ if TYPE_CHECKING:
 class PermissionsOperations(Protocol):
     def get_permissions(self, *, entry_id: str) -> EntryPermissions: ...
 
-    def modify_permissions(self, *, entry_id: str, diff: PermissionDiff) -> PermissionModificationResult: ...
+    def modify_permissions(
+        self, *, entry_id: str, diff: EntryPermissionsDiff
+    ) -> EntryPermissionsModificationResult: ...
+
+    def suggest_permission_subjects(self, *, search_text: str) -> tuple[EntryPermissionSubject, ...]: ...
+
+
+@runtime_checkable
+class AccessPermissionsOperations(Protocol):
+    def list_workbook(
+        self, *, workbook_id: str, include_inherited: bool | None = None, page_size: int | None = None
+    ) -> Pager[SubjectRoleAssignments]: ...
+
+    def list_collection(
+        self, *, collection_id: str, include_inherited: bool | None = None, page_size: int | None = None
+    ) -> Pager[SubjectRoleAssignments]: ...
+
+    def list_shared_entry(
+        self, *, entry_id: str, include_inherited: bool | None = None, page_size: int | None = None
+    ) -> Pager[SubjectRoleAssignments]: ...
+
+    def modify_workbook(self, *, workbook_id: str, deltas: Sequence[RoleBindingDelta]) -> DataLensOperation: ...
+
+    def modify_collection(self, *, collection_id: str, deltas: Sequence[RoleBindingDelta]) -> DataLensOperation: ...
+
+    def get_entries(
+        self, *, entry_ids: Sequence[str]
+    ) -> Mapping[str, EntryEffectivePermissionResult | EffectivePermissionError]: ...
+
+    def get_bulk(
+        self,
+        *,
+        entry_ids: Sequence[str] | None = None,
+        workbook_ids: Sequence[str] | None = None,
+        collection_ids: Sequence[str] | None = None,
+    ) -> BulkPermissionsResult: ...
+
+    def get_root_collection(self) -> RootCollectionPermissions: ...
+
+    def list_subjects(
+        self,
+        *,
+        search: str | None = None,
+        filter: str | None = None,
+        language: Literal["en", "ru"] | None = None,
+        subject_type: DirectorySubjectType | None = None,
+        page_size: int | None = None,
+    ) -> Pager[DirectorySubject]: ...
 
 
 @runtime_checkable

@@ -5,6 +5,7 @@ import json
 from typing import TYPE_CHECKING, Literal, cast
 
 import httpx
+from pydantic import ValidationError
 import pytest
 from typing_extensions import assert_type
 
@@ -44,9 +45,9 @@ def _client(recorder: RecordedTransport) -> dl.DataLensClientYC:
 
 def _invoke(client: dl.DataLensClientYC, operation: str, *, entry_id: str = "entry-1") -> None:
     if operation == "get":
-        client.permissions.get(entry_id=entry_id)
+        client.permissions.entry_acl.get(entry_id=entry_id)
     else:
-        client.permissions.modify(entry_id=entry_id, diff=dl.PermissionDiff())
+        client.permissions.entry_acl.modify(entry_id=entry_id, diff=dl.EntryPermissionsDiff())
 
 
 def _subject(name: str) -> dict[str, object]:
@@ -91,8 +92,8 @@ def _permissions_response(grants: dict[str, list[str]]) -> httpx.Response:
     )
 
 
-def _assert_subject(subject: dl.PermissionSubject | None, name: str) -> None:
-    assert isinstance(subject, dl.PermissionSubject)
+def _assert_subject(subject: dl.EntryPermissionSubject | None, name: str) -> None:
+    assert isinstance(subject, dl.EntryPermissionSubject)
     assert asdict(subject) == {
         "name": name,
         "title": f"Title of {name}",
@@ -121,7 +122,7 @@ def test_get_permissions_preserves_all_levels_and_participant_details() -> None:
         )
     )
 
-    result = _client(recorder).permissions.get(entry_id="entry-1")
+    result = _client(recorder).permissions.entry_acl.get(entry_id="entry-1")
 
     assert isinstance(result, dl.EntryPermissions)
     assert result.editable is True
@@ -141,14 +142,14 @@ def test_get_permissions_preserves_all_levels_and_participant_details() -> None:
         assert isinstance(granted, tuple)
         assert isinstance(pending, tuple)
         assert len(granted) == len(pending) == 1
-        assert isinstance(granted[0], dl.PermissionParticipant)
-        assert isinstance(pending[0], dl.PendingPermissionParticipant)
+        assert isinstance(granted[0], dl.EntryPermissionParticipant)
+        assert isinstance(pending[0], dl.PendingEntryPermissionParticipant)
         for participant, prefix in ((granted[0], "granted"), (pending[0], "pending")):
             name = f"{prefix}-{level}"
             assert participant.name == name
             assert participant.kind == "user"
             assert participant.description == f"Description of {name}"
-            assert participant.extras == dl.PermissionExtras(initial_on_create=False)
+            assert participant.extras == dl.EntryPermissionExtras(initial_on_create=False)
             _assert_subject(participant.subject, name)
             _assert_subject(participant.requester, f"requester-{name}")
         _assert_subject(granted[0].approver, f"approver-granted-{level}")
@@ -172,7 +173,7 @@ def test_get_permissions_preserves_omitted_granted_description_and_extras_as_non
         )
     )
 
-    result = _client(recorder).permissions.get(entry_id="folder-1")
+    result = _client(recorder).permissions.entry_acl.get(entry_id="folder-1")
 
     granted = result.permissions.acl_adm[0]
     assert granted.name == "admin-1"
@@ -180,7 +181,7 @@ def test_get_permissions_preserves_omitted_granted_description_and_extras_as_non
     assert granted.extras is None
     _assert_subject(granted.subject, "admin-1")
     assert result.pending_permissions.acl_view[0].description == "Description of pending-1"
-    assert result.pending_permissions.acl_view[0].extras == dl.PermissionExtras(initial_on_create=False)
+    assert result.pending_permissions.acl_view[0].extras == dl.EntryPermissionExtras(initial_on_create=False)
 
 
 def test_get_permissions_accepts_omitted_optional_fields_and_explicit_nullable_values() -> None:
@@ -200,24 +201,24 @@ def test_get_permissions_accepts_omitted_optional_fields_and_explicit_nullable_v
         )
     )
 
-    result = _client(recorder).permissions.get(entry_id="entry-1")
+    result = _client(recorder).permissions.entry_acl.get(entry_id="entry-1")
 
     assert result == dl.EntryPermissions(
         editable=False,
-        permissions=dl.PermissionSet(
+        permissions=dl.EntryPermissionSet(
             acl_view=(
-                dl.PermissionParticipant(
+                dl.EntryPermissionParticipant(
                     name="group-1",
                     kind="group",
                     description="",
-                    subject=dl.PermissionSubject(),
+                    subject=dl.EntryPermissionSubject(),
                     requester=None,
                     approver=None,
                     extras=None,
                 ),
             )
         ),
-        pending_permissions=dl.PermissionSet(),
+        pending_permissions=dl.EntryPermissionSet(),
     )
 
 
@@ -228,7 +229,7 @@ def test_get_permissions_rejects_missing_required_result_fields(missing: str) ->
     recorder = RecordedTransport(httpx.Response(200, json=response))
 
     with pytest.raises(dl.InvalidResponseError, match="getPermissions"):
-        _client(recorder).permissions.get(entry_id="entry-1")
+        _client(recorder).permissions.entry_acl.get(entry_id="entry-1")
 
 
 @pytest.mark.parametrize("missing", ["requester", "approver", "subject"])
@@ -243,7 +244,7 @@ def test_get_permissions_rejects_missing_required_participant_fields(missing: st
     )
 
     with pytest.raises(dl.InvalidResponseError, match="getPermissions"):
-        _client(recorder).permissions.get(entry_id="entry-1")
+        _client(recorder).permissions.entry_acl.get(entry_id="entry-1")
 
 
 @pytest.mark.parametrize(
@@ -267,7 +268,7 @@ def test_get_permissions_rejects_invalid_participant_values(field: str, value: o
     )
 
     with pytest.raises(dl.InvalidResponseError, match="getPermissions"):
-        _client(recorder).permissions.get(entry_id="entry-1")
+        _client(recorder).permissions.entry_acl.get(entry_id="entry-1")
 
 
 def test_pending_permissions_reject_a_non_null_approver() -> None:
@@ -283,18 +284,18 @@ def test_pending_permissions_reject_a_non_null_approver() -> None:
     )
 
     with pytest.raises(dl.InvalidResponseError, match="getPermissions"):
-        _client(recorder).permissions.get(entry_id="entry-1")
+        _client(recorder).permissions.entry_acl.get(entry_id="entry-1")
 
 
 def test_modify_permissions_serializes_explicit_diff_for_all_four_levels() -> None:
     recorder = RecordedTransport(httpx.Response(200, json={"result": "ok"}))
-    diff = dl.PermissionDiff(
-        added=tuple(dl.PermissionGrant(subject=f"add-{level}", grant_type=level) for level in ACL_LEVELS),
+    diff = dl.EntryPermissionsDiff(
+        added=tuple(dl.EntryPermissionGrant(subject=f"add-{level}", grant_type=level) for level in ACL_LEVELS),
         removed=tuple(
-            dl.PermissionGrant(subject=f"remove-{level}", grant_type=level, comment="") for level in ACL_LEVELS
+            dl.EntryPermissionGrant(subject=f"remove-{level}", grant_type=level, comment="") for level in ACL_LEVELS
         ),
         modified=tuple(
-            dl.PermissionModification(
+            dl.EntryPermissionModification(
                 subject=f"before-{level}",
                 grant_type=level,
                 new_subject=f"after-{level}",
@@ -305,9 +306,9 @@ def test_modify_permissions_serializes_explicit_diff_for_all_four_levels() -> No
         ),
     )
 
-    result = _client(recorder).permissions.modify(entry_id="entry-1", diff=diff)
+    result = _client(recorder).permissions.entry_acl.modify(entry_id="entry-1", diff=diff)
 
-    assert result == dl.PermissionModificationResult(result="ok", next_page_token=None)
+    assert result == dl.EntryPermissionsModificationResult(result="ok", next_page_token=None)
     assert result.continuation_required is False
     assert recorder.request_json() == {
         "entryId": "entry-1",
@@ -339,11 +340,11 @@ def test_modify_permissions_serializes_explicit_diff_for_all_four_levels() -> No
 def test_modify_permissions_omits_unset_comments_and_unused_diff_groups() -> None:
     recorder = RecordedTransport(httpx.Response(200, json={"result": "ok"}))
 
-    _client(recorder).permissions.modify(
+    _client(recorder).permissions.entry_acl.modify(
         entry_id="entry-1",
-        diff=dl.PermissionDiff(
+        diff=dl.EntryPermissionsDiff(
             modified=(
-                dl.PermissionModification(
+                dl.EntryPermissionModification(
                     subject="old-user",
                     grant_type="acl_edit",
                     new_subject="new-user",
@@ -373,7 +374,7 @@ def test_modify_permissions_preserves_continuation_without_repeating_mutation(ne
         response["nextPageToken"] = next_page_token
     recorder = RecordedTransport(httpx.Response(200, json=response))
 
-    result = _client(recorder).permissions.modify(entry_id="entry-1", diff=dl.PermissionDiff())
+    result = _client(recorder).permissions.entry_acl.modify(entry_id="entry-1", diff=dl.EntryPermissionsDiff())
 
     assert result.result == "ok"
     assert result.next_page_token == next_page_token
@@ -389,7 +390,7 @@ def test_modify_permissions_rejects_invalid_success_responses(response: dict[str
     recorder = RecordedTransport(httpx.Response(200, json=response))
 
     with pytest.raises(dl.InvalidResponseError, match="modifyPermissions"):
-        _client(recorder).permissions.modify(entry_id="entry-1", diff=dl.PermissionDiff())
+        _client(recorder).permissions.entry_acl.modify(entry_id="entry-1", diff=dl.EntryPermissionsDiff())
     assert len(recorder.requests) == 1
 
 
@@ -431,7 +432,7 @@ def test_modify_permissions_does_not_retry_transient_failure() -> None:
     )
 
     with pytest.raises(dl.ServerError, match="temporarily unavailable"):
-        _client(recorder).permissions.modify(entry_id="entry-1", diff=dl.PermissionDiff())
+        _client(recorder).permissions.entry_acl.modify(entry_id="entry-1", diff=dl.EntryPermissionsDiff())
     assert len(recorder.requests) == 1
 
 
@@ -459,7 +460,9 @@ def test_copy_permissions_applies_only_granted_subject_level_differences(
         httpx.Response(200, json={"result": "ok", "nextPageToken": "continue-copy"}),
     )
 
-    result = _client(recorder).permissions.copy(source_entry_id="source-1", target_entry_id="target-1", mode=mode)
+    result = _client(recorder).permissions.entry_acl.copy(
+        source_entry_id="source-1", target_entry_id="target-1", mode=mode
+    )
 
     diff: dict[str, object] = {
         "added": {
@@ -493,8 +496,9 @@ def test_copy_permissions_applies_only_granted_subject_level_differences(
         {"entryId": "target-1"},
         {"entryId": "target-1", "nested": False, "body": {"diff": diff}},
     ]
-    assert result == dl.PermissionModificationResult(result="ok", next_page_token="continue-copy")
-    assert result.continuation_required is True
+    assert result.modification == dl.EntryPermissionsModificationResult(result="ok", next_page_token="continue-copy")
+    assert result.modification is not None
+    assert result.modification.continuation_required is True
 
 
 @pytest.mark.parametrize(
@@ -512,7 +516,7 @@ def test_copy_permissions_pairs_multiple_target_levels_in_acl_order(
         httpx.Response(200, json={"result": "ok"}),
     )
 
-    result = _client(recorder).permissions.copy(
+    result = _client(recorder).permissions.entry_acl.copy(
         source_entry_id="source-1",
         target_entry_id="target-1",
         mode="replace",
@@ -532,7 +536,7 @@ def test_copy_permissions_pairs_multiple_target_levels_in_acl_order(
             }
         },
     }
-    assert result == dl.PermissionModificationResult(result="ok")
+    assert result.modification == dl.EntryPermissionsModificationResult(result="ok")
 
 
 @pytest.mark.parametrize("mode", ["replace", "merge"])
@@ -544,11 +548,12 @@ def test_copy_permissions_skips_mutation_when_grants_already_match(
         _permissions_response({"acl_view": ["shared"]}),
     )
 
-    result = _client(recorder).permissions.copy(source_entry_id="source-1", target_entry_id="target-1", mode=mode)
+    result = _client(recorder).permissions.entry_acl.copy(
+        source_entry_id="source-1", target_entry_id="target-1", mode=mode
+    )
 
     assert [request.url.path for request in recorder.requests] == ["/rpc/getPermissions", "/rpc/getPermissions"]
-    assert result == dl.PermissionModificationResult(result="ok")
-    assert result.continuation_required is False
+    assert result == dl.EntryPermissionsCopyResult(modification=None)
 
 
 @pytest.mark.parametrize("failed_read", ["source", "target"])
@@ -560,7 +565,9 @@ def test_copy_permissions_does_not_mutate_after_a_read_failure(failed_read: str)
     recorder = RecordedTransport(*responses)
 
     with pytest.raises(dl.ForbiddenError, match="Insufficient permissions"):
-        _client(recorder).permissions.copy(source_entry_id="source-1", target_entry_id="target-1", mode="replace")
+        _client(recorder).permissions.entry_acl.copy(
+            source_entry_id="source-1", target_entry_id="target-1", mode="replace"
+        )
 
     expected_entries = ["source-1"] if failed_read == "source" else ["source-1", "target-1"]
     assert [request.url.path for request in recorder.requests] == ["/rpc/getPermissions"] * len(expected_entries)
@@ -574,7 +581,7 @@ def test_copy_permissions_rejects_invalid_mode_before_http(mode: object) -> None
     recorder = RecordedTransport()
 
     with pytest.raises(dl.DataLensValidationError, match="mode"):
-        _client(recorder).permissions.copy(
+        _client(recorder).permissions.entry_acl.copy(
             source_entry_id="source-1",
             target_entry_id="target-1",
             mode=cast(Literal["replace", "merge"], mode),
@@ -596,7 +603,9 @@ def test_copy_permissions_does_not_repeat_mutation_after_transient_failure() -> 
     )
 
     with pytest.raises(dl.ServerError, match="temporarily unavailable") as exc_info:
-        _client(recorder).permissions.copy(source_entry_id="source-1", target_entry_id="target-1", mode="merge")
+        _client(recorder).permissions.entry_acl.copy(
+            source_entry_id="source-1", target_entry_id="target-1", mode="merge"
+        )
 
     assert exc_info.value.context.status_code == 503
     assert exc_info.value.context.request_id == "copy-failed-1"
@@ -627,8 +636,8 @@ def test_public_installations_share_permissions_namespace_and_transport_headers(
     )
 
     assert "permissions" in client.capabilities["namespaces"]
-    assert client.permissions.get(entry_id="entry-1").editable is False
-    assert client.permissions.modify(entry_id="entry-1", diff=dl.PermissionDiff()).result == "ok"
+    assert client.permissions.entry_acl.get(entry_id="entry-1").editable is False
+    assert client.permissions.entry_acl.modify(entry_id="entry-1", diff=dl.EntryPermissionsDiff()).result == "ok"
 
     assert [request.url.path for request in recorder.requests] == ["/rpc/getPermissions", "/rpc/modifyPermissions"]
     for request in recorder.requests:
@@ -643,7 +652,7 @@ def test_permissions_validate_entry_id_before_http(operation: str, entry_id: obj
     recorder = RecordedTransport()
     client = _client(recorder)
 
-    with pytest.raises(dl.DTOValidationError):
+    with pytest.raises(dl.DataLensValidationError):
         _invoke(client, operation, entry_id=cast(str, entry_id))
     assert recorder.requests == []
 
@@ -651,19 +660,19 @@ def test_permissions_validate_entry_id_before_http(operation: str, entry_id: obj
 @pytest.mark.parametrize("case", ["added", "removed", "modified_grant", "modified_new_grant", "comment"])
 def test_modify_permissions_validates_grant_types_before_http(case: str) -> None:
     recorder = RecordedTransport()
-    invalid = cast(dl.PermissionGrantType, "read")
+    invalid = cast(dl.EntryPermissionGrantType, "read")
     if case == "added":
-        diff = dl.PermissionDiff(added=(dl.PermissionGrant(subject="user-1", grant_type=invalid),))
+        diff = dl.EntryPermissionsDiff(added=(dl.EntryPermissionGrant(subject="user-1", grant_type=invalid),))
     elif case == "removed":
-        diff = dl.PermissionDiff(removed=(dl.PermissionGrant(subject="user-1", grant_type=invalid),))
+        diff = dl.EntryPermissionsDiff(removed=(dl.EntryPermissionGrant(subject="user-1", grant_type=invalid),))
     elif case == "comment":
-        diff = dl.PermissionDiff(
-            added=(dl.PermissionGrant(subject="user-1", grant_type="acl_view", comment=cast(str, 123)),)
+        diff = dl.EntryPermissionsDiff(
+            added=(dl.EntryPermissionGrant(subject="user-1", grant_type="acl_view", comment=cast(str, 123)),)
         )
     else:
-        diff = dl.PermissionDiff(
+        diff = dl.EntryPermissionsDiff(
             modified=(
-                dl.PermissionModification(
+                dl.EntryPermissionModification(
                     subject="user-1",
                     grant_type=invalid if case == "modified_grant" else "acl_view",
                     new_subject="user-2",
@@ -672,8 +681,8 @@ def test_modify_permissions_validates_grant_types_before_http(case: str) -> None
             )
         )
 
-    with pytest.raises(dl.DTOValidationError, match="modifyPermissions"):
-        _client(recorder).permissions.modify(entry_id="entry-1", diff=diff)
+    with pytest.raises(dl.DataLensValidationError, match="modifyPermissions"):
+        _client(recorder).permissions.entry_acl.modify(entry_id="entry-1", diff=diff)
     assert recorder.requests == []
 
 
@@ -682,13 +691,71 @@ if TYPE_CHECKING:
 
     def _assert_permissions_types(client: dl.DataLensClientYC | dl.DataLensClientEnterprise) -> None:
         assert_type(client.permissions, PermissionsNamespace)
-        permissions = client.permissions.get(entry_id="entry-1")
+        permissions = client.permissions.entry_acl.get(entry_id="entry-1")
         assert_type(permissions, dl.EntryPermissions)
-        assert_type(permissions.permissions, dl.PermissionSet[dl.PermissionParticipant])
-        assert_type(permissions.pending_permissions, dl.PermissionSet[dl.PendingPermissionParticipant])
-        assert_type(permissions.permissions.acl_view, tuple[dl.PermissionParticipant, ...])
-        assert_type(permissions.pending_permissions.acl_view, tuple[dl.PendingPermissionParticipant, ...])
-        result = client.permissions.modify(entry_id="entry-1", diff=dl.PermissionDiff())
-        assert_type(result, dl.PermissionModificationResult)
+        assert_type(permissions.permissions, dl.EntryPermissionSet[dl.EntryPermissionParticipant])
+        assert_type(permissions.pending_permissions, dl.EntryPermissionSet[dl.PendingEntryPermissionParticipant])
+        assert_type(permissions.permissions.acl_view, tuple[dl.EntryPermissionParticipant, ...])
+        assert_type(permissions.pending_permissions.acl_view, tuple[dl.PendingEntryPermissionParticipant, ...])
+        result = client.permissions.entry_acl.modify(entry_id="entry-1", diff=dl.EntryPermissionsDiff())
+        assert_type(result, dl.EntryPermissionsModificationResult)
         assert_type(result.next_page_token, str | None)
         assert_type(result.continuation_required, bool)
+
+
+@pytest.mark.parametrize("mode", ["replace", "merge"])
+def test_copy_permissions_rejects_identical_ids_before_any_read(mode: Literal["replace", "merge"]) -> None:
+    recorder = RecordedTransport()
+    with pytest.raises(dl.DataLensValidationError, match="must differ"):
+        _client(recorder).permissions.entry_acl.copy(source_entry_id="same", target_entry_id="same", mode=mode)
+    assert recorder.requests == []
+
+
+@pytest.mark.parametrize("operation", ["get", "modify"])
+def test_permissions_reject_malformed_response(operation: str) -> None:
+    recorder = RecordedTransport(httpx.Response(200, json={"unexpected": True}))
+    with pytest.raises(dl.InvalidResponseError) as error:
+        _invoke(_client(recorder), operation)
+    assert error.value.context.status_code == 502
+    assert isinstance(error.value.__cause__, ValidationError)
+    assert len(recorder.requests) == 1
+
+
+@pytest.mark.parametrize("diff", [None, {}, dl.EntryPermissionsDiff(added=(cast(dl.EntryPermissionGrant, {}),))])
+def test_modify_permissions_rejects_untyped_diff_before_http(diff: object) -> None:
+    recorder = RecordedTransport()
+    with pytest.raises(dl.DataLensValidationError, match="modifyPermissions"):
+        _client(recorder).permissions.entry_acl.modify(entry_id="entry-1", diff=cast(dl.EntryPermissionsDiff, diff))
+    assert recorder.requests == []
+
+
+def test_modify_permissions_does_not_repeat_after_invalid_json_response() -> None:
+    recorder = RecordedTransport(
+        httpx.Response(200, content=b"not JSON", headers={"x-request-id": "invalid-json"}),
+        httpx.Response(200, json={"result": "ok"}),
+    )
+    with pytest.raises(dl.InvalidResponseError, match="not valid JSON") as error:
+        _client(recorder).permissions.entry_acl.modify(entry_id="entry-1", diff=dl.EntryPermissionsDiff())
+
+    assert len(recorder.requests) == 1
+    assert error.value.context.request_id == "invalid-json"
+    assert isinstance(error.value.__cause__, ValueError)
+
+
+def test_modify_permissions_does_not_repeat_after_timeout() -> None:
+    requests: list[httpx.Request] = []
+    original = httpx.ReadTimeout("response lost after dispatch")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        raise original
+
+    with (
+        dl.DataLensClientYC(auth=None, base_url="https://datalens.test", transport=httpx.MockTransport(handler)) as sdk,
+        pytest.raises(dl.DataLensTransportError) as error,
+    ):
+        sdk.permissions.entry_acl.modify(entry_id="entry-1", diff=dl.EntryPermissionsDiff())
+
+    assert len(requests) == 1
+    assert error.value.__cause__ is original
+    assert error.value.attempts == 1

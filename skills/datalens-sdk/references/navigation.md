@@ -2,8 +2,14 @@
 
 Read this when you need to find, list, move, or rename entities, or manage the containers they live in: collections, workbooks, and folders.
 
-For ACL participants and explicit permission changes, use
-[entry permissions](permissions.md).
+For ACL participants, roles and effective checks, use the
+[permission-target resolution example](permissions.md#resolve-the-permission-target-explicitly).
+It reuses an existing `EntrySummary` or explicitly calls
+`navigation.get_entries(ids=(entry_id,))`, checks for one exact match, and
+selects a permission read from container metadata. Ordinary workbook contents
+use the actual `workbook_id`; shared-object roles target the original entry.
+Neither an ACL 404 nor an entry class proves its access model. Permission
+methods do not perform hidden metadata lookups or redirect writes.
 
 ## The container model
 
@@ -40,6 +46,15 @@ for entry in pager:  # EntrySummary
 ```
 
 `EntrySummary` carries `.id`, `.scope`, `.type`, `.name`, `.key` (path, on folder installations), `.workbook_id`, `.collection_id`, `.created_by`/`.created_at`, `.updated_by`/`.updated_at`, `.saved_id`/`.published_id`, `.hidden`, `.is_favorite`, `.is_locked`, plus `.data`/`.links`/`.permissions` (populated only when the matching `include_*` flag is on) and `.raw`. Some listing endpoints return a path-qualified `.name` such as `Folder/Sales`; derive the display leaf with `entry.name.rsplit("/", 1)[-1]` when matching by the user-visible name.
+
+`entry.workbook_id` identifies the workbook containing the entry. To find
+that workbook's parent collection when needed, explicitly fetch
+`client.get.workbook(by_id=entry.workbook_id).collection_id`. A missing
+`entry.collection_id` does not mean the workbook has no parent collection.
+Locating the workbook's parent does not make that collection the target of
+the requested permission change.
+Use metadata already obtained in this task when it establishes the target;
+iterating the original pager again issues new requests.
 
 `EntryScope` accepts `"dash"`, `"report"`, `"widget"`, `"dataset"`,
 `"folder"`, `"connection"`, `"compute"`, `"artifact"`, and `"sql_query"`.

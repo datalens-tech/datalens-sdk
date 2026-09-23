@@ -11,7 +11,7 @@ import pytest
 from datalens_sdk import codegen
 
 ROOT = Path(__file__).resolve().parents[1]
-ROUTES = ("/rpc/getPermissions", "/rpc/modifyPermissions")
+ROUTES = tuple(codegen._PERMISSIONS_ROUTES)
 
 
 def _load_spec(name: str = "yacloud") -> dict[str, object]:
@@ -289,3 +289,88 @@ def test_permissions_generated_result_preserves_continuation(
 
     with pytest.raises(ValidationError):
         permissions_dto_module.ModifyPermissionsResultReadDTO.model_validate({"result": "error"})
+
+
+@pytest.mark.parametrize(
+    "schema_name",
+    [
+        "ListWorkbookAccessBindingsArgs",
+        "ListIamAccessBindingsResult",
+        "USAccessBindingDelta",
+        "DatalensOperation",
+        "GetPermissionsBulkResult",
+        "AccessExtSubjectClaims",
+        "DlsSuggestResult",
+    ],
+)
+def test_permissions_codegen_rejects_new_family_drift(tmp_path: Path, schema_name: str) -> None:
+    enterprise = _load_spec("enterprise")
+    _schemas(enterprise)[schema_name]["description"] = "Upstream changed contract"
+    # Descriptions are documentation only, so add a behavioral field for drift.
+    schema = _schemas(enterprise)[schema_name]
+    if schema.get("type") == "array":
+        schema["minItems"] = 1
+    else:
+        properties = cast(dict[str, object], schema["properties"])
+        properties["futureFlag"] = {"type": "boolean"}
+    with pytest.raises(ValueError, match="Permissions schemas differ"):
+        codegen.build_metadata(
+            {
+                "enterprise": _write_spec(tmp_path, enterprise, "enterprise"),
+                "yacloud": ROOT / "spec" / "yacloud.json",
+            }
+        )
+
+
+def test_permissions_codegen_tracks_real_roots_without_invented_root_request() -> None:
+    meta = codegen.build_permissions_contract_meta(_load_spec())
+    assert len(codegen._PERMISSIONS_ROUTES) == 12
+    assert "GetRootCollectionPermissionsResult" in meta["roots"]
+    assert "GetRootCollectionPermissionsArgs" not in meta["schemas"]
+    assert "DlsSuggestResult" in meta["roots"]
+    assert "DatalensOperation" in meta["roots"]
+
+
+def test_permissions_codegen_excludes_other_user_audit(permissions_dto_module: ModuleType) -> None:
+    spec = _load_spec()
+    assert "/rpc/getAuditEntryPermissionsForUser" in cast(dict[str, object], spec["paths"])
+    meta = codegen.build_permissions_contract_meta(spec)
+    assert not any(name.startswith("GetAuditEntryPermissionsForUser") for name in meta["schemas"])
+    assert not any(name.startswith("GetAuditEntryPermissionsForUser") for name in vars(permissions_dto_module))
+
+
+@pytest.mark.parametrize(
+    ("class_name", "payload"),
+    [
+        ("UpdateWorkbookAccessBindingsArgsDTO", {"workbookId": "wb", "deltas": [], "future": True}),
+        (
+            "UpdateCollectionAccessBindingsArgsDTO",
+            {
+                "collectionId": "col",
+                "deltas": [
+                    {
+                        "action": "ADD",
+                        "accessBinding": {"roleId": "role", "subject": {"id": "id", "type": "group", "future": True}},
+                    }
+                ],
+            },
+        ),
+        ("AccessExtBatchListMembersArgsDTO", {"tabId": "system"}),
+    ],
+)
+def test_new_permissions_request_dtos_are_strict(
+    permissions_dto_module: ModuleType,
+    class_name: str,
+    payload: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
+        getattr(permissions_dto_module, class_name).model_validate(payload)
+
+
+def test_generated_bulk_error_is_not_swallowed_by_empty_success(permissions_dto_module: ModuleType) -> None:
+    payload = {"entries": {"id": {"error": "NOT_FOUND"}}, "workbooks": {}, "collections": {}}
+    result = permissions_dto_module.GetPermissionsBulkResultReadDTO.model_validate(payload)
+    assert result.model_dump(mode="json", by_alias=True, exclude_unset=True) == payload
+    payload["entries"]["id"]["error"] = "FUTURE_ERROR"
+    with pytest.raises(ValidationError):
+        permissions_dto_module.GetPermissionsBulkResultReadDTO.model_validate(payload)

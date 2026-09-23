@@ -27,6 +27,7 @@ from datalens_sdk import (
     DirectoryPager,
     EditorChart,
     EntryLocation,
+    EntryPermissionsCopyResult,
     EntryRelation,
     EntrySummary,
     FieldLike,
@@ -37,7 +38,6 @@ from datalens_sdk import (
     JsonValue,
     License,
     Pager,
-    PermissionModificationResult,
     QLChart,
     QLChartUpdate,
     QLColumn,
@@ -668,8 +668,8 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
     assert_type(client.licenses.list(), Pager[License])
     if TYPE_CHECKING:
         assert_type(
-            client.permissions.copy(source_entry_id="source-1", target_entry_id="target-1", mode="replace"),
-            PermissionModificationResult,
+            client.permissions.entry_acl.copy(source_entry_id="source-1", target_entry_id="target-1", mode="replace"),
+            EntryPermissionsCopyResult,
         )
     dataset = client.get.dataset(by_id="ds-1")
     assert_type(dataset, Dataset)
@@ -776,8 +776,8 @@ def test_enterprise_client_namespaces_are_visible_to_static_tools() -> None:
     assert_type(clickhouse_builder.secure("on"), EnterpriseClickhouseConnectionCreate)
     if TYPE_CHECKING:
         assert_type(
-            client.permissions.copy(source_entry_id="source-1", target_entry_id="target-1", mode="merge"),
-            PermissionModificationResult,
+            client.permissions.entry_acl.copy(source_entry_id="source-1", target_entry_id="target-1", mode="merge"),
+            EntryPermissionsCopyResult,
         )
 
 

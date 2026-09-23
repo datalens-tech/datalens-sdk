@@ -4,29 +4,40 @@
 
 ### Added
 
-- Add `client.permissions.copy(source_entry_id=..., target_entry_id=..., mode=...)`
-  to replace a target entry's granted permissions or merge missing grants.
-  Copying uses two reads and at most one non-recursive diff, with same-subject
-  level replacements expressed as deterministic modifications, including
-  participants present at multiple levels. Matching ACLs skip the mutation.
-  Server normalization can retain or upgrade an existing level instead of
-  keeping redundant grants. Pending requests and participant metadata are not
-  copied.
-
-- Add `client.permissions.get(entry_id=...)` and
-  `client.permissions.modify(entry_id=..., diff=...)` for typed entry ACLs.
-  Preserve granted and pending participants, requester/approver metadata,
-  all four ACL levels, comments, and mutation continuation information.
-  Changes apply an explicit diff to one entry without recursive traversal
-  or automatic continuation. Generate DTOs from the ACL RPC contracts
-  required in every supported installation specification. Read DTOs accept
-  omitted granted participant descriptions and extras as `None` for live
-  response compatibility, retaining the upstream specifications unchanged.
+- Complete `client.permissions` with explicit `entry_acl`, `workbook`,
+  `collection`, `shared_entry`, and `effective` namespaces plus `list_subjects`:
+  12 RPC contracts and ACL copy, using installation-specific generated DTOs.
+- Preserve lazy binding/directory pagination, direct/inherited assignments,
+  nullable origins, explicit identity inputs, ordered role deltas, opaque
+  operation metadata and lossless timestamps. Effective checks distinguish
+  missing IDs/projections, explicit `NOT_FOUND`, and false action flags.
+- Add shared permission recipes and document runtime evidence separately from
+  deterministic contract validation; the companion YaTeam suite supplies
+  isolated opt-in lifecycle coverage.
 
 - Add ID-preserving `.move(EntryLocation.path(...), name=...)` operations for
   connections, datasets, dashboards, and every chart family. The SDK validates
   the `moveFolderEntry` result against the moved entry id and returns the
   refreshed resource with its current name and location.
+
+### Migration from the unreleased permissions preview
+
+- Remove `permissions.effective.get_entries_for_user`; other-user entry audits
+  are no longer exposed. Effective checks use the current authenticated caller.
+
+- Replace `client.permissions.get/modify/copy` with
+  `client.permissions.entry_acl.get/modify/copy`. ACL model exports now use
+  `EntryPermission*` / `EntryPermissions*`, for example `EntryPermissionsDiff`
+  replaces `PermissionDiff`.
+- Copy returns `EntryPermissionsCopyResult`: `.modification is None` means
+  matching snapshots caused no write; otherwise it is the actual ACL receipt.
+  Equal source/target IDs are rejected before requests. Existing level-pairing,
+  pending-request preservation and server merge normalization remain intact.
+- Permission writes are attempted once. ACL continuation tokens and role
+  operation `done` values do not prove effective access; malformed or lost
+  responses can leave the outcome unknown. Invalid permission arguments raise
+  `DataLensValidationError` before HTTP.
+
 
 ### Changed
 

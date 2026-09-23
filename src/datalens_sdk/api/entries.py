@@ -6,8 +6,8 @@ from typing import Protocol
 from pydantic import ValidationError
 
 from datalens_sdk.converter.entry import EntryMutationConverter, EntryMutationDtoModule
+from datalens_sdk.converter.entry_acl import EntryAclConverter, EntryAclDtoModule, EntryAclSuggestionsConverter
 from datalens_sdk.converter.navigation import NavigationConverter, NavigationDtoModule
-from datalens_sdk.converter.permissions import PermissionsConverter, PermissionsDtoModule
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.navigation import (
     EntryMoveResult,
@@ -16,9 +16,23 @@ from datalens_sdk.domain.navigation import (
     Pager,
     RelationOptions,
 )
-from datalens_sdk.domain.permissions import EntryPermissions, PermissionDiff, PermissionModificationResult
-from datalens_sdk.errors import translate_dto_validation_error, translate_invalid_response_error
-from datalens_sdk.http import DEFAULT_RETRY_POLICY, TRANSIENT_RETRY_POLICY, HTTPClientProtocol, RetryPolicy
+from datalens_sdk.domain.permissions import (
+    EntryPermissions,
+    EntryPermissionsDiff,
+    EntryPermissionsModificationResult,
+    EntryPermissionSubject,
+)
+from datalens_sdk.errors import (
+    DataLensValidationError,
+    translate_dto_validation_error,
+    translate_invalid_response_error,
+)
+from datalens_sdk.http import (
+    DEFAULT_RETRY_POLICY,
+    TRANSIENT_RETRY_POLICY,
+    HTTPClientProtocol,
+    RetryPolicy,
+)
 
 
 class EntriesAPI:
@@ -57,7 +71,10 @@ class EntriesAPI:
         return self._post_object("/rpc/getPermissions", payload, retry_policy=TRANSIENT_RETRY_POLICY)
 
     def modify_permissions(self, payload: dict[str, object]) -> dict[str, object]:
-        return self._post_object("/rpc/modifyPermissions", payload)
+        return self._post_object("/rpc/modifyPermissions", payload, retry_policy=DEFAULT_RETRY_POLICY)
+
+    def suggest_permission_subjects(self, payload: dict[str, object]) -> object | None:
+        return self._client.post_json("/rpc/dlsSuggest", payload, retry_policy=TRANSIENT_RETRY_POLICY)
 
     def move(self, payload: dict[str, object]) -> list[Mapping[str, object]]:
         response = self._response("/rpc/moveFolderEntry", payload)
@@ -73,7 +90,7 @@ class EntriesAPI:
             raise translate_invalid_response_error(operation="/rpc/renameEntry", reason="response root is not an array")
 
 
-class EntriesDtoModule(EntryMutationDtoModule, NavigationDtoModule, PermissionsDtoModule, Protocol): ...
+class EntriesDtoModule(EntryMutationDtoModule, NavigationDtoModule, EntryAclDtoModule, Protocol): ...
 
 
 class EntriesService:
@@ -88,25 +105,36 @@ class EntriesService:
 
     def get_permissions(self, *, entry_id: str) -> EntryPermissions:
         try:
-            payload = PermissionsConverter.get_payload(entry_id, dto_module=self._dto_module)
+            payload = EntryAclConverter.get_payload(entry_id, dto_module=self._dto_module)
         except ValidationError as exc:
-            raise translate_dto_validation_error(operation="getPermissions", reason=str(exc)) from exc
+            raise DataLensValidationError(f"getPermissions: {exc}") from exc
         raw = self._api.get_permissions(payload)
         try:
-            return PermissionsConverter.get_result(raw, dto_module=self._dto_module)
+            return EntryAclConverter.get_result(raw, dto_module=self._dto_module)
         except ValidationError as exc:
             raise translate_invalid_response_error(operation="getPermissions", reason=str(exc)) from exc
 
-    def modify_permissions(self, *, entry_id: str, diff: PermissionDiff) -> PermissionModificationResult:
+    def modify_permissions(self, *, entry_id: str, diff: EntryPermissionsDiff) -> EntryPermissionsModificationResult:
         try:
-            payload = PermissionsConverter.modify_payload(entry_id, diff, dto_module=self._dto_module)
-        except ValidationError as exc:
-            raise translate_dto_validation_error(operation="modifyPermissions", reason=str(exc)) from exc
+            payload = EntryAclConverter.modify_payload(entry_id, diff, dto_module=self._dto_module)
+        except (ValueError, TypeError) as exc:
+            raise DataLensValidationError(f"modifyPermissions: {exc}") from exc
         raw = self._api.modify_permissions(payload)
         try:
-            return PermissionsConverter.modify_result(raw, dto_module=self._dto_module)
+            return EntryAclConverter.modify_result(raw, dto_module=self._dto_module)
         except ValidationError as exc:
             raise translate_invalid_response_error(operation="modifyPermissions", reason=str(exc)) from exc
+
+    def suggest_permission_subjects(self, *, search_text: str) -> tuple[EntryPermissionSubject, ...]:
+        try:
+            payload = EntryAclSuggestionsConverter.payload(search_text, dto_module=self._dto_module)
+        except (ValueError, TypeError) as exc:
+            raise DataLensValidationError(f"dlsSuggest: {exc}") from exc
+        raw = self._api.suggest_permission_subjects(payload)
+        try:
+            return EntryAclSuggestionsConverter.result(raw, dto_module=self._dto_module)
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="dlsSuggest", reason=str(exc)) from exc
 
     def get_entry_relations(
         self,
