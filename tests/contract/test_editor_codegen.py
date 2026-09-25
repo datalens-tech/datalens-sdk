@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from copy import deepcopy
 import json
 from pathlib import Path
@@ -38,6 +39,40 @@ def _entry_discriminator(schemas: dict[str, dict[str, object]], operation: str) 
     schema = _object(schemas["UpdateEditorChartArgs"])
     entry = _object(_object(schema["properties"])["entry"])
     return _object(entry["discriminator"])
+
+
+def _create_node_schema(
+    schemas: dict[str, dict[str, object]],
+    wire_type: str,
+) -> dict[str, object]:
+    mapping = _object(_entry_discriminator(schemas, "create")["mapping"])
+    schema_ref = mapping[wire_type]
+    assert isinstance(schema_ref, str)
+    return _object(schemas[schema_ref.rsplit("/", 1)[-1]])
+
+
+def _add_optional_create_tab(
+    schemas: dict[str, dict[str, object]],
+    tab: str,
+    *,
+    wire_type: str = "advanced-chart_node",
+) -> None:
+    create_schema = _create_node_schema(schemas, wire_type)
+    data_schema = _object(_object(create_schema["properties"])["data"])
+    _object(data_schema["properties"])[tab] = {"type": "string"}
+
+
+def _require_create_tab(
+    schemas: dict[str, dict[str, object]],
+    tab: str,
+    *,
+    wire_type: str = "advanced-chart_node",
+) -> None:
+    create_schema = _create_node_schema(schemas, wire_type)
+    data_schema = _object(_object(create_schema["properties"])["data"])
+    required = data_schema.setdefault("required", [])
+    assert isinstance(required, list)
+    required.append(tab)
 
 
 def _update_node_schema(
@@ -127,6 +162,33 @@ def test_editor_update_tabs_are_bound_to_their_installation() -> None:
     }},
 }}"""
     assert expected in emitted
+
+
+@pytest.mark.parametrize("emitter", [codegen._emit_chart_dto, codegen.emit_chart_builders], ids=["dto", "builders"])
+@pytest.mark.parametrize("drift", ["fields", "requiredness"])
+def test_editor_create_generation_rejects_installation_specific_shared_wire_type(
+    emitter: Callable[[codegen.Metadata], str],
+    drift: str,
+) -> None:
+    first_schemas = _schemas()
+    second_schemas = _schemas()
+    if drift == "fields":
+        _add_optional_create_tab(second_schemas, "second_only")
+    else:
+        _add_optional_create_tab(first_schemas, "shared_tab")
+        _add_optional_create_tab(second_schemas, "shared_tab")
+        _require_create_tab(second_schemas, "shared_tab")
+    first = codegen._chart_meta(first_schemas)
+    second = codegen._chart_meta(second_schemas)
+
+    with pytest.raises(ValueError, match="incompatible data fields or requiredness") as exc_info:
+        emitter(_metadata(first, second))
+
+    message = str(exc_info.value)
+    assert "Editor create wire type 'advanced-chart_node'" in message
+    assert "'first'" in message
+    assert "'second'" in message
+    assert "Per-installation Editor create DTOs and builders are not supported" in message
 
 
 @pytest.mark.parametrize("drift", ["fields", "requiredness"])

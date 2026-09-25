@@ -679,7 +679,7 @@ class DataLensClientBase:
             navigation_operations=self._navigation_service,
             chart_operations=self._chart_service,
             dataset_operations=self._dataset_service,
-            editor_read_wire_types=editor_read_wire_types(
+            editor_wire_types=editor_read_wire_types(
                 self.INSTALLATION,
                 cast(EditorChartDtoModule, dto_module),
             ),

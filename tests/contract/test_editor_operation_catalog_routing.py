@@ -11,7 +11,7 @@ from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.api.chart import ChartAPI, ChartService
 from datalens_sdk.api.entries import EntriesService
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
-from datalens_sdk.domain.editor_chart import EditorChartUpdate
+from datalens_sdk.domain.editor_chart import EditorChart, EditorChartUpdate
 from datalens_sdk.domain.ports import NavigationOperations
 from datalens_sdk.domain.raw_resource import RawEditorChartCreate, RawEditorChartReplace
 from datalens_sdk.errors import NotSupportedError
@@ -109,3 +109,52 @@ def test_editor_mutations_use_their_operation_specific_catalogs() -> None:
         raw_replace.execute()
 
     assert [request.url.path for request in requests] == ["/rpc/createEditorChart"]
+
+
+@pytest.mark.parametrize("configured_tabs", [None, frozenset()])
+def test_chart_update_facade_distinguishes_missing_and_empty_tab_catalog_entries(
+    configured_tabs: frozenset[str] | None,
+) -> None:
+    tabs_by_wire_type = {"other_node": frozenset({"sources"})}
+    if configured_tabs is not None:
+        tabs_by_wire_type[_UPDATE_ONLY_WIRE_TYPE] = configured_tabs
+
+    class _TabCatalogDtoModule(_DivergentEditorDtoModule):
+        INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE: ClassVar[dict[str, dict[str, frozenset[str]]]] = {
+            _INSTALLATION: tabs_by_wire_type
+        }
+
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={})
+
+    http = DataLensHTTPClient(
+        installation=_INSTALLATION,
+        sdk_version="test",
+        base_url="https://example.test",
+        transport=httpx.MockTransport(handler),
+    )
+    service = ChartService(
+        installation=_INSTALLATION,
+        api=ChartAPI(http),
+        entries_service=cast(EntriesService, object()),
+        navigation_operations=cast(NavigationOperations, object()),
+        dto_module=cast(WizardChartDtoModule, _TabCatalogDtoModule()),
+    )
+    chart = EditorChart(
+        id="update-chart",
+        installation=_INSTALLATION,
+        wire_type=_UPDATE_ONLY_WIRE_TYPE,
+        _operations=service,
+    )
+
+    update = chart.update
+    if configured_tabs is None:
+        assert update.sources("new").tab_edits == {"sources": "new"}
+    else:
+        with pytest.raises(NotSupportedError, match=r"allowed tabs: \[\]"):
+            update.sources("new")
+
+    assert requests == []

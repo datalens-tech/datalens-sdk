@@ -22,8 +22,9 @@
   operation-specific OpenAPI discriminators. Generic chart reads and dashboard
   dependency exports now use the read catalog, while raw create and replace
   remain limited by their respective write catalogs. Generation now fails fast
-  when the same update renderer has incompatible fields or requiredness across
-  installations instead of silently reusing the first generated DTO.
+  when the same create or update renderer has incompatible fields or
+  requiredness across installations instead of silently reusing the first
+  generated DTO or builder.
 - Keep the existing `chart.update` facade, but reject renderer-incompatible tab
   setters with `NotSupportedError` before DTO construction or HTTP. The
   update builder also retains its original renderer and rejects later

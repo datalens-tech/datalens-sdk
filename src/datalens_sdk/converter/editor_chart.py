@@ -110,7 +110,7 @@ def editor_update_tabs(
     )
     if mapping is None:
         return None
-    return mapping.get(installation, {}).get(wire_type, frozenset())
+    return mapping.get(installation, {}).get(wire_type)
 
 
 def editor_wire_types(installation: str, dto_module: EditorChartDtoModule | None) -> frozenset[str]:

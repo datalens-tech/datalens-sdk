@@ -248,7 +248,7 @@ def _exporter(
             navigation_operations=cast("object", navigation),  # type: ignore[arg-type]
             chart_operations=cast("object", chart_operations),  # type: ignore[arg-type]
             dataset_operations=cast("object", dataset_operations),  # type: ignore[arg-type]
-            editor_read_wire_types=editor_read_wire_types,
+            editor_wire_types=editor_read_wire_types,
         ),
         navigation,
         chart_operations,
@@ -396,7 +396,7 @@ def test_dependency_export_coalesces_all_relations_and_uses_specialized_getters(
     assert not (artifact / "charts" / "Chart B [chart-b]" / "Tabs").exists()
 
 
-def test_dependency_export_uses_read_only_editor_catalog(tmp_path: Path) -> None:
+def test_dependency_export_legacy_keyword_routes_read_only_editor_chart(tmp_path: Path) -> None:
     wire_type = "legacy_read_only"
     chart = EditorChart(
         id="chart-legacy",
@@ -404,17 +404,22 @@ def test_dependency_export_uses_read_only_editor_catalog(tmp_path: Path) -> None
         wire_type=wire_type,
         response_snapshot=_editor_snapshot("chart-legacy", wire_type=wire_type),
     )
-    exporter, _, charts, _ = _exporter(
+    navigation = FakeNavigationOperations(
         {
             ("dashboard-1", "widget"): (
                 (_relation("chart-legacy", scope="widget", wire_type=wire_type, workbook_id="wb-1"),),
             ),
             ("dashboard-1", "dataset"): ((),),
             ("chart-legacy", "dataset"): ((),),
-        },
-        charts={"chart-legacy": chart},
-        datasets={},
-        editor_read_wire_types=frozenset({wire_type}),
+        }
+    )
+    charts = FakeChartOperations({"chart-legacy": chart})
+    datasets = FakeDatasetOperations({})
+    exporter = DashboardBundleExporter(
+        navigation_operations=cast("object", navigation),  # type: ignore[arg-type]
+        chart_operations=cast("object", charts),  # type: ignore[arg-type]
+        dataset_operations=cast("object", datasets),  # type: ignore[arg-type]
+        editor_wire_types=frozenset({wire_type}),
     )
 
     exporter.export(Dashboard(id="dashboard-1", name="Dash", response_snapshot=_dashboard_snapshot()), tmp_path)
