@@ -12,7 +12,7 @@ import pytest
 from datalens_sdk import DashboardChartTab, DashboardTab, Position
 from datalens_sdk.converter.dashboard_apply import _apply_update
 from datalens_sdk.domain.dashboard import Dashboard
-from datalens_sdk.domain.specs.dashboard import AddItemsOp, GroupControlItem, WidgetItem
+from datalens_sdk.domain.specs.dashboard import AddConnectionOp, AddItemsOp, GroupControlItem, WidgetItem
 from datalens_sdk.errors import DataLensValidationError
 
 _FIXTURES_DIR = Path(__file__).parent / "fixtures" / "dashboards"
@@ -1062,6 +1062,59 @@ def test_remove_tab_keeps_display_pin_pinned() -> None:
     builder.add_tab(DashboardTab("New", tab_id="tab_new"))
     with pytest.raises(DataLensValidationError, match="not on tab"):
         builder.apply_layout({"flt": Position(0, 10, 36, 2)}, tab="tab_new")
+
+
+def test_remove_tab_forgets_inner_ids_of_removed_shared_widget_copy() -> None:
+    def widget(*inner_ids: str) -> dict[str, object]:
+        return {
+            "id": "shared_widget",
+            "type": "widget",
+            "namespace": "default",
+            "data": {"tabs": [{"id": inner_id, "chartId": "chart"} for inner_id in inner_ids]},
+        }
+
+    tabs = [
+        _raw_tab("tab_drop", global_items=[widget("wt_common", "wt_drop")], layout=[]),
+        _raw_tab("tab_keep", global_items=[widget("wt_common", "wt_keep")], layout=[]),
+    ]
+    tabs[1]["items"] = [{"id": "selector", "type": "control"}]
+    builder = _synthetic(tabs).update
+    builder.remove_tab("tab_drop")
+
+    assert builder._item_widget_tab_ids["shared_widget"] == {"wt_common", "wt_keep"}
+    with pytest.raises(DataLensValidationError, match="Unknown item id 'wt_drop'"):
+        builder.add_connection(from_item="selector", to_item="wt_drop", tab="tab_keep")
+    builder.add_connection(from_item="selector", to_item="wt_common", tab="tab_keep")
+    builder.add_connection(from_item="selector", to_item="shared_widget", tab="tab_keep")
+    assert [(op.from_id, op.to_id) for op in builder.ops if isinstance(op, AddConnectionOp)] == [
+        ("selector", "wt_common"),
+        ("selector", "wt_keep"),
+    ]
+
+
+def test_remove_tab_keeps_inner_ids_of_staged_inherited_widget_copy() -> None:
+    widget = {
+        "id": "shared_widget",
+        "type": "widget",
+        "namespace": "default",
+        "data": {"tabs": [{"id": "wt", "chartId": "chart"}]},
+    }
+    selector = {"id": "selector", "type": "control"}
+    tabs = [
+        _raw_tab(
+            tab_id,
+            global_items=[json.loads(json.dumps(widget)), dict(selector)],
+            layout=[],
+        )
+        for tab_id in ("tab_1", "tab_2")
+    ]
+    builder = _synthetic(tabs).update
+    builder.add_tab(DashboardTab("New", tab_id="tab_new"))
+    builder.remove_tab("tab_1").remove_tab("tab_2")
+
+    assert builder._item_widget_tab_ids["shared_widget"] == {"wt"}
+    builder.add_connection(from_item="selector", to_item="wt", tab="tab_new")
+    assert [(op.from_id, op.to_id) for op in builder.ops if isinstance(op, AddConnectionOp)] == [("selector", "wt")]
 
 
 def test_update_add_tab_space_after_explicit_divider_rides_on_floor() -> None:

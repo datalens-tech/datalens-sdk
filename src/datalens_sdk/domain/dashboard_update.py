@@ -43,6 +43,7 @@ from datalens_sdk.domain.dashboard_update_support import (
     _resolve_widget_tab_ids_for_update,
     _string_or_none,
     _TabIndex,
+    _WidgetTabIndex,
 )
 from datalens_sdk.domain.dashboard_update_wiring import _WiringAddersMixin
 from datalens_sdk.domain.specs.dashboard import (
@@ -119,7 +120,8 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         self._tabs: list[_TabIndex] = []
         self._item_occurrences: dict[str, list[_ItemOccurrence]] = {}
         self._item_types: dict[str, str | None] = {}
-        self._item_widget_tab_ids: dict[str, set[str]] = {}
+        self._widget_tabs = _WidgetTabIndex()
+        self._item_widget_tab_ids = self._widget_tabs.by_item
         self._item_group_children: dict[str, set[str]] = {}
         # shared selectors scoped to ALL tabs: tabs added later in this
         # builder must pick them up too (the applier copies them over)
@@ -182,10 +184,7 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         self._item_types.setdefault(item_id, _string_or_none(item.get("type")))
         data = _mapping_or_none(item.get("data")) or {}
         for widget_tab in _iter_mappings(data.get("tabs")):
-            widget_tab_id = _string_or_none(widget_tab.get("id"))
-            if widget_tab_id is not None:
-                tab.widget_tab_ids.add(widget_tab_id)
-                self._item_widget_tab_ids.setdefault(item_id, set()).add(widget_tab_id)
+            self._widget_tabs.add(item_id, tab, _string_or_none(widget_tab.get("id")))
         for child in _iter_mappings(data.get("group")):
             child_id = _string_or_none(child.get("id"))
             if child_id is not None:
@@ -197,7 +196,7 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
             item_id=item_id,
             raw_tabs=self._raw_tabs(),
             occurrence_count=len(self._item_occurrences[item_id]),
-            staged_widget_tab_ids=self._item_widget_tab_ids.get(item_id, set()),
+            staged_widget_tab_ids=self._widget_tabs.for_item(item_id, self._item_occurrences[item_id]),
         )
 
     def _require_widget_tab(self, item_id: str, widget_tab_id: str | None) -> None:
@@ -236,7 +235,7 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         for occurrence in self._item_occurrences.pop(item_id, []):
             tab = self._tab_index(occurrence.tab_id)
             tab.item_ids.discard(item_id)
-            tab.widget_tab_ids -= self._item_widget_tab_ids.get(item_id, set())
+            self._widget_tabs.drop_item_from_tab(item_id, tab)
             tab.control_child_ids -= self._item_group_children.get(item_id, set())
         self._item_types.pop(item_id, None)
         self._item_widget_tab_ids.pop(item_id, None)
@@ -277,10 +276,10 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         for item_id in sorted(entry.item_ids):
             occurrences = self._item_occurrences.get(item_id, [])
             occurrences[:] = [occ for occ in occurrences if occ.tab_id != tab_id]
+            self._widget_tabs.remove_tab(item_id, tab_id, occurrences)
             if not occurrences:
                 self._item_occurrences.pop(item_id, None)
                 self._item_types.pop(item_id, None)
-                self._item_widget_tab_ids.pop(item_id, None)
                 self._item_group_children.pop(item_id, None)
         self._tabs.remove(entry)
         self._ops.append(RemoveTabOp(tab_id=tab_id))
