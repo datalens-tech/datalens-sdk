@@ -9,9 +9,11 @@ from typing import cast
 
 import pytest
 
+from datalens_sdk import DashboardChartTab, DashboardTab
 from datalens_sdk.converter.dashboard_apply import _apply_update
 from datalens_sdk.domain.dashboard import Dashboard
-from datalens_sdk.domain.specs.dashboard import AddAliasOp, AddConnectionOp
+from datalens_sdk.domain.dashboard_update import DashboardUpdate
+from datalens_sdk.domain.specs.dashboard import AddAliasOp, AddConnectionOp, AddItemsOp, AddTabOp, WidgetItem
 from datalens_sdk.errors import DataLensValidationError
 
 _FIXTURES_DIR = Path(__file__).parent / "fixtures" / "dashboards"
@@ -55,6 +57,31 @@ def _canonical(value: object) -> str:
 def _synthetic(tabs: list[dict[str, object]]) -> Dashboard:
     data: dict[str, object] = {"counter": 1, "salt": "s", "settings": {}, "tabs": tabs}
     return Dashboard(id="dash-1", installation="yacloud", data=data, raw={"entryId": "dash-1", "data": data})
+
+
+def _raw_widget(item_id: str, *widget_tab_ids: str) -> dict[str, object]:
+    return {
+        "id": item_id,
+        "type": "widget",
+        "namespace": "default",
+        "data": {
+            "tabs": [
+                {"id": widget_tab_id, "chartId": f"chart-{index}"} for index, widget_tab_id in enumerate(widget_tab_ids)
+            ]
+        },
+    }
+
+
+def _widget_chart_tabs(data: dict[str, object], item_id: str) -> list[dict[str, object]]:
+    item = next(item for tab in _tabs(data) for item in _as_dicts(tab["items"]) if item["id"] == item_id)
+    return _as_dicts(_as_dict(item["data"])["tabs"])
+
+
+def _record_targeted_widget_op(update: DashboardUpdate, operation: str, *, item_id: str, widget_tab_id: str) -> None:
+    if operation == "replace_chart":
+        update.replace_chart(item_id=item_id, chart="new", widget_tab_id=widget_tab_id)
+    else:
+        update.set_chart_params(item_id=item_id, params={"p": "v"}, widget_tab_id=widget_tab_id)
 
 
 # -- tab operations ----------------------------------------------------------
@@ -202,23 +229,170 @@ def test_replace_chart_multi_tab_widget_requires_widget_tab_id() -> None:
     assert applied_tabs[0]["chartId"] == _as_dicts(_as_dict(widget["data"])["tabs"])[0]["chartId"]
 
 
-def test_replace_chart_patches_every_occurrence_of_shared_widget() -> None:
-    widget: dict[str, object] = {
-        "id": "wg_shared",
-        "type": "widget",
-        "namespace": "default",
-        "data": {"tabs": [{"id": "wt_1", "chartId": "old", "title": "T"}]},
-    }
+@pytest.mark.parametrize("operation", ["replace_chart", "set_chart_params"])
+def test_targeted_widget_ops_reject_duplicate_widget_item_occurrences(operation: str) -> None:
+    with_target = _raw_widget("wg_shared", "wt_1", "wt_target")
+    without_target = _raw_widget("wg_shared", "wt_1")
     tabs: list[dict[str, object]] = [
-        {"id": "tab_1", "title": "One", "items": [], "layout": [], "globalItems": [json.loads(json.dumps(widget))]},
-        {"id": "tab_2", "title": "Two", "items": [], "layout": [], "globalItems": [json.loads(json.dumps(widget))]},
+        {"id": f"tab_{index}", "title": str(index), "items": [], "layout": [], "globalItems": [widget]}
+        for index, widget in enumerate((with_target, without_target), start=1)
     ]
     update = _synthetic(tabs).update
-    update.replace_chart(item_id="wg_shared", chart="new")
+    with pytest.raises(DataLensValidationError, match="DataLens widget ids must be unique"):
+        _record_targeted_widget_op(update, operation, item_id="wg_shared", widget_tab_id="wt_target")
+    assert update.ops == ()
+
+
+def test_set_chart_params_rejects_duplicate_widget_item_occurrences_without_target() -> None:
+    widget = _raw_widget("wg_shared", "wt_1")
+    tabs: list[dict[str, object]] = [
+        {"id": "tab_1", "title": "One", "items": [], "layout": [], "globalItems": [widget]},
+        {"id": "tab_2", "title": "Two", "items": [], "layout": [], "globalItems": [widget]},
+    ]
+    update = _synthetic(tabs).update
+    with pytest.raises(DataLensValidationError, match="DataLens widget ids must be unique"):
+        update.set_chart_params(item_id="wg_shared", params={"p": "v"})
+    assert update.ops == ()
+
+
+@pytest.mark.parametrize("operation", ["replace_chart", "set_chart_params", "set_chart_params_all_tabs"])
+@pytest.mark.parametrize("remove_other_tab_first", [False, True])
+def test_widget_ops_reject_raw_widget_inherited_by_staged_tab(operation: str, remove_other_tab_first: bool) -> None:
+    tabs: list[dict[str, object]] = [
+        {
+            "id": "tab_1",
+            "title": "One",
+            "items": [],
+            "layout": [],
+            "globalItems": [_raw_widget("shared", "wt_1")],
+        }
+    ]
+    if remove_other_tab_first:
+        tabs.append({"id": "tab_2", "title": "Other", "items": [], "layout": []})
+    update = _synthetic(tabs).update
+    if remove_other_tab_first:
+        update.remove_tab("tab_2")
+    update.add_tab(DashboardTab("Two"))
+
+    def record_op() -> None:
+        if operation == "set_chart_params_all_tabs":
+            update.set_chart_params(item_id="shared", params={"p": "v"})
+        else:
+            _record_targeted_widget_op(update, operation, item_id="shared", widget_tab_id="wt_1")
+
+    with pytest.raises(DataLensValidationError, match="occurs 2 times; DataLens widget ids must be unique"):
+        record_op()
+    assert len(update.ops) == 1 + int(remove_other_tab_first)
+
+
+@pytest.mark.parametrize("operation", ["replace_chart", "set_chart_params"])
+def test_widget_ops_accept_only_staged_copy_after_removing_original_tab(operation: str) -> None:
+    update = _synthetic(
+        [
+            {
+                "id": "tab_1",
+                "title": "One",
+                "items": [],
+                "globalItems": [_raw_widget("shared", "wt_1")],
+                "layout": [{"i": "shared", "x": 0, "y": 0, "w": 8, "h": 8}],
+            }
+        ]
+    ).update
+    update.add_tab(DashboardTab("Two"))
+    add_op = update.ops[0]
+    assert isinstance(add_op, AddTabOp)
+    update.remove_tab("tab_1")
+    _record_targeted_widget_op(update, operation, item_id="shared", widget_tab_id="wt_1")
+
     applied = _apply_update(update.to_spec())
-    for tab in _tabs(applied):
-        item = _as_dicts(tab["globalItems"])[0]
-        assert _as_dicts(_as_dict(item["data"])["tabs"])[0]["chartId"] == "new"
+    (tab,) = _tabs(applied)
+    assert tab["id"] == add_op.tab.id
+    (widget,) = _as_dicts(tab["globalItems"])
+    (widget_tab,) = _as_dicts(_as_dict(widget["data"])["tabs"])
+    if operation == "replace_chart":
+        assert widget_tab["chartId"] == "new"
+    else:
+        assert widget_tab["params"] == {"p": ["v"]}
+
+
+@pytest.mark.parametrize("operation", ["replace_chart", "set_chart_params"])
+def test_widget_ops_reject_duplicate_inner_ids_in_only_staged_copy(operation: str) -> None:
+    update = _synthetic(
+        [
+            {
+                "id": "tab_1",
+                "title": "One",
+                "items": [],
+                "globalItems": [_raw_widget("shared", "wt_dup", "wt_dup")],
+                "layout": [{"i": "shared", "x": 0, "y": 0, "w": 8, "h": 8}],
+            }
+        ]
+    ).update
+    update.add_tab(DashboardTab("Two"))
+    update.remove_tab("tab_1")
+
+    with pytest.raises(DataLensValidationError, match=r"2 chart tabs with id 'wt_dup'; expected exactly one"):
+        _record_targeted_widget_op(update, operation, item_id="shared", widget_tab_id="wt_dup")
+    assert len(update.ops) == 2
+
+
+def test_replace_chart_accepts_idless_inner_tab_in_only_staged_copy() -> None:
+    widget = _raw_widget("shared", "wt")
+    _as_dicts(_as_dict(widget["data"])["tabs"])[0].pop("id")
+    update = _synthetic(
+        [
+            {
+                "id": "tab_1",
+                "title": "One",
+                "items": [],
+                "globalItems": [widget],
+                "layout": [{"i": "shared", "x": 0, "y": 0, "w": 8, "h": 8}],
+            }
+        ]
+    ).update
+    update.add_tab(DashboardTab("Two"))
+    update.remove_tab("tab_1")
+    update.replace_chart(item_id="shared", chart="new")
+
+    (tab,) = _tabs(_apply_update(update.to_spec()))
+    (copied_widget,) = _as_dicts(tab["globalItems"])
+    (inner_tab,) = _as_dicts(_as_dict(copied_widget["data"])["tabs"])
+    assert inner_tab["chartId"] == "new"
+    assert "id" not in inner_tab
+
+
+@pytest.mark.parametrize("operation", ["replace_chart", "set_chart_params"])
+def test_targeted_widget_ops_reject_duplicate_target_in_one_occurrence(operation: str) -> None:
+    update = _synthetic(
+        [{"id": "tab_1", "title": "One", "items": [_raw_widget("wg_1", "wt_dup", "wt_dup")], "layout": []}]
+    ).update
+    with pytest.raises(DataLensValidationError, match=r"2 chart tabs.*expected exactly one"):
+        _record_targeted_widget_op(update, operation, item_id="wg_1", widget_tab_id="wt_dup")
+    assert update.ops == ()
+
+
+@pytest.mark.parametrize("operation", ["replace_chart", "set_chart_params"])
+def test_remove_tab_drops_its_widget_targets_from_shadow_index(operation: str) -> None:
+    tabs: list[dict[str, object]] = [
+        {
+            "id": "tab_keep",
+            "title": "Keep",
+            "items": [],
+            "layout": [],
+            "globalItems": [_raw_widget("shared", "wt_keep")],
+        },
+        {
+            "id": "tab_drop",
+            "title": "Drop",
+            "items": [],
+            "layout": [],
+            "globalItems": [_raw_widget("shared", "wt_drop")],
+        },
+    ]
+    update = _synthetic(tabs).update.remove_tab("tab_drop")
+    with pytest.raises(DataLensValidationError, match="has no chart tab 'wt_drop'"):
+        _record_targeted_widget_op(update, operation, item_id="shared", widget_tab_id="wt_drop")
+    assert len(update.ops) == 1
 
 
 def test_replace_chart_rejects_foreign_installation_chart() -> None:
@@ -291,6 +465,142 @@ def test_set_chart_params_merges_into_all_widget_chart_tabs() -> None:
         assert params["cities"] == ["a", "b"]
 
 
+def test_set_chart_params_targets_one_widget_tab() -> None:
+    widget: dict[str, object] = {
+        "id": "wg_1",
+        "type": "widget",
+        "namespace": "default",
+        "data": {
+            "tabs": [
+                {"id": "wt_1", "chartId": "first", "params": {"kept": ["left"], "region": ["west"]}},
+                {"id": "wt_2", "chartId": "second", "params": {"kept": ["right"], "region": ["old"]}},
+            ]
+        },
+    }
+    tabs: list[dict[str, object]] = [{"id": "tab_1", "title": "One", "items": [widget], "layout": []}]
+    update = _synthetic(tabs).update
+    update.set_chart_params(
+        item_id="wg_1",
+        widget_tab_id="wt_2",
+        params={"region": ["north", "south"], "added": "value"},
+    )
+    applied = _apply_update(update.to_spec())
+    item = _as_dicts(_tabs(applied)[0]["items"])[0]
+    widget_tabs = _as_dicts(_as_dict(item["data"])["tabs"])
+    assert widget_tabs[0]["params"] == {"kept": ["left"], "region": ["west"]}
+    assert widget_tabs[1]["params"] == {
+        "kept": ["right"],
+        "region": ["north", "south"],
+        "added": ["value"],
+    }
+
+
+@pytest.mark.parametrize(
+    ("params", "expected"),
+    [
+        ({"only": ("one", "two")}, {"only": ["one", "two"]}),
+        ({}, {}),
+    ],
+)
+def test_set_chart_params_replaces_or_clears_one_widget_tab(
+    params: dict[str, object], expected: dict[str, object]
+) -> None:
+    widget: dict[str, object] = {
+        "id": "wg_1",
+        "type": "widget",
+        "namespace": "default",
+        "data": {
+            "tabs": [
+                {"id": "wt_1", "chartId": "first", "params": {"neighbor": ["unchanged"]}},
+                {"id": "wt_2", "chartId": "second", "params": {"old": ["value"]}},
+            ]
+        },
+    }
+    dashboard = _synthetic([{"id": "tab_1", "title": "One", "items": [widget], "layout": []}])
+    update = dashboard.update.set_chart_params(
+        item_id="wg_1",
+        widget_tab_id="wt_2",
+        params=params,
+        merge=False,
+    )
+    applied = _apply_update(update.to_spec())
+    item = _as_dicts(_tabs(applied)[0]["items"])[0]
+    widget_tabs = _as_dicts(_as_dict(item["data"])["tabs"])
+    assert widget_tabs[0]["params"] == {"neighbor": ["unchanged"]}
+    assert widget_tabs[1]["params"] == expected
+
+
+@pytest.mark.parametrize("stage", ["add_chart", "add_chart_group", "add_tab"])
+@pytest.mark.parametrize(
+    ("params", "merge", "expected"),
+    [
+        pytest.param({"region": "north"}, True, {"kept": ["right"], "region": ["north"]}, id="merge"),
+        pytest.param({"region": "north"}, False, {"region": ["north"]}, id="replace"),
+        pytest.param({}, False, {}, id="clear"),
+    ],
+)
+def test_set_chart_params_targets_typed_widget_staged_in_same_update(
+    stage: str, params: dict[str, object], merge: bool, expected: dict[str, list[str]]
+) -> None:
+    dashboard = _synthetic(
+        [
+            {"id": "tab_keep", "title": "Keep", "items": [], "layout": []},
+            {"id": "tab_drop", "title": "Drop", "items": [], "layout": []},
+        ]
+    )
+    source = _canonical(dashboard.data)
+    update = dashboard.update
+    charts = [
+        DashboardChartTab("left-chart", title="Left", params={"kept": "left", "region": "west"}),
+        DashboardChartTab("right-chart", title="Right", params={"kept": "right", "region": "east"}),
+    ]
+    if stage == "add_chart":
+        update.add_chart(
+            "right-chart", title="Right", item_id="new", tab="tab_keep", params={"kept": "right", "region": "east"}
+        )
+    elif stage == "add_chart_group":
+        update.add_chart_group(charts, item_id="new", tab="tab_keep")
+    else:
+        update.add_tab(DashboardTab("Added").add_chart_group(charts, item_id="new"))
+    add_op = update.ops[-1]
+    assert isinstance(add_op, (AddItemsOp, AddTabOp))
+    items = add_op.items if isinstance(add_op, AddItemsOp) else add_op.tab.items
+    item = items[0]
+    assert isinstance(item, WidgetItem)
+    target_id = item.tabs[-1].id
+    before = _widget_chart_tabs(_apply_update(update.to_spec()), "new")
+
+    update.remove_tab("tab_drop").set_chart_params(
+        item_id="new", widget_tab_id=target_id, params=params, merge=merge
+    ).replace_chart(item_id="new", widget_tab_id=target_id, chart="replacement")
+    applied = _apply_update(update.to_spec())
+    after = _widget_chart_tabs(applied, "new")
+    assert after[:-1] == before[:-1]
+    assert after[-1] == {**before[-1], "chartId": "replacement", "params": expected}
+    assert "tab_drop" not in {tab["id"] for tab in _tabs(applied)}
+    assert _canonical(dashboard.data) == source
+
+
+def test_set_chart_params_preserves_order_of_all_tabs_and_targeted_operations() -> None:
+    update = _synthetic([{"id": "tab_1", "title": "One", "items": [], "layout": []}]).update
+    update.add_chart_group(
+        [DashboardChartTab("left", title="Left"), DashboardChartTab("right", title="Right")],
+        item_id="new",
+        tab="tab_1",
+    )
+    add_op = update.ops[0]
+    assert isinstance(add_op, AddItemsOp)
+    item = add_op.items[0]
+    assert isinstance(item, WidgetItem)
+    update.set_chart_params(item_id="new", params={"shared": "one", "kept": "base"})
+    update.set_chart_params(item_id="new", widget_tab_id=item.tabs[1].id, params={"target": "two"}, merge=False)
+    update.set_chart_params(item_id="new", params={"shared": "three"})
+
+    tabs = _widget_chart_tabs(_apply_update(update.to_spec()), "new")
+    assert tabs[0]["params"] == {"shared": ["three"], "kept": ["base"]}
+    assert tabs[1]["params"] == {"shared": ["three"], "target": ["two"]}
+
+
 def test_set_chart_params_replace_mode_and_selector_defaults() -> None:
     entry = _load_entry("selectors_manual_two_tabs")
     update = _dashboard_from(entry).update
@@ -305,10 +615,17 @@ def test_set_chart_params_prechecks() -> None:
     tab0 = _tabs(_as_dict(entry["data"]))[0]
     _as_dicts(tab0["items"]).append({"id": "txt_x", "type": "text", "namespace": "default", "data": {"text": "t"}})
     update = _dashboard_from(entry).update
+    with pytest.raises(DataLensValidationError, match="Unknown item"):
+        update.set_chart_params(item_id="nope", params={"a": "b"}, widget_tab_id="wt_1")
     with pytest.raises(DataLensValidationError, match="targets widget/control items"):
         update.set_chart_params(item_id="txt_x", params={"a": "b"})
+    with pytest.raises(DataLensValidationError, match="only valid for widget items"):
+        update.set_chart_params(item_id="item_1", params={"a": "b"}, widget_tab_id="wt_1")
+    with pytest.raises(DataLensValidationError, match="has no chart tab"):
+        update.set_chart_params(item_id="item_3", params={"a": "b"}, widget_tab_id="wt_nope")
     with pytest.raises(DataLensValidationError, match="string or a sequence of strings"):
         update.set_chart_params(item_id="item_3", params={"a": 5})
+    assert update.ops == ()
 
 
 def test_set_chart_params_rejects_group_control() -> None:

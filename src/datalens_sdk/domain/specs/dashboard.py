@@ -344,6 +344,7 @@ class RemoveItemOp:
 @dataclass(frozen=True, slots=True)
 class SetChartParamsOp:
     item_id: str
+    widget_tab_id: str | None
     params: Mapping[str, tuple[str, ...]]
     merge: bool
 
