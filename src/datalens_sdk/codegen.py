@@ -82,6 +82,8 @@ _DASHBOARD_V2_ROOTS = (
 )
 _DATASET_DATA_ROUTE = "/rpc/getDatasetData"
 _DATASET_DATA_ROOTS = ("DatasetDataArgs", "DatasetData")
+_ENTRY_REVISIONS_ROUTE = "/rpc/getRevisions"
+_ENTRY_REVISIONS_ROOTS = ("GetRevisionsArgs", "GetRevisionsResult")
 _ENTRY_MOVE_ROUTE = "/rpc/moveFolderEntry"
 _ENTRY_MOVE_ROOTS = ("MoveEntryArgs", "MoveEntryResult", "MoveEntryResultEntry")
 _SCHEMA_REF_PREFIX = "#/components/schemas/"
@@ -106,6 +108,7 @@ _SCHEMA_SUPPORTED_KEYS = frozenset(
 )
 _DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "maxItems", "minItems", "minLength", "minimum"})
 _DATASET_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"maximum", "minItems", "minLength", "minimum"})
+_ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS = frozenset({"default", "maximum", "maxItems", "minItems", "minimum"})
 
 
 class _WizardSchemaFeatureState(Enum):
@@ -215,6 +218,11 @@ class DatasetDataContractMeta(TypedDict):
     schemas: dict[str, JsonValue]
 
 
+class EntryRevisionsContractMeta(TypedDict):
+    roots: list[str]
+    schemas: dict[str, JsonValue]
+
+
 class EntryMoveContractMeta(TypedDict):
     roots: list[str]
     schemas: dict[str, JsonValue]
@@ -235,6 +243,7 @@ class Metadata(TypedDict):
     dashboard: NotRequired[DashboardContractMeta]
     dataset_data: NotRequired[DatasetDataContractMeta]
     entry_move: NotRequired[EntryMoveContractMeta]
+    entry_revisions: NotRequired[EntryRevisionsContractMeta]
 
 
 def _string_object_dict(value: object, *, context: str) -> dict[str, object]:
@@ -391,8 +400,10 @@ def _audit_pydantic_schema_features(
         if not isinstance(key, str):
             raise TypeError(f"{contract} schema node at {pointer} contains a non-string key")
         state = _wizard_schema_feature_state(key)
-        contract_extension = (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS) or (
-            contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS
+        contract_extension = (
+            (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS)
+            or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
+            or (contract == "getRevisions" and key in _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS)
         )
         if state is _WizardSchemaFeatureState.SEMANTIC_UNSUPPORTED and not contract_extension:
             raise ValueError(
@@ -535,6 +546,7 @@ def _audit_pydantic_schema_features(
                         _wizard_schema_feature_state(str(key)) is _WizardSchemaFeatureState.SUPPORTED
                         or (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS)
                         or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
+                        or (contract == "getRevisions" and key in _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS)
                     )
                     and key not in {"$ref", "properties", "required", "type"}
                 }
@@ -805,6 +817,47 @@ def build_dashboard_contract_meta(spec: Mapping[str, object]) -> DashboardContra
 
     return {
         "roots": list(_DASHBOARD_V2_ROOTS),
+        "schemas": dict(sorted(normalized_schemas.items())),
+    }
+
+
+def build_entry_revisions_contract_meta(spec: Mapping[str, object]) -> EntryRevisionsContractMeta:
+    paths = _string_object_dict(spec.get("paths"), context="paths")
+    route_value = paths.get(_ENTRY_REVISIONS_ROUTE)
+    if route_value is None:
+        raise ValueError("getRevisions is missing from the installation specification")
+    route = _string_object_dict(route_value, context=_ENTRY_REVISIONS_ROUTE)
+    operation = _string_object_dict(route.get("post"), context=f"{_ENTRY_REVISIONS_ROUTE}.post")
+    request_schema, _ = _route_schema(operation, route=_ENTRY_REVISIONS_ROUTE, request=True)
+    result_schema, _ = _route_schema(operation, route=_ENTRY_REVISIONS_ROUTE, request=False)
+    if (request_schema, result_schema) != _ENTRY_REVISIONS_ROOTS:
+        raise ValueError(
+            f"{_ENTRY_REVISIONS_ROUTE} must use {_ENTRY_REVISIONS_ROOTS!r}, got {(request_schema, result_schema)!r}"
+        )
+
+    schemas = _schemas(spec)
+    reached: set[str] = set()
+    queue = list(_ENTRY_REVISIONS_ROOTS)
+    normalized_schemas: dict[str, JsonValue] = {}
+    while queue:
+        name = queue.pop(0)
+        if name in reached:
+            continue
+        schema = schemas.get(name)
+        if schema is None:
+            raise ValueError(f"getRevisions schema graph references missing component {name!r}")
+        normalized = _normalize_wizard_schema(schema)
+        _audit_pydantic_schema_features(
+            normalized,
+            pointer=f"/schemas/{_json_pointer_token(name)}",
+            contract="getRevisions",
+            require_provably_disjoint_one_of=False,
+        )
+        reached.add(name)
+        normalized_schemas[name] = normalized
+        queue.extend(sorted(_schema_refs(normalized) - reached - set(queue)))
+    return {
+        "roots": list(_ENTRY_REVISIONS_ROOTS),
         "schemas": dict(sorted(normalized_schemas.items())),
     }
 
@@ -1677,12 +1730,14 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
     dataset_data_missing: list[str] = []
     entry_move_contracts: list[tuple[str, EntryMoveContractMeta]] = []
     entry_move_missing: list[str] = []
+    entry_revisions_contracts: list[tuple[str, EntryRevisionsContractMeta]] = []
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
         schemas = _schemas(spec)
         dashboard_contract = build_dashboard_contract_meta(spec)
         dashboard_contracts.append((installation, dashboard_contract))
+        entry_revisions_contracts.append((installation, build_entry_revisions_contract_meta(spec)))
         entry_move_contract = build_entry_move_contract_meta(spec)
         if entry_move_contract is None:
             entry_move_missing.append(installation)
@@ -1771,6 +1826,14 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
                     f"moveFolderEntry schemas differ between {canonical_move_installation!r} and {installation!r}"
                 )
         out["entry_move"] = canonical_entry_move
+    if entry_revisions_contracts:
+        canonical_revisions_installation, canonical_entry_revisions = entry_revisions_contracts[0]
+        for installation, candidate in entry_revisions_contracts[1:]:
+            if candidate != canonical_entry_revisions:
+                raise ValueError(
+                    f"getRevisions schemas differ between {canonical_revisions_installation!r} and {installation!r}"
+                )
+        out["entry_revisions"] = canonical_entry_revisions
     editor_methods_by_wire_type: dict[str, tuple[str, str]] = {}
     for installation, info in sorted(out["installations"].items()):
         for wire_type, node_meta in sorted(info["charts"]["editor_nodes"].items()):
@@ -1832,6 +1895,8 @@ class _PydanticSchemaEmitter:
         contract: str,
         open_schema_refs: Mapping[str, str] | frozenset[str] = frozenset(),
         field_name_overrides: Mapping[tuple[str, ...], str] | None = None,
+        model_name_overrides: Mapping[tuple[str, ...], str] | None = None,
+        use_schema_defaults: bool = False,
     ) -> None:
         self._schemas = schemas
         self._read = read
@@ -1842,6 +1907,8 @@ class _PydanticSchemaEmitter:
             else dict.fromkeys(open_schema_refs, "dict[str, JsonValue]")
         )
         self._field_name_overrides = dict(field_name_overrides or {})
+        self._model_name_overrides = dict(model_name_overrides or {})
+        self._use_schema_defaults = use_schema_defaults
         self._lines: list[str] = []
         self._emitted: set[str] = set()
         self._emitting: set[str] = set()
@@ -1854,7 +1921,7 @@ class _PydanticSchemaEmitter:
         return "\n".join(self._lines)
 
     def _model_name(self, path: tuple[str, ...]) -> str:
-        return _wizard_inline_model_name(path, read=self._read)
+        return self._model_name_overrides.get(path, _wizard_inline_model_name(path, read=self._read))
 
     def _schema_object(self, value: JsonValue, *, context: str) -> dict[str, JsonValue]:
         if not isinstance(value, dict):
@@ -1862,7 +1929,7 @@ class _PydanticSchemaEmitter:
         return value
 
     def _emit_named(self, schema_name: str) -> str:
-        name = _wizard_schema_dto_name(schema_name, read=self._read)
+        name = self._model_name_overrides.get((schema_name,), _wizard_schema_dto_name(schema_name, read=self._read))
         if name in self._emitted:
             return name
         if name in self._emitting:
@@ -2141,6 +2208,13 @@ class _PydanticSchemaEmitter:
             )
             if is_required:
                 self._lines.append(f"    {python_name}: {annotation}{alias}")
+                continue
+            field_schema = properties[wire_name]
+            if self._use_schema_defaults and isinstance(field_schema, dict) and "default" in field_schema:
+                default = repr(field_schema["default"])
+                if python_name != wire_name and not alias_in_annotation:
+                    default = f"Field(default={default}, alias={wire_name!r})"
+                self._lines.append(f"    {python_name}: {annotation} = {default}")
                 continue
             # Pydantic keeps the shared omitted default unvalidated, while an explicitly supplied
             # None is validated against the annotation. Its Any annotation preserves that runtime
@@ -3138,6 +3212,51 @@ def _emit_dataset_data_dto(metadata: Metadata) -> str:
     return f"\n{request_models}\n{response_models}\n"
 
 
+def _emit_entry_revisions_dto(metadata: Metadata) -> str:
+    contract = metadata.get("entry_revisions")
+    if contract is None:
+        return ""
+    schemas = contract["schemas"]
+    request_schema = schemas.get("GetRevisionsArgs")
+    if isinstance(request_schema, dict):
+        properties = request_schema.get("properties")
+        if isinstance(properties, dict):
+            page_size = properties.get("pageSize")
+            if isinstance(page_size, dict) and all(
+                page_size.get(key) == value
+                for key, value in {"type": "integer", "minimum": 1, "default": 1000, "maximum": 1000}.items()
+            ):
+                # Published specs advertise 1000, but getRevisions accepts at most 200.
+                # Keep the source contract intact until the upstream specs are corrected.
+                schemas = {
+                    **schemas,
+                    "GetRevisionsArgs": {
+                        **request_schema,
+                        "properties": {
+                            **properties,
+                            "pageSize": {**page_size, "default": 200, "maximum": 200},
+                        },
+                    },
+                }
+    request_models = _PydanticSchemaEmitter(
+        schemas,
+        read=False,
+        contract="getRevisions",
+        model_name_overrides={("GetRevisionsArgs",): "EntryRevisionsRequestDTO"},
+        use_schema_defaults=True,
+    ).emit(("GetRevisionsArgs",))
+    response_models = _PydanticSchemaEmitter(
+        contract["schemas"],
+        read=True,
+        contract="getRevisions",
+        model_name_overrides={
+            ("GetRevisionsResult",): "EntryRevisionsReadDTO",
+            ("GetRevisionsResult", "entries", "item"): "EntryRevisionReadDTO",
+        },
+    ).emit(("GetRevisionsResult",))
+    return f"\n{request_models}\n{response_models}"
+
+
 def _emit_entry_move_result_dto(metadata: Metadata) -> str:
     contract = metadata.get("entry_move")
     if contract is None:
@@ -3164,6 +3283,7 @@ def emit_dto(metadata: Metadata) -> str:
     dashboard_dto_block = _emit_dashboard_dto(metadata)
     dataset_data_dto_block = _emit_dataset_data_dto(metadata)
     entry_move_result_dto_block = _emit_entry_move_result_dto(metadata)
+    entry_revisions_dto_block = _emit_entry_revisions_dto(metadata)
     navigation_dto_block = _emit_navigation_dto()
     return f"""# AUTOGENERATED by scripts/generate_sdk.py. Do not edit by hand.
 # ruff: noqa
@@ -3684,7 +3804,7 @@ class LicenseSetLimitArgsDTO(BaseModel):
 
     def to_payload(self) -> dict[str, object]:
         return {{"value": self.value}}
-{chart_dto_block}{dashboard_dto_block}"""
+{chart_dto_block}{dashboard_dto_block}{entry_revisions_dto_block}"""
 
 
 def emit_builder_module(installation: str, info: InstallationMetadata) -> str:

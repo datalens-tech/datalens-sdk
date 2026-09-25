@@ -4,6 +4,14 @@
 
 ### Added
 
+- Add lazy `get_revisions()` history on connections, datasets, dashboards,
+  and all chart families for Yandex Cloud and Enterprise. Results are immutable
+  `EntryRevision` records with server-provided saved and published flags;
+  filtering and continuation tokens work with ordinary iteration or `.pages()`.
+  Read a selected revision's contents with `client.get.*(..., rev_id=...)`.
+  The default and maximum page size are 200; revision-id filters accept
+  up to 1000 ids.
+
 - Add ID-preserving `.move(EntryLocation.path(...), name=...)` operations for
   connections, datasets, dashboards, and every chart family. The SDK validates
   the `moveFolderEntry` result against the moved entry id and returns the

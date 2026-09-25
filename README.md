@@ -177,6 +177,7 @@ Runnable Yandex Cloud examples are available in [`examples/`](examples/):
 | Example | What it demonstrates |
 | --- | --- |
 | [`get_dataset.py`](examples/get_dataset.py) | Load and inspect a dataset |
+| [`entry_revisions.py`](examples/entry_revisions.py) | Page through revision metadata and read a selected historical dataset |
 | [`collection_workbook_lifecycle.py`](examples/collection_workbook_lifecycle.py) | Collection and workbook create, update, and read |
 | [`clickhouse_dashboard.py`](examples/clickhouse_dashboard.py) | Create a ClickHouse connection, dataset, chart, and dashboard |
 
