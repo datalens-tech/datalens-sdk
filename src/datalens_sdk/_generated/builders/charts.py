@@ -1432,6 +1432,9 @@ class ControlNodeNodeCreate(_BaseEditorNodeCreate):
             operations=operations,
         )
 
+    def activities(self, value: str | None) -> Self:
+        return self._set_tab('activities', value)
+
     def controls(self, value: str) -> Self:
         return self._set_tab('controls', value)
 
@@ -1452,6 +1455,9 @@ class D3NodeNodeCreate(_BaseEditorNodeCreate):
             location=location,
             operations=operations,
         )
+
+    def activities(self, value: str | None) -> Self:
+        return self._set_tab('activities', value)
 
     def config(self, value: str) -> Self:
         return self._set_tab('config', value)
@@ -1503,6 +1509,9 @@ class TableNodeNodeCreate(_BaseEditorNodeCreate):
             location=location,
             operations=operations,
         )
+
+    def activities(self, value: str | None) -> Self:
+        return self._set_tab('activities', value)
 
     def config(self, value: str) -> Self:
         return self._set_tab('config', value)

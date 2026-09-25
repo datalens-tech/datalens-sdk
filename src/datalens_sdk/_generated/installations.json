@@ -71,6 +71,9 @@
           "control_node": {
             "create_schema": "CreateEditorSelectorNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "controls": {
                 "required": true
               },
@@ -90,6 +93,9 @@
           "d3_node": {
             "create_schema": "CreateEditorGravityChartsNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -137,6 +143,9 @@
           "table_node": {
             "create_schema": "CreateEditorTableNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -157,6 +166,28 @@
               }
             },
             "factory_method": "table",
+            "wire_type": "table_node"
+          }
+        },
+        "editor_read_nodes": {
+          "advanced-chart_node": {
+            "read_schema": "EditorAdvancedChartNode",
+            "wire_type": "advanced-chart_node"
+          },
+          "control_node": {
+            "read_schema": "EditorSelectorNode",
+            "wire_type": "control_node"
+          },
+          "d3_node": {
+            "read_schema": "EditorGravityChartsNode",
+            "wire_type": "d3_node"
+          },
+          "markdown_node": {
+            "read_schema": "EditorMarkdownNode",
+            "wire_type": "markdown_node"
+          },
+          "table_node": {
+            "read_schema": "EditorTableNode",
             "wire_type": "table_node"
           }
         },
@@ -185,6 +216,9 @@
           "control_node": {
             "create_schema": "UpdateEditorSelectorNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "controls": {
                 "required": true
               },
@@ -203,6 +237,9 @@
           "d3_node": {
             "create_schema": "UpdateEditorGravityChartsNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -248,6 +285,9 @@
           "table_node": {
             "create_schema": "UpdateEditorTableNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -19129,6 +19169,9 @@
           "control_node": {
             "create_schema": "CreateEditorSelectorNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "controls": {
                 "required": true
               },
@@ -19148,6 +19191,9 @@
           "d3_node": {
             "create_schema": "CreateEditorGravityChartsNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -19195,6 +19241,9 @@
           "table_node": {
             "create_schema": "CreateEditorTableNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -19215,6 +19264,28 @@
               }
             },
             "factory_method": "table",
+            "wire_type": "table_node"
+          }
+        },
+        "editor_read_nodes": {
+          "advanced-chart_node": {
+            "read_schema": "EditorAdvancedChartNode",
+            "wire_type": "advanced-chart_node"
+          },
+          "control_node": {
+            "read_schema": "EditorSelectorNode",
+            "wire_type": "control_node"
+          },
+          "d3_node": {
+            "read_schema": "EditorGravityChartsNode",
+            "wire_type": "d3_node"
+          },
+          "markdown_node": {
+            "read_schema": "EditorMarkdownNode",
+            "wire_type": "markdown_node"
+          },
+          "table_node": {
+            "read_schema": "EditorTableNode",
             "wire_type": "table_node"
           }
         },
@@ -19243,6 +19314,9 @@
           "control_node": {
             "create_schema": "UpdateEditorSelectorNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "controls": {
                 "required": true
               },
@@ -19261,6 +19335,9 @@
           "d3_node": {
             "create_schema": "UpdateEditorGravityChartsNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },
@@ -19306,6 +19383,9 @@
           "table_node": {
             "create_schema": "UpdateEditorTableNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "config": {
                 "required": true
               },

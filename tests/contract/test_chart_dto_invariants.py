@@ -12,7 +12,11 @@ from datalens_sdk._generated.builders.charts import (
     YacloudEditorChartCreateFactory,
 )
 from datalens_sdk._generated.dto import (
+    INSTALLATION_EDITOR_CREATE_NODE_TYPES,
     INSTALLATION_EDITOR_NODE_TYPES,
+    INSTALLATION_EDITOR_READ_NODE_TYPES,
+    INSTALLATION_EDITOR_UPDATE_NODE_TYPES,
+    INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE,
     WizardChartCreateDTO,
     WizardChartReadDTO,
 )
@@ -36,6 +40,29 @@ def _load_editor_discriminator(spec_path: Path) -> frozenset[str]:
     entry = schemas["CreateEditorChartArgs"]["properties"]["entry"]
     mapping = entry["allOf"][0]["discriminator"]["mapping"]
     return frozenset(mapping.keys())
+
+
+def _load_editor_operation_discriminator(spec_path: Path, operation: str) -> dict[str, str]:
+    data = json.loads(spec_path.read_text())
+    schemas = data["components"]["schemas"]
+    if operation == "read":
+        discriminator = schemas["GetEditorChartResult"]["properties"]["entry"]["discriminator"]
+    elif operation == "create":
+        discriminator = schemas["CreateEditorChartArgs"]["properties"]["entry"]["allOf"][0]["discriminator"]
+    else:
+        assert operation == "update"
+        discriminator = schemas["UpdateEditorChartArgs"]["properties"]["entry"]["discriminator"]
+    return cast(dict[str, str], discriminator["mapping"])
+
+
+def _load_update_tabs(spec_path: Path) -> dict[str, frozenset[str]]:
+    data = json.loads(spec_path.read_text())
+    schemas = data["components"]["schemas"]
+    mapping = _load_editor_operation_discriminator(spec_path, "update")
+    return {
+        wire_type: frozenset(schemas[ref.removeprefix("#/components/schemas/")]["properties"]["data"]["properties"])
+        for wire_type, ref in mapping.items()
+    }
 
 
 def test_yacloud_editor_node_types_match_discriminator() -> None:
@@ -135,6 +162,42 @@ def test_enterprise_editor_node_types_match_discriminator() -> None:
         f"enterprise generated editor node types {sorted(generated_types)} "
         f"do not match enterprise spec discriminator types {sorted(discriminator_types)}"
     )
+
+
+@pytest.mark.parametrize("installation", ["enterprise", "yacloud"])
+def test_editor_operation_catalogs_match_their_own_discriminators(installation: str) -> None:
+    spec_path = _SPEC_DIR / f"{installation}.json"
+
+    assert INSTALLATION_EDITOR_READ_NODE_TYPES[installation] == frozenset(
+        _load_editor_operation_discriminator(spec_path, "read")
+    )
+    assert INSTALLATION_EDITOR_CREATE_NODE_TYPES[installation] == frozenset(
+        _load_editor_operation_discriminator(spec_path, "create")
+    )
+    assert INSTALLATION_EDITOR_UPDATE_NODE_TYPES[installation] == frozenset(
+        _load_editor_operation_discriminator(spec_path, "update")
+    )
+    assert INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE[installation] == _load_update_tabs(spec_path)
+    assert INSTALLATION_EDITOR_CREATE_NODE_TYPES[installation] <= INSTALLATION_EDITOR_READ_NODE_TYPES[installation]
+    assert INSTALLATION_EDITOR_UPDATE_NODE_TYPES[installation] <= INSTALLATION_EDITOR_READ_NODE_TYPES[installation]
+
+
+@pytest.mark.parametrize("installation", ["enterprise", "yacloud"])
+def test_editor_create_and_update_catalogs_remain_symmetric(installation: str) -> None:
+    create_types = INSTALLATION_EDITOR_CREATE_NODE_TYPES[installation]
+    update_types = INSTALLATION_EDITOR_UPDATE_NODE_TYPES[installation]
+
+    assert create_types == update_types, (
+        f"{installation} Editor create/update catalogs diverged: "
+        f"create-only={sorted(create_types - update_types)!r}, "
+        f"update-only={sorted(update_types - create_types)!r}. "
+        "If the schema divergence is intentional, replace this symmetry invariant "
+        "with an explicit expected delta and preserve operation-specific routing coverage."
+    )
+
+
+def test_legacy_editor_node_types_constant_remains_the_create_catalog() -> None:
+    assert INSTALLATION_EDITOR_NODE_TYPES is INSTALLATION_EDITOR_CREATE_NODE_TYPES
 
 
 def test_public_editor_factory_methods_match_public_types() -> None:

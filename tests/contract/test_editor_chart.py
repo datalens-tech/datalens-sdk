@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast
 
 import httpx
@@ -10,13 +11,21 @@ import pytest
 import datalens_sdk as dl
 from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk._runtime.chart_builder_base import _BaseEditorNodeCreate, _BaseWizardChartCreate
-from datalens_sdk.converter.editor_chart import EditorChartConverter
+from datalens_sdk.converter.editor_chart import (
+    EditorChartConverter,
+    EditorChartDtoModule,
+    editor_create_wire_types,
+    editor_read_wire_types,
+    editor_update_tabs,
+    editor_update_wire_types,
+    editor_wire_types,
+)
 from datalens_sdk.domain.editor_chart import EditorChart, EditorChartUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.specs.editor_chart import EditorChartCreateSpec
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
-from datalens_sdk.errors import DataLensValidationError
+from datalens_sdk.errors import DataLensValidationError, DTOValidationError, NotSupportedError
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -345,6 +354,32 @@ def test_editor_chart_update_valid_modes() -> None:
     assert update_pub.mode_value == "publish"
 
 
+def test_legacy_editor_catalog_fallback_keeps_create_write_semantics() -> None:
+    module = cast(
+        EditorChartDtoModule,
+        SimpleNamespace(INSTALLATION_EDITOR_NODE_TYPES={"legacy": frozenset({"legacy_node"})}),
+    )
+
+    assert editor_read_wire_types("legacy", module) == frozenset({"legacy_node"})
+    assert editor_create_wire_types("legacy", module) == frozenset({"legacy_node"})
+    assert editor_update_wire_types("legacy", module) == frozenset({"legacy_node"})
+    assert editor_wire_types("legacy", module) == frozenset({"legacy_node"})
+    assert editor_update_tabs("legacy", "legacy_node", module) is None
+
+
+def test_editor_chart_update_direct_constructor_keeps_legacy_unrestricted_behavior() -> None:
+    update = EditorChartUpdate(
+        chart=EditorChart(id="e1", wire_type="advanced-chart_node"),
+        operations=None,
+    )
+
+    assert update.graph("content").tab_edits == {"graph": "content"}
+
+
+def test_chart_operations_keeps_editor_update_construction_hook_optional() -> None:
+    assert not hasattr(ChartOperations, "build_editor_chart_update")
+
+
 # ---------------------------------------------------------------------------
 # 6. from_domain_update
 # ---------------------------------------------------------------------------
@@ -369,6 +404,22 @@ def test_from_domain_update_builds_update_dto() -> None:
     data = entry["data"]
     assert isinstance(data, dict)
     assert data["sources"] == "new_sources"
+
+
+def test_from_domain_update_rejects_wire_type_mutation() -> None:
+    ops = cast(ChartOperations, _FakeOps())
+    chart = EditorChart(
+        id="e1",
+        wire_type="advanced-chart_node",
+        data={"sources": "old", "params": "p", "controls": "c", "meta": "m", "prepare": "pr"},
+        _operations=ops,
+    )
+    update = chart.update.sources("new_sources")
+
+    chart.wire_type = "markdown_node"
+
+    with pytest.raises(DataLensValidationError, match=r"wire type changed.*advanced-chart_node.*markdown_node"):
+        EditorChartConverter.from_domain_update(update)
 
 
 @pytest.mark.parametrize("description", ["Updated description", ""])
@@ -496,6 +547,64 @@ def test_editor_chart_create_get_update_delete_flow() -> None:
     assert update_data["params"] == "p"
 
 
+def test_bound_editor_chart_update_rejects_unsupported_tab_before_http() -> None:
+    recorder = RecordedTransport({"/rpc/getEditorChart": httpx.Response(200, json=_editor_chart_response())})
+    client = dl.DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
+    chart = client.get.editor_chart(by_id="e1")
+    update = chart.update
+
+    with pytest.raises(NotSupportedError) as error:
+        update.graph("not-supported")
+
+    message = str(error.value)
+    assert "installation 'yacloud'" in message
+    assert "wire_type 'advanced-chart_node'" in message
+    assert "update tab 'graph'" in message
+    assert "['controls', 'meta', 'params', 'prepare', 'sources']" in message
+    assert update.tab_edits == {}
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getEditorChart"]
+
+
+def test_editor_update_service_rechecks_wire_type_before_http() -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/getEditorChart": httpx.Response(
+                200,
+                json=_editor_chart_response(wire_type="graph_node"),
+            )
+        }
+    )
+    client = dl.DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
+    chart = client.get.editor_chart(by_id="e1")
+    update = EditorChartUpdate(chart=chart, operations=cast(ChartOperations, chart._operations))
+
+    with pytest.raises(NotSupportedError, match="graph_node"):
+        update.execute()
+
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getEditorChart"]
+
+
+def test_editor_update_rejects_wire_type_mutation_before_http() -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/getEditorChart": httpx.Response(
+                200,
+                json=_editor_chart_response(wire_type="advanced-chart_node"),
+            )
+        }
+    )
+    client = dl.DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
+    chart = client.get.editor_chart(by_id="e1")
+    update = chart.update.sources("updated")
+
+    chart.wire_type = "markdown_node"
+
+    with pytest.raises(DataLensValidationError, match=r"wire type changed.*advanced-chart_node.*markdown_node"):
+        update.execute()
+
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getEditorChart"]
+
+
 def test_editor_chart_create_payload_wrapped() -> None:
     recorder = RecordedTransport(
         {
@@ -572,3 +681,63 @@ def test_editor_chart_update_raises_on_409() -> None:
         chart.update.sources("new").execute()
     update_requests = [r for r in recorder.requests if r.url.path == "/rpc/updateEditorChart"]
     assert len(update_requests) == 1
+
+
+@pytest.mark.parametrize("client_type", [dl.DataLensClientYC, dl.DataLensClientEnterprise])
+@pytest.mark.parametrize(
+    ("factory", "wire_type", "supported"),
+    [
+        ("selector", "control_node", True),
+        ("gravity_charts", "d3_node", True),
+        ("table", "table_node", True),
+        ("advanced_chart", "advanced-chart_node", False),
+        ("markdown", "markdown_node", False),
+    ],
+)
+def test_public_activities_create_update_contract(
+    client_type: type[dl.DataLensClientYC] | type[dl.DataLensClientEnterprise],
+    factory: str,
+    wire_type: str,
+    supported: bool,
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        entry = json.loads(request.content)["entry"]
+        return httpx.Response(200, json={"entryId": "activities-1", **entry})
+
+    client = client_type(auth=None, base_url="http://test", transport=httpx.MockTransport(handler))
+    builder = getattr(client.create.editor_chart, factory)(name="Activities", location=EntryLocation.path("/dir"))
+    assert hasattr(builder, "activities") is supported
+    if not supported:
+        chart = EditorChart(id="activities-1", wire_type=wire_type, _operations=client.chart_ops)
+        with pytest.raises(NotSupportedError, match="activities"):
+            chart.update.activities("module.exports = {};")
+        # Direct construction cannot bypass the generated write contract.
+        with pytest.raises(DTOValidationError, match="activities"):
+            EditorChartUpdate(chart=chart, operations=client.chart_ops).activities("unsupported").execute()
+        assert requests == []
+        return
+
+    source = "module.exports = {action: 'toast', title: 'Created'};"
+    changed = "module.exports = {action: 'toast', title: 'Updated'};"
+    chart = builder.activities(source).build()
+    assert chart.data["activities"] == source
+    chart = chart.update.params("module.exports = {p: ['1']};").execute()
+    assert chart.data["activities"] == source
+    chart = chart.update.activities(changed).execute()
+    assert chart.data["activities"] == changed
+    chart.update.activities(None).execute()
+
+    assert [request.url.path for request in requests] == [
+        "/rpc/createEditorChart",
+        "/rpc/updateEditorChart",
+        "/rpc/updateEditorChart",
+        "/rpc/updateEditorChart",
+    ]
+    payloads = [json.loads(request.content)["entry"] for request in requests]
+    assert all(payload["type"] == wire_type for payload in payloads)
+    assert [payload["data"].get("activities") for payload in payloads] == [source, source, changed, None]
+    assert "activities" not in payloads[-1]["data"]
+    assert payloads[-1]["data"]["params"] == "module.exports = {p: ['1']};"

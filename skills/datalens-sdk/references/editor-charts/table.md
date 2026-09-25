@@ -2,7 +2,7 @@
 
 Factory: `client.create.editor_chart.table`.
 `chart.wire_type`: `table_node`.
-Supported create/update tab methods: `config(str)`, `controls(str)`,
+Supported create/update tab methods: `activities(str | None)`, `config(str)`, `controls(str)`,
 `meta(str)`, `params(str)`, `prepare(str)`, `sources(str)`.
 
 ## Minimal payload
@@ -52,3 +52,6 @@ For linked data follow the index's Meta → Sources flow.
 Every setter replaces a complete tab. Re-fetching proves persistence, not
 rendering. See [_index.md](_index.md) and
 [common-operations.md](common-operations.md).
+
+For Activities code and execution restrictions, follow the
+[Activities documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#activities).

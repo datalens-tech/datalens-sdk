@@ -71,9 +71,9 @@ def _leaf_contract(path: Path) -> tuple[set[str], set[str]]:
     preamble = path.read_text().split("## Minimal payload", 1)[0]
     code_tokens = set(INLINE_CODE_PATTERN.findall(preamble))
     methods = {
-        token.removesuffix("(str)")
+        token.split("(", 1)[0]
         for token in code_tokens
-        if token.endswith("(str)") and token.removesuffix("(str)").isidentifier()
+        if token.endswith(("(str)", "(str | None)")) and token.split("(", 1)[0].isidentifier()
     }
     return code_tokens, methods
 
@@ -121,7 +121,9 @@ def test_public_renderer_leaves_match_generated_builder_methods_and_types() -> N
             }
             assert builder_tabs == fields.keys()
             for field in fields:
-                assert get_type_hints(getattr(builder_type, field))["value"] is str
+                annotation = get_type_hints(getattr(builder_type, field))["value"]
+                expected = str if _object(fields[field])["required"] else str | None
+                assert annotation == expected
 
 
 def test_public_editor_keeps_one_leaf_per_renderer() -> None:

@@ -32,7 +32,7 @@ from datalens_sdk.converter.connection import ConnectionDtoModule
 from datalens_sdk.converter.dashboard import DashboardDtoModule
 from datalens_sdk.converter.data import DatasetDataDtoModule
 from datalens_sdk.converter.dataset import DatasetDtoModule
-from datalens_sdk.converter.editor_chart import EditorChartDtoModule, editor_wire_types
+from datalens_sdk.converter.editor_chart import EditorChartDtoModule, editor_read_wire_types
 from datalens_sdk.converter.folder import FolderDtoModule
 from datalens_sdk.converter.license import LicenseDtoModule
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
@@ -679,7 +679,7 @@ class DataLensClientBase:
             navigation_operations=self._navigation_service,
             chart_operations=self._chart_service,
             dataset_operations=self._dataset_service,
-            editor_wire_types=editor_wire_types(
+            editor_wire_types=editor_read_wire_types(
                 self.INSTALLATION,
                 cast(EditorChartDtoModule, dto_module),
             ),

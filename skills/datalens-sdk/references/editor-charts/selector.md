@@ -2,7 +2,7 @@
 
 Factory: `client.create.editor_chart.selector`.
 `chart.wire_type`: `control_node`.
-Supported create/update tab methods: `controls(str)`, `meta(str)`,
+Supported create/update tab methods: `activities(str | None)`, `controls(str)`, `meta(str)`,
 `params(str)`, `sources(str)`. There is no `prepare` setter.
 
 ## Minimal payload
@@ -46,3 +46,6 @@ For dataset-backed controls follow the index's Meta → Sources flow.
 Every setter replaces a complete tab. Re-fetching proves persistence, not
 rendering. See [_index.md](_index.md) and
 [common-operations.md](common-operations.md).
+
+For Activities code and execution restrictions, follow the
+[Activities documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#activities).

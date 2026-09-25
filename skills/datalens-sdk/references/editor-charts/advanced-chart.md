@@ -157,11 +157,5 @@ for signatures, renderer support, examples, and restrictions. The core public
 Advanced bridge uses `Editor.getId()`, `Editor.getLoadedData()`,
 `Editor.getParams()`, `Editor.generateHtml()`, and `Editor.wrapFn()`.
 
-The runtime documentation does not list Advanced among the renderers that
-support Activities. In addition, the current typed public SDK has not yet
-implemented Activities for any renderer. The shared update object may display
-an `activities(...)` method used by other installations; do not call it for a
-public Advanced chart.
-
 For lifecycle, export/import, and persisted-but-not-rendering diagnosis, read
 [common-operations.md](common-operations.md).

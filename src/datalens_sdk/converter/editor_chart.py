@@ -53,13 +53,69 @@ class EditorChartReadDTOClass(Protocol):
 
 class EditorChartDtoModule(Protocol):
     EditorChartReadDTO: EditorChartReadDTOClass
+    INSTALLATION_EDITOR_READ_NODE_TYPES: dict[str, frozenset[str]]
+    INSTALLATION_EDITOR_CREATE_NODE_TYPES: dict[str, frozenset[str]]
+    INSTALLATION_EDITOR_UPDATE_NODE_TYPES: dict[str, frozenset[str]]
+    INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE: dict[str, dict[str, frozenset[str]]]
     INSTALLATION_EDITOR_NODE_TYPES: dict[str, frozenset[str]]
 
 
-def editor_wire_types(installation: str, dto_module: EditorChartDtoModule | None) -> frozenset[str]:
+def _editor_wire_types(
+    installation: str,
+    dto_module: EditorChartDtoModule | None,
+    *,
+    attribute: str,
+) -> frozenset[str]:
     module = generated_dto if dto_module is None else dto_module
-    mapping: dict[str, frozenset[str]] = getattr(module, "INSTALLATION_EDITOR_NODE_TYPES", {})
+    mapping: dict[str, frozenset[str]] | None = getattr(module, attribute, None)
+    if mapping is None:
+        mapping = getattr(module, "INSTALLATION_EDITOR_NODE_TYPES", {})
     return mapping.get(installation, frozenset())
+
+
+def editor_read_wire_types(installation: str, dto_module: EditorChartDtoModule | None) -> frozenset[str]:
+    return _editor_wire_types(
+        installation,
+        dto_module,
+        attribute="INSTALLATION_EDITOR_READ_NODE_TYPES",
+    )
+
+
+def editor_create_wire_types(installation: str, dto_module: EditorChartDtoModule | None) -> frozenset[str]:
+    return _editor_wire_types(
+        installation,
+        dto_module,
+        attribute="INSTALLATION_EDITOR_CREATE_NODE_TYPES",
+    )
+
+
+def editor_update_wire_types(installation: str, dto_module: EditorChartDtoModule | None) -> frozenset[str]:
+    return _editor_wire_types(
+        installation,
+        dto_module,
+        attribute="INSTALLATION_EDITOR_UPDATE_NODE_TYPES",
+    )
+
+
+def editor_update_tabs(
+    installation: str,
+    wire_type: str,
+    dto_module: EditorChartDtoModule | None,
+) -> frozenset[str] | None:
+    module = generated_dto if dto_module is None else dto_module
+    mapping: dict[str, dict[str, frozenset[str]]] | None = getattr(
+        module,
+        "INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE",
+        None,
+    )
+    if mapping is None:
+        return None
+    return mapping.get(installation, {}).get(wire_type)
+
+
+def editor_wire_types(installation: str, dto_module: EditorChartDtoModule | None) -> frozenset[str]:
+    """Return create-capable Editor types for backward compatibility."""
+    return editor_create_wire_types(installation, dto_module)
 
 
 def _dict_with_string_keys(value: object) -> dict[str, object]:
@@ -268,10 +324,10 @@ class EditorChartConverter:
         dto_module: EditorChartDtoModule | None,
         source: ChartSnapshotView,
     ) -> RawEditorChartCreateEnvelope:
-        supported = editor_wire_types(installation, dto_module)
+        supported = editor_create_wire_types(installation, dto_module)
         if source.wire_type not in supported:
             raise NotSupportedError(
-                f"Editor chart type {source.wire_type!r} is not available on installation {installation!r}"
+                f"Editor chart type {source.wire_type!r} cannot be created on installation {installation!r}"
             )
         key = key_from_location(spec.location, name=spec.name)
         return RawEditorChartCreateEnvelope(
@@ -297,10 +353,10 @@ class EditorChartConverter:
         dto_module: EditorChartDtoModule | None,
         source: ChartSnapshotView,
     ) -> RawEditorChartReplaceEnvelope:
-        supported = editor_wire_types(installation, dto_module)
+        supported = editor_update_wire_types(installation, dto_module)
         if source.wire_type not in supported:
             raise NotSupportedError(
-                f"Editor chart type {source.wire_type!r} is not available on installation {installation!r}"
+                f"Editor chart type {source.wire_type!r} cannot be replaced on installation {installation!r}"
             )
         if source.wire_type != target_wire_type:
             raise DataLensValidationError(
@@ -326,7 +382,12 @@ class EditorChartConverter:
     ) -> EditorChartUpdateDTOProtocol:
         effective_module = generated_dto if dto_module is None else dto_module
         chart = update.chart
-        wire_type = chart.wire_type
+        wire_type = update.wire_type_value
+        if chart.wire_type != wire_type:
+            raise DataLensValidationError(
+                "Editor chart wire type changed after update builder creation: "
+                f"expected {wire_type!r}, got {chart.wire_type!r}"
+            )
         if wire_type is None:
             raise ValueError("Cannot update editor chart without wire_type")
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
+from collections.abc import Set as AbstractSet
 from itertools import chain
 from pathlib import Path
 from typing import cast
@@ -68,11 +69,11 @@ def _wizard_snapshot(chart_id: str) -> dict[str, JsonValue]:
     }
 
 
-def _editor_snapshot(chart_id: str) -> dict[str, JsonValue]:
+def _editor_snapshot(chart_id: str, *, wire_type: str = "advanced-chart_node") -> dict[str, JsonValue]:
     return {
         "entry": {
             "entryId": chart_id,
-            "type": "advanced-chart_node",
+            "type": wire_type,
             "data": {"sources": [{"datasetId": "json-only-dataset"}]},
         }
     }
@@ -236,6 +237,7 @@ def _exporter(
     *,
     charts: Mapping[str, ChartResource] | None = None,
     datasets: Mapping[str, Dataset] | None = None,
+    editor_read_wire_types: AbstractSet[str] = frozenset({"advanced-chart_node"}),
 ) -> tuple[DashboardBundleExporter, FakeNavigationOperations, FakeChartOperations, FakeDatasetOperations]:
     default_charts, default_datasets = _resources()
     navigation = FakeNavigationOperations(pages)
@@ -246,7 +248,7 @@ def _exporter(
             navigation_operations=cast("object", navigation),  # type: ignore[arg-type]
             chart_operations=cast("object", chart_operations),  # type: ignore[arg-type]
             dataset_operations=cast("object", dataset_operations),  # type: ignore[arg-type]
-            editor_wire_types=frozenset({"advanced-chart_node"}),
+            editor_wire_types=editor_read_wire_types,
         ),
         navigation,
         chart_operations,
@@ -392,6 +394,37 @@ def test_dependency_export_coalesces_all_relations_and_uses_specialized_getters(
     ]
     assert (dashboard.name, *(chart.name for chart in charts._charts.values())) == original_names
     assert not (artifact / "charts" / "Chart B [chart-b]" / "Tabs").exists()
+
+
+def test_dependency_export_legacy_keyword_routes_read_only_editor_chart(tmp_path: Path) -> None:
+    wire_type = "legacy_read_only"
+    chart = EditorChart(
+        id="chart-legacy",
+        name="Legacy",
+        wire_type=wire_type,
+        response_snapshot=_editor_snapshot("chart-legacy", wire_type=wire_type),
+    )
+    navigation = FakeNavigationOperations(
+        {
+            ("dashboard-1", "widget"): (
+                (_relation("chart-legacy", scope="widget", wire_type=wire_type, workbook_id="wb-1"),),
+            ),
+            ("dashboard-1", "dataset"): ((),),
+            ("chart-legacy", "dataset"): ((),),
+        }
+    )
+    charts = FakeChartOperations({"chart-legacy": chart})
+    datasets = FakeDatasetOperations({})
+    exporter = DashboardBundleExporter(
+        navigation_operations=cast("object", navigation),  # type: ignore[arg-type]
+        chart_operations=cast("object", charts),  # type: ignore[arg-type]
+        dataset_operations=cast("object", datasets),  # type: ignore[arg-type]
+        editor_wire_types=frozenset({wire_type}),
+    )
+
+    exporter.export(Dashboard(id="dashboard-1", name="Dash", response_snapshot=_dashboard_snapshot()), tmp_path)
+
+    assert charts.get_calls == [("editor", "chart-legacy", "wb-1")]
 
 
 def test_dependency_export_does_not_discover_ids_from_resource_json(tmp_path: Path) -> None:
