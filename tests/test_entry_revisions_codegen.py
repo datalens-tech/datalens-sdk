@@ -76,6 +76,22 @@ def test_entry_revisions_dto_fields_and_constraints_follow_openapi(tmp_path: Pat
     assert "rev_ids: Annotated[list[str], Field(min_length=1, max_length=1000, alias='revIds')]" in block
 
 
+@pytest.mark.parametrize("published_limit", [200, 1000])
+def test_entry_revisions_page_size_compatibility_preserves_source_contract(
+    tmp_path: Path, published_limit: int
+) -> None:
+    spec = _load_spec()
+    page_size = _properties(_schemas(spec)["GetRevisionsArgs"])["pageSize"]
+    page_size.update(default=published_limit, maximum=published_limit)
+    metadata = codegen.build_metadata({"yacloud": _write_spec(tmp_path, spec)})
+    original_metadata = json.dumps(metadata, sort_keys=True)
+
+    block = codegen.emit_dto(metadata).split("class EntryRevisionsRequestDTO", 1)[1]
+
+    assert "page_size: Annotated[int, Field(ge=1, le=200, alias='pageSize')] = 200" in block
+    assert json.dumps(metadata, sort_keys=True) == original_metadata
+
+
 @pytest.mark.parametrize("name", ["enterprise", "yacloud"])
 def test_entry_revisions_codegen_requires_route(tmp_path: Path, name: str) -> None:
     spec = _load_spec(name)
@@ -171,6 +187,8 @@ def test_entry_revisions_request_dto_preserves_defaults_and_wire_fields(
         {"entryId": "entry-1", "pageSize": True},
         {"entryId": "entry-1", "pageSize": 0},
         {"entryId": "entry-1", "pageSize": 201},
+        {"entryId": "entry-1", "pageSize": 1000},
+        {"entryId": "entry-1", "pageSize": 1001},
         {"entryId": "entry-1", "pageSize": "100"},
         {"entryId": "entry-1", "pageToken": None},
         {"entryId": "entry-1", "revIds": []},

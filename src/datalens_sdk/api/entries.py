@@ -115,14 +115,14 @@ class EntriesService:
                 except ValidationError as exc:
                     raise translate_dto_validation_error(operation="getRevisions", reason=str(exc)) from exc
                 next_token = page.next_page_token
-                if next_token is not None and next_token in seen_tokens:
+                yield page
+                if not next_token:
+                    return
+                if next_token in seen_tokens:
                     raise translate_invalid_response_error(
                         operation="getRevisions",
                         reason="pagination returned a repeated nextPageToken",
                     )
-                yield page
-                if next_token is None:
-                    return
                 seen_tokens.add(next_token)
                 payload = EntryRevisionsConverter.to_payload(
                     entry_id,

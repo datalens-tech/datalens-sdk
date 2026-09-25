@@ -3216,8 +3216,30 @@ def _emit_entry_revisions_dto(metadata: Metadata) -> str:
     contract = metadata.get("entry_revisions")
     if contract is None:
         return ""
+    schemas = contract["schemas"]
+    request_schema = schemas.get("GetRevisionsArgs")
+    if isinstance(request_schema, dict):
+        properties = request_schema.get("properties")
+        if isinstance(properties, dict):
+            page_size = properties.get("pageSize")
+            if isinstance(page_size, dict) and all(
+                page_size.get(key) == value
+                for key, value in {"type": "integer", "minimum": 1, "default": 1000, "maximum": 1000}.items()
+            ):
+                # Published specs advertise 1000, but getRevisions accepts at most 200.
+                # Keep the source contract intact until the upstream specs are corrected.
+                schemas = {
+                    **schemas,
+                    "GetRevisionsArgs": {
+                        **request_schema,
+                        "properties": {
+                            **properties,
+                            "pageSize": {**page_size, "default": 200, "maximum": 200},
+                        },
+                    },
+                }
     request_models = _PydanticSchemaEmitter(
-        contract["schemas"],
+        schemas,
         read=False,
         contract="getRevisions",
         model_name_overrides={("GetRevisionsArgs",): "EntryRevisionsRequestDTO"},

@@ -228,6 +228,9 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
   left to right → persist → re-fetch and verify.
 - **Get/List:** use `client.get.*` for a known id and `client.navigation` for
   discovery or pagination.
+- **Revision history:** read [navigation](references/navigation.md#revision-history-on-an-entry)
+  for `get_revisions()`, continuation tokens, and the SDK's temporary page-size
+  cap of `200` while the published specification's limit is corrected.
 - **Update:** fetch the current entity → apply the narrow update builder →
   `.execute()` once → re-fetch and verify; if verification code fails locally,
   fix and rerun only the read-only verification phase.

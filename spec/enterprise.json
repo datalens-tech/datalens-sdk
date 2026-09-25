@@ -13088,9 +13088,9 @@
             "type": "string"
           },
           "pageSize": {
-            "default": 200,
+            "default": 1000,
             "description": "Number of revisions per page.",
-            "maximum": 200,
+            "maximum": 1000,
             "minimum": 1,
             "type": "integer"
           },
@@ -50484,17 +50484,6 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/ApiVersionHeader"
-          },
-          {
-            "in": "header",
-            "name": "x-dl-audit-mode",
-            "required": false,
-            "schema": {
-              "enum": [
-                "true"
-              ],
-              "type": "string"
-            }
           }
         ],
         "requestBody": {

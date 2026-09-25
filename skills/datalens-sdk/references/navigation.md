@@ -182,6 +182,14 @@ iteration starts at the configured starting token with fresh requests.
 whole history. The SDK copies that sequence when constructing the pager and
 sends the same filter with each page.
 
+The published OpenAPI specification and checked-in raw schemas currently
+declare a default and maximum of `1000`. This is a known specification error:
+YaTeam production has been observed to reject values above `200` with
+`VALIDATION_ERROR`. Until the specification is corrected, the SDK deliberately
+uses `200` as its default and maximum across installations. This server limit
+has not been verified for Yandex Cloud or Enterprise; the separate `rev_ids`
+limit remains 1000.
+
 Use `.pages()` when saving progress. A page's `next_page_token` can resume a
 later call using the same page size and filters:
 
@@ -193,8 +201,8 @@ process(page.items)  # the user's chosen result handling
 next_token = page.next_page_token
 save_checkpoint(next_token)
 
-# Resume later only when the saved next_token is not None:
-if next_token is not None:
+# Resume later only when the saved next_token is non-empty:
+if next_token:
     remaining = dataset.get_revisions(
         page_size=100,
         page_token=next_token,
@@ -202,10 +210,11 @@ if next_token is not None:
     )
 ```
 
-Treat tokens as opaque strings. `None` marks the end; an empty string is a
-valid continuation token, and an empty page can still have a continuation.
-A repeated token or token cycle raises an SDK invalid-response error instead
-of silently repeating pages. Malformed responses and API errors also remain
+Treat tokens as opaque strings. `None` or an empty string marks the end;
+an empty page can still have a non-empty continuation token. The pager yields
+a received page before checking its continuation token. If the token repeats
+or forms a cycle, continuing iteration raises an SDK invalid-response error
+before another request is sent. Malformed responses and API errors also remain
 errors rather than becoming empty history.
 
 Read a selected revision's contents with the existing getter:

@@ -109,20 +109,32 @@ def test_revisions_are_lazy_and_do_not_prefetch() -> None:
 
 
 def test_revision_pages_preserve_empty_continuations_and_opaque_tokens() -> None:
-    recorder = RecordedTransport([_page(token=""), _page(["rev-2"], token="opaque/+=="), _page()])
+    recorder = RecordedTransport([_page(token="next"), _page(["rev-2"], token="opaque/+=="), _page()])
     pager = _entry("connection", _client(recorder)).get_revisions(page_size=2, rev_ids=["rev-1", "rev-2"])
     iterator = pager.pages()
 
     assert recorder.requests == []
     first = next(iterator)
     assert first.items == ()
-    assert first.next_page_token == ""
+    assert first.next_page_token == "next"
     assert len(recorder.requests) == 1
     pages = [first, *iterator]
     assert [[revision.rev_id for revision in page.items] for page in pages] == [[], ["rev-2"], []]
-    assert [page.next_page_token for page in pages] == ["", "opaque/+==", None]
+    assert [page.next_page_token for page in pages] == ["next", "opaque/+==", None]
     common = {"entryId": "entry-1", "pageSize": 2, "revIds": ["rev-1", "rev-2"]}
-    assert recorder.bodies() == [common, {**common, "pageToken": ""}, {**common, "pageToken": "opaque/+=="}]
+    assert recorder.bodies() == [common, {**common, "pageToken": "next"}, {**common, "pageToken": "opaque/+=="}]
+
+
+@pytest.mark.parametrize("initial_token", [None, ""])
+@pytest.mark.parametrize("rev_ids", [[], ["rev-1"]])
+def test_empty_revision_token_ends_pagination(initial_token: str | None, rev_ids: list[str]) -> None:
+    recorder = RecordedTransport([_page(rev_ids, token="")])
+    pages = list(_entry("connection", _client(recorder)).get_revisions(page_token=initial_token).pages())
+
+    assert len(pages) == 1
+    assert [revision.rev_id for revision in pages[0].items] == rev_ids
+    assert pages[0].next_page_token == ""
+    assert len(recorder.requests) == 1
 
 
 def test_revision_pager_restarts_each_traversal_without_caching() -> None:
@@ -152,15 +164,13 @@ def test_revision_pager_iterators_have_independent_token_state() -> None:
 
 @pytest.mark.parametrize(
     ("initial_token", "tokens"),
-    [(None, ["A", "A"]), (None, ["A", "B", "A"]), ("start", ["start"]), ("", [""])],
+    [(None, ["A", "A"]), (None, ["A", "B", "A"]), ("start", ["start"])],
 )
-def test_revision_token_cycles_fail_before_yielding_the_invalid_page(
-    initial_token: str | None, tokens: list[str]
-) -> None:
+def test_revision_token_cycles_fail_after_yielding_the_page(initial_token: str | None, tokens: list[str]) -> None:
     recorder = RecordedTransport([_page([f"rev-{index}"], token=token) for index, token in enumerate(tokens)])
     pages = _entry("connection", _client(recorder)).get_revisions(page_token=initial_token).pages()
 
-    for index in range(len(tokens) - 1):
+    for index in range(len(tokens)):
         assert next(pages).items[0].rev_id == f"rev-{index}"
     with pytest.raises(dl.InvalidResponseError, match=r"getRevisions.*repeated nextPageToken"):
         next(pages)
