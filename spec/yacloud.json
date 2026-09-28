@@ -11323,6 +11323,10 @@
             "permissions": {
               "description": "Permissions for the collection.",
               "properties": {
+                "browse": {
+                  "description": "Indicates if the collection can be browsed as a transit node.",
+                  "type": "boolean"
+                },
                 "copy": {
                   "description": "Indicates if the collection can be copied.",
                   "type": "boolean"
@@ -11379,7 +11383,8 @@
                 "update",
                 "copy",
                 "move",
-                "delete"
+                "delete",
+                "browse"
               ],
               "type": "object"
             },
@@ -11452,6 +11457,10 @@
           "permissions": {
             "description": "Permissions for the collection.",
             "properties": {
+              "browse": {
+                "description": "Indicates if the collection can be browsed as a transit node.",
+                "type": "boolean"
+              },
               "copy": {
                 "description": "Indicates if the collection can be copied.",
                 "type": "boolean"
@@ -11508,7 +11517,8 @@
               "update",
               "copy",
               "move",
-              "delete"
+              "delete",
+              "browse"
             ],
             "type": "object"
           },
@@ -12709,6 +12719,10 @@
                     "permissions": {
                       "description": "Permissions for the collection.",
                       "properties": {
+                        "browse": {
+                          "description": "Indicates if the collection can be browsed as a transit node.",
+                          "type": "boolean"
+                        },
                         "copy": {
                           "description": "Indicates if the collection can be copied.",
                           "type": "boolean"
@@ -12765,7 +12779,8 @@
                         "update",
                         "copy",
                         "move",
-                        "delete"
+                        "delete",
+                        "browse"
                       ],
                       "type": "object"
                     }
@@ -13369,6 +13384,10 @@
                     "permissions": {
                       "description": "Permissions for the collection.",
                       "properties": {
+                        "browse": {
+                          "description": "Indicates if the collection can be browsed as a transit node.",
+                          "type": "boolean"
+                        },
                         "copy": {
                           "description": "Indicates if the collection can be copied.",
                           "type": "boolean"
@@ -13425,7 +13444,8 @@
                         "update",
                         "copy",
                         "move",
-                        "delete"
+                        "delete",
+                        "browse"
                       ],
                       "type": "object"
                     },
@@ -20344,6 +20364,10 @@
             "description": "Last update timestamp.",
             "type": "string"
           },
+          "updatedBy": {
+            "description": "ID of the user who last updated the entry.",
+            "type": "string"
+          },
           "workbookId": {
             "description": "ID of the workbook the entry belongs to.",
             "type": [
@@ -20355,6 +20379,7 @@
         "required": [
           "collectionId",
           "updatedAt",
+          "updatedBy",
           "workbookId",
           "scope",
           "type",
@@ -50667,49 +50692,6 @@
           "Entries"
         ],
         "x-mcp-scope": "read"
-      }
-    },
-    "/rpc/getRevisions": {
-      "post": {
-        "description": "Returns revisions of the specified DataLens entry.",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/ApiVersionHeader"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GetRevisionsArgs"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GetRevisionsResult"
-                }
-              }
-            },
-            "description": "Response"
-          }
-        },
-        "security": [
-          {
-            "IAM token": []
-          },
-          {
-            "Organization ID": []
-          }
-        ],
-        "summary": "Get entry revisions",
-        "tags": [
-          "Entries"
-        ]
       }
     },
     "/rpc/getRootCollectionPermissions": {

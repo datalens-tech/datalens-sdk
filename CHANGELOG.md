@@ -46,9 +46,9 @@
 
 ### Changed
 
-- Refresh the Yandex Cloud API v3 specification and synchronize Enterprise
-  Editor schemas with it. The configured Enterprise spec endpoint returned
-  HTTP 404; its unrelated installation-specific schemas are preserved.
+- Refresh the Yandex Cloud API v3 specification and derive the Enterprise
+  snapshot from the same contract, preserving its supported connector and
+  dataset-source subsets.
 - Support `activities(str | None)` on Selector, Table, and Gravity UI Charts
   create and update builders for both public installations. Advanced and
   Markdown continue to reject Activities before HTTP. Existing Activities
