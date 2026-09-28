@@ -5,7 +5,12 @@ from typing import Literal, Protocol, cast
 
 from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.converter._navigation import name_from_key
-from datalens_sdk.domain.entry_location import key_from_location, workbook_id_from_location
+from datalens_sdk.domain.entry_location import (
+    EntryLocation,
+    key_from_location,
+    resolve_entry_location_from_api_fields,
+    workbook_id_from_location,
+)
 from datalens_sdk.domain.entry_types import EntryBranch
 from datalens_sdk.domain.html_page import HtmlPage, HtmlPagePermissions
 from datalens_sdk.domain.ports import HtmlPageOperations
@@ -160,6 +165,7 @@ class HtmlPageConverter:
         operations: HtmlPageOperations | None = None,
         operation: Literal["createHtmlPage", "getHtmlPage", "updateHtmlPage"] = "getHtmlPage",
         name: str | None = None,
+        location: EntryLocation | None = None,
         dto_module: HtmlPageDtoModule | None = None,
     ) -> HtmlPage:
         generated = _dto_module(dto_module)
@@ -194,13 +200,18 @@ class HtmlPageConverter:
         version_value = entry.get("version")
         version = int(version_value) if isinstance(version_value, (int, float)) else None
         annotation = _object(entry.get("annotation"))
-        return HtmlPage(
-            id=entry_id,
-            name=name_from_key(key) or name,
+        domain_location = resolve_entry_location_from_api_fields(
+            dir_path=None,
             key=key,
-            installation=installation,
             workbook_id=_optional_string(entry.get("workbookId")),
             collection_id=_optional_string(entry.get("collectionId")),
+            fallback=location,
+        )
+        return HtmlPage(
+            id=entry_id,
+            name=_optional_string(entry.get("name")) or name_from_key(key) or name,
+            installation=installation,
+            location=domain_location,
             rev_id=_optional_string(entry.get("revId")),
             saved_id=_optional_string(entry.get("savedId")),
             published_id=_optional_string(entry.get("publishedId")),

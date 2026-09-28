@@ -743,6 +743,7 @@ class DataLensClientBase:
         self._html_page_service = HtmlPageService(
             installation=self.INSTALLATION,
             api=HtmlPageAPI(self._http),
+            navigation_operations=self._navigation_service,
             dto_module=cast(HtmlPageDtoModule, dto_module),
         )
         self._workbook_service = WorkbookService(

@@ -43,6 +43,14 @@ page = client.get.html_page(by_id=page_id, branch="saved")
 # Or: client.get.html_page(by_id=page_id, rev_id=known_revision_id)
 ```
 
+Like other entry resources, HTML pages expose `location`, `dir_path`,
+`workbook_id`, and `collection_id`. Names from the response take precedence
+over names derived from a path key. For workbook pages whose response has
+neither a name nor a usable key, the SDK looks up the entry name by id through
+navigation. If the entry is absent there too, the name remains `None`.
+Create and update preserve the known name and destination when the response
+omits them. A workbook page has no folder path or path key.
+
 The returned `HtmlPage` is an entry record. It exposes `id`, `name`, `key`,
 `rev_id`, `saved_id`, `published_id`, `object_id`, `policy_version`, and
 nullable `version`. Set `include_favorite=True` or

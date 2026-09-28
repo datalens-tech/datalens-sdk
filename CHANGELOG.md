@@ -11,7 +11,9 @@
 - Add typed HTML page create, metadata read, content/revision update, and delete
   operations for Enterprise and Yandex Cloud installations. Create and update
   responses expose processing warning codes and object/revision metadata. The
-  `getHtmlPage` contract does not return the HTML source.
+  `getHtmlPage` contract does not return the HTML source. Reads resolve missing
+  workbook entry names through navigation, and HTML pages expose the shared
+  entry location properties.
 
 ## 3.0.0 - 2026-09-09
 

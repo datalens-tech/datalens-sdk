@@ -5,9 +5,11 @@ from typing import Literal
 from pydantic import ValidationError
 
 from datalens_sdk.converter.html_page import HtmlPageConverter, HtmlPageDtoModule
+from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.entry_types import EntryBranch
 from datalens_sdk.domain.html_page import HtmlPage, HtmlPageCreate, HtmlPageUpdate
-from datalens_sdk.domain.ports import HtmlPageOperations
+from datalens_sdk.domain.navigation import GetEntriesOptions
+from datalens_sdk.domain.ports import HtmlPageOperations, NavigationOperations
 from datalens_sdk.errors import DataLensValidationError, translate_dto_validation_error
 from datalens_sdk.http import TRANSIENT_RETRY_POLICY, HTTPClientProtocol
 
@@ -35,10 +37,12 @@ class HtmlPageService(HtmlPageOperations):
         *,
         installation: str,
         api: HtmlPageAPI,
+        navigation_operations: NavigationOperations,
         dto_module: HtmlPageDtoModule | None = None,
     ) -> None:
         self._installation = installation
         self._api = api
+        self._navigation_operations = navigation_operations
         self._dto_module = dto_module
 
     def create_html_page(self, builder: HtmlPageCreate) -> HtmlPage:
@@ -48,7 +52,7 @@ class HtmlPageService(HtmlPageOperations):
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="createHtmlPage", reason=str(exc)) from exc
         response = self._api.create(dto.to_payload())
-        return self._to_domain(response, operation="createHtmlPage", name=spec.name)
+        return self._to_domain(response, operation="createHtmlPage", name=spec.name, location=spec.location)
 
     def get_html_page(
         self,
@@ -70,7 +74,17 @@ class HtmlPageService(HtmlPageOperations):
             )
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="getHtmlPage", reason=str(exc)) from exc
-        return self._to_domain(self._api.get(dto.to_payload()), operation="getHtmlPage")
+        page = self._to_domain(self._api.get(dto.to_payload()), operation="getHtmlPage")
+        if page.name is None and page.workbook_id is not None:
+            # The HTML metadata contract omits name; workbook keys may be empty.
+            # Reuse navigation rather than requiring callers to supply metadata.
+            entries = self._navigation_operations.get_entries(
+                GetEntriesOptions(ids=(entry_id,), ignore_workbook_entries=False, page_size=1)
+            )
+            entry = next(iter(entries), None)
+            if entry is not None and entry.id == page.id:
+                page.name = entry.name
+        return page
 
     def update_html_page(self, builder: HtmlPageUpdate) -> HtmlPage:
         spec = builder.to_spec()
@@ -78,7 +92,12 @@ class HtmlPageService(HtmlPageOperations):
             dto = HtmlPageConverter.from_domain_update(spec, dto_module=self._dto_module)
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="updateHtmlPage", reason=str(exc)) from exc
-        return self._to_domain(self._api.update(dto.to_payload()), operation="updateHtmlPage", name=builder.page.name)
+        return self._to_domain(
+            self._api.update(dto.to_payload()),
+            operation="updateHtmlPage",
+            name=builder.page.name,
+            location=builder.page.location,
+        )
 
     def delete_html_page(self, entry_id: str) -> None:
         try:
@@ -93,6 +112,7 @@ class HtmlPageService(HtmlPageOperations):
         *,
         operation: Literal["createHtmlPage", "getHtmlPage", "updateHtmlPage"],
         name: str | None = None,
+        location: EntryLocation | None = None,
     ) -> HtmlPage:
         try:
             return HtmlPageConverter.to_domain(
@@ -101,6 +121,7 @@ class HtmlPageService(HtmlPageOperations):
                 operations=self,
                 operation=operation,
                 name=name,
+                location=location,
                 dto_module=self._dto_module,
             )
         except (ValidationError, DataLensValidationError) as exc:

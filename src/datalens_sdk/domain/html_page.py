@@ -6,7 +6,15 @@ from typing import Literal, get_args
 
 from typing_extensions import Self
 
-from datalens_sdk.domain.entry_location import EntryLocation, resolve_entry_location, validate_entry_name
+from datalens_sdk.domain.entry_location import (
+    EntryLocation,
+    collection_id_from_location,
+    dir_path_from_location,
+    key_from_location,
+    resolve_entry_location,
+    validate_entry_name,
+    workbook_id_from_location,
+)
 from datalens_sdk.domain.entry_types import EntryUpdateMode
 from datalens_sdk.domain.ports import HtmlPageOperations
 from datalens_sdk.domain.specs.html_page import (
@@ -93,14 +101,12 @@ class HtmlPagePermissions:
 
 @dataclass(slots=True)
 class HtmlPage:
-    id: str
-    name: str | None
-    key: str
+    id: str | None
+    name: str | None = None
     installation: str = ""
+    location: EntryLocation | None = None
     scope: Literal["artifact"] = "artifact"
     type: Literal["html-page"] = "html-page"
-    workbook_id: str | None = None
-    collection_id: str | None = None
     rev_id: str | None = None
     saved_id: str | None = None
     published_id: str | None = None
@@ -124,6 +130,28 @@ class HtmlPage:
     data: Mapping[str, object] = field(default_factory=dict)
     raw: Mapping[str, object] = field(default_factory=dict)
     _operations: HtmlPageOperations | None = field(default=None, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        if self.name is None:
+            name = self.raw.get("name")
+            self.name = name if isinstance(name, str) else None
+
+    @property
+    def key(self) -> str | None:
+        key = self.raw.get("key")
+        return (key if isinstance(key, str) and key else None) or key_from_location(self.location, name=self.name)
+
+    @property
+    def dir_path(self) -> str | None:
+        return dir_path_from_location(self.location)
+
+    @property
+    def workbook_id(self) -> str | None:
+        return workbook_id_from_location(self.location)
+
+    @property
+    def collection_id(self) -> str | None:
+        return collection_id_from_location(self.location)
 
     @property
     def update(self) -> HtmlPageUpdate:

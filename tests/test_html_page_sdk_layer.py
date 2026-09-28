@@ -40,13 +40,13 @@ def _client(recorder: RecordedTransport) -> dl.DataLensClientYC:
     return dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
 
 
-def _entry(*, key: str = "/Pages/Example", rev_id: str = "rev-1") -> dict[str, object]:
+def _entry(*, key: str = "/Pages/Example", rev_id: str = "rev-1", workbook_id: str | None = None) -> dict[str, object]:
     return {
         "entryId": "page-1",
         "scope": "artifact",
         "type": "html-page",
         "key": key,
-        "workbookId": None,
+        "workbookId": workbook_id,
         "collectionId": None,
         "revId": rev_id,
         "savedId": "saved-1",
@@ -72,7 +72,7 @@ def test_html_page_create_get_update_and_delete_use_contract_routes() -> None:
         {
             "/rpc/createHtmlPage": [
                 httpx.Response(200, json={"entry": _entry(), "warnings": ["HTML_CSP_INJECTED"]}),
-                httpx.Response(200, json={"entry": _entry(key=""), "warnings": []}),
+                httpx.Response(200, json={"entry": _entry(key="", workbook_id="workbook-1"), "warnings": []}),
             ],
             "/rpc/getHtmlPage": [
                 httpx.Response(200, json=_entry()),
@@ -112,6 +112,9 @@ def test_html_page_create_get_update_and_delete_use_contract_routes() -> None:
 
     assert isinstance(page, dl.HtmlPage)
     assert page.name == "Example"
+    assert page.location == dl.EntryLocation.path("/Pages")
+    assert page.dir_path == "/Pages"
+    assert page.key == "/Pages/Example"
     assert page.warnings == ("HTML_CSP_INJECTED",)
     assert page.object_id == "object-1"
     assert page.policy_version == 1.0
@@ -119,6 +122,7 @@ def test_html_page_create_get_update_and_delete_use_contract_routes() -> None:
     assert page.data == {}
     assert not hasattr(page, "content")
     assert workbook_page.name == "Workbook page"
+    assert workbook_page.workbook_id == "workbook-1"
     assert loaded.rev_id == "rev-1"
     assert loaded.saved_id == "saved-1"
     assert loaded.published_id == "published-1"
@@ -157,11 +161,115 @@ def test_html_page_builder_rejects_unsupported_locations_and_mixed_update_branch
     with pytest.raises(dl.DataLensValidationError, match="UTF-8 content"):
         client.create.html_page(name="Page", location=dl.EntryLocation.path("/Pages")).content("é" * 5242881)
 
-    page = dl.HtmlPage(id="page-1", name="Page", key="/Pages/Page")
+    page = dl.HtmlPage(id="page-1", name="Page", location=dl.EntryLocation.path("/Pages"))
     with pytest.raises(dl.DataLensValidationError, match="cannot combine"):
         page.update.content("<p>x</p>").revision("rev-1")
     with pytest.raises(dl.DataLensValidationError, match="cannot combine"):
         page.update.revision("rev-1").content("<p>x</p>")
+    with pytest.raises(dl.DataLensValidationError, match="cannot combine"):
+        page.update.description("Notes").revision("rev-1")
+    with pytest.raises(dl.DataLensValidationError, match="cannot include description"):
+        page.update.revision("rev-1").description("Notes")
     with pytest.raises(dl.DataLensValidationError, match="requires content or rev_id"):
         page.update.to_spec()
     assert recorder.requests == []
+
+
+@pytest.mark.parametrize("client_type", [dl.DataLensClientEnterprise, dl.DataLensClientYC])
+def test_workbook_html_page_preserves_name_and_location_across_reads_and_updates(
+    client_type: type[dl.DataLensClientEnterprise] | type[dl.DataLensClientYC],
+) -> None:
+    entry = _entry(key="", workbook_id="workbook-1")
+    updated_entry = _entry(key="", rev_id="rev-2")
+    recorder = RecordedTransport(
+        {
+            "/rpc/createHtmlPage": httpx.Response(200, json={"entry": entry, "warnings": []}),
+            "/rpc/getHtmlPage": httpx.Response(200, json=entry),
+            "/rpc/getEntries": httpx.Response(200, json={"entries": [{**entry, "name": "Workbook page"}]}),
+            "/rpc/updateHtmlPage": [
+                httpx.Response(200, json={"entry": updated_entry, "warnings": []}),
+                httpx.Response(200, json={"entry": updated_entry, "warnings": []}),
+            ],
+        }
+    )
+    with client_type(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)) as client:
+        created = (
+            client.create.html_page(name="Workbook page", location=dl.EntryLocation.workbook("workbook-1"))
+            .content("<h1>Initial</h1>")
+            .build()
+        )
+        loaded = client.get.html_page(by_id=created.id, branch="saved")
+        updated = loaded.update.content("<h1>Updated</h1>").execute()
+        published = updated.update.revision("rev-2").mode("publish").execute()
+
+    for page in (created, loaded, updated, published):
+        assert page.name == "Workbook page"
+        assert page.key is None
+        assert page.dir_path is None
+        assert page.location == dl.EntryLocation.workbook("workbook-1")
+        assert page.workbook_id == "workbook-1"
+        assert page.collection_id is None
+    assert recorder.bodies("/rpc/createHtmlPage") == [
+        {"name": "Workbook page", "workbookId": "workbook-1", "content": "<h1>Initial</h1>"}
+    ]
+    assert recorder.bodies("/rpc/getHtmlPage") == [
+        {"entryId": "page-1", "branch": "saved"},
+    ]
+    assert recorder.bodies("/rpc/getEntries") == [{"ids": ["page-1"], "ignoreWorkbookEntries": False, "pageSize": 1}]
+    assert recorder.bodies("/rpc/updateHtmlPage") == [
+        {"entryId": "page-1", "content": "<h1>Updated</h1>", "mode": "save"},
+        {"entryId": "page-1", "revId": "rev-2", "mode": "publish"},
+    ]
+
+
+@pytest.mark.parametrize(("key", "workbook_id"), [("/Pages/Old name", None), ("", "workbook-1")])
+def test_html_page_read_uses_response_name_without_navigation(key: str, workbook_id: str | None) -> None:
+    entry = {**_entry(key=key, workbook_id=workbook_id), "name": "Current name"}
+    recorder = RecordedTransport({"/rpc/getHtmlPage": httpx.Response(200, json=entry)})
+    with _client(recorder) as client:
+        page = client.get.html_page(by_id="page-1")
+    assert page.name == "Current name"
+    assert recorder.bodies("/rpc/getHtmlPage") == [{"entryId": "page-1"}]
+    assert recorder.bodies("/rpc/getEntries") == []
+
+
+@pytest.mark.parametrize("entry_id", [None, "unrelated-page"])
+def test_html_page_read_does_not_invent_a_missing_workbook_name(entry_id: str | None) -> None:
+    entries = (
+        [] if entry_id is None else [{"entryId": entry_id, "scope": "artifact", "type": "html-page", "name": "Other"}]
+    )
+    recorder = RecordedTransport(
+        {
+            "/rpc/getHtmlPage": httpx.Response(200, json=_entry(key="", workbook_id="workbook-1")),
+            "/rpc/getEntries": httpx.Response(200, json={"entries": entries}),
+        }
+    )
+    with _client(recorder) as client:
+        page = client.get.html_page(by_id="page-1")
+    assert page.name is None
+    assert page.workbook_id == "workbook-1"
+
+
+@pytest.mark.parametrize("operation", ["createHtmlPage", "getHtmlPage", "updateHtmlPage"])
+@pytest.mark.parametrize(("field", "value"), [("scope", "widget"), ("type", "other-artifact")])
+def test_html_page_rejects_responses_for_other_entry_types(operation: str, field: str, value: str) -> None:
+    entry = _entry()
+    entry[field] = value
+    response = entry if operation == "getHtmlPage" else {"entry": entry, "warnings": []}
+    routes: dict[str, list[httpx.Response] | httpx.Response] = {f"/rpc/{operation}": httpx.Response(200, json=response)}
+    if operation == "updateHtmlPage":
+        routes["/rpc/getHtmlPage"] = httpx.Response(200, json=_entry())
+    recorder = RecordedTransport(routes)
+    with _client(recorder) as client:
+        if operation == "createHtmlPage":
+            with pytest.raises(dl.DTOValidationError):
+                client.create.html_page(name="Page", location=dl.EntryLocation.path("/Pages")).content(
+                    "<p>x</p>"
+                ).build()
+        elif operation == "getHtmlPage":
+            with pytest.raises(dl.DTOValidationError):
+                client.get.html_page(by_id="page-1")
+        else:
+            page = client.get.html_page(by_id="page-1")
+            with pytest.raises(dl.DTOValidationError):
+                page.update.content("<p>x</p>").execute()
