@@ -249,6 +249,20 @@ nox -s update-specs -- yacloud
 nox -s update-specs -- enterprise
 ```
 
+While Enterprise uses the same API version with a restricted connector and
+dataset-source catalog, update both specifications from YaCloud with:
+
+```bash
+nox -s update-specs -- --derive-enterprise
+```
+
+This downloads YaCloud once and derives Enterprise using the connector and
+dataset-source names already enabled in `spec/enterprise.json`. Shared schemas
+and routes come from that same download; new YaCloud catalog variants are not
+enabled in Enterprise automatically. Missing enabled variants abort the update
+before either file is written. The separate Enterprise endpoint is not used in
+this mode.
+
 Specification updates do not regenerate SDK sources. Review the specification diff, then run `nox -s generate`
 and the complete `nox` gate.
 

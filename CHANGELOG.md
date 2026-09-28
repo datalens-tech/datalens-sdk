@@ -35,6 +35,12 @@
   connections, datasets, dashboards, and every chart family. The SDK validates
   the `moveFolderEntry` result against the moved entry id and returns the
   refreshed resource with its current name and location.
+- Add typed HTML page create, metadata read, content/revision update, and delete
+  operations for Enterprise and Yandex Cloud installations. Create and update
+  responses expose processing warning codes and object/revision metadata. The
+  `getHtmlPage` contract does not return the HTML source. Reads resolve missing
+  workbook entry names through navigation, and HTML pages expose the shared
+  entry location properties.
 - Add `DatasetUpdate.clear_rls()` to remove all dataset RLS2 rules or replace
   them with subsequent `add_rls(...)` calls in a single `.execute()`.
 
@@ -46,9 +52,13 @@
 
 ### Changed
 
-- Refresh the Yandex Cloud API v3 specification and derive the Enterprise
-  snapshot from the same contract, preserving its supported connector and
-  dataset-source subsets.
+- Add `nox -s update-specs -- --derive-enterprise` to refresh both specifications
+  from the same YaCloud API version while preserving Enterprise connector and
+  dataset-source subsets. Synchronize shared schemas and route metadata through
+  this workflow.
+- Refresh the Yandex Cloud API v3 specification and synchronize Enterprise
+  Editor schemas with it. The configured Enterprise spec endpoint returned
+  HTTP 404; its unrelated installation-specific schemas are preserved.
 - Support `activities(str | None)` on Selector, Table, and Gravity UI Charts
   create and update builders for both public installations. Advanced and
   Markdown continue to reject Activities before HTTP. Existing Activities

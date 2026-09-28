@@ -1842,6 +1842,7 @@
         "data",
         "datasets",
         "folders",
+        "html_pages",
         "workbooks"
       ],
       "wizard": {
@@ -21964,6 +21965,7 @@
         "data",
         "datasets",
         "folders",
+        "html_pages",
         "licenses",
         "workbooks"
       ],
