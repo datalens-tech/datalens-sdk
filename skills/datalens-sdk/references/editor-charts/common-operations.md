@@ -64,12 +64,14 @@ Use `prepare` only for a renderer whose matrix row exposes it; the same pattern
 applies to every documented tab setter.
 
 The shared update object exposes several setters used by other installations,
-including `activities`, `shared`, `graph`, `statface_graph`, `ymap`,
+including `shared`, `graph`, `statface_graph`, `ymap`,
 `documentation_en`, and `documentation_ru`. Their presence does not make them
-available to a public client. Use only the methods in the selected public
-renderer matrix row. Public runtime documentation already describes
-Activities for Selector, Table, and Gravity UI Charts, but typed public SDK
-support has not been implemented yet.
+available to a public client. The SDK raises `NotSupportedError` before DTO
+construction or HTTP when a bound chart uses a setter outside its generated
+installation and renderer update schema. Use only the methods in the selected
+public renderer matrix row. If stored tabs no longer match the write schema,
+report the validation error and keep the snapshot; do not silently discard
+tab content.
 
 Update defaults to `save`; publish only when requested. Re-fetch the selected
 branch and compare the intended stored values. Never repeat a successful write

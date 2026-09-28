@@ -39,6 +39,7 @@ from datalens_sdk import (
     HtmlPageUpdate,
     JsonValue,
     License,
+    Page,
     Pager,
     QLChart,
     QLChartUpdate,
@@ -104,6 +105,7 @@ from datalens_sdk.domain import (
     DashboardTab,
     DashboardUpdate,
     DatasetCreate,
+    EntryRevision,
     RawDatasetCreate,
     RawDatasetReplace,
     SourceCreate,
@@ -174,6 +176,34 @@ def _check_entry_mutation_return_types(
         .description("Description"),
         QLChartUpdate,
     )
+
+
+def _check_entry_revision_return_types(
+    *,
+    connection: Connection,
+    dataset: Dataset,
+    dashboard: Dashboard,
+    wizard: WizardChart,
+    editor: EditorChart,
+    ql: QLChart,
+) -> None:
+    assert_type(connection.get_revisions(), Pager[EntryRevision])
+    assert_type(dataset.get_revisions(), Pager[EntryRevision])
+    assert_type(dashboard.get_revisions(page_size=10, page_token="opaque", rev_ids=["rev-1"]), Pager[EntryRevision])
+    assert_type(wizard.get_revisions(), Pager[EntryRevision])
+    assert_type(editor.get_revisions(), Pager[EntryRevision])
+    assert_type(ql.get_revisions(), Pager[EntryRevision])
+    page = next(dashboard.get_revisions().pages())
+    assert_type(page, Page[EntryRevision])
+    assert_type(page.items, tuple[EntryRevision, ...])
+    assert_type(page.next_page_token, str | None)
+    revision = next(iter(dashboard.get_revisions()))
+    assert_type(revision, EntryRevision)
+    assert_type(revision.rev_id, str)
+    assert_type(revision.updated_at, str)
+    assert_type(revision.updated_by, str)
+    assert_type(revision.is_saved, bool)
+    assert_type(revision.is_published, bool)
 
 
 def _wizard_raw_snapshot() -> dict[str, JsonValue]:
@@ -674,6 +704,8 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
     assert_type(dataset.parameters, FieldsProxy)
     assert_type(dataset.find_source_avatar("source-1"), Mapping[str, object] | None)
     assert_type(dataset.update, DatasetUpdate)
+    assert_type(dataset.update.clear_rls(), DatasetUpdate)
+    assert_type(dataset.update.clear_rls().add_rls(field="region", subject_id="user-1"), DatasetUpdate)
     assert_type(
         dataset.get_dataset_data(
             columns=["region", "sales"],

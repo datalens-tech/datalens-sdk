@@ -7,6 +7,7 @@ import httpx
 import pytest
 
 import datalens_sdk as dl
+from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.editor_chart import EditorChart
@@ -510,6 +511,44 @@ def test_get_chart_dispatches_editor_and_deletes_via_editor_route() -> None:
 
     assert recorder.paths() == ["/rpc/getEntries", "/rpc/getEditorChart", "/rpc/deleteEditorChart"]
     assert recorder.request_json(2) == {"chartId": "chart-1"}
+
+
+def test_get_chart_uses_read_catalog_for_read_only_editor_type(monkeypatch: pytest.MonkeyPatch) -> None:
+    read_only_type = "legacy_read_only"
+    monkeypatch.setitem(
+        generated_dto.INSTALLATION_EDITOR_READ_NODE_TYPES,
+        "yacloud",
+        generated_dto.INSTALLATION_EDITOR_READ_NODE_TYPES["yacloud"] | {read_only_type},
+    )
+    recorder = _RecordedTransport(
+        {
+            "/rpc/getEntries": httpx.Response(200, json=_entries_response(read_only_type)),
+            "/rpc/getEditorChart": httpx.Response(
+                200,
+                json=_editor_response(wire_type=read_only_type),
+            ),
+        }
+    )
+    client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+
+    with pytest.warns(UserWarning, match="branch is ignored"):
+        chart = client.get.chart(
+            by_id="chart-1",
+            workbook_id="workbook-1",
+            branch="saved",
+            rev_id="revision-1",
+        )
+
+    assert isinstance(chart, EditorChart)
+    assert recorder.paths() == ["/rpc/getEntries", "/rpc/getEditorChart"]
+    assert recorder.request_json(1) == {
+        "chartId": "chart-1",
+        "workbookId": "workbook-1",
+        "revId": "revision-1",
+    }
+    with pytest.raises(dl.NotSupportedError, match="legacy_read_only"):
+        _ = chart.update
+    assert recorder.paths() == ["/rpc/getEntries", "/rpc/getEditorChart"]
 
 
 def test_get_chart_routes_d3_ql_node_to_ql_chart() -> None:

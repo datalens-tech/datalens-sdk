@@ -50,6 +50,7 @@ from datalens_sdk.domain.entry_location import (
 from datalens_sdk.domain.fields import DatasetField, FieldLike, FieldRef, FieldsProxy
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import DatasetOperations
+from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.specs.dataset import DatasetCreateSpec
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError, NotSupportedError
 from datalens_sdk.serialization.artifacts import ArtifactPath, write_dataset_artifact
@@ -416,7 +417,7 @@ class DatasetCreate:
             sources=tuple(self._sources),
             relations=tuple(self._relations),
             actions=self._mutations.actions,
-            rls2_changes=dict(self._mutations.rls2_changes),
+            rls2_changes=self._mutations.rls2_changes,
         )
 
     def build(self) -> Dataset:
@@ -531,6 +532,27 @@ class Dataset:
             location, self.installation, self.workbook_id, name, "Dataset move"
         )
         return self._operations.move_dataset(self, resolved_location, name=name)
+
+    def get_revisions(
+        self,
+        *,
+        page_size: int = 200,
+        page_token: str | None = None,
+        rev_ids: Sequence[str] | None = None,
+    ) -> Pager[EntryRevision]:
+        """Lazily list this entry's revisions, optionally filtered or resumed.
+
+        Iterating again fetches a fresh history. The revision loaded into this
+        object does not restrict the history; content is read with client.get.
+        """
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot get revisions for a dataset without an id")
+        return self._operations.get_entry_revisions(
+            self.id,
+            EntryRevisionsOptions.create(page_size=page_size, page_token=page_token, rev_ids=rev_ids),
+        )
 
     def get_relations(
         self,

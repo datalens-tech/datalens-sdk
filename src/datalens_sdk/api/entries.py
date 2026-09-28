@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from datalens_sdk.converter.entry import EntryMutationConverter, EntryMutationDtoModule
 from datalens_sdk.converter.navigation import NavigationConverter, NavigationDtoModule
+from datalens_sdk.converter.revisions import EntryRevisionsConverter, EntryRevisionsDtoModule
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.navigation import (
     EntryMoveResult,
@@ -15,7 +16,12 @@ from datalens_sdk.domain.navigation import (
     Pager,
     RelationOptions,
 )
-from datalens_sdk.errors import translate_dto_validation_error, translate_invalid_response_error
+from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
+from datalens_sdk.errors import (
+    DataLensValidationError,
+    translate_dto_validation_error,
+    translate_invalid_response_error,
+)
 from datalens_sdk.http import DEFAULT_RETRY_POLICY, TRANSIENT_RETRY_POLICY, HTTPClientProtocol, RetryPolicy
 
 
@@ -48,6 +54,9 @@ class EntriesAPI:
     def list_directory(self, payload: dict[str, object]) -> dict[str, object]:
         return self._post_object("/rpc/listDirectory", payload, retry_policy=TRANSIENT_RETRY_POLICY)
 
+    def get_revisions(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._post_object("/rpc/getRevisions", payload, retry_policy=TRANSIENT_RETRY_POLICY)
+
     def get_relations(self, payload: dict[str, object]) -> dict[str, object]:
         return self._post_object("/rpc/getEntriesRelations", payload, retry_policy=TRANSIENT_RETRY_POLICY)
 
@@ -65,7 +74,7 @@ class EntriesAPI:
             raise translate_invalid_response_error(operation="/rpc/renameEntry", reason="response root is not an array")
 
 
-class EntriesDtoModule(EntryMutationDtoModule, NavigationDtoModule, Protocol): ...
+class EntriesDtoModule(EntryMutationDtoModule, NavigationDtoModule, EntryRevisionsDtoModule, Protocol): ...
 
 
 class EntriesService:
@@ -77,6 +86,52 @@ class EntriesService:
     ) -> None:
         self._api = api
         self._dto_module = dto_module
+
+    def get_entry_revisions(
+        self,
+        entry_id: str,
+        options: EntryRevisionsOptions,
+    ) -> Pager[EntryRevision]:
+        try:
+            first_payload = EntryRevisionsConverter.to_payload(
+                entry_id,
+                options,
+                page_token=options.page_token,
+                dto_module=self._dto_module,
+            )
+        except ValidationError as exc:
+            raise DataLensValidationError(str(exc)) from exc
+
+        def load() -> Iterator[Page[EntryRevision]]:
+            page_token = options.page_token
+            seen_tokens = set() if page_token is None else {page_token}
+            payload = first_payload
+            while True:
+                try:
+                    page = EntryRevisionsConverter.to_domain(
+                        self._api.get_revisions(payload),
+                        dto_module=self._dto_module,
+                    )
+                except ValidationError as exc:
+                    raise translate_dto_validation_error(operation="getRevisions", reason=str(exc)) from exc
+                next_token = page.next_page_token
+                yield page
+                if not next_token:
+                    return
+                if next_token in seen_tokens:
+                    raise translate_invalid_response_error(
+                        operation="getRevisions",
+                        reason="pagination returned a repeated nextPageToken",
+                    )
+                seen_tokens.add(next_token)
+                payload = EntryRevisionsConverter.to_payload(
+                    entry_id,
+                    options,
+                    page_token=next_token,
+                    dto_module=self._dto_module,
+                )
+
+        return Pager(load)
 
     def get_entry_relations(
         self,

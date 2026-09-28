@@ -2,7 +2,7 @@
 
 Factory: `client.create.editor_chart.gravity_charts`.
 `chart.wire_type`: `d3_node`.
-Supported create/update tab methods: `config(str)`, `controls(str)`,
+Supported create/update tab methods: `activities(str | None)`, `config(str)`, `controls(str)`,
 `meta(str)`, `params(str)`, `prepare(str)`, `sources(str)`.
 
 ## Minimal payload
@@ -50,3 +50,6 @@ flow.
 Every setter replaces a complete tab. Re-fetching proves persistence, not
 rendering. See [_index.md](_index.md) and
 [common-operations.md](common-operations.md).
+
+For Activities code and execution restrictions, follow the
+[Activities documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#activities).
