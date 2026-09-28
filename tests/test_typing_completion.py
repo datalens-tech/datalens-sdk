@@ -34,6 +34,9 @@ from datalens_sdk import (
     Folder,
     FolderCreate,
     FolderUpdate,
+    HtmlPage,
+    HtmlPageCreate,
+    HtmlPageUpdate,
     JsonValue,
     License,
     Page,
@@ -804,6 +807,19 @@ def test_enterprise_client_namespaces_are_visible_to_static_tools() -> None:
 
 def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> None:
     client = DataLensClientYC(auth=None, transport=_object_transport())
+
+    if TYPE_CHECKING:
+        html_builder = client.create.html_page(name="Report", location=EntryLocation.workbook("workbook-1"))
+        assert_type(html_builder, HtmlPageCreate)
+        assert_type(html_builder.content("<html></html>").build(), HtmlPage)
+        html_page = client.get.html_page(by_id="page-1", branch="saved")
+        assert_type(html_page, HtmlPage)
+        assert_type(html_page.location, EntryLocation | None)
+        assert_type(html_page.key, str | None)
+        assert_type(html_page.dir_path, str | None)
+        assert_type(html_page.workbook_id, str | None)
+        assert_type(html_page.update, HtmlPageUpdate)
+        assert_type(html_page.update.revision("rev-1").mode("publish").execute(), HtmlPage)
 
     assert_type(client.create.collection(name="Analytics"), CollectionCreate)
     collection = client.get.collection(by_id="collection-1")
