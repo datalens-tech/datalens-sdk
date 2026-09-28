@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Make `DatasetUpdate.update_rls()` replace the matching field and subject's
+  rules (`subject_type` + `subject_id`), including queued additions and old
+  patterns. Use `add_rls()` to append allowed values. Other subjects and fields
+  retain their rules; a missing subject is added.
+- Resolve RLS string fields by GUID, name/title, or source column and reject
+  unknown or ambiguous references before saving. Validate against the schema
+  being saved, including fields created in the same builder. Reject field
+  objects from another dataset and subject replacement with an unresolved
+  saved subject type.
+- Replace the incomplete `DatasetUpdate.rls2_changes` map with an immutable
+  tuple of typed `RLSAdd`, `RLSUpdate`, `RLSDelete`, and `RLSClear` operations.
+  Dataset specs and converters consume this complete ordered snapshot, without
+  separate deletion or clear flags. Code inspecting the old map must migrate.
+
 ### Added
 
 - Add ID-preserving `.move(EntryLocation.path(...), name=...)` operations for
@@ -15,8 +31,7 @@
 
 - Preserve RLS deletion when `delete_rls(field=...)` is followed by
   `add_rls(...)` in the same update: the new rules now replace that field's
-  saved rules while other fields retain theirs. `add_rls` and `update_rls`
-  continue to append rules.
+  saved rules while other fields retain theirs.
 
 ## 3.0.0 - 2026-09-09
 

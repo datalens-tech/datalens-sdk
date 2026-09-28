@@ -4,10 +4,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from datalens_sdk.domain.dataset_rls import RLSChange
 from datalens_sdk.domain.dataset_types import (
     DatasetCreateRelationPayload,
     DatasetUpdateAction,
-    RLS2ConfigEntryPayload,
 )
 from datalens_sdk.domain.entry_location import EntryLocation
 
@@ -33,7 +33,7 @@ class DatasetCreateSpec:
     sources: tuple[Source, ...]
     relations: tuple[DatasetCreateRelationPayload, ...]
     actions: tuple[DatasetUpdateAction, ...]
-    rls2_changes: Mapping[str, list[RLS2ConfigEntryPayload] | None]
+    rls2_changes: tuple[RLSChange, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +51,4 @@ class DatasetUpdateSpec:
     raw: Mapping[str, object]
     actions: tuple[DatasetUpdateAction, ...]
     name_change: str | None
-    rls2_changes: Mapping[str, list[RLS2ConfigEntryPayload] | None]
-    rls2_clear: bool = False
-    rls2_deleted_fields: frozenset[str] = frozenset()
+    rls2_changes: tuple[RLSChange, ...]

@@ -226,12 +226,7 @@ class DatasetService(DatasetOperations):
                 state["name"] = spec.name_change
         else:
             state = DatasetConverter.state_for_name_only(spec)
-        state = DatasetConverter.apply_rls2_changes(
-            state,
-            spec.rls2_changes,
-            clear=spec.rls2_clear,
-            deleted_fields=spec.rls2_deleted_fields,
-        )
+        state = DatasetConverter.apply_rls2_changes(state, spec.rls2_changes)
         response = self._api.update({"datasetId": dataset_id, "data": {"dataset": state}})
         return DatasetConverter.to_domain(
             response,

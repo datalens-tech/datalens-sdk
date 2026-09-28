@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from typing_extensions import Self
 
+from datalens_sdk.domain.dataset_rls import RLSAdd, RLSChange, RLSClear, RLSDelete, RLSFieldRef, RLSRule, RLSUpdate
 from datalens_sdk.domain.dataset_types import (
     Aggregation,
     CacheInvalidationSource,
@@ -23,9 +24,7 @@ from datalens_sdk.domain.dataset_types import (
     NumberFormatUnit,
     ParameterDataType,
     ParameterValue,
-    RLS2ConfigEntryPayload,
     RLSPatternType,
-    RLSSubjectPayload,
     RLSSubjectType,
     SettingName,
     SourceAvatarPayload,
@@ -111,9 +110,7 @@ class DatasetUpdate:
         self._operations = operations
         self._actions: list[DatasetUpdateAction] = []
         self._name_change: str | None = None
-        self._rls2_changes: dict[str, list[RLS2ConfigEntryPayload] | None] = {}
-        self._rls2_clear = False
-        self._rls2_deleted_fields: set[str] = set()
+        self._rls2_changes: list[RLSChange] = []
 
     @property
     def actions(self) -> tuple[DatasetUpdateAction, ...]:
@@ -124,8 +121,9 @@ class DatasetUpdate:
         return self._name_change
 
     @property
-    def rls2_changes(self) -> dict[str, list[RLS2ConfigEntryPayload] | None]:
-        return self._rls2_changes
+    def rls2_changes(self) -> tuple[RLSChange, ...]:
+        """Complete, immutable sequence of queued RLS operations, in call order."""
+        return tuple(self._rls2_changes)
 
     def name(self, value: str) -> Self:
         self._name_change = value
@@ -365,18 +363,13 @@ class DatasetUpdate:
         subject_name: str | None = None,
         pattern_type: RLSPatternType = "value",
     ) -> Self:
-        guid = _field_guid(field)
-        subject: RLSSubjectPayload = {"subject_id": subject_id, "subject_type": subject_type}
-        if subject_name is not None:
-            subject["subject_name"] = subject_name
-        entry: RLS2ConfigEntryPayload = {"subject": subject, "field_guid": guid, "pattern_type": pattern_type}
-        if allowed_value is not None:
-            entry["allowed_value"] = allowed_value
-        entries = self._rls2_changes.get(guid)
-        if entries is None:
-            entries = []
-            self._rls2_changes[guid] = entries
-        entries.append(entry)
+        """Append a rule; resolve the field against the schema being saved."""
+        self._rls2_changes.append(
+            RLSAdd(
+                RLSFieldRef.from_field(field, dataset_id=self._dataset.id, fields=self._dataset.fields),
+                RLSRule(subject_id, allowed_value, subject_type, subject_name, pattern_type),
+            )
+        )
         return self
 
     def update_rls(
@@ -389,25 +382,25 @@ class DatasetUpdate:
         subject_name: str | None = None,
         pattern_type: RLSPatternType = "value",
     ) -> Self:
-        return self.add_rls(
-            field=field,
-            subject_id=subject_id,
-            allowed_value=allowed_value,
-            subject_type=subject_type,
-            subject_name=subject_name,
-            pattern_type=pattern_type,
+        """Replace this field/subject's saved and queued rules, or add if absent."""
+        self._rls2_changes.append(
+            RLSUpdate(
+                RLSFieldRef.from_field(field, dataset_id=self._dataset.id, fields=self._dataset.fields),
+                RLSRule(subject_id, allowed_value, subject_type, subject_name, pattern_type),
+            )
         )
+        return self
 
     def delete_rls(self, *, field: FieldRef) -> Self:
-        guid = _field_guid(field)
-        self._rls2_deleted_fields.add(guid)
-        self._rls2_changes[guid] = None
+        """Remove all rules for a field, including earlier queued additions."""
+        self._rls2_changes.append(
+            RLSDelete(RLSFieldRef.from_field(field, dataset_id=self._dataset.id, fields=self._dataset.fields))
+        )
         return self
 
     def clear_rls(self) -> Self:
-        self._rls2_clear = True
-        self._rls2_changes.clear()
-        self._rls2_deleted_fields.clear()
+        """Remove all rules and discard earlier queued RLS operations."""
+        self._rls2_changes = [RLSClear()]
         return self
 
     def delete_field(self, *, field: FieldRef) -> Self:
@@ -637,9 +630,7 @@ class DatasetUpdate:
             raw=self._dataset.raw,
             actions=tuple(self._actions),
             name_change=self._name_change,
-            rls2_changes=dict(self._rls2_changes),
-            rls2_clear=self._rls2_clear,
-            rls2_deleted_fields=frozenset(self._rls2_deleted_fields),
+            rls2_changes=self.rls2_changes,
         )
 
     def execute(self) -> Dataset:

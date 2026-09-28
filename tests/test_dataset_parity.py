@@ -11,6 +11,7 @@ import datalens_sdk as dl
 from datalens_sdk import JoinCondition
 from datalens_sdk.converter.dataset import DatasetConverter
 from datalens_sdk.domain.dataset import Dataset, Source, SourcesProxy
+from datalens_sdk.domain.dataset_rls import RLSAdd, RLSFieldRef, RLSRule
 from datalens_sdk.domain.dataset_update import DatasetUpdate
 from datalens_sdk.errors import DataLensValidationError
 
@@ -213,7 +214,7 @@ def _rls2_entries(field_guid: str, *values: str) -> list[dict[str, object]]:
     [
         pytest.param((), ("old",), True, id="unchanged"),
         pytest.param(("add",), ("old", "new"), True, id="append"),
-        pytest.param(("update",), ("old", "new"), True, id="update-still-appends"),
+        pytest.param(("update",), ("new",), True, id="update-replaces-subject"),
         pytest.param(("add", "add"), ("old", "new", "new"), True, id="repeated-append"),
         pytest.param(("delete",), None, True, id="delete-field"),
         pytest.param(("delete", "add"), ("new",), True, id="delete-add-replaces"),
@@ -348,14 +349,13 @@ def test_dataset_rls_changes_apply_to_validated_state(clear_all: bool) -> None:
     assert dataset.raw == raw_before
 
 
-@pytest.mark.parametrize("with_validation", [False, True], ids=["direct-create", "validated-create"])
-def test_dataset_create_still_appends_rls_rules(with_validation: bool) -> None:
+def test_dataset_create_still_appends_rls_rules() -> None:
     validated_dataset: dict[str, object] = {
         "description": "",
         "sources": [],
         "source_avatars": [],
         "avatar_relations": [],
-        "result_schema": [],
+        "result_schema": [{"guid": "date", "title": "Date", "calc_mode": "formula", "type": "DIMENSION"}],
         "obligatory_filters": [],
         "rls2": {},
         "load_preview_by_default": False,
@@ -368,8 +368,7 @@ def test_dataset_create_still_appends_rls_rules(with_validation: bool) -> None:
     )
     client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
     builder = client.create.dataset(name="Created", location=dl.EntryLocation.path("/Users/me"))
-    if with_validation:
-        builder.update_setting(name="load_preview_by_default", value=False)
+    builder.add_calculation(name="Date", formula="'today'", kind="DIMENSION", guid="date")
 
     created = (
         builder.add_rls(field="date", subject_id="user-1", allowed_value="first")
@@ -377,7 +376,7 @@ def test_dataset_create_still_appends_rls_rules(with_validation: bool) -> None:
         .build()
     )
 
-    expected_paths = ["/rpc/validateDataset", "/rpc/createDataset"] if with_validation else ["/rpc/createDataset"]
+    expected_paths = ["/rpc/validateDataset", "/rpc/createDataset"]
     assert [request.url.path for request in recorder.requests] == expected_paths
     created_dataset = cast(dict[str, object], recorder.request_json(-1)["dataset"])
     assert created_dataset["rls2"] == {"date": _rls2_entries("date", "first", "second")}
@@ -511,11 +510,20 @@ def test_dataset_create_stages_supported_mutations_before_single_create() -> Non
 def test_apply_rls2_changes_keeps_only_the_supported_rls_field() -> None:
     unsupported_field = _RLS2_FIELD.removesuffix("2")
     state = DatasetConverter.apply_rls2_changes(
-        {unsupported_field: {"calc-1": ["user-1"]}},
-        {"calc-1": [{"field_guid": "calc-1"}]},
+        {unsupported_field: {"calc-1": ["user-1"]}, "result_schema": [{"guid": "calc-1"}]},
+        (RLSAdd(RLSFieldRef("calc-1"), RLSRule("user-1")),),
     )
 
-    assert state == {_RLS2_FIELD: {"calc-1": [{"field_guid": "calc-1"}]}}
+    assert unsupported_field not in state
+    assert state[_RLS2_FIELD] == {
+        "calc-1": [
+            {
+                "field_guid": "calc-1",
+                "subject": {"subject_id": "user-1", "subject_type": "user"},
+                "pattern_type": "value",
+            }
+        ]
+    }
 
 
 def test_dataset_create_places_mutations_after_source_graph_actions() -> None:

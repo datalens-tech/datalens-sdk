@@ -159,17 +159,36 @@ Filter operators (`WhereOperation`) are uppercase: `"EQ"`, `"NE"`, `"GT"`, `"GTE
 ### Row-level security (RLS2)
 
 Use `ds.rls2` to inspect saved rules. Every RLS `field=` accepts a
-`DatasetField` or an exact GUID; a string such as `"Shop"` is not resolved as a
-field name. Resolve it with `shop = ds.fields.by_name("Shop")`.
+`DatasetField` or a string. Strings resolve by exact GUID first, then name/title,
+then source column. Unknown or ambiguous references raise `DataLensValidationError`
+before saving. References are checked against the schema being saved, including
+the result of `validateDataset`, so fields added in the same create/update builder
+can be referenced by their new title or GUID. Use a `DatasetField` or GUID to keep
+a reference stable across a rename; a `DatasetField` from another dataset is rejected.
 
-- `add_rls(...)` and `update_rls(...)` both append rules; `update_rls` does not
-  replace an existing subject or field rule.
+- `add_rls(...)` appends a rule.
+- `update_rls(...)` replaces all rules for the same field, `subject_type`, and
+  `subject_id` with the supplied rule, including earlier additions in the builder.
+  Other subjects and fields are preserved. If there is no matching subject rule,
+  it adds one. `subject_name` and `pattern_type` are not part of subject identity;
+  changing a pattern removes the old patterns too. A matching saved subject with
+  a missing or unresolved type raises an error instead of guessing its identity.
 - `delete_rls(field=...)` removes all rules for that field, including additions
   already queued in the same builder. Other fields retain their rules.
 - `clear_rls()` removes all dataset RLS rules, including additions already
   queued in the builder. It preserves other dataset changes.
 - Additions after a deletion or clear become the new rules. Repeated deletions
   and clears are allowed. For RLS, `DatasetCreate` supports only `add_rls`.
+
+To replace one subject's rules, use
+`ds = ds.update.update_rls(field="Shop", subject_id=user_id, allowed_value="Delta").execute()`.
+Use `add_rls` for each additional allowed value after that replacement.
+
+`update.rls2_changes` is an immutable tuple of typed operations from
+`datalens_sdk.domain.dataset_rls`, in call order (`RLSAdd`, `RLSUpdate`,
+`RLSDelete`, `RLSClear`). It contains the complete change, including deletions
+and clears; a clear discards the earlier operations and remains explicit in
+the tuple. `to_spec().rls2_changes` takes the same immutable snapshot.
 
 To replace all rules, clear and add the desired rules in **one builder with
 one `.execute()`**:
