@@ -191,20 +191,20 @@
         {"text": "Checks client.capabilities['chart_factories']['editor'] for advanced_chart before building", "type": "code"},
         {"text": "Uses client.create.editor_chart.advanced_chart(...) and the public builder recipe", "type": "code"},
         {"text": "Uses the Advanced payload shape {render: Editor.wrapFn(...)} with Editor.generateHtml(...) for HTML", "type": "code"},
-        {"text": "Does NOT call shared(...), activities(...), or meta(...) and does not use internal documentation", "type": "code"},
+        {"text": "Uses only the tabs listed for this renderer, leaves meta unset without linked objects, and does not use internal documentation", "type": "code"},
         {"text": "Re-fetches the chart to verify persistence without claiming that read-back proves rendering", "type": "workflow"}
       ]
     },
     {
       "id": 13,
-      "name": "public-editor-gravity-no-activities",
+      "name": "public-editor-gravity-activities",
       "prompt": "Update the existing public Gravity UI Editor chart chart-id by adding an Activities handler described by the newest Editor documentation.",
-      "expected_output": "Fetches the chart and treats the runtime documentation as authoritative that Gravity supports Activities, but explains that the installed typed public SDK has not implemented the tab yet. It does not call the misleading shared update setter, mutate the chart, or bypass the typed SDK.",
+      "expected_output": "Fetches the saved Gravity chart, confirms the Activities create/update contract in the public index, and uses saved.update.activities(source).execute() with code from the runtime documentation. It preserves other tabs and verifies stored text without claiming that persistence proves execution.",
       "files": [],
       "assertions": [
         {"text": "Fetches chart-id, confirms wire_type d3_node, and checks the public writable tab matrix before attempting an update", "type": "workflow"},
-        {"text": "Does NOT call saved.update.activities(...), use raw HTTP, hand-build a mutation, or execute an unrelated update while typed public support is unavailable", "type": "code"},
-        {"text": "States that the documentation supports Activities for Gravity but the installed typed SDK does not yet implement it", "type": "workflow"}
+        {"text": "Uses saved.update.activities(source).execute() in save mode; does NOT use raw HTTP, hand-build a mutation, or change unrelated tabs", "type": "code"},
+        {"text": "Uses the documented sources and handleResponse contract and distinguishes stored-code verification from browser execution", "type": "workflow"}
       ]
     },
     {
@@ -228,7 +228,7 @@
       "assertions": [
         {"text": "Checks client.capabilities['chart_factories']['editor'] for selector", "type": "code"},
         {"text": "Uses client.create.editor_chart.selector(...) with sources(...), params(...), and controls(...)", "type": "code"},
-        {"text": "Does NOT call prepare(...), shared(...), activities(...), or meta(...)", "type": "code"},
+        {"text": "Uses only the Selector tab matrix and does not add tabs unrelated to the requested literal options", "type": "code"},
         {"text": "Re-fetches the selector and verifies sources, params, and controls without claiming persistence proves rendering", "type": "workflow"}
       ]
     },

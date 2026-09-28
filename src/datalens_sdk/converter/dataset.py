@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.converter._dataset_policy import with_supported_rls2_state
+from datalens_sdk.converter._dataset_rls import matches_rls_subject, resolve_rls_field, rls_rule_payload
 from datalens_sdk.converter._navigation import name_from_key
 from datalens_sdk.converter._utils import _optional_str, _read_response_id
 from datalens_sdk.converter.raw.dataset import (
@@ -15,12 +16,12 @@ from datalens_sdk.converter.raw.dataset import (
     dataset_content_from_snapshot,
 )
 from datalens_sdk.domain.dataset import Dataset, Source, SourcesProxy
+from datalens_sdk.domain.dataset_rls import RLSChange, RLSClear, RLSDelete, RLSUpdate
 from datalens_sdk.domain.dataset_types import (
     DatasetCreateRelationPayload,
     DatasetUpdateAction,
     DataType,
     RawSchemaColumnPayload,
-    RLS2ConfigEntryPayload,
 )
 from datalens_sdk.domain.entry_location import (
     EntryLocation,
@@ -29,6 +30,7 @@ from datalens_sdk.domain.entry_location import (
     resolve_entry_location_from_api_fields,
     workbook_id_from_location,
 )
+from datalens_sdk.domain.fields import FieldsProxy
 from datalens_sdk.domain.ports import DatasetOperations
 from datalens_sdk.domain.specs.dataset import DatasetCreateSpec, DatasetUpdateSpec
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
@@ -463,20 +465,27 @@ class DatasetConverter:
     @staticmethod
     def apply_rls2_changes(
         state: Mapping[str, object],
-        changes: Mapping[str, Sequence[RLS2ConfigEntryPayload] | None],
+        changes: Sequence[RLSChange],
     ) -> dict[str, object]:
         out = with_supported_rls2_state(state)
         if not changes:
             return out
-        existing = _dict_with_string_keys(out.get("rls2"))
-        rls2: dict[str, object] = dict(existing)
-        for guid, entries in changes.items():
-            if entries is None:
+        schema = _list_of_mappings(out.get("result_schema"))
+        fields = FieldsProxy(schema)
+        rls2 = _dict_with_string_keys(out.get("rls2"))
+        for change in changes:
+            if isinstance(change, RLSClear):
+                rls2.clear()
+                continue
+            guid = resolve_rls_field(fields, change.field)
+            if isinstance(change, RLSDelete):
                 rls2.pop(guid, None)
             else:
                 current = rls2.get(guid)
                 merged = list(current) if isinstance(current, list) else []
-                merged.extend(dict(entry) for entry in entries)
+                if isinstance(change, RLSUpdate):
+                    merged = [entry for entry in merged if not matches_rls_subject(entry, change.rule)]
+                merged.append(rls_rule_payload(guid, change.rule))
                 rls2[guid] = merged
         out["rls2"] = rls2
         return out

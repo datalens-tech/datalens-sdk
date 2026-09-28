@@ -2,15 +2,75 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Make `DatasetUpdate.update_rls()` replace the matching field and subject's
+  rules (`subject_type` + `subject_id`), including queued additions and old
+  patterns. Use `add_rls()` to append allowed values. Other subjects and fields
+  retain their rules; a missing subject is added.
+- Resolve RLS string fields by GUID, name/title, or source column and reject
+  unknown or ambiguous references before saving. Validate against the schema
+  being saved, including fields created in the same builder. Reject field
+  objects from another dataset and subject replacement with an unresolved
+  saved subject type.
+- Replace the incomplete `DatasetUpdate.rls2_changes` map with an immutable
+  tuple of typed `RLSAdd`, `RLSUpdate`, `RLSDelete`, and `RLSClear` operations.
+  Dataset specs and converters consume this complete ordered snapshot, without
+  separate deletion or clear flags. Code inspecting the old map must migrate.
+
 ### Added
 
 - Allow `DashboardUpdate.set_chart_params(..., widget_tab_id=...)` to merge,
   replace, or clear params on one internal chart tab while preserving the
   existing all-tabs behavior when the argument is omitted.
+- Add lazy `get_revisions()` history on connections, datasets, dashboards,
+  and all chart families for Yandex Cloud and Enterprise. Results are immutable
+  `EntryRevision` records with server-provided saved and published flags;
+  filtering and continuation tokens work with ordinary iteration or `.pages()`.
+  Read a selected revision's contents with `client.get.*(..., rev_id=...)`.
+  The default and maximum page size are 200; revision-id filters accept
+  up to 1000 ids.
+
 - Add ID-preserving `.move(EntryLocation.path(...), name=...)` operations for
   connections, datasets, dashboards, and every chart family. The SDK validates
   the `moveFolderEntry` result against the moved entry id and returns the
   refreshed resource with its current name and location.
+- Add `DatasetUpdate.clear_rls()` to remove all dataset RLS2 rules or replace
+  them with subsequent `add_rls(...)` calls in a single `.execute()`.
+
+### Fixed
+
+- Preserve RLS deletion when `delete_rls(field=...)` is followed by
+  `add_rls(...)` in the same update: the new rules now replace that field's
+  saved rules while other fields retain theirs.
+
+### Changed
+
+- Refresh the Yandex Cloud API v3 specification and synchronize Enterprise
+  Editor schemas with it. The configured Enterprise spec endpoint returned
+  HTTP 404; its unrelated installation-specific schemas are preserved.
+- Support `activities(str | None)` on Selector, Table, and Gravity UI Charts
+  create and update builders for both public installations. Advanced and
+  Markdown continue to reject Activities before HTTP. Existing Activities
+  text is preserved when another supported tab is updated.
+- Generate separate Editor read, create, and update type catalogs from their
+  operation-specific OpenAPI discriminators. Generic chart reads and dashboard
+  dependency exports now use the read catalog, while raw create and replace
+  remain limited by their respective write catalogs. Generation now fails fast
+  when the same create or update renderer has incompatible fields or
+  requiredness across installations instead of silently reusing the first
+  generated DTO or builder.
+- Keep the existing `chart.update` facade, but reject renderer-incompatible tab
+  setters with `NotSupportedError` before DTO construction or HTTP. The
+  update builder also retains its original renderer and rejects later
+  `wire_type` changes before HTTP. The facade's Python autocomplete remains
+  intentionally broad across installations and renderers.
+- Guide agents through recovery when Yandex Cloud preflight finds neither the
+  `yc` CLI nor static IAM credentials: safely load static credentials from the
+  current project's `.env`, offer an informed global or project-local CLI
+  installation using the official installer, refuse a non-empty local
+  destination, leave initialization and authentication to the user, and pass
+  the selected binary and profile explicitly to later processes.
 
 ## 3.0.0 - 2026-09-09
 

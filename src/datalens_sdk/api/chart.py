@@ -15,7 +15,9 @@ from datalens_sdk.api.entries import EntriesService
 from datalens_sdk.converter.editor_chart import (
     EditorChartConverter,
     EditorChartDtoModule,
-    editor_wire_types,
+    editor_read_wire_types,
+    editor_update_tabs,
+    editor_update_wire_types,
 )
 from datalens_sdk.converter.ql_chart import QLChartConverter, QLChartDtoModule
 from datalens_sdk.converter.wizard_chart import (
@@ -35,6 +37,7 @@ from datalens_sdk.domain.navigation import (
 )
 from datalens_sdk.domain.ports import ChartOperations, NavigationOperations
 from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate
+from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
 from datalens_sdk.errors import (
@@ -286,7 +289,10 @@ class ChartService(ChartOperations):
             None,
         )
         wire_type = entry.type if entry is not None else None
-        if wire_type in editor_wire_types(self._installation, cast(EditorChartDtoModule | None, self._dto_module)):
+        if wire_type in editor_read_wire_types(
+            self._installation,
+            cast(EditorChartDtoModule | None, self._dto_module),
+        ):
             return self.get_editor_chart(chart_id, workbook_id=workbook_id, branch=branch, rev_id=rev_id)
         if is_ql_wire_type(wire_type):
             return self.get_ql_chart(chart_id, workbook_id=workbook_id, branch=branch, rev_id=rev_id)
@@ -344,12 +350,43 @@ class ChartService(ChartOperations):
             dto_module=self._dto_module,
         )
 
+    def _validate_editor_update_wire_type(
+        self,
+        wire_type: str | None,
+    ) -> tuple[str, EditorChartDtoModule | None]:
+        editor_dto_module = cast(EditorChartDtoModule | None, self._dto_module)
+        if wire_type is None or wire_type not in editor_update_wire_types(self._installation, editor_dto_module):
+            raise NotSupportedError(
+                f"Editor chart type {wire_type!r} cannot be updated on installation {self._installation!r}"
+            )
+        return wire_type, editor_dto_module
+
+    def build_editor_chart_update(self, chart: EditorChart) -> EditorChartUpdate:
+        if not chart.id:
+            raise DataLensValidationError("Cannot update an editor chart without an id")
+        wire_type, editor_dto_module = self._validate_editor_update_wire_type(chart.wire_type)
+        return EditorChartUpdate(
+            chart=chart,
+            operations=self,
+            installation=self._installation,
+            wire_type=wire_type,
+            writable_tabs=editor_update_tabs(self._installation, wire_type, editor_dto_module),
+        )
+
     def update_editor_chart(self, builder: EditorChartUpdate) -> EditorChart:
         entry_id = builder.chart.id
         if not entry_id:
             raise ValueError("Cannot update editor chart without an id")
+        wire_type = builder.wire_type_value
+        current_wire_type = builder.chart.wire_type
+        if current_wire_type != wire_type:
+            raise DataLensValidationError(
+                "Editor chart wire type changed after update builder creation: "
+                f"expected {wire_type!r}, got {current_wire_type!r}"
+            )
+        _, editor_dto_module = self._validate_editor_update_wire_type(wire_type)
         try:
-            dto_obj = EditorChartConverter.from_domain_update(builder, dto_module=self._dto_module)
+            dto_obj = EditorChartConverter.from_domain_update(builder, dto_module=editor_dto_module)
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="updateEditorChart", reason=str(exc)) from exc
         response = self._api.update_editor(dto_obj.to_payload())
@@ -524,6 +561,9 @@ class ChartService(ChartOperations):
             raise NotSupportedError(f"Cannot move unsupported chart type {type(chart).__name__!r}")
         self._navigation_operations.move_folder_entry(entry_id=chart.id, location=location, name=name)
         return get_chart(chart.id, None)
+
+    def get_entry_revisions(self, entry_id: str, options: EntryRevisionsOptions) -> Pager[EntryRevision]:
+        return self._entries_service.get_entry_revisions(entry_id, options)
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]:
         return self._navigation_operations.get_entry_relations(entry_id, options)

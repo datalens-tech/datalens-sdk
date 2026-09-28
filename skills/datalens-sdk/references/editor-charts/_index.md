@@ -36,32 +36,21 @@ from this skill; follow the exact documentation sections below.
 
 ## SDK renderer matrix
 
-Every listed tab method accepts `str` and is available on both create and
-update for that `wire_type`.
+Every listed tab method is available on both create and update for that
+`wire_type`. All accept `str`; `activities` also accepts `None` to omit the
+optional tab from the replacement payload.
 
 | Factory | `chart.wire_type` | Use for | SDK tab methods | Renderer leaf |
 |---|---|---|---|---|
 | `advanced_chart` | `advanced-chart_node` | custom HTML or SVG | `controls`, `meta`, `params`, `prepare`, `sources` | [advanced-chart.md](advanced-chart.md) |
-| `gravity_charts` | `d3_node` | general charts | `config`, `controls`, `meta`, `params`, `prepare`, `sources` | [gravity-charts.md](gravity-charts.md) |
+| `gravity_charts` | `d3_node` | general charts | `activities`, `config`, `controls`, `meta`, `params`, `prepare`, `sources` | [gravity-charts.md](gravity-charts.md) |
 | `markdown` | `markdown_node` | formatted text | `controls`, `meta`, `params`, `prepare`, `sources` | [markdown.md](markdown.md) |
-| `selector` | `control_node` | parameter controls | `controls`, `meta`, `params`, `sources` | [selector.md](selector.md) |
-| `table` | `table_node` | explicit tables | `config`, `controls`, `meta`, `params`, `prepare`, `sources` | [table.md](table.md) |
+| `selector` | `control_node` | parameter controls | `activities`, `controls`, `meta`, `params`, `sources` | [selector.md](selector.md) |
+| `table` | `table_node` | explicit tables | `activities`, `config`, `controls`, `meta`, `params`, `prepare`, `sources` | [table.md](table.md) |
 
 Use the renderer requested by the user or identified by `chart.wire_type`.
 Never translate a payload or migrate a chart to another renderer silently;
 create a separate chart only with the user's agreement.
-
-The public runtime
-[Activities documentation](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#activities)
-currently supports Activities for Selector, Table, and Gravity UI Charts. The
-generated public create and update contracts do not expose that tab yet. The
-shared `EditorChartUpdate` object has an `activities(...)` method because the
-domain model is also used by other installations, but public generated DTOs
-reject the field; treat that method as unavailable for public clients. Typed
-public Activities support will be added in a future SDK version. Until then,
-do not call the method or work around the limitation with a raw request. If an
-existing chart already contains Activities, leave it unchanged; if the typed
-SDK cannot preserve it during another update, stop and report the limitation.
 
 ## Runtime documentation router
 
@@ -73,7 +62,7 @@ SDK cannot preserve it during another update, stop and report the limitation.
 | Dataset, SQL, or API Connector data | [Sources](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#sources) |
 | Data transformation | [Prepare](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#prepare) |
 | Chart-local controls | [Controls](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#controls) |
-| Activities for Selector, Table, and Gravity UI Charts | [Activities](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#activities) |
+| Activities | [Activities](https://yandex.cloud/ru/docs/datalens/charts/editor/tabs#activities) |
 | Read loaded data | [`Editor.getLoadedData()`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-loaded-data) |
 | Read parameters | [`Editor.getParams()`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#get-params) |
 | Browser handlers and sandbox | [`Editor.wrapFn`](https://yandex.cloud/ru/docs/datalens/charts/editor/methods#wrap) |

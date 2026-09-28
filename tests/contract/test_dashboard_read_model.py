@@ -168,6 +168,9 @@ class _FakeOperations:
     ) -> Dashboard:
         raise NotImplementedError
 
+    def get_entry_revisions(self, entry_id: str, options: object) -> object:
+        raise NotImplementedError
+
     def get_entry_relations(self, entry_id: str, options: object) -> object:
         raise NotImplementedError
 

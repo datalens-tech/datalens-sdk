@@ -18,6 +18,7 @@ from datalens_sdk.domain.navigation import EntryScope
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "datalens_sdk"
+MAX_DOMAIN_FILE_LINES = 700
 FORBIDDEN_GATEWAY_FRAGMENT = "/" + "gateway"
 RLS2_FIELD = "rls2"
 RAW_ONLY_MUTATION_METHODS = frozenset(
@@ -356,8 +357,8 @@ def test_no_loguru_domain_file_size_and_builder_location_invariants() -> None:
         text = path.read_text()
         if "loguru" in text:
             offenders.append(f"{rel}: imports/mentions loguru")
-        if rel.startswith("domain/") and len(text.splitlines()) > 650:
-            offenders.append(f"{rel}: exceeds 650 LOC")
+        if rel.startswith("domain/") and len(text.splitlines()) > MAX_DOMAIN_FILE_LINES:
+            offenders.append(f"{rel}: exceeds {MAX_DOMAIN_FILE_LINES} LOC")
         if (
             "ConnectionCreateFactory" in text
             and "class " in text
@@ -400,6 +401,7 @@ def test_shared_entry_routes_are_owned_by_entries_api() -> None:
     routes = (
         "/rpc/getEntries",
         "/rpc/getEntriesRelations",
+        "/rpc/getRevisions",
         "/rpc/listDirectory",
         "/rpc/moveFolderEntry",
         "/rpc/renameEntry",

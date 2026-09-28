@@ -91,7 +91,7 @@ class DashboardBundleExporter:
         self._navigation_operations = navigation_operations
         self._chart_operations = chart_operations
         self._dataset_operations = dataset_operations
-        self._editor_wire_types = frozenset(editor_wire_types)
+        self._editor_read_wire_types = frozenset(editor_wire_types)
 
     def export(self, dashboard: Dashboard, path: ArtifactPath) -> Path:
         if not dashboard.id:
@@ -115,7 +115,7 @@ class DashboardBundleExporter:
                 ref,
                 classify_chart_wire_type(
                     ref.type,
-                    editor_wire_types=self._editor_wire_types,
+                    editor_wire_types=self._editor_read_wire_types,
                 ),
             )
             for ref in chart_refs

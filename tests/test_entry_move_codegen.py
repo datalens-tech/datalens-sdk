@@ -1,3 +1,4 @@
+import ast
 import json
 from pathlib import Path
 from typing import cast
@@ -26,6 +27,17 @@ def _move_result_schema(spec: dict[str, object]) -> dict[str, object]:
 
 def test_build_metadata_preserves_empty_installation_mapping() -> None:
     assert codegen.build_metadata({}) == {"installations": {}}
+
+
+@pytest.mark.parametrize("installation", ["enterprise", "yacloud", None])
+def test_entry_move_dto_block_preserves_top_level_class_spacing(installation: str | None) -> None:
+    installations = {} if installation is None else {installation: ROOT / "spec" / f"{installation}.json"}
+    generated = codegen.emit_dto(codegen.build_metadata(installations))
+    lines = generated.splitlines()
+
+    for node in ast.parse(generated).body:
+        if isinstance(node, ast.ClassDef) and node.name in {"MoveEntryResultEntryReadDTO", "EntryRenameDTO"}:
+            assert lines[node.lineno - 3 : node.lineno - 1] == ["", ""], node.name
 
 
 def test_entry_move_read_dto_follows_openapi(tmp_path: Path) -> None:

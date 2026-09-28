@@ -320,6 +320,7 @@ class MoveEntryResultEntryReadDTO(BaseModel):
     scope: str
     type: str
 
+
 class EntryRenameDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -899,10 +900,40 @@ class LicenseSetLimitArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return {"value": self.value}
 
-INSTALLATION_EDITOR_NODE_TYPES: dict[str, frozenset[str]] = {
+INSTALLATION_EDITOR_READ_NODE_TYPES: dict[str, frozenset[str]] = {
     'enterprise': frozenset(['advanced-chart_node', 'control_node', 'd3_node', 'markdown_node', 'table_node']),
     'yacloud': frozenset(['advanced-chart_node', 'control_node', 'd3_node', 'markdown_node', 'table_node']),
 }
+
+INSTALLATION_EDITOR_CREATE_NODE_TYPES: dict[str, frozenset[str]] = {
+    'enterprise': frozenset(['advanced-chart_node', 'control_node', 'd3_node', 'markdown_node', 'table_node']),
+    'yacloud': frozenset(['advanced-chart_node', 'control_node', 'd3_node', 'markdown_node', 'table_node']),
+}
+
+INSTALLATION_EDITOR_UPDATE_NODE_TYPES: dict[str, frozenset[str]] = {
+    'enterprise': frozenset(['advanced-chart_node', 'control_node', 'd3_node', 'markdown_node', 'table_node']),
+    'yacloud': frozenset(['advanced-chart_node', 'control_node', 'd3_node', 'markdown_node', 'table_node']),
+}
+
+INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE: dict[str, dict[str, frozenset[str]]] = {
+    'enterprise': {
+        'advanced-chart_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
+        'control_node': frozenset(['activities', 'controls', 'meta', 'params', 'sources']),
+        'd3_node': frozenset(['activities', 'config', 'controls', 'meta', 'params', 'prepare', 'sources']),
+        'markdown_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
+        'table_node': frozenset(['activities', 'config', 'controls', 'meta', 'params', 'prepare', 'sources']),
+    },
+    'yacloud': {
+        'advanced-chart_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
+        'control_node': frozenset(['activities', 'controls', 'meta', 'params', 'sources']),
+        'd3_node': frozenset(['activities', 'config', 'controls', 'meta', 'params', 'prepare', 'sources']),
+        'markdown_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
+        'table_node': frozenset(['activities', 'config', 'controls', 'meta', 'params', 'prepare', 'sources']),
+    },
+}
+
+# Compatibility: this symbol keeps its historical create/write meaning.
+INSTALLATION_EDITOR_NODE_TYPES = INSTALLATION_EDITOR_CREATE_NODE_TYPES
 
 
 WIZARD_SCHEMA_FINGERPRINT: str | None = 'cd8ba590fdd6b6b14d05801dbe47b2630ab0108b01cd42ba1f6e86fc69bdafe4'
@@ -3680,6 +3711,7 @@ class ControlNodeNodeDataDTO(BaseModel):
     meta: str
     params: str
     sources: str
+    activities: str | None = None
 
 class ControlNodeNodeEntryCreateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -3718,6 +3750,7 @@ class D3NodeNodeDataDTO(BaseModel):
     params: str
     prepare: str
     sources: str
+    activities: str | None = None
 
 class D3NodeNodeEntryCreateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -3793,6 +3826,7 @@ class TableNodeNodeDataDTO(BaseModel):
     params: str
     prepare: str
     sources: str
+    activities: str | None = None
 
 class TableNodeNodeEntryCreateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -3863,6 +3897,7 @@ class ControlNodeNodeUpdateDataDTO(BaseModel):
     meta: str
     params: str
     sources: str
+    activities: str | None = None
 
 class ControlNodeNodeEntryUpdateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -3898,6 +3933,7 @@ class D3NodeNodeUpdateDataDTO(BaseModel):
     params: str
     prepare: str
     sources: str
+    activities: str | None = None
 
 class D3NodeNodeEntryUpdateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -3967,6 +4003,7 @@ class TableNodeNodeUpdateDataDTO(BaseModel):
     params: str
     prepare: str
     sources: str
+    activities: str | None = None
 
 class TableNodeNodeEntryUpdateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -4694,3 +4731,26 @@ class DashboardDeleteArgsDTO(BaseModel):
         payload = self.model_dump(mode="json", by_alias=True, exclude_none=True)
         model = DeleteDashboardArgsDTO.model_validate(payload)
         return model.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class EntryRevisionsRequestDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    entry_id: str = Field(alias='entryId')
+    page_size: Annotated[int, Field(ge=1, le=200, alias='pageSize')] = 200
+    page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
+    rev_ids: Annotated[list[str], Field(min_length=1, max_length=1000, alias='revIds')] = _UNVALIDATED_NONE_DEFAULT
+
+class EntryRevisionReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    is_published: bool = Field(alias='isPublished')
+    is_saved: bool = Field(alias='isSaved')
+    rev_id: str = Field(alias='revId')
+    updated_at: str = Field(alias='updatedAt')
+    updated_by: str = Field(alias='updatedBy')
+
+class EntryRevisionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    entries: list[EntryRevisionReadDTO]
+    next_page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='nextPageToken')
