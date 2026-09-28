@@ -3933,6 +3933,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "config": {
                 "description": "Configuration from the Config tab.",
                 "type": "string"
@@ -3981,7 +3985,7 @@
             "type": "object"
           },
           "type": {
-            "description": "For D3 Editor charts takes value: d3_node",
+            "description": "For Gravity UI Charts takes value: d3_node",
             "enum": [
               "d3_node"
             ],
@@ -4084,6 +4088,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "controls": {
                 "description": "Configuration from the Controls tab.",
                 "type": "string"
@@ -4152,6 +4160,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "config": {
                 "description": "Configuration from the Config tab.",
                 "type": "string"
@@ -9553,6 +9565,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "config": {
                 "description": "Configuration from the Config tab.",
                 "type": "string"
@@ -9659,7 +9675,7 @@
             "type": "string"
           },
           "type": {
-            "description": "For D3 Editor charts takes value: d3_node",
+            "description": "For Gravity UI Charts takes value: d3_node",
             "enum": [
               "d3_node"
             ],
@@ -9926,6 +9942,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "controls": {
                 "description": "Configuration from the Controls tab.",
                 "type": "string"
@@ -10105,6 +10125,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "config": {
                 "description": "Configuration from the Config tab.",
                 "type": "string"
@@ -11554,7 +11578,7 @@
             "$ref": "#/components/schemas/EntryBranch"
           },
           "chartId": {
-            "description": "ID of the Editor chart to return. You can find it in the chart settings in DataLens interface.",
+            "description": "ID of the Editor chart. You can find it in the chart settings in DataLens interface.",
             "type": "string"
           },
           "includeFavorite": {
@@ -20826,6 +20850,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "config": {
                 "description": "Configuration from the Config tab.",
                 "type": "string"
@@ -20882,7 +20910,7 @@
             "type": "string"
           },
           "type": {
-            "description": "For D3 Editor charts takes value: d3_node",
+            "description": "For Gravity UI Charts takes value: d3_node",
             "enum": [
               "d3_node"
             ],
@@ -20995,6 +21023,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "controls": {
                 "description": "Configuration from the Controls tab.",
                 "type": "string"
@@ -21072,6 +21104,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "config": {
                 "description": "Configuration from the Config tab.",
                 "type": "string"

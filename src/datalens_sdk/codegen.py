@@ -150,11 +150,17 @@ class EditorNodeMeta(TypedDict):
     data_fields: dict[str, NodeFieldMeta]
 
 
+class EditorReadNodeMeta(TypedDict):
+    wire_type: str
+    read_schema: str
+
+
 class EditorCreateNodeMeta(EditorNodeMeta):
     factory_method: str
 
 
 class ChartMeta(TypedDict):
+    editor_read_nodes: dict[str, EditorReadNodeMeta]
     editor_nodes: dict[str, EditorCreateNodeMeta]
     editor_update_nodes: dict[str, EditorNodeMeta]
 
@@ -1579,95 +1585,137 @@ def _source_meta(
     }
 
 
+def _editor_discriminator_mapping(
+    value: object,
+    *,
+    schemas: Mapping[str, object],
+    context: str,
+) -> dict[str, str]:
+    discriminator = _string_object_dict(value, context=context)
+    property_name = discriminator.get("propertyName")
+    if property_name != "type":
+        raise ValueError(f"{context}.propertyName must be 'type', got {property_name!r}")
+    mapping = _string_mapping(discriminator.get("mapping"), context=f"{context}.mapping")
+    resolved: dict[str, str] = {}
+    for wire_type, ref in sorted(mapping.items()):
+        schema_name = _schema_ref_name({"$ref": ref}, context=f"{context}.mapping.{wire_type}")
+        if schema_name not in schemas:
+            raise ValueError(f"{context}.mapping.{wire_type} references missing schema {schema_name!r}")
+        resolved[wire_type] = schema_name
+    return resolved
+
+
+def _editor_data_fields(schemas: dict[str, dict[str, object]], schema_name: str) -> dict[str, NodeFieldMeta]:
+    schema = schemas[schema_name]
+    schema_props = _string_object_dict(schema.get("properties", {}), context=f"{schema_name}.properties")
+    data_raw = schema_props.get("data", {})
+    data_schema = _string_object_dict(data_raw, context=f"{schema_name}.properties.data")
+    data_props_raw = data_schema.get("properties", {})
+    data_props = _schema_dict(data_props_raw, context=f"{schema_name}.properties.data.properties")
+    data_required_raw = data_schema.get("required", [])
+    data_required = set(_string_list(data_required_raw, context=f"{schema_name}.properties.data.required"))
+    return {field: {"required": field in data_required} for field in sorted(data_props)}
+
+
 def _chart_meta(schemas: dict[str, dict[str, object]]) -> ChartMeta:
-    if "CreateEditorChartArgs" not in schemas:
-        return {"editor_nodes": {}, "editor_update_nodes": {}}
-
-    create_args = schemas["CreateEditorChartArgs"]
-    props = _string_object_dict(create_args.get("properties", {}), context="CreateEditorChartArgs.properties")
-    entry = _string_object_dict(props.get("entry", {}), context="CreateEditorChartArgs.entry")
-    all_of_raw = entry.get("allOf", [])
-    if not isinstance(all_of_raw, list) or not all_of_raw:
-        return {"editor_nodes": {}, "editor_update_nodes": {}}
-
-    discriminator_part = _string_object_dict(all_of_raw[0], context="CreateEditorChartArgs.entry.allOf[0]")
-    discriminator = _string_object_dict(
-        discriminator_part.get("discriminator", {}),
-        context="CreateEditorChartArgs.entry.allOf[0].discriminator",
-    )
-    mapping = _string_mapping(
-        discriminator.get("mapping", {}),
-        context="CreateEditorChartArgs.entry.allOf[0].discriminator.mapping",
-    )
+    editor_read_nodes: dict[str, EditorReadNodeMeta] = {}
+    if "GetEditorChartResult" in schemas:
+        read_args = schemas["GetEditorChartResult"]
+        read_props = _string_object_dict(
+            read_args.get("properties", {}),
+            context="GetEditorChartResult.properties",
+        )
+        read_entry = _string_object_dict(
+            read_props.get("entry", {}),
+            context="GetEditorChartResult.properties.entry",
+        )
+        read_mapping = _editor_discriminator_mapping(
+            read_entry.get("discriminator"),
+            schemas=schemas,
+            context="GetEditorChartResult.properties.entry.discriminator",
+        )
+        editor_read_nodes = {
+            wire_type: {"wire_type": wire_type, "read_schema": schema_name}
+            for wire_type, schema_name in read_mapping.items()
+        }
 
     editor_nodes: dict[str, EditorCreateNodeMeta] = {}
-    editor_method_owners: dict[str, str] = {}
-    for wire_type, ref in sorted(mapping.items()):
-        schema_name = _ref_name(ref)
-        if schema_name not in schemas:
-            continue
-        schema = schemas[schema_name]
-        schema_props = _string_object_dict(schema.get("properties", {}), context=f"{schema_name}.properties")
-        data_raw = schema_props.get("data", {})
-        data_schema = _string_object_dict(data_raw, context=f"{schema_name}.properties.data")
-        data_props_raw = data_schema.get("properties", {})
-        data_props = _schema_dict(data_props_raw, context=f"{schema_name}.properties.data.properties")
-        data_required_raw = data_schema.get("required", [])
-        data_required = set(_string_list(data_required_raw, context=f"{schema_name}.properties.data.required"))
-        data_fields: dict[str, NodeFieldMeta] = {
-            field: {"required": field in data_required} for field in sorted(data_props)
-        }
-        factory_method = _editor_factory_method_name(wire_type, schema_name)
-        previous_wire_type = editor_method_owners.get(factory_method)
-        if previous_wire_type is not None:
-            raise ValueError(
-                f"Editor factory method collision: wire types {previous_wire_type!r} and "
-                f"{wire_type!r} both map to {factory_method!r}"
-            )
-        editor_method_owners[factory_method] = wire_type
-        editor_nodes[wire_type] = {
-            "wire_type": wire_type,
-            "create_schema": schema_name,
-            "data_fields": data_fields,
-            "factory_method": factory_method,
-        }
+    if "CreateEditorChartArgs" in schemas:
+        create_args = schemas["CreateEditorChartArgs"]
+        create_props = _string_object_dict(
+            create_args.get("properties", {}),
+            context="CreateEditorChartArgs.properties",
+        )
+        create_entry = _string_object_dict(
+            create_props.get("entry", {}),
+            context="CreateEditorChartArgs.properties.entry",
+        )
+        all_of_raw = create_entry.get("allOf")
+        if not isinstance(all_of_raw, list) or not all_of_raw:
+            raise ValueError("CreateEditorChartArgs.properties.entry.allOf must be a non-empty list")
+        discriminator_part = _string_object_dict(
+            all_of_raw[0],
+            context="CreateEditorChartArgs.properties.entry.allOf[0]",
+        )
+        create_mapping = _editor_discriminator_mapping(
+            discriminator_part.get("discriminator"),
+            schemas=schemas,
+            context="CreateEditorChartArgs.properties.entry.allOf[0].discriminator",
+        )
+
+        editor_method_owners: dict[str, str] = {}
+        for wire_type, schema_name in create_mapping.items():
+            factory_method = _editor_factory_method_name(wire_type, schema_name)
+            previous_wire_type = editor_method_owners.get(factory_method)
+            if previous_wire_type is not None:
+                raise ValueError(
+                    f"Editor factory method collision: wire types {previous_wire_type!r} and "
+                    f"{wire_type!r} both map to {factory_method!r}"
+                )
+            editor_method_owners[factory_method] = wire_type
+            editor_nodes[wire_type] = {
+                "wire_type": wire_type,
+                "create_schema": schema_name,
+                "data_fields": _editor_data_fields(schemas, schema_name),
+                "factory_method": factory_method,
+            }
 
     update_editor_nodes: dict[str, EditorNodeMeta] = {}
     if "UpdateEditorChartArgs" in schemas:
         update_args = schemas["UpdateEditorChartArgs"]
         update_props = _string_object_dict(
-            update_args.get("properties", {}), context="UpdateEditorChartArgs.properties"
+            update_args.get("properties", {}),
+            context="UpdateEditorChartArgs.properties",
         )
-        update_entry = _string_object_dict(update_props.get("entry", {}), context="UpdateEditorChartArgs.entry")
-        update_discriminator_raw = _string_object_dict(
-            update_entry.get("discriminator", {}), context="UpdateEditorChartArgs.entry.discriminator"
+        update_entry = _string_object_dict(
+            update_props.get("entry", {}),
+            context="UpdateEditorChartArgs.properties.entry",
         )
-        update_mapping = _string_mapping(
-            update_discriminator_raw.get("mapping", {}),
-            context="UpdateEditorChartArgs.entry.discriminator.mapping",
+        update_mapping = _editor_discriminator_mapping(
+            update_entry.get("discriminator"),
+            schemas=schemas,
+            context="UpdateEditorChartArgs.properties.entry.discriminator",
         )
-        for wire_type, ref in sorted(update_mapping.items()):
-            schema_name = _ref_name(ref)
-            if schema_name not in schemas:
-                continue
-            schema = schemas[schema_name]
-            schema_props = _string_object_dict(schema.get("properties", {}), context=f"{schema_name}.properties")
-            data_raw = schema_props.get("data", {})
-            data_schema = _string_object_dict(data_raw, context=f"{schema_name}.properties.data")
-            data_props_raw = data_schema.get("properties", {})
-            data_props = _schema_dict(data_props_raw, context=f"{schema_name}.properties.data.properties")
-            data_required_raw = data_schema.get("required", [])
-            data_required = set(_string_list(data_required_raw, context=f"{schema_name}.properties.data.required"))
-            upd_data_fields: dict[str, NodeFieldMeta] = {
-                field: {"required": field in data_required} for field in sorted(data_props)
-            }
+        for wire_type, schema_name in update_mapping.items():
             update_editor_nodes[wire_type] = {
                 "wire_type": wire_type,
                 "create_schema": schema_name,
-                "data_fields": upd_data_fields,
+                "data_fields": _editor_data_fields(schemas, schema_name),
             }
 
-    return {"editor_nodes": editor_nodes, "editor_update_nodes": update_editor_nodes}
+    read_types = set(editor_read_nodes)
+    create_only = sorted(set(editor_nodes) - read_types)
+    if create_only:
+        raise ValueError(f"Editor create types are missing from the read discriminator: {create_only!r}")
+    update_only = sorted(set(update_editor_nodes) - read_types)
+    if update_only:
+        raise ValueError(f"Editor update types are missing from the read discriminator: {update_only!r}")
+
+    return {
+        "editor_read_nodes": editor_read_nodes,
+        "editor_nodes": editor_nodes,
+        "editor_update_nodes": update_editor_nodes,
+    }
 
 
 def build_metadata(installations: dict[str, Path]) -> Metadata:
@@ -2430,23 +2478,91 @@ class WizardChartDeleteArgsDTO(BaseModel):
 """
 
 
-def _emit_chart_dto(metadata: Metadata) -> str:
+def _editor_create_nodes(metadata: Metadata) -> dict[str, EditorCreateNodeMeta]:
     all_editor_nodes: dict[str, EditorCreateNodeMeta] = {}
-    installation_editor_types: dict[str, list[str]] = {}
+    node_installations: dict[str, str] = {}
     for installation, info in sorted(metadata["installations"].items()):
-        node_types = sorted(info["charts"]["editor_nodes"])
-        installation_editor_types[installation] = node_types
         for wire_type, node_meta in info["charts"]["editor_nodes"].items():
-            if wire_type not in all_editor_nodes:
+            previous_node_meta = all_editor_nodes.get(wire_type)
+            if previous_node_meta is None:
                 all_editor_nodes[wire_type] = node_meta
+                node_installations[wire_type] = installation
+                continue
+            if previous_node_meta["data_fields"] != node_meta["data_fields"]:
+                previous_installation = node_installations[wire_type]
+                raise ValueError(
+                    f"Editor create wire type {wire_type!r} has incompatible data fields or requiredness "
+                    f"across installations {previous_installation!r} and {installation!r}: "
+                    f"{previous_node_meta['data_fields']!r} != {node_meta['data_fields']!r}. "
+                    "Per-installation Editor create DTOs and builders are not supported."
+                )
+    return all_editor_nodes
+
+
+def _emit_chart_dto(metadata: Metadata) -> str:
+    all_editor_nodes = _editor_create_nodes(metadata)
+    all_editor_update_nodes: dict[str, EditorNodeMeta] = {}
+    editor_update_node_installations: dict[str, str] = {}
+    installation_editor_read_types: dict[str, list[str]] = {}
+    installation_editor_create_types: dict[str, list[str]] = {}
+    installation_editor_update_types: dict[str, list[str]] = {}
+    installation_editor_update_tabs: dict[str, dict[str, list[str]]] = {}
+    for installation, info in sorted(metadata["installations"].items()):
+        chart_meta = info["charts"]
+        installation_editor_read_types[installation] = sorted(chart_meta["editor_read_nodes"])
+        installation_editor_create_types[installation] = sorted(chart_meta["editor_nodes"])
+        installation_editor_update_types[installation] = sorted(chart_meta["editor_update_nodes"])
+        installation_editor_update_tabs[installation] = {
+            wire_type: sorted(node_meta["data_fields"])
+            for wire_type, node_meta in sorted(chart_meta["editor_update_nodes"].items())
+        }
+        for wire_type, update_node_meta in chart_meta["editor_update_nodes"].items():
+            previous_node_meta = all_editor_update_nodes.get(wire_type)
+            if previous_node_meta is None:
+                all_editor_update_nodes[wire_type] = update_node_meta
+                editor_update_node_installations[wire_type] = installation
+                continue
+            if previous_node_meta["data_fields"] != update_node_meta["data_fields"]:
+                previous_installation = editor_update_node_installations[wire_type]
+                raise ValueError(
+                    f"Editor update wire type {wire_type!r} has incompatible data fields or requiredness "
+                    f"across installations {previous_installation!r} and {installation!r}: "
+                    f"{previous_node_meta['data_fields']!r} != {update_node_meta['data_fields']!r}. "
+                    "Per-installation Editor update DTOs are not supported."
+                )
 
     lines: list[str] = []
 
     lines.append("")
-    lines.append("INSTALLATION_EDITOR_NODE_TYPES: dict[str, frozenset[str]] = {")
-    for installation, node_types in sorted(installation_editor_types.items()):
+    lines.append("INSTALLATION_EDITOR_READ_NODE_TYPES: dict[str, frozenset[str]] = {")
+    for installation, node_types in sorted(installation_editor_read_types.items()):
         lines.append(f"    {installation!r}: frozenset({node_types!r}),")
     lines.append("}")
+    lines.append("")
+
+    lines.append("INSTALLATION_EDITOR_CREATE_NODE_TYPES: dict[str, frozenset[str]] = {")
+    for installation, node_types in sorted(installation_editor_create_types.items()):
+        lines.append(f"    {installation!r}: frozenset({node_types!r}),")
+    lines.append("}")
+    lines.append("")
+
+    lines.append("INSTALLATION_EDITOR_UPDATE_NODE_TYPES: dict[str, frozenset[str]] = {")
+    for installation, node_types in sorted(installation_editor_update_types.items()):
+        lines.append(f"    {installation!r}: frozenset({node_types!r}),")
+    lines.append("}")
+    lines.append("")
+
+    lines.append("INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE: dict[str, dict[str, frozenset[str]]] = {")
+    for installation, tabs_by_wire_type in sorted(installation_editor_update_tabs.items()):
+        lines.append(f"    {installation!r}: {{")
+        for wire_type, tabs in sorted(tabs_by_wire_type.items()):
+            lines.append(f"        {wire_type!r}: frozenset({tabs!r}),")
+        lines.append("    },")
+    lines.append("}")
+    lines.append("")
+
+    lines.append("# Compatibility: this symbol keeps its historical create/write meaning.")
+    lines.append("INSTALLATION_EDITOR_NODE_TYPES = INSTALLATION_EDITOR_CREATE_NODE_TYPES")
     lines.append("")
 
     lines.append(_emit_wizard_dto(metadata))
@@ -2582,12 +2698,6 @@ class QLChartDeleteArgsDTO(BaseModel):
         lines.append("            entry['workbookId'] = self.workbook_id")
         lines.append("        return {'entry': entry}")
         lines.append("")
-
-    all_editor_update_nodes: dict[str, EditorNodeMeta] = {}
-    for _installation, info in sorted(metadata["installations"].items()):
-        for wire_type, update_node_meta in info["charts"]["editor_update_nodes"].items():
-            if wire_type not in all_editor_update_nodes:
-                all_editor_update_nodes[wire_type] = update_node_meta
 
     for wire_type, update_node_meta in sorted(all_editor_update_nodes.items()):
         cls_prefix = _node_class_name(wire_type)
@@ -4198,14 +4308,11 @@ def emit_chart_builders(metadata: Metadata) -> str:
         family="Wizard",
     )
     ql_factory_methods = _visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL")
-    all_editor_nodes: dict[str, EditorCreateNodeMeta] = {}
+    all_editor_nodes = _editor_create_nodes(metadata)
     installation_editor_types: dict[str, list[str]] = {}
     for installation, info in sorted(metadata["installations"].items()):
         node_types = sorted(info["charts"]["editor_nodes"])
         installation_editor_types[installation] = node_types
-        for wire_type, node_meta in info["charts"]["editor_nodes"].items():
-            if wire_type not in all_editor_nodes:
-                all_editor_nodes[wire_type] = node_meta
 
     lines = [
         "# AUTOGENERATED by scripts/generate_sdk.py. Do not edit by hand.",

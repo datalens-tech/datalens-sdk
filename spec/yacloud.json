@@ -3949,6 +3949,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "config": {
                 "description": "Configuration from the Config tab.",
                 "type": "string"
@@ -3997,7 +4001,7 @@
             "type": "object"
           },
           "type": {
-            "description": "For D3 Editor charts takes value: d3_node",
+            "description": "For Gravity UI Charts takes value: d3_node",
             "enum": [
               "d3_node"
             ],
@@ -4100,6 +4104,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "controls": {
                 "description": "Configuration from the Controls tab.",
                 "type": "string"
@@ -4168,6 +4176,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "config": {
                 "description": "Configuration from the Config tab.",
                 "type": "string"
@@ -9587,6 +9599,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "config": {
                 "description": "Configuration from the Config tab.",
                 "type": "string"
@@ -9693,7 +9709,7 @@
             "type": "string"
           },
           "type": {
-            "description": "For D3 Editor charts takes value: d3_node",
+            "description": "For Gravity UI Charts takes value: d3_node",
             "enum": [
               "d3_node"
             ],
@@ -9960,6 +9976,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "controls": {
                 "description": "Configuration from the Controls tab.",
                 "type": "string"
@@ -10139,6 +10159,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "config": {
                 "description": "Configuration from the Config tab.",
                 "type": "string"
@@ -11588,7 +11612,7 @@
             "$ref": "#/components/schemas/EntryBranch"
           },
           "chartId": {
-            "description": "ID of the Editor chart to return. You can find it in the chart settings in DataLens interface.",
+            "description": "ID of the Editor chart. You can find it in the chart settings in DataLens interface.",
             "type": "string"
           },
           "includeFavorite": {
@@ -11794,7 +11818,7 @@
             "type": "number"
           },
           "linkDirection": {
-            "description": "The direction of the link relatively to the original entry:\n- `from` — entries that are linked to the original entry\n- `to` — the original entry is linked to the entries",
+            "description": "The direction of the link relatively to the original entry:\n- `from` — entries the original entry links to, its direct dependencies\n- `to` — entries that link to the original entry, its direct dependents",
             "enum": [
               "from",
               "to"
@@ -12089,9 +12113,29 @@
             ],
             "type": "string"
           },
+          "scopes": {
+            "description": "Scopes used to filter entries.",
+            "items": {
+              "$ref": "#/components/schemas/EntryScope"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
           "type": {
-            "description": "Entry type to filter by.",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 10,
+                "minItems": 1,
+                "type": "array"
+              }
+            ],
+            "description": "Entry type or types to filter by."
           }
         },
         "type": "object"
@@ -13114,6 +13158,86 @@
         ],
         "type": "object"
       },
+      "GetRevisionsArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "entryId": {
+            "description": "Unique identifier of the DataLens entry.",
+            "type": "string"
+          },
+          "pageSize": {
+            "default": 1000,
+            "description": "Number of revisions per page.",
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "Token for retrieving the next page of revisions.",
+            "type": "string"
+          },
+          "revIds": {
+            "description": "IDs of revisions to return.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "entryId"
+        ],
+        "type": "object"
+      },
+      "GetRevisionsResult": {
+        "properties": {
+          "entries": {
+            "items": {
+              "properties": {
+                "isPublished": {
+                  "description": "Whether this is the published revision.",
+                  "type": "boolean"
+                },
+                "isSaved": {
+                  "description": "Whether this is the latest saved revision.",
+                  "type": "boolean"
+                },
+                "revId": {
+                  "description": "Unique identifier of the revision.",
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "description": "Date and time when the revision was last updated.",
+                  "type": "string"
+                },
+                "updatedBy": {
+                  "description": "ID of the user who last updated the revision.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "revId",
+                "updatedAt",
+                "updatedBy",
+                "isSaved",
+                "isPublished"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "nextPageToken": {
+            "description": "Token for retrieving the next page of revisions.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      },
       "GetRootCollectionPermissionsResult": {
         "properties": {
           "createCollectionInRoot": {
@@ -13650,6 +13774,7 @@
                 "description": "Field to order workbook entries by.",
                 "enum": [
                   "name",
+                  "scope",
                   "createdAt",
                   "updatedAt"
                 ],
@@ -20860,6 +20985,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "config": {
                 "description": "Configuration from the Config tab.",
                 "type": "string"
@@ -20916,7 +21045,7 @@
             "type": "string"
           },
           "type": {
-            "description": "For D3 Editor charts takes value: d3_node",
+            "description": "For Gravity UI Charts takes value: d3_node",
             "enum": [
               "d3_node"
             ],
@@ -21029,6 +21158,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "controls": {
                 "description": "Configuration from the Controls tab.",
                 "type": "string"
@@ -21106,6 +21239,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "config": {
                 "description": "Configuration from the Config tab.",
                 "type": "string"
@@ -47601,7 +47738,8 @@
         "summary": "Assign licenses",
         "tags": [
           "Licensing"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/batchListMembers": {
@@ -47644,7 +47782,8 @@
         "summary": "Batch list members",
         "tags": [
           "Access"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/cancelWorkbookExport": {
@@ -47687,7 +47826,8 @@
         "summary": "Cancel workbook export",
         "tags": [
           "WorkbookExport"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/createCollection": {
@@ -47730,7 +47870,8 @@
         "summary": "Create collection",
         "tags": [
           "Collection"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/createConnection": {
@@ -47773,7 +47914,8 @@
         "summary": "Create connection",
         "tags": [
           "Connection"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/createDashboard": {
@@ -47824,7 +47966,8 @@
         "summary": "Create dashboard",
         "tags": [
           "Dashboard"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/createDataset": {
@@ -47867,7 +48010,8 @@
         "summary": "Create dataset",
         "tags": [
           "Dataset"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/createEditorChart": {
@@ -47910,7 +48054,8 @@
         "summary": "🚧 [Experimental] Create editor chart",
         "tags": [
           "Editor"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/createEmbed": {
@@ -47953,7 +48098,8 @@
         "summary": "Create embed",
         "tags": [
           "Embeds"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/createEmbeddingSecret": {
@@ -47996,7 +48142,8 @@
         "summary": "Create embedding secret",
         "tags": [
           "EmbeddingSecrets"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/createEntryLock": {
@@ -48039,7 +48186,8 @@
         "summary": "Create entry lock",
         "tags": [
           "EntryLock"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/createFolder": {
@@ -48082,7 +48230,8 @@
         "summary": "CreateFolder",
         "tags": [
           "Folder"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/createHtmlPage": {
@@ -48125,7 +48274,8 @@
         "summary": "Create HTML page",
         "tags": [
           "HtmlPages"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/createQLChart": {
@@ -48214,7 +48364,8 @@
         "summary": "Create report",
         "tags": [
           "Reports"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/createWizardChart": {
@@ -48257,7 +48408,8 @@
         "summary": "🚧 [Experimental] Create wizard chart",
         "tags": [
           "Wizard"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/createWorkbook": {
@@ -48300,7 +48452,8 @@
         "summary": "Create workbook",
         "tags": [
           "Workbook"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/deleteCollection": {
@@ -48343,7 +48496,8 @@
         "summary": "Delete collection",
         "tags": [
           "Collection"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteCollections": {
@@ -48386,7 +48540,8 @@
         "summary": "Delete collections",
         "tags": [
           "Collection"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteConnection": {
@@ -48436,7 +48591,8 @@
         "summary": "Delete connection",
         "tags": [
           "Connection"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteDashboard": {
@@ -48480,7 +48636,8 @@
         "summary": "Delete dashboard",
         "tags": [
           "Dashboard"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteDataset": {
@@ -48530,7 +48687,8 @@
         "summary": "Delete dataset",
         "tags": [
           "Dataset"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteEditorChart": {
@@ -48574,7 +48732,8 @@
         "summary": "Delete editor chart",
         "tags": [
           "Editor"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteEmbed": {
@@ -48617,7 +48776,8 @@
         "summary": "Delete embed",
         "tags": [
           "Embeds"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteEmbeddingSecret": {
@@ -48660,7 +48820,8 @@
         "summary": "Delete embedding secret",
         "tags": [
           "EmbeddingSecrets"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteEntryLock": {
@@ -48703,7 +48864,8 @@
         "summary": "Delete entry lock",
         "tags": [
           "EntryLock"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteFolder": {
@@ -48747,7 +48909,8 @@
         "summary": "Delete folder",
         "tags": [
           "Folder"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteHtmlPage": {
@@ -48791,7 +48954,8 @@
         "summary": "Delete HTML page",
         "tags": [
           "HtmlPages"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteQLChart": {
@@ -48835,7 +48999,8 @@
         "summary": "Delete QL chart",
         "tags": [
           "QL"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteReport": {
@@ -48879,7 +49044,8 @@
         "summary": "Delete report",
         "tags": [
           "Reports"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteWizardChart": {
@@ -48923,7 +49089,8 @@
         "summary": "Delete wizard chart",
         "tags": [
           "Wizard"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteWorkbook": {
@@ -48966,7 +49133,8 @@
         "summary": "Delete workbook",
         "tags": [
           "Workbook"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/deleteWorkbooks": {
@@ -49021,7 +49189,8 @@
         "summary": "Delete workbooks",
         "tags": [
           "Workbook"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/dlsSuggest": {
@@ -49064,7 +49233,8 @@
         "summary": "DLS suggest",
         "tags": [
           "Folder"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/extendEntryLock": {
@@ -49107,7 +49277,8 @@
         "summary": "Extend entry lock",
         "tags": [
           "EntryLock"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/getAuditEntriesUpdates": {
@@ -49150,7 +49321,8 @@
         "summary": "Get updated entries for audit",
         "tags": [
           "Audit"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getAuditEntryPermissionsForUser": {
@@ -49193,7 +49365,8 @@
         "summary": "Get entry permissions for user",
         "tags": [
           "Audit"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/getCollection": {
@@ -49247,7 +49420,8 @@
         "summary": "Get collection",
         "tags": [
           "Collection"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getCollectionBreadcrumbs": {
@@ -49290,7 +49464,8 @@
         "summary": "Get collection breadcrumbs",
         "tags": [
           "Collection"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getCollectionContent": {
@@ -49344,7 +49519,8 @@
         "summary": "Get collection content",
         "tags": [
           "Collection"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getCollectionsByIds": {
@@ -49390,7 +49566,8 @@
         "summary": "Get collections list by ids",
         "tags": [
           "Collection"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getConnection": {
@@ -49468,7 +49645,8 @@
         "summary": "Get connection",
         "tags": [
           "Connection"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getDashboard": {
@@ -49522,7 +49700,8 @@
         "summary": "Get dashboard",
         "tags": [
           "Dashboard"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getDataset": {
@@ -49594,7 +49773,8 @@
         "summary": "Get dataset",
         "tags": [
           "Dataset"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getDatasetData": {
@@ -49869,7 +50049,8 @@
         "summary": "🚧 [Experimental] Get dataset data",
         "tags": [
           "Data"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getEditorChart": {
@@ -49923,7 +50104,8 @@
         "summary": "🚧 [Experimental] Get editor chart",
         "tags": [
           "Editor"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getEmbeddingSecret": {
@@ -49966,7 +50148,8 @@
         "summary": "Get embedding secret",
         "tags": [
           "EmbeddingSecrets"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getEntries": {
@@ -50020,7 +50203,8 @@
         "summary": "Get entries",
         "tags": [
           "Navigation"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getEntriesPermissions": {
@@ -50063,7 +50247,8 @@
         "summary": "Get entries permissions",
         "tags": [
           "Entries"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getEntriesRelations": {
@@ -50117,7 +50302,8 @@
         "summary": "Get entries relations",
         "tags": [
           "Entries"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getHtmlPage": {
@@ -50160,7 +50346,8 @@
         "summary": "Get HTML page",
         "tags": [
           "HtmlPages"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getLicenses": {
@@ -50203,7 +50390,8 @@
         "summary": "Get licenses",
         "tags": [
           "Licensing"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getLicensesLimit": {
@@ -50237,7 +50425,8 @@
         "summary": "Get licenses limit",
         "tags": [
           "Licensing"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getPermissions": {
@@ -50280,7 +50469,8 @@
         "summary": "Get permissions",
         "tags": [
           "Folder"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getPermissionsBulk": {
@@ -50323,7 +50513,8 @@
         "summary": "Get entries, workbooks and collections permissions",
         "tags": [
           "Permissions"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getQLChart": {
@@ -50375,7 +50566,8 @@
         "summary": "🚧 [Experimental] Get QL chart",
         "tags": [
           "QL"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getReport": {
@@ -50429,7 +50621,52 @@
         "summary": "Get report",
         "tags": [
           "Reports"
-        ]
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/getRevisions": {
+      "post": {
+        "description": "Returns revisions of the specified DataLens entry.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetRevisionsArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetRevisionsResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "Get entry revisions",
+        "tags": [
+          "Entries"
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getRootCollectionPermissions": {
@@ -50463,7 +50700,8 @@
         "summary": "Get root collection permissions",
         "tags": [
           "Collection"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getWizardChart": {
@@ -50517,7 +50755,8 @@
         "summary": "🚧 [Experimental] Get wizard chart",
         "tags": [
           "Wizard"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getWorkbook": {
@@ -50571,7 +50810,8 @@
         "summary": "Get workbook",
         "tags": [
           "Workbook"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getWorkbookEntries": {
@@ -50625,7 +50865,8 @@
         "summary": "Get workbook entries",
         "tags": [
           "Workbook"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getWorkbookExportResult": {
@@ -50668,7 +50909,8 @@
         "summary": "Get workbook export result",
         "tags": [
           "WorkbookExport"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getWorkbookExportStatus": {
@@ -50711,7 +50953,8 @@
         "summary": "Get workbook export status",
         "tags": [
           "WorkbookExport"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getWorkbookImportStatus": {
@@ -50754,7 +50997,8 @@
         "summary": "Get workbook import status",
         "tags": [
           "WorkbookImport"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getWorkbooksByIds": {
@@ -50800,7 +51044,8 @@
         "summary": "Get workbook list by ids",
         "tags": [
           "Workbook"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getWorkbooksList": {
@@ -50843,7 +51088,8 @@
         "summary": "Get workbooks list",
         "tags": [
           "Workbook"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/listCollectionAccessBindings": {
@@ -50886,7 +51132,8 @@
         "summary": "List collection access bindings",
         "tags": [
           "Collection"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/listDirectory": {
@@ -50929,7 +51176,8 @@
         "summary": "List directory",
         "tags": [
           "Navigation"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/listEmbeddingSecrets": {
@@ -50975,7 +51223,8 @@
         "summary": "List embedding secrets",
         "tags": [
           "EmbeddingSecrets"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/listEmbeds": {
@@ -51022,7 +51271,8 @@
         "summary": "List embeds",
         "tags": [
           "Embeds"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/listSharedEntryAccessBindings": {
@@ -51065,7 +51315,8 @@
         "summary": "List shared entry access bindings",
         "tags": [
           "SharedEntry"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/listWorkbookAccessBindings": {
@@ -51108,7 +51359,8 @@
         "summary": "List workbook access bindings",
         "tags": [
           "Workbook"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/modifyPermissions": {
@@ -51151,7 +51403,8 @@
         "summary": "Modify permissions",
         "tags": [
           "Folder"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/moveCollection": {
@@ -51194,7 +51447,8 @@
         "summary": "Move collection",
         "tags": [
           "Collection"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/moveCollections": {
@@ -51249,7 +51503,8 @@
         "summary": "Move collections",
         "tags": [
           "Collection"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/moveFolderEntry": {
@@ -51292,7 +51547,8 @@
         "summary": "Move folder entry",
         "tags": [
           "Folder"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/moveWorkbook": {
@@ -51335,7 +51591,8 @@
         "summary": "Move workbook",
         "tags": [
           "Workbook"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/moveWorkbooks": {
@@ -51390,7 +51647,8 @@
         "summary": "Move workbooks",
         "tags": [
           "Workbook"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/renameEntry": {
@@ -51433,7 +51691,8 @@
         "summary": "Rename entry",
         "tags": [
           "Entries"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/setLicenseLimit": {
@@ -51476,7 +51735,8 @@
         "summary": "Set licenses limit",
         "tags": [
           "Licensing"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/startWorkbookExport": {
@@ -51519,7 +51779,8 @@
         "summary": "Start workbook export",
         "tags": [
           "WorkbookExport"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/startWorkbookImport": {
@@ -51562,7 +51823,8 @@
         "summary": "Start workbook import",
         "tags": [
           "WorkbookImport"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/updateCollection": {
@@ -51605,7 +51867,8 @@
         "summary": "Update collection",
         "tags": [
           "Collection"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/updateCollectionAccessBindings": {
@@ -51648,7 +51911,8 @@
         "summary": "Update collection access bindings",
         "tags": [
           "Collection"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/updateConnection": {
@@ -51701,7 +51965,8 @@
         "summary": "Update connection",
         "tags": [
           "Connection"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/updateDashboard": {
@@ -51752,7 +52017,8 @@
         "summary": "Update dashboard",
         "tags": [
           "Dashboard"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/updateDataset": {
@@ -51837,7 +52103,8 @@
         "summary": "Update dataset",
         "tags": [
           "Dataset"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/updateEditorChart": {
@@ -51880,7 +52147,8 @@
         "summary": "🚧 [Experimental] Update editor chart",
         "tags": [
           "Editor"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/updateEmbed": {
@@ -51923,7 +52191,8 @@
         "summary": "Update embed",
         "tags": [
           "Embeds"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/updateHtmlPage": {
@@ -51966,7 +52235,8 @@
         "summary": "Update HTML page",
         "tags": [
           "HtmlPages"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/updateQLChart": {
@@ -52055,7 +52325,8 @@
         "summary": "Update report",
         "tags": [
           "Reports"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/updateWizardChart": {
@@ -52098,7 +52369,8 @@
         "summary": "🚧 [Experimental] Update wizard chart",
         "tags": [
           "Wizard"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/updateWorkbook": {
@@ -52141,7 +52413,8 @@
         "summary": "Update workbook",
         "tags": [
           "Workbook"
-        ]
+        ],
+        "x-mcp-scope": "write"
       }
     },
     "/rpc/updateWorkbookAccessBindings": {
@@ -52184,7 +52457,8 @@
         "summary": "Update workbook access bindings",
         "tags": [
           "Workbook"
-        ]
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/validateDataset": {
@@ -52248,7 +52522,8 @@
         "summary": "Validate dataset",
         "tags": [
           "Dataset"
-        ]
+        ],
+        "x-mcp-scope": "read"
       }
     }
   },
