@@ -50669,6 +50669,49 @@
         "x-mcp-scope": "read"
       }
     },
+    "/rpc/getRevisions": {
+      "post": {
+        "description": "Returns revisions of the specified DataLens entry.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetRevisionsArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetRevisionsResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "Get entry revisions",
+        "tags": [
+          "Entries"
+        ]
+      }
+    },
     "/rpc/getRootCollectionPermissions": {
       "post": {
         "description": "Returns permissions for the root collection.",

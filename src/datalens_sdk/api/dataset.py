@@ -18,6 +18,7 @@ from datalens_sdk.domain.dataset_update import DatasetUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
 from datalens_sdk.domain.ports import DatasetOperations, NavigationOperations
+from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.specs.dataset import DatasetUpdateSpec
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
 from datalens_sdk.errors import (
@@ -271,6 +272,9 @@ class DatasetService(DatasetOperations):
             raise ValueError("Cannot move a dataset without an id")
         self._navigation_operations.move_folder_entry(entry_id=dataset.id, location=location, name=name)
         return self.get_dataset(dataset.id)
+
+    def get_entry_revisions(self, entry_id: str, options: EntryRevisionsOptions) -> Pager[EntryRevision]:
+        return self._entries_service.get_entry_revisions(entry_id, options)
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]:
         return self._navigation_operations.get_entry_relations(entry_id, options)

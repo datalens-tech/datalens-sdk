@@ -1,6 +1,6 @@
 # Navigation
 
-Read this when you need to find, list, move, or rename entities, or manage the containers they live in: collections, workbooks, and folders.
+Read this when you need to find, list, move, or rename entities, inspect their revision history, or manage the containers they live in: collections, workbooks, and folders.
 
 ## The container model
 
@@ -139,6 +139,94 @@ for rel in ds.get_relations():  # Pager[EntryRelation]
 ```
 
 Check relations before deleting anything shared — a dataset with dependent charts will break them.
+
+## Revision history on an entry
+
+`Connection`, `Dataset`, `Dashboard`, and every chart family (Wizard, QL,
+Editor, including `client.get.chart(...)`) expose `get_revisions()`. The
+object supplies its entry id; it must be bound to a client and have an id.
+`Folder`, `Collection`, `Workbook`, and navigation `EntrySummary` do not
+expose this operation. If starting from a listing, use the matching ordinary
+getter to obtain the object first.
+
+After the user authorizes the result handling, list metadata without loading
+every revision's contents:
+
+```python
+from datalens_sdk.domain import EntryRevision, Pager
+
+dataset = client.get.dataset(by_id=dataset_id)
+revisions: Pager[EntryRevision] = dataset.get_revisions(page_size=100)
+for revision in revisions:
+    print(
+        revision.rev_id,
+        revision.updated_at,
+        revision.updated_by,
+        revision.is_saved,
+        revision.is_published,
+    )
+```
+
+Each immutable `EntryRevision` has five required fields: `rev_id`,
+`updated_at`, `updated_by`, `is_saved`, and `is_published`. The timestamp stays
+an unparsed string from the API. Saved and published are independent server
+flags; both can be true. Do not infer those flags from the response order.
+The API does not promise sorting, a total count, or a consistent snapshot
+across requests.
+
+`get_revisions(*, page_size=200, page_token=None, rev_ids=None)` returns a
+lazy, re-iterable `Pager`: constructing it sends no request, and every new
+iteration starts at the configured starting token with fresh requests.
+`page_size` must be an integer from 1 to 200. To filter, pass a sequence of
+1–1000 strings as `rev_ids` (a single string is invalid); omit it to list the
+whole history. The SDK copies that sequence when constructing the pager and
+sends the same filter with each page.
+
+The published OpenAPI specification and checked-in raw schemas currently
+declare a default and maximum of `1000`. This is a known specification error:
+YaTeam production has been observed to reject values above `200` with
+`VALIDATION_ERROR`. Until the specification is corrected, the SDK deliberately
+uses `200` as its default and maximum across installations. This server limit
+has not been verified for Yandex Cloud or Enterprise; the separate `rev_ids`
+limit remains 1000.
+
+Use `.pages()` when saving progress. A page's `next_page_token` can resume a
+later call using the same page size and filters:
+
+```python
+filters = ("revision-a", "revision-b")
+pager = dataset.get_revisions(page_size=100, rev_ids=filters)
+page = next(pager.pages())  # read one page, then pause
+process(page.items)  # the user's chosen result handling
+next_token = page.next_page_token
+save_checkpoint(next_token)
+
+# Resume later only when the saved next_token is non-empty:
+if next_token:
+    remaining = dataset.get_revisions(
+        page_size=100,
+        page_token=next_token,
+        rev_ids=filters,
+    )
+```
+
+Treat tokens as opaque strings. `None` or an empty string marks the end;
+an empty page can still have a non-empty continuation token. The pager yields
+a received page before checking its continuation token. If the token repeats
+or forms a cycle, continuing iteration raises an SDK invalid-response error
+before another request is sent. Malformed responses and API errors also remain
+errors rather than becoming empty history.
+
+Read a selected revision's contents with the existing getter:
+
+```python
+historical = client.get.dataset(by_id=dataset.id, rev_id=selected_revision_id)
+# Likewise: connection, dashboard, wizard_chart, ql_chart, editor_chart, or chart.
+```
+
+Calling `historical.get_revisions()` still lists the entry's history; the
+historical object's `rev_id` does not limit it. Reading a revision does not
+restore or publish it.
 
 ## Collections, workbooks, folders: CRUD
 

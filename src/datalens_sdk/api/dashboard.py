@@ -14,6 +14,7 @@ from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.entry_types import EntryBranch
 from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
 from datalens_sdk.domain.ports import DashboardOperations, NavigationOperations
+from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
 from datalens_sdk.errors import (
     DataLensValidationError,
@@ -250,6 +251,9 @@ class DashboardService(DashboardOperations):
             raise DataLensValidationError("Cannot move a dashboard without an id")
         self._navigation_operations.move_folder_entry(entry_id=dashboard.id, location=location, name=name)
         return self.get_dashboard(dashboard.id)
+
+    def get_entry_revisions(self, entry_id: str, options: EntryRevisionsOptions) -> Pager[EntryRevision]:
+        return self._entries_service.get_entry_revisions(entry_id, options)
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]:
         return self._navigation_operations.get_entry_relations(entry_id, options)

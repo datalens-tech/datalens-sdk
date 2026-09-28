@@ -9,6 +9,7 @@ from datalens_sdk.domain.connection import Connection, ConnectionUpdate
 from datalens_sdk.domain.entry_location import EntryLocation, workbook_id_from_location
 from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
 from datalens_sdk.domain.ports import ConnectionOperations, NavigationOperations
+from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.specs.connection import ConnectionUpdateSpec
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
 from datalens_sdk.errors import (
@@ -188,6 +189,9 @@ class ConnectionService(ConnectionOperations):
             raise ValueError("Cannot move a connection without an id")
         self._navigation_operations.move_folder_entry(entry_id=connection.id, location=location, name=name)
         return self.get_connection(connection.id)
+
+    def get_entry_revisions(self, entry_id: str, options: EntryRevisionsOptions) -> Pager[EntryRevision]:
+        return self._entries_service.get_entry_revisions(entry_id, options)
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]:
         return self._navigation_operations.get_entry_relations(entry_id, options)
