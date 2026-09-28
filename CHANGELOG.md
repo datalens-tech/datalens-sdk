@@ -49,6 +49,10 @@
 
 ### Changed
 
+- Add `nox -s update-specs -- --derive-enterprise` to refresh both specifications
+  from the same YaCloud API version while preserving Enterprise connector and
+  dataset-source subsets. Synchronize shared schemas and route metadata through
+  this workflow.
 - Refresh the Yandex Cloud API v3 specification and synchronize Enterprise
   Editor schemas with it. The configured Enterprise spec endpoint returned
   HTTP 404; its unrelated installation-specific schemas are preserved.
