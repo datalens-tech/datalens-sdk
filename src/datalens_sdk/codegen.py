@@ -3623,6 +3623,7 @@ class EntryMoveDTO(BaseModel):
 
 
 {entry_move_result_dto_block}
+
 class EntryRenameDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 

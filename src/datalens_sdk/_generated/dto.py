@@ -320,6 +320,7 @@ class MoveEntryResultEntryReadDTO(BaseModel):
     scope: str
     type: str
 
+
 class EntryRenameDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 

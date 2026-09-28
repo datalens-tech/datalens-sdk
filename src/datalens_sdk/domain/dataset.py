@@ -417,7 +417,7 @@ class DatasetCreate:
             sources=tuple(self._sources),
             relations=tuple(self._relations),
             actions=self._mutations.actions,
-            rls2_changes=dict(self._mutations.rls2_changes),
+            rls2_changes=self._mutations.rls2_changes,
         )
 
     def build(self) -> Dataset:
