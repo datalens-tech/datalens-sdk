@@ -20,6 +20,9 @@
 
 ### Added
 
+- Allow `DashboardUpdate.set_chart_params(..., widget_tab_id=...)` to merge,
+  replace, or clear params on one internal chart tab while preserving the
+  existing all-tabs behavior when the argument is omitted.
 - Add lazy `get_revisions()` history on connections, datasets, dashboards,
   and all chart families for Yandex Cloud and Enterprise. Results are immutable
   `EntryRevision` records with server-provided saved and published flags;

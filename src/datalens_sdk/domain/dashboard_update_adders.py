@@ -47,11 +47,13 @@ from datalens_sdk.domain.dashboard_update_support import (
     _ITEMS_FIELD,
     _SPEC_ITEM_TYPES,
     _STAGED_TAB_TITLE,
+    _inherit_shared_items_in_index,
     _ItemOccurrence,
     _iter_mappings,
     _mapping_or_none,
     _string_or_none,
     _TabIndex,
+    _WidgetTabIndex,
 )
 from datalens_sdk.domain.specs.dashboard import (
     AddGroupSelectorOp,
@@ -85,6 +87,7 @@ class _StructuralAddersMixin:
         _item_occurrences: dict[str, list[_ItemOccurrence]]
         _item_types: dict[str, str | None]
         _item_widget_tab_ids: dict[str, set[str]]
+        _widget_tabs: _WidgetTabIndex
         _item_group_children: dict[str, set[str]]
         _all_tabs_shared_ids: set[str]
         _pending_update_groups: dict[str, list[SelectorMemberSpec]]
@@ -144,8 +147,7 @@ class _StructuralAddersMixin:
             )
             if isinstance(item, WidgetItem):
                 for widget_tab in item.tabs:
-                    tab_index.widget_tab_ids.add(widget_tab.id)
-                    self._item_widget_tab_ids.setdefault(item.id, set()).add(widget_tab.id)
+                    self._widget_tabs.add(item.id, tab_index, widget_tab.id)
 
     def _register_added_group(self, tab_index: _TabIndex, item: GroupControlItem) -> None:
         """Index a builder-added group_control: member ids become addressable
@@ -184,14 +186,14 @@ class _StructuralAddersMixin:
         self._register_added_items(tab_index, tab_spec.items)
         # existing allTabs shared selectors reach the new tab too (the applier
         # copies them into its globalItems): mirror that in the index
-        for shared_id in sorted(self._all_tabs_shared_ids):
-            if shared_id in tab_index.item_ids or shared_id not in self._item_occurrences:
-                continue
-            tab_index.item_ids.add(shared_id)
-            tab_index.control_child_ids.update(self._item_group_children.get(shared_id, set()))
-            self._item_occurrences[shared_id].append(
-                _ItemOccurrence(tab_id=tab_index.tab_id, container=_GLOBAL_ITEMS_FIELD)
-            )
+        _inherit_shared_items_in_index(
+            new_tab=tab_index,
+            tabs=self._tabs,
+            shared_ids=self._all_tabs_shared_ids,
+            occurrences=self._item_occurrences,
+            group_children=self._item_group_children,
+            widget_tabs=self._widget_tabs,
+        )
         return self
 
     def _add_staged_items(self, tab: str, staged: DashboardTab) -> Self:

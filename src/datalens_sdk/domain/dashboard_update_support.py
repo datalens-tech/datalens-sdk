@@ -58,6 +58,88 @@ class _TabIndex:
     control_child_ids: set[str] = field(default_factory=set)
 
 
+@dataclass(slots=True)
+class _WidgetTabIndex:
+    """Widget chart-tab ids, scoped to each item occurrence as well as item."""
+
+    by_item: dict[str, set[str]] = field(default_factory=dict)
+    by_tab: dict[tuple[str, str], tuple[str | None, ...]] = field(default_factory=dict)
+
+    def add(self, item_id: str, tab: _TabIndex, widget_tab_id: str | None) -> None:
+        key = (item_id, tab.tab_id)
+        self.by_tab[key] = (*self.by_tab.get(key, ()), widget_tab_id)
+        if widget_tab_id is None:
+            return
+        tab.widget_tab_ids.add(widget_tab_id)
+        self.by_item.setdefault(item_id, set()).add(widget_tab_id)
+
+    def drop_item_from_tab(self, item_id: str, tab: _TabIndex) -> None:
+        self.by_tab.pop((item_id, tab.tab_id), None)
+        tab.widget_tab_ids = {
+            widget_tab_id
+            for (_, tab_id), ids in self.by_tab.items()
+            if tab_id == tab.tab_id
+            for widget_tab_id in ids
+            if widget_tab_id is not None
+        }
+
+    def remove_tab(self, item_id: str, tab_id: str, occurrences: Sequence[_ItemOccurrence]) -> None:
+        self.by_tab.pop((item_id, tab_id), None)
+        remaining = {
+            widget_tab_id
+            for occ in occurrences
+            for widget_tab_id in self.by_tab.get((item_id, occ.tab_id), ())
+            if widget_tab_id is not None
+        }
+        if remaining:
+            self.by_item[item_id] = remaining
+        else:
+            self.by_item.pop(item_id, None)
+
+    def inherit(self, item_id: str, source: _TabIndex, target: _TabIndex) -> None:
+        ids = self.by_tab.get((item_id, source.tab_id))
+        if ids:
+            target.widget_tab_ids.update(widget_tab_id for widget_tab_id in ids if widget_tab_id is not None)
+            self.by_tab[(item_id, target.tab_id)] = ids
+
+    def for_item(self, item_id: str, occurrences: Sequence[_ItemOccurrence]) -> tuple[str | None, ...]:
+        if len(occurrences) != 1:
+            return ()
+        return self.by_tab.get((item_id, occurrences[0].tab_id), ())
+
+
+def _inherit_shared_items_in_index(
+    *,
+    new_tab: _TabIndex,
+    tabs: Sequence[_TabIndex],
+    shared_ids: set[str],
+    occurrences: dict[str, list[_ItemOccurrence]],
+    group_children: dict[str, set[str]],
+    widget_tabs: _WidgetTabIndex,
+) -> None:
+    """Mirror the applier's inherited globalItems in a newly staged tab."""
+    for item_id in sorted(shared_ids):
+        if item_id in new_tab.item_ids or item_id not in occurrences:
+            continue
+        source = next(
+            (
+                existing
+                for existing in tabs
+                if existing is not new_tab
+                and any(
+                    occ.tab_id == existing.tab_id and occ.container == _GLOBAL_ITEMS_FIELD
+                    for occ in occurrences[item_id]
+                )
+            ),
+            None,
+        )
+        if source is not None:
+            widget_tabs.inherit(item_id, source, new_tab)
+        new_tab.item_ids.add(item_id)
+        new_tab.control_child_ids.update(group_children.get(item_id, set()))
+        occurrences[item_id].append(_ItemOccurrence(tab_id=new_tab.tab_id, container=_GLOBAL_ITEMS_FIELD))
+
+
 def _string_or_none(value: object) -> str | None:
     return value if isinstance(value, str) else None
 
@@ -76,6 +158,54 @@ def _iter_mappings_or_lists(value: object) -> list[object]:
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
         return list(value)
     return []
+
+
+def _resolve_widget_tab_ids_for_update(
+    *,
+    item_id: str,
+    raw_tabs: Sequence[Mapping[str, object]],
+    occurrence_count: int,
+    staged_widget_tab_ids: Sequence[str | None],
+) -> tuple[str | None, ...]:
+    """Resolve one live widget occurrence, preserving malformed inner ids."""
+    raw_occurrences = [
+        item
+        for tab in raw_tabs
+        for container in (_ITEMS_FIELD, _GLOBAL_ITEMS_FIELD)
+        for item in _iter_mappings(tab.get(container))
+        if item.get("id") == item_id
+    ]
+    # The shadow index also includes widgets inherited by tabs staged in this
+    # builder. Those copies are absent from raw_tabs until the ops are applied.
+    if occurrence_count > 1 or len(raw_occurrences) > 1:
+        count = max(occurrence_count, len(raw_occurrences))
+        raise DataLensValidationError(
+            f"Widget item id {item_id!r} occurs {count} times; DataLens widget ids must be unique"
+        )
+    if raw_occurrences:
+        data = _mapping_or_none(raw_occurrences[0].get("data")) or {}
+        return tuple(_string_or_none(widget_tab.get("id")) for widget_tab in _iter_mappings(data.get("tabs")))
+    if occurrence_count != 1:  # pragma: no cover - typed adders reserve unique ids
+        raise DataLensValidationError(f"Widget item id {item_id!r} must occur exactly once")
+    return tuple(staged_widget_tab_ids)
+
+
+def _require_exact_widget_tab(item_id: str, widget_tab_id: str | None, widget_tab_ids: tuple[str | None, ...]) -> None:
+    if widget_tab_id is None:
+        if len(widget_tab_ids) != 1:
+            known = sorted(tab_id for tab_id in widget_tab_ids if tab_id is not None)
+            raise DataLensValidationError(
+                f"Widget {item_id!r} has {len(widget_tab_ids)} chart tabs ({known!r}); pass widget_tab_id= to pick one"
+            )
+        return
+    match_count = widget_tab_ids.count(widget_tab_id)
+    if match_count == 0:
+        known = sorted(tab_id for tab_id in widget_tab_ids if tab_id is not None)
+        raise DataLensValidationError(f"Widget {item_id!r} has no chart tab {widget_tab_id!r}; known: {known!r}")
+    if match_count != 1:
+        raise DataLensValidationError(
+            f"Widget {item_id!r} has {match_count} chart tabs with id {widget_tab_id!r}; expected exactly one"
+        )
 
 
 def _display_pinned_to_current_tabs(item: Mapping[str, object], tab_ids: set[object]) -> bool:

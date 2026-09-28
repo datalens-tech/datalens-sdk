@@ -222,12 +222,13 @@ target tab's `globalItems` wire collection. On read, those copies appear in
 `DashboardTabView.global_items`; `DashboardTabView.controls` already combines
 local and global controls.
 
-Shared items have global mutation semantics:
+Server-supported shared items are selectors, and they have global mutation
+semantics:
 
 - `remove_item` removes every occurrence from every tab, all related
   connections, and selector-dependent alias fields/groups that become empty.
-- `replace_chart` and `set_chart_params` likewise patch every occurrence of a
-  shared logical item.
+- `set_chart_params` patches every occurrence of a shared standalone
+  `control`; grouped selectors use `update_selector` by member id.
 - Every target tab gets a layout entry for the shared selector. Overlap checks
   use `items ∪ global_items`, so leave space for it on **every** displayed tab.
 
@@ -380,7 +381,8 @@ Use the ids deliberately:
   `set_chart_params`;
 - selector member id → `update_selector`, `remove_selector`, connections;
 - internal chart-tab id from `item.data["tabs"]` → multi-tab connection
-  endpoints and `replace_chart(widget_tab_id=...)`.
+  endpoints, `replace_chart(widget_tab_id=...)`, and
+  `set_chart_params(widget_tab_id=...)`.
 
 Connections serialize widget endpoints as internal chart-tab ids, not the
 outer widget id. Create-side `add_connection` accepts the logical widget id
