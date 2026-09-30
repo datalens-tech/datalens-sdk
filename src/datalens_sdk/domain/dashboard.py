@@ -17,7 +17,7 @@ from datalens_sdk.domain.entry_location import (
 )
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import DashboardOperations
-from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions, _has_unpublished_changes
+from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.artifacts import ArtifactPath, write_dashboard_artifact
 from datalens_sdk.serialization.json_types import JsonValue
@@ -384,11 +384,6 @@ class Dashboard:
     @property
     def is_draft(self) -> bool:
         return self.saved_id != self.published_id
-
-    @property
-    def has_unpublished_changes(self) -> bool | None:
-        """Compare saved/published pointers; None if either pointer is unavailable."""
-        return _has_unpublished_changes(self.saved_id, self.published_id)
 
     @property
     def update(self) -> DashboardUpdate:

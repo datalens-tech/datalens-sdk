@@ -112,7 +112,7 @@ class DatasetUpdate:
         self._actions: list[DatasetUpdateAction] = []
         self._name_change: str | None = None
         self._rls2_changes: list[RLSChange] = []
-        self._mode: EntryUpdateMode | None = None
+        self._mode: EntryUpdateMode = "save"
 
     @property
     def actions(self) -> tuple[DatasetUpdateAction, ...]:

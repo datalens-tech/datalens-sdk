@@ -164,7 +164,7 @@ class DatasetOperations(EntryRevisionsOperations, Protocol):
         self,
         spec: RawReplaceSpec,
         *,
-        mode: EntryUpdateMode | None = None,
+        mode: EntryUpdateMode = "save",
     ) -> Dataset: ...
 
     def delete_dataset(self, dataset_id: str) -> None: ...

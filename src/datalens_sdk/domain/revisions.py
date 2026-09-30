@@ -6,13 +6,6 @@ from dataclasses import dataclass
 from datalens_sdk.errors import DataLensValidationError
 
 
-def _has_unpublished_changes(saved_id: str | None, published_id: str | None) -> bool | None:
-    """Compare known revision pointers without treating missing metadata as clean."""
-    if not saved_id or not published_id:
-        return None
-    return saved_id != published_id
-
-
 @dataclass(frozen=True, slots=True)
 class EntryRevision:
     """Revision metadata; saved and published flags are independent server values."""

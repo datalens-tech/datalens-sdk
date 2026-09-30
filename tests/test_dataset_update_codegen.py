@@ -33,7 +33,7 @@ def test_dataset_update_codegen_recovers_exported_optional_mode_without_mutating
     spec = _load_spec(installation)
     original = deepcopy(spec)
 
-    assert codegen.dataset_update_modes(spec) == ["publish", "save"]
+    codegen.validate_dataset_update_mode_contract(spec)
     assert spec == original
 
 
@@ -51,7 +51,7 @@ def test_dataset_update_codegen_accepts_corrected_openapi_mode_property(inline: 
         data.clear()
         data.update(dataset_update)
 
-    assert codegen.dataset_update_modes(spec) == ["publish", "save"]
+    codegen.validate_dataset_update_mode_contract(spec)
 
 
 def test_dataset_update_codegen_rejects_unrecognized_mode_contract() -> None:
@@ -60,7 +60,7 @@ def test_dataset_update_codegen_rejects_unrecognized_mode_contract() -> None:
     data["mode"] = {"type": "string", "enum": ["save", "invalid"]}
 
     with pytest.raises(ValueError, match="must support save and publish"):
-        codegen.dataset_update_modes(spec)
+        codegen.validate_dataset_update_mode_contract(spec)
 
 
 def test_generated_dataset_update_data_envelope_preserves_optional_mode(tmp_path: Path) -> None:
@@ -69,7 +69,6 @@ def test_generated_dataset_update_data_envelope_preserves_optional_mode(tmp_path
     path.write_text(json.dumps(spec))
     metadata = codegen.build_metadata({"yacloud": path})
 
-    assert metadata["dataset_update_modes"] == ["publish", "save"]
     generated = codegen.emit_dto(metadata)
     update_data = generated.split("class DatasetUpdateDataDTO", 1)[1].split("class EntryMoveDTO", 1)[0]
     assert "mode: Literal['publish', 'save'] | None = None" in update_data
@@ -77,3 +76,18 @@ def test_generated_dataset_update_data_envelope_preserves_optional_mode(tmp_path
     assert 'payload["mode"] = self.mode' in update_data
     assert 'extra="forbid"' in update_data
     assert "data: DatasetUpdateDataDTO" in update_data
+
+
+@pytest.mark.parametrize("invalid_installation", ["enterprise", "yacloud"])
+def test_metadata_rejects_dataset_mode_drift_in_any_installation(tmp_path: Path, invalid_installation: str) -> None:
+    installations: dict[str, Path] = {}
+    for installation in ("enterprise", "yacloud"):
+        spec = _load_spec(installation)
+        if installation == invalid_installation:
+            _update_data_schema(spec)["mode"] = {"type": "string", "enum": ["save", "invalid"]}
+        path = tmp_path / f"{installation}.json"
+        path.write_text(json.dumps(spec))
+        installations[installation] = path
+
+    with pytest.raises(ValueError, match="must support save and publish"):
+        codegen.build_metadata(installations)

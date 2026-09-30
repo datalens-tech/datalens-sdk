@@ -131,16 +131,19 @@ connection -> source -> dataset -> chart -> dashboard
 Standalone HTML pages are independent artifacts with their own revisions.
 
 Dataset, chart, Dashboard, and HTML content updates support
-`.mode("save" | "publish")`. Wizard/QL/Editor/HTML default to save; Dataset
-preserves the server default when mode is omitted; Dashboard requires an
-explicit mode or compatible `publish=bool`. Raw replacement persists supplied
-content as a new revision and does not select the source or target revision.
-Publish current content or a current draft with
-`.update...mode("publish").execute()` as a new revision; HTML content updates
-require the separately kept authored source. Use Wizard/Editor/Dashboard/HTML
-`publish_revision(rev_id=known_old_revision_id)` only to deliberately choose
-a known older revision instead of current content, preserving its revision ID.
-Connections have no save/publish mode.
+`.mode("save" | "publish")`. Dataset/Wizard/QL/Editor/HTML default to save;
+typed Dataset updates and raw Dataset replacements send `data.mode="save"`
+explicitly. Select `.mode("publish")` to publish a Dataset content update.
+Dashboard requires an explicit mode or compatible `publish=bool`.
+Raw replacement persists supplied content as a new revision and does not select
+the source or target revision. Write and publish new or edited content with
+`.update...mode("publish").execute()`; HTML content updates require authored
+source. Use Wizard/Editor/Dashboard/HTML
+`publish_revision(rev_id=existing_revision_id)` to publish an existing saved
+draft or historical revision while preserving its ID. Publishing an existing
+HTML revision does not require its source. The no-argument Wizard/Dashboard
+methods publish the revision loaded into that object. Dataset and QL have no
+same-revision publication method. Connections have no save/publish mode.
 
 One client, four namespaces:
 

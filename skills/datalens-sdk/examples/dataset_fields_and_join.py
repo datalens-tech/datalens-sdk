@@ -118,6 +118,7 @@ def main() -> None:
             dataset = (
                 dataset.update.change_field_aggregation(field=dataset.fields.by_name(args.measure_field), to="sum")
                 .add_calculation(name=calc_name, formula=formula, kind="MEASURE", cast="float")
+                .mode("publish")
                 .execute()
             )
 

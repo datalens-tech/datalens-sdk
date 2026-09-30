@@ -463,7 +463,7 @@ class DatasetConverter:
         )
 
     @staticmethod
-    def from_raw_replace(spec: RawReplaceSpec, *, mode: EntryUpdateMode | None = None) -> RawDatasetReplaceEnvelope:
+    def from_raw_replace(spec: RawReplaceSpec, *, mode: EntryUpdateMode = "save") -> RawDatasetReplaceEnvelope:
         source = DatasetSnapshotView.from_raw(spec.response_snapshot)
         return RawDatasetReplaceEnvelope(
             dataset_id=spec.target_id,

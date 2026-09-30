@@ -65,23 +65,29 @@ Connection types (`client.create.connection.<type>`), dataset source types (`cli
 
 ```python
 ds = client.get.dataset(by_id=dataset_id)
-ds = ds.update.add_calculation(
-    name="Margin",
-    formula="SUM([Profit]) / SUM([Sales])",
-    kind="MEASURE",
-).execute()
+ds = (
+    ds.update.add_calculation(
+        name="Margin",
+        formula="SUM([Profit]) / SUM([Sales])",
+        kind="MEASURE",
+    )
+    .mode("publish")
+    .execute()
+)
 
 cht = cht.update.palette(id="datalens-neo-20").execute()
 
 dash = dash.update.settings(hide_tabs=True).mode("publish").execute()
 ```
 
-Publish current content or a current draft through the update builder with
-`.mode("publish").execute()`, which creates a new revision. Dashboard requires
-an explicit mode or its compatible `execute(publish=bool)` form. Only use
-`publish_revision(rev_id=known_old_revision_id)` on supported objects when
-deliberately selecting a known older revision instead of current content.
-HTML content updates need the separately kept authored HTML source.
+Dataset updates default to `save`, including raw replacements; use
+`.mode("publish").execute()` to write and publish a new revision.
+Dashboard requires an explicit mode or its compatible `execute(publish=bool)`
+form. Wizard, Editor, Dashboard, and HTML can publish an existing saved draft
+or historical revision with `publish_revision(rev_id=existing_revision_id)`,
+preserving its ID. The no-argument Wizard/Dashboard methods publish the loaded
+revision. HTML content updates need authored source; publishing an existing
+HTML revision does not. Dataset and QL have no same-revision publication method.
 
 Every entity also has direct `rename(name)` (returns the renamed object) and `delete()` methods. `Dashboard.delete()` additionally accepts `lock_token=`. Dashboard updates are **last-write-wins** — the server has no optimistic locking, so call `dash.refresh()` right before `.update` and keep the builder short-lived, or concurrent edits are silently overwritten.
 

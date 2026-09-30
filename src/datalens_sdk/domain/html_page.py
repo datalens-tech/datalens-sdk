@@ -18,7 +18,7 @@ from datalens_sdk.domain.entry_location import (
 from datalens_sdk.domain.entry_types import EntryUpdateMode, validate_entry_update_mode
 from datalens_sdk.domain.navigation import Pager
 from datalens_sdk.domain.ports import HtmlPageOperations
-from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions, _has_unpublished_changes
+from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.specs.html_page import (
     HtmlPageContentUpdateSpec,
     HtmlPageCreateSpec,
@@ -159,15 +159,11 @@ class HtmlPage:
     def update(self) -> HtmlPageUpdate:
         return HtmlPageUpdate(page=self, operations=self._operations)
 
-    @property
-    def has_unpublished_changes(self) -> bool | None:
-        """Compare saved/published pointers; None if either pointer is unavailable."""
-        return _has_unpublished_changes(self.saved_id, self.published_id)
-
     def publish_revision(self, *, rev_id: str) -> HtmlPage:
         """Publish an explicitly selected existing revision without creating a new one.
 
-        Publish authored content with ``page.update.content(...).mode("publish").execute()``.
+        Select a saved draft or a historical revision without resending its HTML.
+        Write and publish new source with ``page.update.content(...).mode("publish").execute()``.
         """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)

@@ -93,7 +93,7 @@ def main() -> None:
 
         dataset = client.get.dataset(by_id=require_id(dataset.id, resource="dataset"))
         numeric_field = dataset.fields.by_name(required_env("DL_CH_MEASURE_FIELD"))
-        dataset = dataset.update.change_field_aggregation(field=numeric_field, to="sum").execute()
+        dataset = dataset.update.change_field_aggregation(field=numeric_field, to="sum").mode("publish").execute()
 
         dimension = dataset.fields.by_name(required_env("DL_CH_DIMENSION_FIELD"))
         measure = dataset.fields.by_name(required_env("DL_CH_MEASURE_FIELD"))

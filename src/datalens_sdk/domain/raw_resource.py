@@ -164,7 +164,7 @@ class RawDatasetReplace:
             target_location=target.location,
         )
         self._operations = operations
-        self._mode: EntryUpdateMode | None = None
+        self._mode: EntryUpdateMode = "save"
 
     def mode(self, value: EntryUpdateMode) -> Self:
         self._mode = validate_entry_update_mode(value)

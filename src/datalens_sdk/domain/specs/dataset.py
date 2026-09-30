@@ -53,4 +53,4 @@ class DatasetUpdateSpec:
     actions: tuple[DatasetUpdateAction, ...]
     name_change: str | None
     rls2_changes: tuple[RLSChange, ...]
-    mode: EntryUpdateMode | None = None
+    mode: EntryUpdateMode = "save"

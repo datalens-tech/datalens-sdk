@@ -96,10 +96,16 @@ because metadata reads do not return it:
 ```python
 draft = page.update.content(new_html_document).mode("save").execute()
 warnings = draft.warnings
-published = draft.update.content(new_html_document).mode("publish").execute()
 
-# Deliberately select a known older revision instead of current content.
-restored = published.publish_revision(rev_id=known_old_revision_id)
+# Publish the existing saved draft without creating another revision.
+assert draft.saved_id is not None
+published = draft.publish_revision(rev_id=draft.saved_id)
+
+# Write and publish edited source as a new revision.
+revised = published.update.content(edited_html_document).mode("publish").execute()
+
+# Any existing historical revision can also be published while keeping its ID.
+restored = revised.publish_revision(rev_id=historical_revision_id)
 ```
 
 Content updates accept `mode("save")` or `mode("publish")`. Use `save` to keep
@@ -113,14 +119,15 @@ and `object_id`; it cannot prove how the page rendered. Follow the linked
 authoring skill's validator and arrange a render check through an authorized
 DataLens viewing flow when that matters.
 
-`page.publish_revision(rev_id=known_old_revision_id)` is for deliberately
-selecting that older revision instead of current content. It preserves the
-selected revision ID. Publish the current draft with a content update and
-`.mode("publish")`, which creates a new revision.
+`page.publish_revision(rev_id=existing_revision_id)` publishes an existing
+revision, including the current saved draft or a historical revision, while
+preserving its ID. This operation does not require the HTML source. To write
+and publish new or edited source, use a content update with `.mode("publish")`,
+which creates a new revision.
 `page.get_revisions(page_size=..., page_token=..., rev_ids=...)`
 uses the common lazy history pager described in [navigation.md](navigation.md).
-`page.has_unpublished_changes` compares saved/published pointers and returns
-`None` when either pointer is unavailable.
+`rev_id` identifies the loaded revision; `saved_id` and `published_id` identify
+the branches reported by the response.
 
 ```python
 page.delete()

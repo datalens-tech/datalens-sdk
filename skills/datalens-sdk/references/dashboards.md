@@ -410,22 +410,18 @@ issues = dash.validate()
 assert not issues, issues
 ```
 
-`.mode("publish")` persists and publishes the supplied current content as a
-new revision; `.mode("save")` saves a draft. To publish a saved draft, fetch
-`branch="saved"` and use `dash.update.mode("publish").execute()`, creating a
-new published revision. Only when deliberately choosing a known older revision
-instead of current content, use
-`dash.publish_revision(rev_id=known_old_revision_id)` to preserve its ID.
-The existing no-argument `dash.publish_revision()` remains available for
-compatibility.
+`.mode("publish")` writes and publishes the supplied content as a new
+revision; `.mode("save")` saves a draft. Publish an existing saved draft or
+historical revision with `dash.publish_revision(rev_id=existing_revision_id)`
+to preserve its ID. After fetching `branch="saved"`, the no-argument
+`dash.publish_revision()` publishes that loaded saved revision.
 
 The compatible `execute(publish=bool)` form remains available for typed and
 raw updates: `publish=True` chooses publish and `publish=False` chooses save.
 Without `.mode(...)` or `publish=...`, execution raises `TypeError`.
 If both are supplied they must agree; conflicting values and non-bool publish
-arguments are rejected before HTTP. `has_unpublished_changes` is the common
-pointer comparison and returns `None` when either pointer is unavailable;
-legacy `is_draft` retains its bool behavior.
+arguments are rejected before HTTP. The existing `is_draft` boolean retains
+its behavior and compares `saved_id` with `published_id`.
 
 Update-only operations beyond the tab-builder set (all `add_*` content methods
 exist here too, taking `tab=` — a tab id or title): `add_tab` / `remove_tab` /

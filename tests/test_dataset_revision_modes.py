@@ -80,8 +80,7 @@ def test_dataset_typed_update_sends_mode_only_in_update_data(installation: str, 
     validated_body = cast(dict[str, object], requests[1]["body"])
     assert "mode" not in cast(dict[str, object], validated_body["data"])
     expected_data: dict[str, object] = {"dataset": _snapshot(description="Typed B")["dataset"]}
-    if mode is not None:
-        expected_data["mode"] = mode
+    expected_data["mode"] = mode or "save"
     assert requests[2]["body"] == {"datasetId": "dataset-id", "data": expected_data}
 
 
@@ -116,8 +115,7 @@ def test_dataset_raw_replace_creates_revision_from_content_without_revision_sele
     assert result.description == "Raw B"
     assert result.rev_id == "new-b"
     expected_data: dict[str, object] = {"dataset": _snapshot(description="Raw B")["dataset"]}
-    if mode is not None:
-        expected_data["mode"] = mode
+    expected_data["mode"] = mode or "save"
     assert requests[-1]["body"] == {"datasetId": "dataset-id", "data": expected_data}
     assert [request["path"] for request in requests] == ["/rpc/getDataset", "/rpc/updateDataset"]
 
@@ -126,7 +124,13 @@ def test_dataset_raw_replace_creates_revision_from_content_without_revision_sele
 def test_dataset_branch_resolves_pointer_then_reads_exact_revision(branch: EntryBranch) -> None:
     revision = "saved-b" if branch == "saved" else "published-a"
     client, requests = _client(
-        "yacloud", {"/rpc/getDataset": [_snapshot(), _snapshot(description=branch, revision=revision)]}
+        "yacloud",
+        {
+            "/rpc/getDataset": [
+                _snapshot(revision="published-a" if branch == "saved" else "saved-b"),
+                _snapshot(description=branch, revision=revision),
+            ]
+        },
     )
 
     dataset = client.get.dataset(by_id="dataset-id", branch=branch, workbook_id="workbook-id")
@@ -137,6 +141,54 @@ def test_dataset_branch_resolves_pointer_then_reads_exact_revision(branch: Entry
         {"datasetId": "dataset-id", "workbookId": "workbook-id"},
         {"datasetId": "dataset-id", "workbookId": "workbook-id", "rev_id": revision},
     ]
+
+
+@pytest.mark.parametrize("installation", ["enterprise", "yacloud"])
+@pytest.mark.parametrize("branch", ["saved", "published"])
+@pytest.mark.parametrize("clean", [False, True], ids=["different-pointers", "same-pointers"])
+def test_dataset_branch_reuses_response_already_at_selected_revision(
+    installation: str, branch: EntryBranch, clean: bool
+) -> None:
+    revision = "saved-b" if branch == "saved" else "published-a"
+    snapshot = _snapshot(description="Already loaded", revision=revision)
+    if clean:
+        snapshot["savedId"] = snapshot["publishedId"] = revision
+    client, requests = _client(installation, {"/rpc/getDataset": [snapshot]})
+
+    dataset = client.get.dataset(by_id="dataset-id", branch=branch, workbook_id="workbook-id")
+
+    assert dataset.rev_id == revision
+    assert dataset.description == "Already loaded"
+    assert dataset.response_snapshot == snapshot
+    assert [request["body"] for request in requests] == [{"datasetId": "dataset-id", "workbookId": "workbook-id"}]
+
+
+@pytest.mark.parametrize("installation", ["enterprise", "yacloud"])
+@pytest.mark.parametrize("mode", [None, "save", "publish"], ids=["default", "save", "publish"])
+def test_dataset_mode_only_update_preserves_loaded_draft_content_without_validation(
+    installation: str, mode: EntryUpdateMode | None
+) -> None:
+    draft = _snapshot(description="Stored draft B", revision="saved-b")
+    client, requests = _client(
+        installation,
+        {
+            "/rpc/getDataset": [draft],
+            "/rpc/updateDataset": [_snapshot(description="Stored draft B", revision="new-c")],
+        },
+    )
+    dataset = client.get.dataset(by_id="dataset-id", branch="saved")
+    update = dataset.update
+    if mode is not None:
+        update.mode(mode)
+    result = update.execute()
+
+    assert result.description == "Stored draft B"
+    assert result.rev_id == "new-c"
+    assert [request["path"] for request in requests] == ["/rpc/getDataset", "/rpc/updateDataset"]
+    assert requests[-1]["body"] == {
+        "datasetId": "dataset-id",
+        "data": {"dataset": draft["dataset"], "mode": mode or "save"},
+    }
 
 
 @pytest.mark.parametrize("branch", ["saved", "published", "invalid"])

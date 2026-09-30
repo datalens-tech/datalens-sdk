@@ -206,6 +206,8 @@ class DatasetService(DatasetOperations):
             selected_revision = current.saved_id if branch == "saved" else current.published_id
             if not selected_revision:
                 raise DataLensValidationError(f"Dataset {dataset_id!r} has no {branch!r} revision pointer")
+            if current.rev_id == selected_revision:
+                return current
             rev_id = selected_revision
         response = self._api.get(dataset_id, workbook_id=workbook_id, rev_id=rev_id)
         return DatasetConverter.to_domain(
@@ -253,7 +255,7 @@ class DatasetService(DatasetOperations):
             dto_module=self._dto_module,
         )
 
-    def replace_dataset_from_raw(self, spec: RawReplaceSpec, *, mode: EntryUpdateMode | None = None) -> Dataset:
+    def replace_dataset_from_raw(self, spec: RawReplaceSpec, *, mode: EntryUpdateMode = "save") -> Dataset:
         payload = DatasetConverter.from_raw_replace(spec, mode=mode).to_payload()
         response = self._api.update(payload)
         return DatasetConverter.to_domain(

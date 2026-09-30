@@ -146,7 +146,8 @@ class EditorChart(Chart):
     def publish_revision(self, *, rev_id: str) -> EditorChart:
         """Publish an explicitly selected existing revision without creating a new one.
 
-        To publish the current content, use ``chart.update.mode("publish").execute()``.
+        Select a saved draft or a historical revision by its ID. To write and
+        publish new content, use ``chart.update.mode("publish").execute()``.
         """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)

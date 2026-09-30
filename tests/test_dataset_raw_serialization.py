@@ -362,7 +362,7 @@ def test_raw_dataset_namespace_defers_create_and_replace_until_terminal_call() -
     }
     assert update_payload == {
         "datasetId": "target-id",
-        "data": {"dataset": expected_content},
+        "data": {"dataset": expected_content, "mode": "save"},
     }
 
 

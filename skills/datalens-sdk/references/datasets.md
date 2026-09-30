@@ -55,19 +55,21 @@ with `.id`/`.title`; use `avatar.get("id")`, `avatar.get("source_id")`, and
 
 ## The update DSL
 
-Choose `.mode("save")` for a draft or `.mode("publish")` to publish new content.
-This applies to typed updates and `client.raw.replace.dataset` (including
-`from_file`). The SDK sends the selected mode under `data.mode`; without an
-explicit selection, it omits that field and preserves the server default.
+Typed updates and `client.raw.replace.dataset` (including `from_file`)
+default to `save` and send `data.mode="save"` explicitly. Choose `.mode("publish")`
+before `.execute()` to write and publish new content. Calls that previously
+relied on the server default to publish must now select `.mode("publish")`.
 
 Read the draft with `client.get.dataset(by_id=..., branch="saved")` or the
 publication with `branch="published"`. The SDK resolves the current revision
 pointer, then reads that exact `rev_id`, so branch reads can make two requests.
 An explicit `rev_id` wins over `branch`, with a warning when both are supplied.
-A missing requested pointer raises a validation error. `rev_id`, `saved_id`,
-`published_id`, and `has_unpublished_changes` expose revision state; the last
-is `None` when either branch pointer is unavailable. Dataset has no
+A missing requested pointer raises a validation error. `rev_id` identifies
+the loaded revision; `saved_id` and `published_id` identify the branches
+reported by the response. These IDs can be unavailable. Dataset has no
 `publish_revision()` method for reusing an existing revision ID.
+
+The authoring examples below explicitly publish their Dataset changes.
 
 `ds.update` is a property returning a fresh `DatasetUpdate`. Methods accumulate changes; **chain as many as you like and finish with a single `.execute()`**, which saves once and returns the new `Dataset`. Field and source actions run through `validateDataset` before the save; an RLS-only update does not call it:
 
@@ -81,6 +83,7 @@ ds = (
         cast="float",
     )
     .hide_field(field="OrderID")
+    .mode("publish")
     .execute()
 )
 ```
@@ -118,7 +121,7 @@ u.clone_field(field="AOV", new_title="AOV copy")
 u.hide_field(field="AOV copy")
 u.show_field(field="AOV copy")
 u.delete_field(field="AOV copy")
-ds = u.execute()
+ds = u.mode("publish").execute()
 ```
 
 For how a Dataset parameter reaches Wizard widgets through widget params,
@@ -149,11 +152,15 @@ Value vocabularies (all plain string literals):
 ```python
 from datalens_sdk import JoinCondition
 
-ds = ds.update.add_relation(
-    type="left",  # "inner" | "left" | "right" | "full"
-    conditions=[JoinCondition(left="ShopID", right="ShopID", operator="eq")],
-    drop_duplicates=False,
-).execute()
+ds = (
+    ds.update.add_relation(
+        type="left",  # "inner" | "left" | "right" | "full"
+        conditions=[JoinCondition(left="ShopID", right="ShopID", operator="eq")],
+        drop_duplicates=False,
+    )
+    .mode("publish")
+    .execute()
+)
 ```
 
 `JoinCondition(left, right, operator="eq")` takes **source column names** for each side; operators: `"eq"`, `"ne"`, `"gt"`, `"gte"`, `"lt"`, `"lte"`. On the update path the avatars are inferred from the first condition's columns; on the create path pass `left_source=` / `right_source=` explicitly (see the full example below). Edit an existing join with `update_relation(relation_id=..., type=..., conditions=..., drop_duplicates=...)` or remove it with `delete_relation(relation_id=...)` — ids come from `ds.relations`.
@@ -165,7 +172,7 @@ u = ds.update
 u.add_default_filter(field="Shop", operator="EQ", values=["Epsilon"])
 u.update_default_filter(filter_id=fid, operator="IN", values=["Epsilon", "Delta"])  # fid from ds.default_filters
 u.delete_default_filter(filter_id=fid)
-ds = u.execute()
+ds = u.mode("publish").execute()
 ```
 
 Filter operators (`WhereOperation`) are uppercase: `"EQ"`, `"NE"`, `"GT"`, `"GTE"`, `"LT"`, `"LTE"`, `"IN"`, `"NIN"`, `"BETWEEN"`, `"CONTAINS"`, `"ICONTAINS"`, `"STARTSWITH"`, `"ISNULL"`, `"ISNOTNULL"`, ...
@@ -195,7 +202,7 @@ a reference stable across a rename; a `DatasetField` from another dataset is rej
   and clears are allowed. For RLS, `DatasetCreate` supports only `add_rls`.
 
 To replace one subject's rules, use
-`ds = ds.update.update_rls(field="Shop", subject_id=user_id, allowed_value="Delta").execute()`.
+`ds = ds.update.update_rls(field="Shop", subject_id=user_id, allowed_value="Delta").mode("publish").execute()`.
 Use `add_rls` for each additional allowed value after that replacement.
 
 `update.rls2_changes` is an immutable tuple of typed operations from
@@ -213,6 +220,7 @@ ds = (
     ds.update.clear_rls()
     .add_rls(field=shop, subject_id=user_id, allowed_value="Epsilon")
     .add_rls(field=shop, subject_id=user_id, allowed_value="Delta")
+    .mode("publish")
     .execute()
 )
 ```
@@ -221,11 +229,16 @@ To replace only one field's rules and preserve all other fields:
 
 ```python
 shop = ds.fields.by_name("Shop")
-ds = ds.update.delete_rls(field=shop).add_rls(field=shop, subject_id=user_id, allowed_value="Delta").execute()
+ds = (
+    ds.update.delete_rls(field=shop)
+    .add_rls(field=shop, subject_id=user_id, allowed_value="Delta")
+    .mode("publish")
+    .execute()
+)
 ```
 
 To remove every rule without adding replacements, use
-`ds = ds.update.clear_rls().execute()`. These sequences make one save; do not
+`ds = ds.update.clear_rls().mode("publish").execute()`. These sequences make one save; do not
 save the clear or deletion separately before adding replacement rules.
 `subject_type` accepts `"user"` (default), `"group"`, `"all"`, or `"userid"`.
 An RLS-only save has no preliminary `validateDataset` call and does not promise
@@ -256,7 +269,7 @@ u.update_setting(name="load_preview_by_default", value=False)
 # names: "load_preview_by_default" | "template_enabled" | "data_export_forbidden"
 u.name("Sales v2")  # rename inside the same update
 u.description("Refreshed")
-ds = u.execute()
+ds = u.mode("publish").execute()
 ```
 
 `update_source(*, source_id, title=None, parameters=None)` preserves the
@@ -265,14 +278,21 @@ source parameters, pass the complete desired mapping—normally a copy of
 `src.parameters` with narrow overrides—so connector-specific keys are not
 lost. Do not look for `src.raw` or patch a dataset snapshot.
 
-To refresh every registered source and force dataset fields to follow the
-current source schemas, use the dataset convenience method:
+To refresh every registered source, force fields to follow the current
+source schemas, and publish the result, use one update batch:
 
 ```python
 ds = client.get.dataset(by_id=dataset_id)
-ds = ds.enrich_via_refresh(force_update_fields=True)
+u = ds.update
+for source in ds.sources:
+    u.refresh_source(source.id, force_update_fields=True)
+ds = u.mode("publish").execute()
 ds = client.get.dataset(by_id=dataset_id)
 ```
+
+`ds.enrich_via_refresh(force_update_fields=True)` performs a draft-only refresh
+using the default `save`. Read that result with `branch="saved"` when preparing
+changes without publishing them.
 
 ### Typed source-schema migration
 
@@ -283,17 +303,18 @@ and re-fetch between phases so the next builder uses current server state:
    relations. Record source ids, full `Source.parameters`, field GUIDs, and
    every dependent chart before mutating.
 2. If the connection changes, call
-   `replace_connection(old_connection_id=..., new_connection_id=...).execute()`
+   `replace_connection(old_connection_id=..., new_connection_id=...).mode("publish").execute()`
    and re-fetch.
 3. Resolve the current `Source` from `ds.sources`, merge the desired table or
    query keys into `source.parameters`, and call
-   `update_source(source_id=..., title=..., parameters=...).execute()`. Re-fetch.
-4. Call `ds.enrich_via_refresh(force_update_fields=True)`, then re-fetch and
-   inspect `source.valid`, `source.raw_schema`, `ds.fields`, and source-avatar
-   mappings.
+   `update_source(source_id=..., title=..., parameters=...).mode("publish").execute()`. Re-fetch.
+4. Queue `refresh_source(source.id, force_update_fields=True)` for every
+   current source in one `ds.update` builder and finish with
+   `.mode("publish").execute()`. Re-fetch and inspect `source.valid`,
+   `source.raw_schema`, `ds.fields`, and source-avatar mappings.
 5. Apply only confirmed field/formula changes with the typed dataset update
-   DSL. Then update each dependent chart with its typed update builder,
-   preserving chart and dataset ids.
+   DSL and `.mode("publish").execute()`. Then update each dependent chart with
+   its typed update builder, preserving chart and dataset ids.
 6. Re-fetch the dataset and every dependent chart and verify connection ids,
    source parameters/schema, field GUIDs/formulas, chart references, and saved
    versus published state where applicable.
@@ -334,6 +355,7 @@ ds = client.get.dataset(by_id=ds.id)  # re-get before field ops
 ds = (
     ds.update.change_field_aggregation(field=ds.fields.by_name("Sales"), to="sum")
     .add_calculation(name="Sales per shop", formula="SUM([Sales])", kind="MEASURE", cast="float")
+    .mode("publish")
     .execute()
 )
 ```
