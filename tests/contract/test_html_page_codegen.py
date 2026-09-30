@@ -14,6 +14,7 @@ HTML_PAGE_ROUTES = (
     "/rpc/createHtmlPage",
     "/rpc/deleteHtmlPage",
     "/rpc/getHtmlPage",
+    "/rpc/getHtmlPagePreviewUrl",
     "/rpc/updateHtmlPage",
 )
 
@@ -32,6 +33,8 @@ def test_html_page_contract_is_available_in_checked_in_specs(installation: str) 
         "CreateHtmlPageResult",
         "DeleteHtmlPageArgs",
         "GetHtmlPageArgs",
+        "GetHtmlPagePreviewUrlArgs",
+        "GetHtmlPagePreviewUrlResult",
         "GetHtmlPageResult",
         "UpdateHtmlPageArgs",
         "UpdateHtmlPageResult",

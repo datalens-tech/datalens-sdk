@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     )
     from datalens_sdk.domain.chart import Chart
     from datalens_sdk.domain.collection import Collection, CollectionCreate, CollectionUpdate
+    from datalens_sdk.domain.common_types import UILanguage, UITheme
     from datalens_sdk.domain.connection import Connection, ConnectionUpdate
     from datalens_sdk.domain.dashboard import Dashboard
     from datalens_sdk.domain.dashboard_create import DashboardCreate
@@ -25,7 +26,11 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.entry_location import EntryLocation
     from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
     from datalens_sdk.domain.folder import Folder, FolderCreate, FolderUpdate
-    from datalens_sdk.domain.html_page import HtmlPage, HtmlPageCreate, HtmlPageUpdate
+    from datalens_sdk.domain.html_page import (
+        HtmlPage,
+        HtmlPageCreate,
+        HtmlPageUpdate,
+    )
     from datalens_sdk.domain.license import License, LicenseLimits, LicenseListOptions
     from datalens_sdk.domain.navigation import (
         CollectionListOptions,
@@ -260,6 +265,16 @@ class HtmlPageOperations(Protocol):
         include_favorite: bool | None = None,
         include_permissions: bool | None = None,
     ) -> HtmlPage: ...
+
+    def get_html_page_preview_url(
+        self,
+        entry_id: str,
+        *,
+        branch: EntryBranch | None = None,
+        rev_id: str | None = None,
+        lang: UILanguage | None = None,
+        theme: UITheme | None = None,
+    ) -> str: ...
 
     def update_html_page(self, builder: HtmlPageUpdate) -> HtmlPage: ...
 

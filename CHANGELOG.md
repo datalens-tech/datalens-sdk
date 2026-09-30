@@ -35,6 +35,11 @@
   connections, datasets, dashboards, and every chart family. The SDK validates
   the `moveFolderEntry` result against the moved entry id and returns the
   refreshed resource with its current name and location.
+- Add `client.get.html_page_preview_url(by_id=..., branch=..., rev_id=..., lang=..., theme=...)`
+  for Enterprise and Yandex Cloud. It returns the temporary preview URL;
+  `client.get.html_page(...)` still returns metadata and no source HTML.
+  Preview options use shared `UILanguage` and `UITheme` types exported from
+  `datalens_sdk` and owned by `domain.common_types`.
 - Add typed HTML page create, metadata read, content/revision update, and delete
   operations for Enterprise and Yandex Cloud installations. Create and update
   responses expose processing warning codes and object/revision metadata. The

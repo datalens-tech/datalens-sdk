@@ -5,9 +5,14 @@ from typing import Literal
 from pydantic import ValidationError
 
 from datalens_sdk.converter.html_page import HtmlPageConverter, HtmlPageDtoModule
+from datalens_sdk.domain.common_types import UILanguage, UITheme
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.entry_types import EntryBranch
-from datalens_sdk.domain.html_page import HtmlPage, HtmlPageCreate, HtmlPageUpdate
+from datalens_sdk.domain.html_page import (
+    HtmlPage,
+    HtmlPageCreate,
+    HtmlPageUpdate,
+)
 from datalens_sdk.domain.navigation import GetEntriesOptions
 from datalens_sdk.domain.ports import HtmlPageOperations, NavigationOperations
 from datalens_sdk.errors import DataLensValidationError, translate_dto_validation_error
@@ -23,6 +28,9 @@ class HtmlPageAPI:
 
     def get(self, payload: dict[str, object]) -> dict[str, object]:
         return self._client.post_json_object("/rpc/getHtmlPage", payload, retry_policy=TRANSIENT_RETRY_POLICY)
+
+    def get_preview_url(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object("/rpc/getHtmlPagePreviewUrl", payload, retry_policy=TRANSIENT_RETRY_POLICY)
 
     def update(self, payload: dict[str, object]) -> dict[str, object]:
         return self._client.post_json_object("/rpc/updateHtmlPage", payload)
@@ -85,6 +93,33 @@ class HtmlPageService(HtmlPageOperations):
             if entry is not None and entry.id == page.id:
                 page.name = entry.name
         return page
+
+    def get_html_page_preview_url(
+        self,
+        entry_id: str,
+        *,
+        branch: EntryBranch | None = None,
+        rev_id: str | None = None,
+        lang: UILanguage | None = None,
+        theme: UITheme | None = None,
+    ) -> str:
+        try:
+            dto = HtmlPageConverter.from_domain_get_preview_url(
+                entry_id,
+                branch=branch,
+                rev_id=rev_id,
+                lang=lang,
+                theme=theme,
+                dto_module=self._dto_module,
+            )
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="getHtmlPagePreviewUrl", reason=str(exc)) from exc
+        try:
+            return HtmlPageConverter.to_preview_url(
+                self._api.get_preview_url(dto.to_payload()), dto_module=self._dto_module
+            )
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="getHtmlPagePreviewUrl", reason=str(exc)) from exc
 
     def update_html_page(self, builder: HtmlPageUpdate) -> HtmlPage:
         spec = builder.to_spec()

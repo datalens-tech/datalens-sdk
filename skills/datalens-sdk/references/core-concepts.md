@@ -8,7 +8,7 @@ Every configured client exposes the same namespace model:
 
 | Namespace                                | Role                             | Terminal call              |
 |------------------------------------------|----------------------------------|----------------------------|
-| `client.get.*`                           | fetch one entity by id           | returns the object         |
+| `client.get.*`                           | fetch by id                      | entity or preview URL      |
 | `client.create.*`                        | fluent builders for new entities | `.build()`                 |
 | `obj.update` / `.rename()` / `.delete()` | mutate a fetched object          | `.execute()` (update only) |
 | `client.navigation` / `client.raw`       | listing / snapshot import-export | —                          |
@@ -26,6 +26,7 @@ dash = client.get.dashboard(by_id="...")
 col = client.get.collection(by_id="...")
 wb = client.get.workbook(by_id="...")
 fold = client.get.folder(by_path="Users/someone/dir")  # the one path-based getter
+preview_url = client.get.html_page_preview_url(by_id="...")  # temporary URL, not HTML source
 ```
 
 Chart and dashboard getters additionally accept `branch=` (`"saved"` or `"published"`) and `rev_id=`. Passing **both** `rev_id=` and `branch=` emits a `UserWarning` and silently drops `branch` — an explicit `rev_id` already pins the revision. Do not pass both.

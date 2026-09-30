@@ -40,7 +40,7 @@ from datalens_sdk.converter.license import LicenseDtoModule
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
 from datalens_sdk.converter.workbook import WorkbookDtoModule
 from datalens_sdk.domain.collection import Collection, CollectionCreate
-from datalens_sdk.domain.common_types import SortDirection
+from datalens_sdk.domain.common_types import SortDirection, UILanguage, UITheme
 from datalens_sdk.domain.connection import Connection
 from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.dashboard_create import DashboardCreate
@@ -57,7 +57,10 @@ from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.entry_types import EntryBranch
 from datalens_sdk.domain.fields import FieldRef
 from datalens_sdk.domain.folder import Folder, FolderCreate
-from datalens_sdk.domain.html_page import HtmlPage, HtmlPageCreate
+from datalens_sdk.domain.html_page import (
+    HtmlPage,
+    HtmlPageCreate,
+)
 from datalens_sdk.domain.license import (
     License,
     LicenseLimits,
@@ -529,6 +532,30 @@ class GetNamespace:
             rev_id=rev_id,
             include_favorite=include_favorite,
             include_permissions=include_permissions,
+        )
+
+    def html_page_preview_url(
+        self,
+        *,
+        by_id: str,
+        branch: EntryBranch | None = None,
+        rev_id: str | None = None,
+        lang: UILanguage | None = None,
+        theme: UITheme | None = None,
+    ) -> str:
+        """Return a temporary URL for previewing an HTML page."""
+        if rev_id is not None and branch is not None:
+            warnings.warn(
+                "branch is ignored because an explicit rev_id already pins the revision",
+                UserWarning,
+                stacklevel=2,
+            )
+        return self._html_page_operations.get_html_page_preview_url(
+            by_id,
+            branch=branch,
+            rev_id=rev_id,
+            lang=lang,
+            theme=theme,
         )
 
 

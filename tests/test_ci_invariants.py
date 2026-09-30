@@ -10,9 +10,11 @@ import subprocess
 import sys
 from typing import cast, get_args
 
+import datalens_sdk as dl
+from datalens_sdk import domain
 from datalens_sdk._generated import dto
 from datalens_sdk.domain import dashboard_types, entry_types
-from datalens_sdk.domain.common_types import SortDirection
+from datalens_sdk.domain.common_types import SortDirection, UILanguage, UITheme
 from datalens_sdk.domain.dataset_types import WhereOperation
 from datalens_sdk.domain.navigation import EntryScope
 
@@ -463,6 +465,22 @@ def test_dataset_data_domain_literals_match_spec_enums() -> None:
             cast(list[str], filter_properties["operation"]["enum"])
         )
         assert set(get_args(SortDirection)) == set(cast(list[str], sort_properties["direction"]["enum"]))
+
+
+def test_ui_domain_literals_match_spec_enums() -> None:
+    for spec_name in SPEC_NAMES:
+        _, schemas = _spec_schemas(spec_name)
+        preview_properties = cast(dict[str, dict[str, object]], schemas["GetHtmlPagePreviewUrlArgs"]["properties"])
+        member_properties = cast(dict[str, dict[str, object]], schemas["AccessExtBatchListMembersArgs"]["properties"])
+
+        assert set(get_args(UILanguage)) == set(cast(list[str], preview_properties["lang"]["enum"])), spec_name
+        assert set(get_args(UILanguage)) == set(cast(list[str], member_properties["language"]["enum"])), spec_name
+        assert set(get_args(UITheme)) == set(cast(list[str], preview_properties["theme"]["enum"])), spec_name
+
+
+def test_shared_ui_types_are_exported_from_public_facades() -> None:
+    assert dl.UILanguage is domain.UILanguage is UILanguage
+    assert dl.UITheme is domain.UITheme is UITheme
 
 
 def test_entry_scope_domain_literal_matches_spec_enum() -> None:

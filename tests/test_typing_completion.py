@@ -54,6 +54,8 @@ from datalens_sdk import (
     RawQLChartReplace,
     RawWizardChartCreate,
     RawWizardChartReplace,
+    UILanguage,
+    UITheme,
     WizardAggregatedMeasure,
     WizardChart,
     WizardChartUpdate,
@@ -814,6 +816,9 @@ def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> Non
         assert_type(html_builder.content("<html></html>").build(), HtmlPage)
         html_page = client.get.html_page(by_id="page-1", branch="saved")
         assert_type(html_page, HtmlPage)
+        language: UILanguage = "en"
+        theme: UITheme = "dark"
+        assert_type(client.get.html_page_preview_url(by_id="page-1", lang=language, theme=theme), str)
         assert_type(html_page.location, EntryLocation | None)
         assert_type(html_page.key, str | None)
         assert_type(html_page.dir_path, str | None)
