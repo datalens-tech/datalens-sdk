@@ -55,6 +55,20 @@ with `.id`/`.title`; use `avatar.get("id")`, `avatar.get("source_id")`, and
 
 ## The update DSL
 
+Choose `.mode("save")` for a draft or `.mode("publish")` to publish new content.
+This applies to typed updates and `client.raw.replace.dataset` (including
+`from_file`). The SDK sends the selected mode under `data.mode`; without an
+explicit selection, it omits that field and preserves the server default.
+
+Read the draft with `client.get.dataset(by_id=..., branch="saved")` or the
+publication with `branch="published"`. The SDK resolves the current revision
+pointer, then reads that exact `rev_id`, so branch reads can make two requests.
+An explicit `rev_id` wins over `branch`, with a warning when both are supplied.
+A missing requested pointer raises a validation error. `rev_id`, `saved_id`,
+`published_id`, and `has_unpublished_changes` expose revision state; the last
+is `None` when either branch pointer is unavailable. Dataset has no
+`publish_revision()` method for reusing an existing revision ID.
+
 `ds.update` is a property returning a fresh `DatasetUpdate`. Methods accumulate changes; **chain as many as you like and finish with a single `.execute()`**, which saves once and returns the new `Dataset`. Field and source actions run through `validateDataset` before the save; an RLS-only update does not call it:
 
 ```python

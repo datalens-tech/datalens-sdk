@@ -77,6 +77,17 @@ Update defaults to `save`; publish only when requested. Re-fetch the selected
 branch and compare the intended stored values. Never repeat a successful write
 because later verification code failed.
 
+Publish current tabs or a saved draft with
+`chart.update.mode("publish").execute()`, creating a new published revision.
+For the current saved draft, fetch `branch="saved"` before building the update.
+Use `chart.publish_revision(rev_id=known_old_revision_id)` only when deliberately
+selecting a known older revision instead of current content; it preserves that
+revision ID. Ordinary typed updates and raw replacement create new content
+revisions and exclude the revision selector.
+`rev_id`, `saved_id`, `published_id`, and `has_unpublished_changes`
+describe the loaded revision and current pointers; the last is `None` when
+either pointer is unavailable.
+
 ## Rename, relations, and delete
 
 - Rename: `client.get.editor_chart(...).rename(new_name)`.

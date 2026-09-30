@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, TypeVar, get_args
+from typing import TYPE_CHECKING, TypeVar
 
 from typing_extensions import Self
 
 from datalens_sdk.domain.chart_types import ChartCategory
 from datalens_sdk.domain.entry_location import EntryLocation, resolve_entry_location, validate_entry_name
-from datalens_sdk.domain.entry_types import EntryUpdateMode
+from datalens_sdk.domain.entry_types import EntryUpdateMode, validate_entry_update_mode
 from datalens_sdk.domain.ports import ChartOperations, ConnectionOperations, DatasetOperations
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
@@ -164,9 +164,14 @@ class RawDatasetReplace:
             target_location=target.location,
         )
         self._operations = operations
+        self._mode: EntryUpdateMode | None = None
+
+    def mode(self, value: EntryUpdateMode) -> Self:
+        self._mode = validate_entry_update_mode(value)
+        return self
 
     def execute(self) -> Dataset:
-        return _require_operations(self._operations).replace_dataset_from_raw(self._spec)
+        return _require_operations(self._operations).replace_dataset_from_raw(self._spec, mode=self._mode)
 
 
 class _RawChartCreate:
@@ -267,7 +272,6 @@ class _RawChartReplace:
         target_id: str,
         target_name: str | None,
         target_location: EntryLocation | None,
-        target_revision_id: str | None,
         target_category: ChartCategory,
         target_wire_type: str,
         operations: ChartOperations | None,
@@ -281,16 +285,13 @@ class _RawChartReplace:
             target_id=target_id,
             target_name=target_name,
             target_location=target_location,
-            target_revision_id=target_revision_id,
         )
         self._target_wire_type = target_wire_type
         self._mode: EntryUpdateMode = "save"
         self._operations = operations
 
     def mode(self, value: EntryUpdateMode) -> Self:
-        if value not in get_args(EntryUpdateMode):
-            raise DataLensValidationError(f"mode must be one of {get_args(EntryUpdateMode)}, got {value!r}")
-        self._mode = value
+        self._mode = validate_entry_update_mode(value)
         return self
 
 
@@ -394,14 +395,12 @@ def _init_raw_chart_replace(
             f"{category.capitalize()} chart wire type mismatch: "
             f"source is {source.wire_type!r}, target is {target.wire_type!r}"
         )
-    target_revision_id = target.raw.get("revId")
     _RawChartReplace.__init__(
         builder,
         source=source,
         target_id=target.id or "",
         target_name=target.name,
         target_location=target.location,
-        target_revision_id=target_revision_id if isinstance(target_revision_id, str) else None,
         target_category=target.category,
         target_wire_type=target.wire_type or "",
         operations=operations,

@@ -29,6 +29,7 @@ from datalens_sdk.domain.dashboard_types import (
 )
 from datalens_sdk.domain.dashboard_update_adders import _StructuralAddersMixin
 from datalens_sdk.domain.dashboard_update_layout import _LayoutOpsMixin
+from datalens_sdk.domain.dashboard_update_mode import PUBLISH_UNSET, _PublishUnset, resolve_dashboard_publish
 from datalens_sdk.domain.dashboard_update_support import (
     _GLOBAL_ITEMS_FIELD,
     _ITEMS_FIELD,
@@ -46,6 +47,7 @@ from datalens_sdk.domain.dashboard_update_support import (
     _WidgetTabIndex,
 )
 from datalens_sdk.domain.dashboard_update_wiring import _WiringAddersMixin
+from datalens_sdk.domain.entry_types import EntryUpdateMode, validate_entry_update_mode
 from datalens_sdk.domain.specs.dashboard import (
     DashboardSettingsSpec,
     DashboardUpdateOp,
@@ -110,6 +112,7 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
         self._location: EntryLocation | None = dashboard.location
         self._name: str | None = dashboard.name
         self._operations = operations
+        self._mode: EntryUpdateMode | None = None
         self._ops: list[DashboardUpdateOp] = []
         self._description: str | None = None
         self._access_description: str | None = None
@@ -599,19 +602,25 @@ class DashboardUpdate(_StructuralAddersMixin, _WiringAddersMixin, _LayoutOpsMixi
 
     # -- execution -------------------------------------------------------------
 
-    def execute(self, *, publish: bool, lock_token: str | None = None) -> Dashboard:
+    def mode(self, value: EntryUpdateMode) -> Self:
+        self._mode = validate_entry_update_mode(value)
+        return self
+
+    def execute(self, *, publish: bool | _PublishUnset = PUBLISH_UNSET, lock_token: str | None = None) -> Dashboard:
         """Apply the accumulated operations with a single one-phase call.
 
-        ``publish`` is deliberately required: ``publish=True`` persists the
-        data AND publishes it in one call; ``publish=False`` saves a draft
-        revision. Last-write-wins — the server has no optimistic locking, a
-        stale snapshot silently overwrites concurrent edits. A locked entry
+        Select ``.mode("save"|"publish")`` or pass the compatible
+        ``publish`` boolean: ``True`` publishes the new content, while
+        ``False`` saves a draft. If both are supplied, they must agree.
+        Last-write-wins — the server has no optimistic locking, a stale
+        snapshot silently overwrites concurrent edits. A locked entry
         (someone edits it in the UI) raises ``LockedError`` (423): the public
         API cannot acquire locks yet, so ``lock_token`` is pass-through only.
         """
+        resolved_publish = resolve_dashboard_publish(mode=self._mode, publish=publish)
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
-        return self._operations.update_dashboard(self, publish=publish, lock_token=lock_token)
+        return self._operations.update_dashboard(self, publish=resolved_publish, lock_token=lock_token)
 
     # -- snapshot -------------------------------------------------------------
 

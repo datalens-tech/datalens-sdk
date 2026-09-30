@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING, Literal
 
 from typing_extensions import Self
 
@@ -25,7 +25,7 @@ from datalens_sdk.domain.chart_types import (
     PaletteId,
     ShapeStyle,
 )
-from datalens_sdk.domain.entry_types import EntryUpdateMode
+from datalens_sdk.domain.entry_types import EntryUpdateMode, validate_entry_update_mode
 from datalens_sdk.domain.fields import (
     DatasetField,
     WizardAggregatedMeasure,
@@ -34,7 +34,7 @@ from datalens_sdk.domain.fields import (
     WizardLocalField,
 )
 from datalens_sdk.domain.ports import ChartOperations
-from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.wizard_chart import WizardChart
@@ -557,9 +557,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
         return self._set_chart_setting("titleMode", mode)
 
     def mode(self, value: EntryUpdateMode) -> Self:
-        if value not in get_args(EntryUpdateMode):
-            raise DataLensValidationError(f"mode must be one of {get_args(EntryUpdateMode)}, got {value!r}")
-        self._mode = value
+        self._mode = validate_entry_update_mode(value)
         return self
 
     def change_visualization_to(self, *, visualization_id: str) -> Self:

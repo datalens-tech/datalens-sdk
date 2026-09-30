@@ -288,14 +288,27 @@ class DatasetValidateDTO(BaseModel):
         return {"datasetId": self.dataset_id, "data": dict(self.data)}
 
 
+class DatasetUpdateDataDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dataset: Mapping[str, object]
+    mode: Literal['publish', 'save'] | None = None
+
+    def to_payload(self) -> dict[str, object]:
+        payload: dict[str, object] = {"dataset": dict(self.dataset)}
+        if self.mode is not None:
+            payload["mode"] = self.mode
+        return payload
+
+
 class DatasetUpdateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     dataset_id: str = Field(serialization_alias="datasetId")
-    data: Mapping[str, object]
+    data: DatasetUpdateDataDTO
 
     def to_payload(self) -> dict[str, object]:
-        return {"datasetId": self.dataset_id, "data": dict(self.data)}
+        return {"datasetId": self.dataset_id, "data": self.data.to_payload()}
 
 
 class EntryMoveDTO(BaseModel):

@@ -4,13 +4,13 @@ from collections.abc import Callable, Mapping
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast, get_args
+from typing import cast
 
 from typing_extensions import Self
 
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.chart_types import ChartCategory
-from datalens_sdk.domain.entry_types import EntryUpdateMode
+from datalens_sdk.domain.entry_types import EntryUpdateMode, validate_entry_update_mode
 from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError, NotSupportedError
 from datalens_sdk.serialization.artifacts import ArtifactPath
@@ -58,9 +58,7 @@ class EditorChartUpdate:
         return self._description
 
     def mode(self, value: EntryUpdateMode) -> Self:
-        if value not in get_args(EntryUpdateMode):
-            raise DataLensValidationError(f"mode must be one of {get_args(EntryUpdateMode)}, got {value!r}")
-        self._mode = value
+        self._mode = validate_entry_update_mode(value)
         return self
 
     def _set_tab(self, tab: str, content: str | None) -> Self:
@@ -144,6 +142,19 @@ class EditorChart(Chart):
             if build_update is not None:
                 return cast(Callable[[EditorChart], EditorChartUpdate], build_update)(self)
         return EditorChartUpdate(chart=self, operations=self._operations)
+
+    def publish_revision(self, *, rev_id: str) -> EditorChart:
+        """Publish an explicitly selected existing revision without creating a new one.
+
+        To publish the current content, use ``chart.update.mode("publish").execute()``.
+        """
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot publish an editor chart without an id")
+        if not isinstance(rev_id, str) or not rev_id:
+            raise DataLensValidationError("rev_id must be a non-empty string")
+        return self._operations.publish_editor_chart(self, rev_id)
 
     def delete(self) -> None:
         if self._operations is None:

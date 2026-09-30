@@ -119,7 +119,7 @@ def test_execute_publish_false_saves_draft_with_verbatim_data() -> None:
 def test_execute_requires_explicit_publish_kwarg() -> None:
     dashboard, _ = _loaded_dashboard({})
     with pytest.raises(TypeError):
-        dashboard.update.execute()  # type: ignore[call-arg]
+        dashboard.update.execute()
 
 
 def test_locked_update_raises_immediately_without_retries() -> None:

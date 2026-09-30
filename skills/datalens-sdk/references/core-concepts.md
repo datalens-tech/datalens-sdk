@@ -73,8 +73,15 @@ ds = ds.update.add_calculation(
 
 cht = cht.update.palette(id="datalens-neo-20").execute()
 
-dash = dash.update.settings(hide_tabs=True).execute(publish=True)  # dashboards require publish=
+dash = dash.update.settings(hide_tabs=True).mode("publish").execute()
 ```
+
+Publish current content or a current draft through the update builder with
+`.mode("publish").execute()`, which creates a new revision. Dashboard requires
+an explicit mode or its compatible `execute(publish=bool)` form. Only use
+`publish_revision(rev_id=known_old_revision_id)` on supported objects when
+deliberately selecting a known older revision instead of current content.
+HTML content updates need the separately kept authored HTML source.
 
 Every entity also has direct `rename(name)` (returns the renamed object) and `delete()` methods. `Dashboard.delete()` additionally accepts `lock_token=`. Dashboard updates are **last-write-wins** — the server has no optimistic locking, so call `dash.refresh()` right before `.update` and keep the builder short-lived, or concurrent edits are silently overwritten.
 
@@ -232,8 +239,8 @@ Dashboard update settings distinguish three intents: `UNSET` (default — leave 
 ```python
 from datalens_sdk import REMOVE_PARAM, UNSET
 
-dash.update.settings(hide_tabs=True).execute(publish=False)  # others stay UNSET
-dash.update.global_params({"region": REMOVE_PARAM}).execute(publish=False)
+dash.update.settings(hide_tabs=True).mode("save").execute()  # others stay UNSET
+dash.update.global_params({"region": REMOVE_PARAM}).mode("save").execute()
 ```
 
 Never substitute `None` for "remove" or "skip" — `None` is a written value; `UNSET` skips; `REMOVE_PARAM` deletes.

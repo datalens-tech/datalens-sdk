@@ -50,7 +50,7 @@ from datalens_sdk.domain.entry_location import (
 from datalens_sdk.domain.fields import DatasetField, FieldLike, FieldRef, FieldsProxy
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import DatasetOperations
-from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
+from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions, _has_unpublished_changes
 from datalens_sdk.domain.specs.dataset import DatasetCreateSpec
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError, NotSupportedError
 from datalens_sdk.serialization.artifacts import ArtifactPath, write_dataset_artifact
@@ -458,6 +458,11 @@ class Dataset:
     def __post_init__(self) -> None:
         if self.name is None:
             self.name = _optional_str(self.raw.get("name"))
+
+    @property
+    def has_unpublished_changes(self) -> bool | None:
+        """Compare saved/published pointers; None if either pointer is unavailable."""
+        return _has_unpublished_changes(self.saved_id, self.published_id)
 
     @property
     def key(self) -> str | None:

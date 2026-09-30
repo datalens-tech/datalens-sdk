@@ -380,6 +380,27 @@ class EditorChartConverter:
         *,
         dto_module: object = None,
     ) -> EditorChartUpdateDTOProtocol:
+        return EditorChartConverter._from_domain_update(update, dto_module=dto_module)
+
+    @staticmethod
+    def from_domain_publish_revision(
+        chart: EditorChart,
+        *,
+        rev_id: str,
+        dto_module: object = None,
+    ) -> EditorChartUpdateDTOProtocol:
+        if not isinstance(rev_id, str) or not rev_id:
+            raise DataLensValidationError("rev_id must be a non-empty string")
+        update = EditorChartUpdate(chart=chart, operations=None).mode("publish")
+        return EditorChartConverter._from_domain_update(update, rev_id=rev_id, dto_module=dto_module)
+
+    @staticmethod
+    def _from_domain_update(
+        update: EditorChartUpdate,
+        *,
+        rev_id: str | None = None,
+        dto_module: object = None,
+    ) -> EditorChartUpdateDTOProtocol:
         effective_module = generated_dto if dto_module is None else dto_module
         chart = update.chart
         wire_type = update.wire_type_value
@@ -427,6 +448,7 @@ class EditorChartConverter:
             entry_id=cast(str, chart.id),
             data=data_obj,
             mode=update.mode_value,
+            rev_id=rev_id,
             annotation=annotation,
         )
         return cast(EditorChartUpdateDTOProtocol, result)

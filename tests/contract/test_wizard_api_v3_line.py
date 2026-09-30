@@ -264,7 +264,6 @@ def test_raw_wizard_envelopes_serialize_document_v1_data() -> None:
         chart_id="target-chart",
         mode="save",
         data=data,
-        rev_id="target-revision",
     ).to_payload()
 
     assert create_payload == {"data": data, "name": "Copy"}
@@ -272,7 +271,6 @@ def test_raw_wizard_envelopes_serialize_document_v1_data() -> None:
         "chartId": "target-chart",
         "mode": "save",
         "data": data,
-        "revId": "target-revision",
     }
 
 

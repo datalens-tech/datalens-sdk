@@ -400,6 +400,27 @@ class ChartService(ChartOperations):
             dto_module=self._dto_module,
         )
 
+    def publish_editor_chart(self, chart: EditorChart, rev_id: str) -> EditorChart:
+        if not chart.id:
+            raise DataLensValidationError("Cannot publish an editor chart without an id")
+        _, editor_dto_module = self._validate_editor_update_wire_type(chart.wire_type)
+        try:
+            dto_obj = EditorChartConverter.from_domain_publish_revision(
+                chart, rev_id=rev_id, dto_module=editor_dto_module
+            )
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="updateEditorChart", reason=str(exc)) from exc
+        response = self._api.update_editor(dto_obj.to_payload())
+        return EditorChartConverter.to_domain(
+            response,
+            installation=self._installation,
+            operations=self,
+            location=chart.location,
+            name=chart.name,
+            id_fallback=chart.id,
+            dto_module=self._dto_module,
+        )
+
     def replace_editor_chart_from_raw(
         self,
         spec: RawReplaceSpec,

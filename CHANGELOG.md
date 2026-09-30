@@ -20,6 +20,22 @@
 
 ### Added
 
+- Add `.mode("save" | "publish")` to typed Dataset updates and raw Dataset
+  replacements, serialized as `data.mode`. Omitting the mode preserves the
+  server default. Dataset reads accept `branch="saved" | "published"`, resolved
+  through current revision pointers and an exact-revision request.
+- Add `.mode(...)` to typed and raw Dashboard updates while preserving
+  `execute(publish=bool)`. Require an explicit choice, reject non-bool publish
+  values and conflicting selections before HTTP.
+- Add Editor and HTML-page `publish_revision(rev_id=known_old_revision_id)`
+  for deliberately selecting a known older revision without creating a new
+  one, and HTML-page `get_revisions()` history. Publish current content or a
+  current draft with `.update...mode("publish").execute()` as a new revision.
+  Existing no-argument Wizard/Dashboard publication APIs remain available.
+- Expose `rev_id`, `saved_id`, and `published_id` on every chart family and
+  `has_unpublished_changes` on datasets, charts, dashboards, and HTML pages.
+  The status is `None` when either revision pointer is unavailable; the
+  existing Dashboard `is_draft` bool retains its behavior.
 - Allow `DashboardUpdate.set_chart_params(..., widget_tab_id=...)` to merge,
   replace, or clear params on one internal chart tab while preserving the
   existing all-tabs behavior when the argument is omitted.
@@ -51,6 +67,13 @@
 
 ### Fixed
 
+- Stop sending the target revision selector in raw Wizard replacements.
+  Direct raw publish now persists the supplied content as a new revision
+  instead of publishing the target's old revision. Existing-revision
+  historical selection remains available through explicit
+  `publish_revision(rev_id=known_old_revision_id)`.
+- Reject unsupported Connection update `.mode()` calls instead of recording
+  an arbitrary connection data field.
 - Preserve RLS deletion when `delete_rls(field=...)` is followed by
   `add_rls(...)` in the same update: the new rules now replace that field's
   saved rules while other fields retain theirs.
@@ -232,7 +255,8 @@
   pivot-table `freeze_columns()`, while failing closed on stale layer selectors,
   ambiguous linked fields, and unsupported schema semantics.
 - Keep ordinary updates one-phase and free of `revId`; use
-  `WizardChart.publish_revision()` only to publish an existing revision.
+  `WizardChart.publish_revision(rev_id=known_old_revision_id)` only when
+  deliberately selecting a known historical revision.
 
 ## 0.9.0 - 2026-08-21
 

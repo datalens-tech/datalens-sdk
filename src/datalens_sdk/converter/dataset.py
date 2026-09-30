@@ -30,6 +30,7 @@ from datalens_sdk.domain.entry_location import (
     resolve_entry_location_from_api_fields,
     workbook_id_from_location,
 )
+from datalens_sdk.domain.entry_types import EntryUpdateMode
 from datalens_sdk.domain.fields import FieldsProxy
 from datalens_sdk.domain.ports import DatasetOperations
 from datalens_sdk.domain.specs.dataset import DatasetCreateSpec, DatasetUpdateSpec
@@ -54,6 +55,14 @@ class DatasetReadDTOProtocol(Protocol):
     raw: dict[str, object]
 
     def model_dump(self, *, exclude_none: bool = False) -> dict[str, object]: ...
+
+
+class DatasetUpdateDataDTOProtocol(Protocol):
+    def to_payload(self) -> dict[str, object]: ...
+
+
+class DatasetUpdateDTOProtocol(Protocol):
+    def to_payload(self) -> dict[str, object]: ...
 
 
 class DatasetSourceDTOClass(Protocol):
@@ -101,11 +110,31 @@ class DatasetReadDTOClass(Protocol):
     def model_validate(self, obj: object) -> DatasetReadDTOProtocol: ...
 
 
+class DatasetUpdateDataDTOClass(Protocol):
+    def __call__(
+        self,
+        *,
+        dataset: Mapping[str, object],
+        mode: EntryUpdateMode | None = None,
+    ) -> DatasetUpdateDataDTOProtocol: ...
+
+
+class DatasetUpdateDTOClass(Protocol):
+    def __call__(
+        self,
+        *,
+        dataset_id: str,
+        data: DatasetUpdateDataDTOProtocol,
+    ) -> DatasetUpdateDTOProtocol: ...
+
+
 class DatasetDtoModule(Protocol):
     DatasetSourceDTO: DatasetSourceDTOClass
     DatasetContentDTO: DatasetContentDTOClass
     DatasetCreateDTO: DatasetCreateDTOClass
     DatasetReadDTO: DatasetReadDTOClass
+    DatasetUpdateDataDTO: DatasetUpdateDataDTOClass
+    DatasetUpdateDTO: DatasetUpdateDTOClass
 
 
 def _dto_module(dto_module: DatasetDtoModule | None) -> DatasetDtoModule:
@@ -434,11 +463,24 @@ class DatasetConverter:
         )
 
     @staticmethod
-    def from_raw_replace(spec: RawReplaceSpec) -> RawDatasetReplaceEnvelope:
+    def from_raw_replace(spec: RawReplaceSpec, *, mode: EntryUpdateMode | None = None) -> RawDatasetReplaceEnvelope:
         source = DatasetSnapshotView.from_raw(spec.response_snapshot)
         return RawDatasetReplaceEnvelope(
             dataset_id=spec.target_id,
-            data=RawDatasetReplaceData(dataset=dataset_content_from_snapshot(source)),
+            data=RawDatasetReplaceData(dataset=dataset_content_from_snapshot(source), mode=mode),
+        )
+
+    @staticmethod
+    def from_domain_update(
+        spec: DatasetUpdateSpec,
+        *,
+        state: Mapping[str, object],
+        dto_module: DatasetDtoModule | None = None,
+    ) -> DatasetUpdateDTOProtocol:
+        generated = _dto_module(dto_module)
+        return generated.DatasetUpdateDTO(
+            dataset_id=spec.dataset_id,
+            data=generated.DatasetUpdateDataDTO(dataset=state, mode=spec.mode),
         )
 
     @staticmethod

@@ -176,11 +176,6 @@ class WizardChart(Chart):
         return tuple(item for item in value if isinstance(item, str))
 
     @property
-    def rev_id(self) -> str | None:
-        value = self.raw.get("revId")
-        return value if isinstance(value, str) else None
-
-    @property
     def update(self) -> WizardChartUpdate:
         if not self.id:
             raise DataLensValidationError("Cannot update a chart without an id")

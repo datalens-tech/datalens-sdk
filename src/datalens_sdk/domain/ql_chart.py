@@ -9,7 +9,7 @@ from typing_extensions import Self
 from datalens_sdk._runtime.viz_specs import get_ql_viz_spec
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.chart_types import ChartCategory, QLCast, QLParamType
-from datalens_sdk.domain.entry_types import EntryUpdateMode
+from datalens_sdk.domain.entry_types import EntryUpdateMode, validate_entry_update_mode
 from datalens_sdk.domain.fields import FieldsProxy
 from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
@@ -157,9 +157,7 @@ class QLChartUpdate:
         return self._has_data_merge
 
     def mode(self, value: EntryUpdateMode) -> Self:
-        if value not in get_args(EntryUpdateMode):
-            raise DataLensValidationError(f"mode must be one of {get_args(EntryUpdateMode)}, got {value!r}")
-        self._mode = value
+        self._mode = validate_entry_update_mode(value)
         return self
 
     def query(self, sql: str) -> Self:

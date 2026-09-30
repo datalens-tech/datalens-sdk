@@ -20,4 +20,3 @@ class RawReplaceSpec:
     target_id: str
     target_name: str | None
     target_location: EntryLocation | None
-    target_revision_id: str | None = None

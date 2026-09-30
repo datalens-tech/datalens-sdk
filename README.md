@@ -170,6 +170,39 @@ by GUID. Without a saved handle, use an exact GUID through
 `chart.fields.by_guid(...)`; `chart.fields` intentionally returns
 `DatasetField` snapshots and does not reconstruct handles.
 
+## Save and publish
+
+Dataset, Wizard/QL/Editor chart, Dashboard, and HTML content updates accept
+`.mode("save")` or `.mode("publish")` before `.execute()`:
+
+```python
+dataset = client.get.dataset(by_id=dataset_id, branch="saved")
+draft = dataset.update.description("Draft description").mode("save").execute()
+published = draft.update.description("Approved description").mode("publish").execute()
+```
+
+Wizard/QL/Editor/HTML default to `save`. Dataset omits the mode unless chosen
+explicitly, retaining the server default. Dashboard requires an explicit
+`.mode(...)` or the compatible `execute(publish=bool)` form; conflicting choices
+and non-bool publish values fail before HTTP.
+
+Reads accept `branch="saved" | "published"` and exact `rev_id`. Dataset branch
+reads resolve the current pointer first and may make two requests. An explicit
+`rev_id` takes precedence over the branch, with a warning when both are supplied.
+`rev_id` identifies the loaded revision; `saved_id` and `published_id` identify
+the current branches. `has_unpublished_changes` compares the pointers and is
+`None` when either is unavailable.
+
+Publish current content or the current draft with
+`.update...mode("publish").execute()`: this writes and publishes a new revision.
+For HTML, pass the separately kept authored source to `.update.content(...)`.
+Use `publish_revision(rev_id=known_old_revision_id)` on Wizard, Editor,
+Dashboard, or HTML only when deliberately choosing a known older revision
+instead of current content; it preserves that revision ID. The existing
+no-argument Wizard/Dashboard methods remain available for compatibility.
+HTML pages also expose `get_revisions()`. Dataset and QL have no
+same-revision publication method. Connections have no save/publish mode.
+
 ## Examples
 
 Runnable Yandex Cloud examples are available in [`examples/`](examples/):
@@ -204,8 +237,13 @@ or from an exported artifact directory with
 Replace an existing resource with
 `client.raw.replace.<resource>(target=..., response_snapshot=raw).execute(...)` or
 `client.raw.replace.<resource>.from_file(path, target=...).execute(...)`.
-Dashboard replace requires `publish=` on `execute()`; chart replace can select
-`.mode("save")` or `.mode("publish")` before `execute()`.
+Dataset, chart, and Dashboard replace can select `.mode("save")` or
+`.mode("publish")` before `execute()`. Dashboard still requires an explicit
+choice and accepts the compatible `execute(publish=bool)` form.
+Raw replacement writes supplied content as a new revision; source and target
+revision selectors are excluded from the write payload. Use `.mode("publish")`
+to publish that content. Selecting a known older revision is the separate
+explicit `publish_revision(rev_id=known_old_revision_id)` operation.
 Replace overwrites the supported mutable content and is last-write-wins: it
 does not fetch, merge, or check for concurrent changes. Each `build()` or
 `execute()` call performs a new mutation and has no idempotency guarantee.

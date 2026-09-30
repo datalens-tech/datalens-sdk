@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import ValidationError
 
+from datalens_sdk.api.entries import EntriesService
 from datalens_sdk.converter.html_page import HtmlPageConverter, HtmlPageDtoModule
 from datalens_sdk.domain.common_types import UILanguage, UITheme
 from datalens_sdk.domain.entry_location import EntryLocation
@@ -13,8 +14,9 @@ from datalens_sdk.domain.html_page import (
     HtmlPageCreate,
     HtmlPageUpdate,
 )
-from datalens_sdk.domain.navigation import GetEntriesOptions
+from datalens_sdk.domain.navigation import GetEntriesOptions, Pager
 from datalens_sdk.domain.ports import HtmlPageOperations, NavigationOperations
+from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.errors import DataLensValidationError, translate_dto_validation_error
 from datalens_sdk.http import TRANSIENT_RETRY_POLICY, HTTPClientProtocol
 
@@ -45,11 +47,13 @@ class HtmlPageService(HtmlPageOperations):
         *,
         installation: str,
         api: HtmlPageAPI,
+        entries_service: EntriesService,
         navigation_operations: NavigationOperations,
         dto_module: HtmlPageDtoModule | None = None,
     ) -> None:
         self._installation = installation
         self._api = api
+        self._entries_service = entries_service
         self._navigation_operations = navigation_operations
         self._dto_module = dto_module
 
@@ -133,6 +137,9 @@ class HtmlPageService(HtmlPageOperations):
             name=builder.page.name,
             location=builder.page.location,
         )
+
+    def get_entry_revisions(self, entry_id: str, options: EntryRevisionsOptions) -> Pager[EntryRevision]:
+        return self._entries_service.get_entry_revisions(entry_id, options)
 
     def delete_html_page(self, entry_id: str) -> None:
         try:

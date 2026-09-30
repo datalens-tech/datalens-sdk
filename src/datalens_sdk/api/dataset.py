@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 import logging
-from typing import cast
+from typing import cast, get_args
 import warnings
 
 from pydantic import ValidationError
@@ -16,6 +16,7 @@ from datalens_sdk.domain.dataset import Dataset, DatasetCreate, Source
 from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
 from datalens_sdk.domain.dataset_update import DatasetUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
+from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
 from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
 from datalens_sdk.domain.ports import DatasetOperations, NavigationOperations
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
@@ -196,7 +197,16 @@ class DatasetService(DatasetOperations):
         dataset_id: str,
         workbook_id: str | None = None,
         rev_id: str | None = None,
+        branch: EntryBranch | None = None,
     ) -> Dataset:
+        if rev_id is None and branch is not None:
+            if branch not in get_args(EntryBranch):
+                raise DataLensValidationError(f"branch must be one of {get_args(EntryBranch)}, got {branch!r}")
+            current = self.get_dataset(dataset_id, workbook_id=workbook_id)
+            selected_revision = current.saved_id if branch == "saved" else current.published_id
+            if not selected_revision:
+                raise DataLensValidationError(f"Dataset {dataset_id!r} has no {branch!r} revision pointer")
+            rev_id = selected_revision
         response = self._api.get(dataset_id, workbook_id=workbook_id, rev_id=rev_id)
         return DatasetConverter.to_domain(
             response,
@@ -228,7 +238,11 @@ class DatasetService(DatasetOperations):
         else:
             state = DatasetConverter.state_for_name_only(spec)
         state = DatasetConverter.apply_rls2_changes(state, spec.rls2_changes)
-        response = self._api.update({"datasetId": dataset_id, "data": {"dataset": state}})
+        try:
+            payload = DatasetConverter.from_domain_update(spec, state=state, dto_module=self._dto_module).to_payload()
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="updateDataset", reason=str(exc)) from exc
+        response = self._api.update(payload)
         return DatasetConverter.to_domain(
             response,
             installation=self._installation,
@@ -239,8 +253,8 @@ class DatasetService(DatasetOperations):
             dto_module=self._dto_module,
         )
 
-    def replace_dataset_from_raw(self, spec: RawReplaceSpec) -> Dataset:
-        payload = DatasetConverter.from_raw_replace(spec).to_payload()
+    def replace_dataset_from_raw(self, spec: RawReplaceSpec, *, mode: EntryUpdateMode | None = None) -> Dataset:
+        payload = DatasetConverter.from_raw_replace(spec, mode=mode).to_payload()
         response = self._api.update(payload)
         return DatasetConverter.to_domain(
             response,

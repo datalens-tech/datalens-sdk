@@ -11,10 +11,10 @@ import pytest
 import datalens_sdk as dl
 from datalens_sdk.domain import EntryRevision
 
-EntryKind = Literal["connection", "dataset", "dashboard", "wizard", "ql", "editor"]
-EntryObject = dl.Connection | dl.Dataset | dl.Dashboard | dl.WizardChart | dl.QLChart | dl.EditorChart
+EntryKind = Literal["connection", "dataset", "dashboard", "wizard", "ql", "editor", "html"]
+EntryObject = dl.Connection | dl.Dataset | dl.Dashboard | dl.WizardChart | dl.QLChart | dl.EditorChart | dl.HtmlPage
 Client = dl.DataLensClientYC | dl.DataLensClientEnterprise
-ENTRY_KINDS: tuple[EntryKind, ...] = ("connection", "dataset", "dashboard", "wizard", "ql", "editor")
+ENTRY_KINDS: tuple[EntryKind, ...] = ("connection", "dataset", "dashboard", "wizard", "ql", "editor", "html")
 
 
 class RecordedTransport:
@@ -53,6 +53,8 @@ def _entry(kind: EntryKind, client: Client | None, *, entry_id: str | None = "en
         return dl.WizardChart(id=entry_id, raw=raw, _operations=client._chart_service if client else None)
     if kind == "ql":
         return dl.QLChart(id=entry_id, raw=raw, _operations=client._chart_service if client else None)
+    if kind == "html":
+        return dl.HtmlPage(id=entry_id, raw=raw, _operations=client._html_page_service if client else None)
     return dl.EditorChart(id=entry_id, raw=raw, _operations=client._chart_service if client else None)
 
 
