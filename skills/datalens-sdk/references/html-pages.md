@@ -89,9 +89,9 @@ edits need the original document.
 
 ## Update and delete
 
-Fetch the current entry and use a content update to save or publish current
-authored HTML. Both writes create new revisions; keep the source separately
-because metadata reads do not return it:
+Follow the [shared revision lifecycle](core-concepts.md#revision-lifecycle)
+to choose a content update or publication of an existing revision. Content
+updates need authored HTML; metadata reads do not return it:
 
 ```python
 draft = page.update.content(new_html_document).mode("save").execute()
@@ -108,8 +108,6 @@ revised = published.update.content(edited_html_document).mode("publish").execute
 restored = revised.publish_revision(rev_id=historical_revision_id)
 ```
 
-Content updates accept `mode("save")` or `mode("publish")`. Use `save` to keep
-a draft and `publish` to publish its current authored source as a new revision.
 Revision-only updates remain available through `.update.revision(...)` for
 explicit revision selection. Do not mix `content` and `rev_id` in one update.
 A content update can also change the entry description with `.description(text)`;
@@ -119,15 +117,8 @@ and `object_id`; it cannot prove how the page rendered. Follow the linked
 authoring skill's validator and arrange a render check through an authorized
 DataLens viewing flow when that matters.
 
-`page.publish_revision(rev_id=existing_revision_id)` publishes an existing
-revision, including the current saved draft or a historical revision, while
-preserving its ID. This operation does not require the HTML source. To write
-and publish new or edited source, use a content update with `.mode("publish")`,
-which creates a new revision.
 `page.get_revisions(page_size=..., page_token=..., rev_ids=...)`
 uses the common lazy history pager described in [navigation.md](navigation.md).
-`rev_id` identifies the loaded revision; `saved_id` and `published_id` identify
-the branches reported by the response.
 
 ```python
 page.delete()

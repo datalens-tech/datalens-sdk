@@ -37,7 +37,7 @@ Useful state is `chart.id`, `name`, `location`, `description`,
 strings; a nullable, redacted, or omitted tab may be `None` or absent. Editor
 charts have no Wizard/QL `visualization_id`.
 
-## Update and publish
+## Update tab content
 
 Fetch the saved branch, confirm `wire_type`, and use only setters from that
 renderer's matrix row. Every setter replaces one complete tab. Untouched tabs
@@ -73,19 +73,13 @@ public renderer matrix row. If stored tabs no longer match the write schema,
 report the validation error and keep the snapshot; do not silently discard
 tab content.
 
-Update defaults to `save`; publish only when requested. Re-fetch the selected
-branch and compare the intended stored values. Never repeat a successful write
-because later verification code failed.
+## Revision modes and publication
 
-Write and publish new or edited tabs with
-`chart.update.mode("publish").execute()`, creating a new published revision.
-Use `chart.publish_revision(rev_id=existing_revision_id)` to publish an existing
-saved draft or historical revision while preserving its ID. For the current
-saved draft, fetch `branch="saved"` and select its `saved_id` explicitly.
-Ordinary typed updates and raw replacement create new content revisions and
-exclude the revision selector. `rev_id` describes the loaded revision;
-`saved_id` and `published_id` describe the branches reported by the response.
-These IDs can be unavailable.
+Follow the [shared revision lifecycle](../core-concepts.md#revision-lifecycle)
+for update modes, publication of existing revisions, and revision metadata.
+Publish only when requested. Re-fetch the selected branch and compare the
+intended stored values. Never repeat a successful write because later
+verification code failed.
 
 ## Rename, relations, and delete
 

@@ -96,7 +96,7 @@
     {
       "id": 6,
       "name": "dataset-formula-lifecycle",
-      "prompt": "Add a reusable calculated measure named 'Average order value' to dataset ds-sales-42. The dataset already has fields named Sales and Order ID. Use SUM([Sales]) / COUNTD([Order ID]), and make sure the formula is actually valid before telling me it works.",
+      "prompt": "Add a reusable calculated measure named 'Average order value' to dataset ds-sales-42 and publish it for charts using the dataset. The dataset already has fields named Sales and Order ID. Use SUM([Sales]) / COUNTD([Order ID]), and make sure the formula is actually valid before telling me it works.",
       "expected_output": "Runs preflight, fetches dataset ds-sales-42, resolves the exact Sales and Order ID fields, adds the reusable Dataset calculation through dataset.update.add_calculation(...).mode('publish').execute(), then re-fetches the Dataset and verifies the stored formula text. It explicitly distinguishes successful persistence from semantic formula validation: it uses an available DataLens validation/render path when one is available, otherwise reports that semantic validity remains unverified instead of claiming the formula works.",
       "files": [],
       "assertions": [
@@ -111,15 +111,15 @@
     {
       "id": 7,
       "name": "formula-ownership-routing",
-      "prompt": "Dataset ds-commerce-7 has Revenue and Refunds fields and feeds chart ch-commerce-9. Add Net revenue = [Revenue] - [Refunds] so every chart using the dataset can reuse it. Also add Revenue after refunds = SUM([Revenue]) - SUM([Refunds]) only to ch-commerce-9; it is an experiment and must not appear in the shared dataset.",
-      "expected_output": "Routes formula ownership by scope: fetches the Dataset and adds Net revenue through the Dataset update calculation API with .mode('publish').execute(), then constructs Revenue after refunds with WizardLocalField.measure(...) and passes that stable handle to the Wizard chart update. Each owner is mutated once with its own terminal .execute(), and both owners are re-fetched to verify that the reusable formula is in the Dataset while the experiment remains chart-local.",
+      "prompt": "Dataset ds-commerce-7 has Revenue and Refunds fields and feeds chart ch-commerce-9. Add and publish Net revenue = [Revenue] - [Refunds] so every chart using the dataset can reuse it. Also add Revenue after refunds = SUM([Revenue]) - SUM([Refunds]) only to ch-commerce-9; save this chart change as a draft without publishing it. The experiment must not appear in the shared dataset.",
+      "expected_output": "Routes formula ownership by scope: fetches the Dataset and adds Net revenue through the Dataset update calculation API with .mode('publish').execute(), then constructs Revenue after refunds with WizardLocalField.measure(...) and passes that stable handle to the Wizard chart update in default save mode. Each owner is mutated once with its own terminal .execute(), and both owners are re-fetched to verify the published Dataset formula and the saved chart-local experiment.",
       "files": [],
       "assertions": [
         {"text": "Fetches ds-commerce-7 and ch-commerce-9 and verifies that the chart is backed by the intended Dataset before mutating either owner", "type": "workflow"},
         {"text": "Adds Net revenue as a reusable Dataset calculation via dataset.update.add_calculation(... formula='[Revenue] - [Refunds]' ...).mode('publish').execute()", "type": "code"},
         {"text": "Constructs Revenue after refunds with WizardLocalField.measure(title='Revenue after refunds', formula='SUM([Revenue]) - SUM([Refunds])', ...) and passes that handle to chart.update.add_local_field(handle).execute()", "type": "code"},
         {"text": "Does NOT put the experimental Revenue after refunds formula in the Dataset and does NOT put the reusable Net revenue formula only in the chart", "type": "workflow"},
-        {"text": "Re-fetches both owners and verifies the Dataset calculation and chart-local field separately", "type": "workflow"},
+        {"text": "Re-fetches both owners and verifies the published Dataset calculation and saved chart-local field separately", "type": "workflow"},
         {"text": "Does NOT use QL SQL, Editor JavaScript, httpx/requests, or hand-built JSON payloads for either formula", "type": "code"}
       ]
     },
@@ -244,6 +244,59 @@
         {"text": "Uses the same sales alias in Meta and Sources via Editor.getId(...) according to the official sections", "type": "workflow"},
         {"text": "Uses Editor.getLoadedData() from Prepare and does not claim persistence proves rendering", "type": "workflow"},
         {"text": "Does NOT use shared(...), raw HTTP, or private imports", "type": "code"}
+      ]
+    },
+    {
+      "id": 17,
+      "name": "dataset-default-save-draft",
+      "prompt": "Dataset ds-draft-17 currently has the description 'Original' in both its saved and published revisions. Using the SDK's default update mode, change the description to 'Draft for review' and keep it as a draft. Inspect the saved definition and confirm that the published description is still 'Original'. Do not query dataset rows.",
+      "expected_output": "Fetches the Dataset, calls dataset.update.description('Draft for review').execute() without a mode override, then inspects branch='saved' and branch='published'. It verifies the saved description changed while the published description stayed Original, and reports that the change is a draft.",
+      "files": [],
+      "assertions": [
+        {"text": "Uses the typed Dataset update with one terminal .execute() and no .mode(...) override, exercising the default save mode", "type": "code"},
+        {"text": "Inspects client.get.dataset(by_id='ds-draft-17', branch='saved') and verifies the saved description is Draft for review", "type": "code"},
+        {"text": "Inspects branch='published' and verifies its description remains Original", "type": "workflow"},
+        {"text": "Does NOT publish, recreate the Dataset, use raw replacement, or query dataset rows", "type": "code"},
+        {"text": "Reports the change as a saved draft rather than a published update", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 18,
+      "name": "editor-publish-existing-saved-revision",
+      "prompt": "Publish the stored saved draft of Gravity Charts Editor chart ed-release-18 without changing any tab source or creating another revision. Inspect its revision metadata and confirm that the published revision ID is the saved revision ID you selected.",
+      "expected_output": "Fetches the Editor chart with branch='saved', checks that saved_id is available, and calls chart.publish_revision(rev_id=chart.saved_id). It inspects the published revision metadata and confirms the existing saved revision ID was preserved.",
+      "files": [],
+      "assertions": [
+        {"text": "Loads ed-release-18 with client.get.editor_chart(..., branch='saved') and selects its available saved_id", "type": "code"},
+        {"text": "Calls chart.publish_revision(rev_id=selected_saved_id) with an explicit ID", "type": "code"},
+        {"text": "Does NOT use a content-update builder, raw replacement, or recreate the chart to publish the existing revision", "type": "code"},
+        {"text": "Inspects the published revision and verifies that its ID matches selected_saved_id", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 19,
+      "name": "html-publish-saved-revision-without-source",
+      "prompt": "Publish the stored saved draft of HTML page html-release-19 without creating another revision. I no longer have the original HTML source. Inspect the page metadata and confirm that the published revision ID matches the saved revision you selected.",
+      "expected_output": "Fetches HTML-page metadata with branch='saved', checks that saved_id is available, and calls page.publish_revision(rev_id=page.saved_id). No authored HTML is needed. It verifies the published metadata retains the selected revision ID.",
+      "files": [],
+      "assertions": [
+        {"text": "Loads html-release-19 with client.get.html_page(..., branch='saved') and selects its available saved_id", "type": "code"},
+        {"text": "Calls page.publish_revision(rev_id=selected_saved_id) without resending HTML content", "type": "code"},
+        {"text": "Does NOT request authored source, recover source from a preview URL, or use a content update to publish this existing revision", "type": "workflow"},
+        {"text": "Inspects the published metadata and verifies that its revision ID matches selected_saved_id", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 20,
+      "name": "wizard-dashboard-publish-loaded-saved-revisions",
+      "prompt": "Publish the stored saved drafts of Wizard chart wc-release-20 and dashboard dash-release-20 while preserving both revision IDs. Use the SDK's no-argument publication helpers after loading their saved revisions, and inspect metadata to confirm those same revisions are now published.",
+      "expected_output": "Loads each object explicitly with branch='saved', remembers its loaded rev_id, then calls chart.publish_revision() and dashboard.publish_revision() without revision arguments. It verifies both published revisions have the remembered IDs and does not write new content revisions.",
+      "files": [],
+      "assertions": [
+        {"text": "Loads the Wizard chart with client.get.wizard_chart(..., branch='saved') and the dashboard with client.get.dashboard(..., branch='saved')", "type": "code"},
+        {"text": "Calls both publish_revision() helpers without rev_id arguments on those loaded saved objects", "type": "code"},
+        {"text": "Remembers each loaded rev_id and verifies the published revision ID matches it", "type": "workflow"},
+        {"text": "Does NOT use update.mode(publish), execute(publish=True), raw replacement, or recreation to publish these existing revisions", "type": "code"}
       ]
     }
   ]

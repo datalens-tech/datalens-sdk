@@ -55,19 +55,13 @@ with `.id`/`.title`; use `avatar.get("id")`, `avatar.get("source_id")`, and
 
 ## The update DSL
 
-Typed updates and `client.raw.replace.dataset` (including `from_file`)
-default to `save` and send `data.mode="save"` explicitly. Choose `.mode("publish")`
-before `.execute()` to write and publish new content. Calls that previously
-relied on the server default to publish must now select `.mode("publish")`.
+Typed updates and `client.raw.replace.dataset` follow the
+[shared revision lifecycle](core-concepts.md#revision-lifecycle).
 
 Read the draft with `client.get.dataset(by_id=..., branch="saved")` or the
-publication with `branch="published"`. The SDK resolves the current revision
-pointer, then reads that exact `rev_id`, so branch reads can make two requests.
-An explicit `rev_id` wins over `branch`, with a warning when both are supplied.
-A missing requested pointer raises a validation error. `rev_id` identifies
-the loaded revision; `saved_id` and `published_id` identify the branches
-reported by the response. These IDs can be unavailable. Dataset has no
-`publish_revision()` method for reusing an existing revision ID.
+publication with `branch="published"`. Dataset branch reads resolve the current
+revision pointer, then read that exact `rev_id`, so they can make two requests.
+A missing requested pointer raises `DataLensValidationError`.
 
 The authoring examples below explicitly publish their Dataset changes.
 

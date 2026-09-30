@@ -410,11 +410,8 @@ issues = dash.validate()
 assert not issues, issues
 ```
 
-`.mode("publish")` writes and publishes the supplied content as a new
-revision; `.mode("save")` saves a draft. Publish an existing saved draft or
-historical revision with `dash.publish_revision(rev_id=existing_revision_id)`
-to preserve its ID. After fetching `branch="saved"`, the no-argument
-`dash.publish_revision()` publishes that loaded saved revision.
+Content updates and publication of existing revisions follow the
+[shared revision lifecycle](core-concepts.md#revision-lifecycle).
 
 The compatible `execute(publish=bool)` form remains available for typed and
 raw updates: `publish=True` chooses publish and `publish=False` chooses save.

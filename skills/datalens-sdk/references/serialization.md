@@ -71,16 +71,10 @@ Facts to keep straight about bundles:
 So each factory is *callable* (in-memory snapshot) and also has a `.from_file(...)` method (artifact on disk); both return the same builder, and — as everywhere in the SDK — nothing persists until the terminal call. Resource-specific extras:
 
 - **connection** create and replace accept `overrides=` — a mapping merged over the snapshot-derived payload. Identity, location, connector, and server-owned keys are rejected in overrides.
-- **dataset** replace supports `.mode("save" | "publish")`, defaults to `save`, and sends `data.mode` explicitly. Use `.mode("publish")` to publish the replacement content.
 - **dashboard** replace requires `.mode("save" | "publish")` or the compatible `.execute(publish=bool, lock_token=...)` form; `publish=` itself is not mandatory.
-- **chart** replace supports `.mode("save" | "publish")` before `.execute()` (default `"save"`).
 
-Raw replacements are content updates: they create a new revision from the
-supplied content and exclude source and target revision selectors. Publish
-that content with `.mode("publish")`. To publish an existing saved draft or
-historical revision while preserving its ID, use
-`publish_revision(rev_id=existing_revision_id)` on Wizard, Editor, Dashboard,
-or HTML pages. Dataset and QL have no same-revision publication method.
+Replacement modes and publication of existing revisions follow the
+[shared revision lifecycle](core-concepts.md#revision-lifecycle).
 
 For `from_file`, `path` is the **artifact directory** (`My Dash [abc123]/`), not the JSON file inside it. Chart artifacts are category-checked: loading a wizard artifact through `client.raw.create.ql_chart.from_file` raises `DataLensValidationError`.
 

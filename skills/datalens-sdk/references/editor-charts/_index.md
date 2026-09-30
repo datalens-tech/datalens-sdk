@@ -31,7 +31,8 @@ from this skill; follow the exact documentation sections below.
 | Task | Read |
 |---|---|
 | Create a chart | its leaf in the matrix below |
-| Update or publish tabs | [common-operations.md](common-operations.md), then its leaf selected by `chart.wire_type` |
+| Update or publish tab content | [common-operations.md](common-operations.md), then its leaf selected by `chart.wire_type` |
+| Publish an existing revision | [common-operations.md](common-operations.md#revision-modes-and-publication) |
 | Read, rename, relate, delete, export, or diagnose | [common-operations.md](common-operations.md) |
 
 ## SDK renderer matrix

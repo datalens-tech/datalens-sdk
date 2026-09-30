@@ -188,12 +188,8 @@ Start from `chart.update`, chain methods, then call:
 .execute() -> WizardChart
 ```
 
-To write and publish new or edited content, use
-`chart.update.mode("publish").execute()`, which creates a new revision.
-Publish an existing saved draft or historical revision with
-`chart.publish_revision(rev_id=existing_revision_id)` to preserve its ID.
-After fetching `branch="saved"`, the no-argument `chart.publish_revision()`
-publishes that loaded saved revision.
+Content updates and publication of existing revisions follow the
+[shared revision lifecycle](../core-concepts.md#revision-lifecycle).
 
 No update is persisted before `.execute()`. Create and update responses can be
 minimal, so re-fetch by ID before reading `.fields` or `.dataset_ids`, or before
