@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 3.1.0 - 2026-10-01
+
 ### Breaking changes
 
 - Default typed Dataset updates and raw Dataset replacements to `save`,
