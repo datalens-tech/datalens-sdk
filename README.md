@@ -170,42 +170,6 @@ by GUID. Without a saved handle, use an exact GUID through
 `chart.fields.by_guid(...)`; `chart.fields` intentionally returns
 `DatasetField` snapshots and does not reconstruct handles.
 
-## Save and publish
-
-Dataset, Wizard/QL/Editor chart, Dashboard, and HTML content updates accept
-`.mode("save")` or `.mode("publish")` before `.execute()`:
-
-```python
-dataset = client.get.dataset(by_id=dataset_id, branch="saved")
-draft = dataset.update.description("Draft description").mode("save").execute()
-published = draft.update.description("Approved description").mode("publish").execute()
-```
-
-Dataset/Wizard/QL/Editor/HTML updates default to `save`; Dataset sends
-`data.mode="save"` explicitly for both typed updates and raw replacements.
-To publish a Dataset update, choose `.mode("publish")` before `.execute()`.
-Dashboard requires an explicit `.mode(...)` or the compatible
-`execute(publish=bool)` form; conflicting choices and non-bool publish values
-fail before HTTP.
-
-Reads accept `branch="saved" | "published"` and exact `rev_id`. Dataset branch
-reads resolve the current pointer first and may make two requests. An explicit
-`rev_id` takes precedence over the branch, with a warning when both are supplied.
-`rev_id` identifies the loaded revision; `saved_id` and `published_id` identify
-the branches reported by that response. These IDs can be unavailable.
-Dashboard retains its existing `is_draft` boolean.
-
-Write and publish new or edited content with
-`.update...mode("publish").execute()`: this creates a new revision. HTML content
-updates require authored source passed to `.update.content(...)`.
-Use `publish_revision(rev_id=existing_revision_id)` on Wizard, Editor,
-Dashboard, or HTML to publish an existing revision, including the current saved
-draft or a historical revision, while preserving its ID. Publishing a saved
-HTML draft this way does not require its source. The no-argument
-Wizard/Dashboard methods publish the revision loaded into that object.
-HTML pages also expose `get_revisions()`. Dataset and QL have no
-same-revision publication method. Connections have no save/publish mode.
-
 ## Examples
 
 Runnable Yandex Cloud examples are available in [`examples/`](examples/):
