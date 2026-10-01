@@ -47,6 +47,7 @@ METADATA: dict[str, ConnectorMetadata] = {
         available_fields=frozenset(['allowed_methods', 'collection_id', 'description', 'dir_path', 'host', 'name', 'path', 'plain_headers', 'port', 'secret_headers', 'secure', 'type', 'workbook_id']),
         defaults={'description': ''},
         enum_restrictions={},
+        mapping_value_types={'plain_headers': (True, ('string', 'null')), 'secret_headers': (True, ('string', 'null'))},
     ),
     'metrika_api': ConnectorMetadata(
         connector='metrika_api',
@@ -102,7 +103,7 @@ METADATA: dict[str, ConnectorMetadata] = {
         required=frozenset(['cloud_id', 'db_name', 'folder_id', 'host', 'port', 'service_account_id']),
         available_fields=frozenset(['auth_type', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'cloud_id', 'collection_id', 'data_export_forbidden', 'db_name', 'delegation_is_set', 'description', 'dir_path', 'folder_id', 'host', 'mdb_cluster_id', 'mdb_folder_id', 'name', 'port', 'raw_sql_level', 'service_account_id', 'ssl_ca', 'ssl_enable', 'token', 'type', 'username', 'workbook_id']),
         defaults={'data_export_forbidden': 'off', 'description': '', 'raw_sql_level': 'off', 'ssl_enable': 'on'},
-        enum_restrictions={'auth_type': ['anonymous', 'password', 'oauth'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
+        enum_restrictions={'auth_type': ['anonymous', 'password', 'oauth', None], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
     ),
 }
 
@@ -117,7 +118,7 @@ class AppmetricaApiConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def accuracy(self, value: float) -> Self:
+    def accuracy(self, value: float | None) -> Self:
         return self._set('accuracy', value)
 
     def counter_id(self, value: str) -> Self:
@@ -143,10 +144,10 @@ class ChytConnectionCreate(BaseConnectionCreate):
     def alias(self, value: str) -> Self:
         return self._set('alias', value)
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
     def data_export_forbidden(self, value: str) -> Self:
@@ -178,28 +179,28 @@ class ClickhouseConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def connection_manager_cloud_id(self, value: str) -> Self:
+    def connection_manager_cloud_id(self, value: str | None) -> Self:
         return self._set('connection_manager_cloud_id', value)
 
-    def connection_manager_connection_id(self, value: str) -> Self:
+    def connection_manager_connection_id(self, value: str | None) -> Self:
         return self._set('connection_manager_connection_id', value)
 
-    def connection_manager_delegation_is_set(self, value: bool) -> Self:
+    def connection_manager_delegation_is_set(self, value: bool | None) -> Self:
         return self._set('connection_manager_delegation_is_set', value)
 
-    def connection_manager_folder_id(self, value: str) -> Self:
+    def connection_manager_folder_id(self, value: str | None) -> Self:
         return self._set('connection_manager_folder_id', value)
 
     def data_export_forbidden(self, value: str) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
     def experimental_features(self, value: str) -> Self:
@@ -208,13 +209,13 @@ class ClickhouseConnectionCreate(BaseConnectionCreate):
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def mdb_cluster_id(self, value: str) -> Self:
+    def mdb_cluster_id(self, value: str | None) -> Self:
         return self._set('mdb_cluster_id', value)
 
-    def mdb_folder_id(self, value: str) -> Self:
+    def mdb_folder_id(self, value: str | None) -> Self:
         return self._set('mdb_folder_id', value)
 
-    def password(self, value: str) -> Self:
+    def password(self, value: str | None) -> Self:
         return self._set('password', value)
 
     def port(self, value: int) -> Self:
@@ -235,7 +236,7 @@ class ClickhouseConnectionCreate(BaseConnectionCreate):
     def ssl_ca_verify(self, value: str) -> Self:
         return self._set('ssl_ca_verify', value)
 
-    def username(self, value: str) -> Self:
+    def username(self, value: str | None) -> Self:
         return self._set('username', value)
 
 class GreenplumConnectionCreate(BaseConnectionCreate):
@@ -249,16 +250,16 @@ class GreenplumConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
     def data_export_forbidden(self, value: str) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
     def enforce_collate(self, value: Literal['auto', 'on', 'off']) -> Self:
@@ -267,10 +268,10 @@ class GreenplumConnectionCreate(BaseConnectionCreate):
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def mdb_cluster_id(self, value: str) -> Self:
+    def mdb_cluster_id(self, value: str | None) -> Self:
         return self._set('mdb_cluster_id', value)
 
-    def mdb_folder_id(self, value: str) -> Self:
+    def mdb_folder_id(self, value: str | None) -> Self:
         return self._set('mdb_folder_id', value)
 
     def password(self, value: str) -> Self:
@@ -308,16 +309,16 @@ class JsonApiConnectionCreate(BaseConnectionCreate):
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def path(self, value: str) -> Self:
+    def path(self, value: str | None) -> Self:
         return self._set('path', value)
 
-    def plain_headers(self, value: Mapping[str, object]) -> Self:
+    def plain_headers(self, value: Mapping[str, str | None] | None) -> Self:
         return self._set('plain_headers', value)
 
     def port(self, value: int) -> Self:
         return self._set('port', value)
 
-    def secret_headers(self, value: Mapping[str, object]) -> Self:
+    def secret_headers(self, value: Mapping[str, str | None] | None) -> Self:
         return self._set('secret_headers', value)
 
     def secure(self, value: bool) -> Self:
@@ -334,7 +335,7 @@ class MetrikaApiConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def accuracy(self, value: float) -> Self:
+    def accuracy(self, value: float | None) -> Self:
         return self._set('accuracy', value)
 
     def counter_id(self, value: str) -> Self:
@@ -357,16 +358,16 @@ class MssqlConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
     def data_export_forbidden(self, value: str) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
     def host(self, value: str) -> Self:
@@ -395,28 +396,28 @@ class MysqlConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def connection_manager_cloud_id(self, value: str) -> Self:
+    def connection_manager_cloud_id(self, value: str | None) -> Self:
         return self._set('connection_manager_cloud_id', value)
 
-    def connection_manager_connection_id(self, value: str) -> Self:
+    def connection_manager_connection_id(self, value: str | None) -> Self:
         return self._set('connection_manager_connection_id', value)
 
-    def connection_manager_delegation_is_set(self, value: bool) -> Self:
+    def connection_manager_delegation_is_set(self, value: bool | None) -> Self:
         return self._set('connection_manager_delegation_is_set', value)
 
-    def connection_manager_folder_id(self, value: str) -> Self:
+    def connection_manager_folder_id(self, value: str | None) -> Self:
         return self._set('connection_manager_folder_id', value)
 
     def data_export_forbidden(self, value: str) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
     def enforce_collate(self, value: Literal['auto', 'on', 'off']) -> Self:
@@ -425,13 +426,13 @@ class MysqlConnectionCreate(BaseConnectionCreate):
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def mdb_cluster_id(self, value: str) -> Self:
+    def mdb_cluster_id(self, value: str | None) -> Self:
         return self._set('mdb_cluster_id', value)
 
-    def mdb_folder_id(self, value: str) -> Self:
+    def mdb_folder_id(self, value: str | None) -> Self:
         return self._set('mdb_folder_id', value)
 
-    def password(self, value: str) -> Self:
+    def password(self, value: str | None) -> Self:
         return self._set('password', value)
 
     def port(self, value: int) -> Self:
@@ -446,7 +447,7 @@ class MysqlConnectionCreate(BaseConnectionCreate):
     def ssl_enable(self, value: str) -> Self:
         return self._set('ssl_enable', value)
 
-    def username(self, value: str) -> Self:
+    def username(self, value: str | None) -> Self:
         return self._set('username', value)
 
 class OracleConnectionCreate(BaseConnectionCreate):
@@ -460,10 +461,10 @@ class OracleConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
     def data_export_forbidden(self, value: str) -> Self:
@@ -472,7 +473,7 @@ class OracleConnectionCreate(BaseConnectionCreate):
     def db_connect_method(self, value: Literal['sid', 'service_name']) -> Self:
         return self._set('db_connect_method', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
     def host(self, value: str) -> Self:
@@ -507,28 +508,28 @@ class PostgresConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def connection_manager_cloud_id(self, value: str) -> Self:
+    def connection_manager_cloud_id(self, value: str | None) -> Self:
         return self._set('connection_manager_cloud_id', value)
 
-    def connection_manager_connection_id(self, value: str) -> Self:
+    def connection_manager_connection_id(self, value: str | None) -> Self:
         return self._set('connection_manager_connection_id', value)
 
-    def connection_manager_delegation_is_set(self, value: bool) -> Self:
+    def connection_manager_delegation_is_set(self, value: bool | None) -> Self:
         return self._set('connection_manager_delegation_is_set', value)
 
-    def connection_manager_folder_id(self, value: str) -> Self:
+    def connection_manager_folder_id(self, value: str | None) -> Self:
         return self._set('connection_manager_folder_id', value)
 
     def data_export_forbidden(self, value: str) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
     def enforce_collate(self, value: Literal['auto', 'on', 'off']) -> Self:
@@ -537,13 +538,13 @@ class PostgresConnectionCreate(BaseConnectionCreate):
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def mdb_cluster_id(self, value: str) -> Self:
+    def mdb_cluster_id(self, value: str | None) -> Self:
         return self._set('mdb_cluster_id', value)
 
-    def mdb_folder_id(self, value: str) -> Self:
+    def mdb_folder_id(self, value: str | None) -> Self:
         return self._set('mdb_folder_id', value)
 
-    def password(self, value: str) -> Self:
+    def password(self, value: str | None) -> Self:
         return self._set('password', value)
 
     def port(self, value: int) -> Self:
@@ -558,7 +559,7 @@ class PostgresConnectionCreate(BaseConnectionCreate):
     def ssl_enable(self, value: str) -> Self:
         return self._set('ssl_enable', value)
 
-    def username(self, value: str) -> Self:
+    def username(self, value: str | None) -> Self:
         return self._set('username', value)
 
 class PromqlConnectionCreate(BaseConnectionCreate):
@@ -572,31 +573,31 @@ class PromqlConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def auth_header(self, value: str) -> Self:
+    def auth_header(self, value: str | None) -> Self:
         return self._set('auth_header', value)
 
     def auth_type(self, value: str) -> Self:
         return self._set('auth_type', value)
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
     def data_export_forbidden(self, value: str) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def password(self, value: str) -> Self:
+    def password(self, value: str | None) -> Self:
         return self._set('password', value)
 
-    def path(self, value: str) -> Self:
+    def path(self, value: str | None) -> Self:
         return self._set('path', value)
 
     def port(self, value: int) -> Self:
@@ -605,7 +606,7 @@ class PromqlConnectionCreate(BaseConnectionCreate):
     def secure(self, value: bool) -> Self:
         return self._set('secure', value)
 
-    def username(self, value: str) -> Self:
+    def username(self, value: str | None) -> Self:
         return self._set('username', value)
 
 class TrinoConnectionCreate(BaseConnectionCreate):
@@ -622,49 +623,49 @@ class TrinoConnectionCreate(BaseConnectionCreate):
     def auth_type(self, value: Mapping[str, object]) -> Self:
         return self._set('auth_type', value)
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def cloud_id(self, value: str) -> Self:
+    def cloud_id(self, value: str | None) -> Self:
         return self._set('cloud_id', value)
 
     def data_export_forbidden(self, value: str) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
-    def delegation_is_set(self, value: bool) -> Self:
+    def delegation_is_set(self, value: bool | None) -> Self:
         return self._set('delegation_is_set', value)
 
-    def folder_id(self, value: str) -> Self:
+    def folder_id(self, value: str | None) -> Self:
         return self._set('folder_id', value)
 
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def jwt(self, value: str) -> Self:
+    def jwt(self, value: str | None) -> Self:
         return self._set('jwt', value)
 
     def listing_sources(self, value: Mapping[str, object]) -> Self:
         return self._set('listing_sources', value)
 
-    def mdb_cluster_id(self, value: str) -> Self:
+    def mdb_cluster_id(self, value: str | None) -> Self:
         return self._set('mdb_cluster_id', value)
 
-    def password(self, value: str) -> Self:
+    def password(self, value: str | None) -> Self:
         return self._set('password', value)
 
-    def port(self, value: int) -> Self:
+    def port(self, value: int | None) -> Self:
         return self._set('port', value)
 
     def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql']) -> Self:
         return self._set('raw_sql_level', value)
 
-    def service_account_id(self, value: str) -> Self:
+    def service_account_id(self, value: str | None) -> Self:
         return self._set('service_account_id', value)
 
     def ssl_ca(self, value: Mapping[str, object]) -> Self:
@@ -673,7 +674,7 @@ class TrinoConnectionCreate(BaseConnectionCreate):
     def ssl_enable(self, value: str) -> Self:
         return self._set('ssl_enable', value)
 
-    def username(self, value: str) -> Self:
+    def username(self, value: str | None) -> Self:
         return self._set('username', value)
 
 class YdbConnectionCreate(BaseConnectionCreate):
@@ -687,16 +688,16 @@ class YdbConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def auth_type(self, value: Literal['anonymous', 'password', 'oauth']) -> Self:
+    def auth_type(self, value: Literal['anonymous', 'password', 'oauth'] | None) -> Self:
         return self._set('auth_type', value)
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def cloud_id(self, value: str) -> Self:
+    def cloud_id(self, value: str | None) -> Self:
         return self._set('cloud_id', value)
 
     def data_export_forbidden(self, value: str) -> Self:
@@ -705,7 +706,7 @@ class YdbConnectionCreate(BaseConnectionCreate):
     def db_name(self, value: str) -> Self:
         return self._set('db_name', value)
 
-    def delegation_is_set(self, value: bool) -> Self:
+    def delegation_is_set(self, value: bool | None) -> Self:
         return self._set('delegation_is_set', value)
 
     def folder_id(self, value: str) -> Self:
@@ -714,10 +715,10 @@ class YdbConnectionCreate(BaseConnectionCreate):
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def mdb_cluster_id(self, value: str) -> Self:
+    def mdb_cluster_id(self, value: str | None) -> Self:
         return self._set('mdb_cluster_id', value)
 
-    def mdb_folder_id(self, value: str) -> Self:
+    def mdb_folder_id(self, value: str | None) -> Self:
         return self._set('mdb_folder_id', value)
 
     def port(self, value: int) -> Self:
@@ -735,10 +736,10 @@ class YdbConnectionCreate(BaseConnectionCreate):
     def ssl_enable(self, value: str) -> Self:
         return self._set('ssl_enable', value)
 
-    def token(self, value: str) -> Self:
+    def token(self, value: str | None) -> Self:
         return self._set('token', value)
 
-    def username(self, value: str) -> Self:
+    def username(self, value: str | None) -> Self:
         return self._set('username', value)
 
 class ConnectionCreateFactory:

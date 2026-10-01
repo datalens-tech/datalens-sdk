@@ -332,9 +332,11 @@
           "enum_restrictions": {},
           "fields": {
             "accuracy": {
+              "nullable": true,
               "type": "number"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "counter_id": {
@@ -344,6 +346,7 @@
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -359,6 +362,7 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -404,18 +408,22 @@
               "type": "string"
             },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -443,6 +451,7 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -505,33 +514,42 @@
           },
           "fields": {
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_cloud_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_connection_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_delegation_is_set": {
+              "nullable": true,
               "type": "boolean"
             },
             "connection_manager_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
               "type": "string"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -544,15 +562,18 @@
               "type": "string"
             },
             "mdb_cluster_id": {
+              "nullable": true,
               "type": "string"
             },
             "mdb_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "name": {
               "type": "string"
             },
             "password": {
+              "nullable": true,
               "type": "string"
             },
             "port": {
@@ -577,9 +598,11 @@
               "type": "string"
             },
             "username": {
+              "nullable": true,
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -634,21 +657,26 @@
           },
           "fields": {
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
               "type": "string"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -661,9 +689,11 @@
               "type": "string"
             },
             "mdb_cluster_id": {
+              "nullable": true,
               "type": "string"
             },
             "mdb_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "name": {
@@ -691,6 +721,7 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -727,9 +758,11 @@
               "type": "array"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -742,15 +775,28 @@
               "type": "string"
             },
             "path": {
+              "nullable": true,
               "type": "string"
             },
             "plain_headers": {
+              "mapping_nullable": true,
+              "mapping_value_types": [
+                "string",
+                "null"
+              ],
+              "nullable": true,
               "type": "object"
             },
             "port": {
               "type": "integer"
             },
             "secret_headers": {
+              "mapping_nullable": true,
+              "mapping_value_types": [
+                "string",
+                "null"
+              ],
+              "nullable": true,
               "type": "object"
             },
             "secure": {
@@ -760,6 +806,7 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -790,9 +837,11 @@
           "enum_restrictions": {},
           "fields": {
             "accuracy": {
+              "nullable": true,
               "type": "number"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "counter_id": {
@@ -802,6 +851,7 @@
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -817,6 +867,7 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -859,21 +910,26 @@
           },
           "fields": {
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
               "type": "string"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -901,6 +957,7 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -961,33 +1018,42 @@
           },
           "fields": {
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_cloud_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_connection_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_delegation_is_set": {
+              "nullable": true,
               "type": "boolean"
             },
             "connection_manager_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
               "type": "string"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -1000,15 +1066,18 @@
               "type": "string"
             },
             "mdb_cluster_id": {
+              "nullable": true,
               "type": "string"
             },
             "mdb_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "name": {
               "type": "string"
             },
             "password": {
+              "nullable": true,
               "type": "string"
             },
             "port": {
@@ -1027,9 +1096,11 @@
               "type": "string"
             },
             "username": {
+              "nullable": true,
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -1080,12 +1151,15 @@
           },
           "fields": {
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
@@ -1095,9 +1169,11 @@
               "type": "enum"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -1131,6 +1207,7 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -1192,33 +1269,42 @@
           },
           "fields": {
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_cloud_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_connection_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_delegation_is_set": {
+              "nullable": true,
               "type": "boolean"
             },
             "connection_manager_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
               "type": "string"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -1231,15 +1317,18 @@
               "type": "string"
             },
             "mdb_cluster_id": {
+              "nullable": true,
               "type": "string"
             },
             "mdb_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "name": {
               "type": "string"
             },
             "password": {
+              "nullable": true,
               "type": "string"
             },
             "port": {
@@ -1258,9 +1347,11 @@
               "type": "string"
             },
             "username": {
+              "nullable": true,
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -1299,27 +1390,33 @@
           "enum_restrictions": {},
           "fields": {
             "auth_header": {
+              "nullable": true,
               "type": "string"
             },
             "auth_type": {
               "type": "string"
             },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
               "type": "string"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -1332,9 +1429,11 @@
               "type": "string"
             },
             "password": {
+              "nullable": true,
               "type": "string"
             },
             "path": {
+              "nullable": true,
               "type": "string"
             },
             "port": {
@@ -1347,9 +1446,11 @@
               "type": "string"
             },
             "username": {
+              "nullable": true,
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -1406,60 +1507,73 @@
               "type": "object"
             },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cloud_id": {
+              "nullable": true,
               "type": "string"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
               "type": "string"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "delegation_is_set": {
+              "nullable": true,
               "type": "boolean"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
               "type": "string"
             },
             "folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "host": {
               "type": "string"
             },
             "jwt": {
+              "nullable": true,
               "type": "string"
             },
             "listing_sources": {
               "type": "object"
             },
             "mdb_cluster_id": {
+              "nullable": true,
               "type": "string"
             },
             "name": {
               "type": "string"
             },
             "password": {
+              "nullable": true,
               "type": "string"
             },
             "port": {
+              "nullable": true,
               "type": "integer"
             },
             "raw_sql_level": {
               "type": "enum"
             },
             "service_account_id": {
+              "nullable": true,
               "type": "string"
             },
             "ssl_ca": {
@@ -1472,9 +1586,11 @@
               "type": "string"
             },
             "username": {
+              "nullable": true,
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -1521,7 +1637,8 @@
             "auth_type": [
               "anonymous",
               "password",
-              "oauth"
+              "oauth",
+              null
             ],
             "raw_sql_level": [
               "off",
@@ -1532,18 +1649,23 @@
           },
           "fields": {
             "auth_type": {
+              "nullable": true,
               "type": "enum"
             },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cloud_id": {
+              "nullable": true,
               "type": "string"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
@@ -1553,9 +1675,11 @@
               "type": "string"
             },
             "delegation_is_set": {
+              "nullable": true,
               "type": "boolean"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -1568,9 +1692,11 @@
               "type": "string"
             },
             "mdb_cluster_id": {
+              "nullable": true,
               "type": "string"
             },
             "mdb_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "name": {
@@ -1592,15 +1718,18 @@
               "type": "string"
             },
             "token": {
+              "nullable": true,
               "type": "string"
             },
             "type": {
               "type": "string"
             },
             "username": {
+              "nullable": true,
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -19414,6 +19543,7 @@
         "appmetrica_api": {
           "available_fields": [
             "accuracy",
+            "ai_access_level",
             "collection_id",
             "counter_id",
             "data_export_forbidden",
@@ -19425,24 +19555,42 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
-            "description": ""
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ]
+          },
           "fields": {
             "accuracy": {
+              "nullable": true,
               "type": "number"
             },
+            "ai_access_level": {
+              "type": "enum"
+            },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "counter_id": {
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -19458,17 +19606,20 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
             "counter_id",
-            "token"
+            "token",
+            "type"
           ],
           "schema": "appmetrica_api"
         },
         "bigquery": {
           "available_fields": [
+            "ai_access_level",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
             "collection_id",
@@ -19482,31 +19633,46 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "description": "",
+            "dir_path": "Connection",
             "raw_sql_level": "off"
           },
           "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
             "raw_sql_level": [
               "off",
               "subselect",
               "template",
-              "dashsql"
+              "dashsql",
+              "readwrite"
             ]
           },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "credentials": {
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -19525,17 +19691,20 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
             "credentials",
-            "project_id"
+            "project_id",
+            "type"
           ],
           "schema": "bigquery"
         },
         "bitrix24": {
           "available_fields": [
+            "ai_access_level",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
             "collection_id",
@@ -19549,24 +19718,43 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
-            "description": ""
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ]
+          },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -19585,17 +19773,20 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
             "portal",
-            "token"
+            "token",
+            "type"
           ],
           "schema": "bitrix24"
         },
         "ch_billing_analytics": {
           "available_fields": [
+            "ai_access_level",
             "collection_id",
             "description",
             "dir_path",
@@ -19604,14 +19795,27 @@
             "workbook_id"
           ],
           "defaults": {
-            "description": ""
+            "ai_access_level": "allow",
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ]
+          },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -19624,14 +19828,18 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
-          "required": [],
+          "required": [
+            "type"
+          ],
           "schema": "ch_billing_analytics"
         },
         "ch_ya_music_podcast_stats": {
           "available_fields": [
+            "ai_access_level",
             "collection_id",
             "description",
             "dir_path",
@@ -19641,14 +19849,27 @@
             "workbook_id"
           ],
           "defaults": {
-            "description": ""
+            "ai_access_level": "allow",
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ]
+          },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -19664,16 +19885,19 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
-            "token"
+            "token",
+            "type"
           ],
           "schema": "ch_ya_music_podcast_stats"
         },
         "chyt": {
           "available_fields": [
+            "ai_access_level",
             "alias",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
@@ -19691,35 +19915,54 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
             "description": "",
+            "dir_path": "Connection",
             "raw_sql_level": "off"
           },
           "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ],
             "raw_sql_level": [
               "off",
               "subselect",
               "template",
-              "dashsql"
+              "dashsql",
+              "readwrite"
             ]
           },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "alias": {
               "type": "string"
             },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -19747,6 +19990,7 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -19754,12 +19998,14 @@
             "alias",
             "host",
             "port",
-            "token"
+            "token",
+            "type"
           ],
           "schema": "chyt"
         },
         "clickhouse": {
           "available_fields": [
+            "ai_access_level",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
             "collection_id",
@@ -19771,10 +20017,16 @@
             "db_name",
             "description",
             "dir_path",
+            "dlp_managed_cloud_id",
+            "dlp_managed_cluster_id",
+            "dlp_managed_connection_manager_connection_id",
+            "dlp_managed_connection_manager_delegation_is_set",
+            "dlp_managed_folder_id",
             "experimental_features",
             "host",
             "mdb_cluster_id",
             "mdb_folder_id",
+            "mode",
             "name",
             "password",
             "port",
@@ -19785,78 +20037,148 @@
             "ssl_ca_verify",
             "type",
             "username",
+            "variant",
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
             "description": "",
+            "dir_path": "Connection",
             "experimental_features": "off",
             "raw_sql_level": "off",
             "readonly": 2,
-            "ssl_ca_verify": "on"
+            "ssl_ca_verify": "on",
+            "variant": "default"
           },
           "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ],
+            "experimental_features": [
+              "on",
+              "off"
+            ],
+            "mode": [
+              "onpremise",
+              "managed",
+              null
+            ],
             "raw_sql_level": [
               "off",
               "subselect",
               "template",
-              "dashsql"
+              "dashsql",
+              "readwrite"
             ],
             "secure": [
               "on",
               "off"
+            ],
+            "ssl_ca_verify": [
+              "on",
+              "off"
+            ],
+            "variant": [
+              "default",
+              "dlp"
             ]
           },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_cloud_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_connection_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_delegation_is_set": {
+              "nullable": true,
               "type": "boolean"
             },
             "connection_manager_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
               "type": "string"
             },
-            "experimental_features": {
+            "dlp_managed_cloud_id": {
+              "nullable": true,
               "type": "string"
+            },
+            "dlp_managed_cluster_id": {
+              "nullable": true,
+              "type": "string"
+            },
+            "dlp_managed_connection_manager_connection_id": {
+              "nullable": true,
+              "type": "string"
+            },
+            "dlp_managed_connection_manager_delegation_is_set": {
+              "nullable": true,
+              "type": "boolean"
+            },
+            "dlp_managed_folder_id": {
+              "nullable": true,
+              "type": "string"
+            },
+            "experimental_features": {
+              "type": "enum"
             },
             "host": {
               "type": "string"
             },
             "mdb_cluster_id": {
+              "nullable": true,
               "type": "string"
             },
             "mdb_folder_id": {
+              "nullable": true,
               "type": "string"
+            },
+            "mode": {
+              "nullable": true,
+              "type": "enum"
             },
             "name": {
               "type": "string"
             },
             "password": {
+              "nullable": true,
               "type": "string"
             },
             "port": {
@@ -19872,30 +20194,38 @@
               "type": "enum"
             },
             "ssl_ca": {
-              "type": "object"
+              "nullable": true,
+              "type": "string"
             },
             "ssl_ca_verify": {
-              "type": "string"
+              "type": "enum"
             },
             "type": {
               "type": "string"
             },
             "username": {
+              "nullable": true,
               "type": "string"
             },
+            "variant": {
+              "type": "enum"
+            },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
             "host",
-            "port"
+            "port",
+            "type"
           ],
           "schema": "clickhouse"
         },
         "equeo": {
           "available_fields": [
             "access_token",
+            "ai_access_level",
             "collection_id",
             "description",
             "dir_path",
@@ -19904,17 +20234,30 @@
             "workbook_id"
           ],
           "defaults": {
-            "description": ""
+            "ai_access_level": "allow",
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ]
+          },
           "fields": {
             "access_token": {
               "type": "string"
             },
+            "ai_access_level": {
+              "type": "enum"
+            },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -19927,17 +20270,20 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
-            "access_token"
+            "access_token",
+            "type"
           ],
           "schema": "equeo"
         },
         "extractor1c": {
           "available_fields": [
             "access_token",
+            "ai_access_level",
             "collection_id",
             "description",
             "dir_path",
@@ -19946,17 +20292,30 @@
             "workbook_id"
           ],
           "defaults": {
-            "description": ""
+            "ai_access_level": "allow",
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ]
+          },
           "fields": {
             "access_token": {
               "type": "string"
             },
+            "ai_access_level": {
+              "type": "enum"
+            },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -19969,16 +20328,19 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
-            "access_token"
+            "access_token",
+            "type"
           ],
           "schema": "extractor1c"
         },
         "greenplum": {
           "available_fields": [
+            "ai_access_level",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
             "collection_id",
@@ -20001,13 +20363,24 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
             "description": "",
+            "dir_path": "Connection",
             "enforce_collate": "auto",
             "raw_sql_level": "off",
             "ssl_enable": "off"
           },
           "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ],
             "enforce_collate": [
               "auto",
               "on",
@@ -20017,26 +20390,39 @@
               "off",
               "subselect",
               "template",
-              "dashsql"
+              "dashsql",
+              "readwrite"
+            ],
+            "ssl_enable": [
+              "on",
+              "off"
             ]
           },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -20049,9 +20435,11 @@
               "type": "string"
             },
             "mdb_cluster_id": {
+              "nullable": true,
               "type": "string"
             },
             "mdb_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "name": {
@@ -20067,10 +20455,11 @@
               "type": "enum"
             },
             "ssl_ca": {
-              "type": "object"
+              "nullable": true,
+              "type": "string"
             },
             "ssl_enable": {
-              "type": "string"
+              "type": "enum"
             },
             "type": {
               "type": "string"
@@ -20079,6 +20468,7 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -20086,12 +20476,14 @@
             "host",
             "password",
             "port",
+            "type",
             "username"
           ],
           "schema": "greenplum"
         },
         "gsheets": {
           "available_fields": [
+            "ai_access_level",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
             "collection_id",
@@ -20104,24 +20496,43 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
-            "description": ""
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ]
+          },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -20137,16 +20548,19 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
+            "type",
             "url"
           ],
           "schema": "gsheets"
         },
         "json_api": {
           "available_fields": [
+            "ai_access_level",
             "allowed_methods",
             "collection_id",
             "description",
@@ -20162,17 +20576,30 @@
             "workbook_id"
           ],
           "defaults": {
-            "description": ""
+            "ai_access_level": "allow",
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ]
+          },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "allowed_methods": {
               "type": "array"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -20185,15 +20612,28 @@
               "type": "string"
             },
             "path": {
+              "nullable": true,
               "type": "string"
             },
             "plain_headers": {
+              "mapping_nullable": true,
+              "mapping_value_types": [
+                "string",
+                "null"
+              ],
+              "nullable": true,
               "type": "object"
             },
             "port": {
               "type": "integer"
             },
             "secret_headers": {
+              "mapping_nullable": true,
+              "mapping_value_types": [
+                "string",
+                "null"
+              ],
+              "nullable": true,
               "type": "object"
             },
             "secure": {
@@ -20203,19 +20643,22 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
             "allowed_methods",
             "host",
-            "port"
+            "port",
+            "type"
           ],
           "schema": "json_api"
         },
         "kontur_market": {
           "available_fields": [
             "access_token",
+            "ai_access_level",
             "collection_id",
             "description",
             "dir_path",
@@ -20224,17 +20667,30 @@
             "workbook_id"
           ],
           "defaults": {
-            "description": ""
+            "ai_access_level": "allow",
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ]
+          },
           "fields": {
             "access_token": {
               "type": "string"
             },
+            "ai_access_level": {
+              "type": "enum"
+            },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -20247,17 +20703,20 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
-            "access_token"
+            "access_token",
+            "type"
           ],
           "schema": "kontur_market"
         },
         "metrika_api": {
           "available_fields": [
             "accuracy",
+            "ai_access_level",
             "collection_id",
             "counter_id",
             "data_export_forbidden",
@@ -20269,24 +20728,42 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
-            "description": ""
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ]
+          },
           "fields": {
             "accuracy": {
+              "nullable": true,
               "type": "number"
             },
+            "ai_access_level": {
+              "type": "enum"
+            },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "counter_id": {
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -20302,17 +20779,20 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
             "counter_id",
-            "token"
+            "token",
+            "type"
           ],
           "schema": "metrika_api"
         },
         "monitoring": {
           "available_fields": [
+            "ai_access_level",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
             "cloud_id",
@@ -20327,26 +20807,43 @@
             "workbook_id"
           ],
           "defaults": {
-            "description": ""
+            "ai_access_level": "allow",
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ]
+          },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cloud_id": {
+              "nullable": true,
               "type": "string"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "delegation_is_set": {
+              "nullable": true,
               "type": "boolean"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -20365,19 +20862,22 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
             "cloud_id",
             "folder_id",
-            "service_account_id"
+            "service_account_id",
+            "type"
           ],
           "schema": "monitoring"
         },
         "moysklad": {
           "available_fields": [
             "access_token",
+            "ai_access_level",
             "collection_id",
             "description",
             "dir_path",
@@ -20386,17 +20886,30 @@
             "workbook_id"
           ],
           "defaults": {
-            "description": ""
+            "ai_access_level": "allow",
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ]
+          },
           "fields": {
             "access_token": {
               "type": "string"
             },
+            "ai_access_level": {
+              "type": "enum"
+            },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -20409,16 +20922,19 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
-            "access_token"
+            "access_token",
+            "type"
           ],
           "schema": "moysklad"
         },
         "mssql": {
           "available_fields": [
+            "ai_access_level",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
             "collection_id",
@@ -20436,35 +20952,55 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
             "description": "",
+            "dir_path": "Connection",
             "raw_sql_level": "off"
           },
           "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ],
             "raw_sql_level": [
               "off",
               "subselect",
               "template",
-              "dashsql"
+              "dashsql",
+              "readwrite"
             ]
           },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -20492,6 +21028,7 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -20499,12 +21036,14 @@
             "host",
             "password",
             "port",
+            "type",
             "username"
           ],
           "schema": "mssql"
         },
         "mysql": {
           "available_fields": [
+            "ai_access_level",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
             "collection_id",
@@ -20516,10 +21055,16 @@
             "db_name",
             "description",
             "dir_path",
+            "dlp_managed_cloud_id",
+            "dlp_managed_cluster_id",
+            "dlp_managed_connection_manager_connection_id",
+            "dlp_managed_connection_manager_delegation_is_set",
+            "dlp_managed_folder_id",
             "enforce_collate",
             "host",
             "mdb_cluster_id",
             "mdb_folder_id",
+            "mode",
             "name",
             "password",
             "port",
@@ -20528,60 +21073,119 @@
             "ssl_enable",
             "type",
             "username",
+            "variant",
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
             "description": "",
+            "dir_path": "Connection",
             "enforce_collate": "off",
             "raw_sql_level": "off",
-            "ssl_enable": "off"
+            "ssl_enable": "off",
+            "variant": "default"
           },
           "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ],
             "enforce_collate": [
               "auto",
               "on",
               "off"
             ],
+            "mode": [
+              "onpremise",
+              "managed",
+              null
+            ],
             "raw_sql_level": [
               "off",
               "subselect",
               "template",
-              "dashsql"
+              "dashsql",
+              "readwrite"
+            ],
+            "ssl_enable": [
+              "on",
+              "off"
+            ],
+            "variant": [
+              "default",
+              "dlp"
             ]
           },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_cloud_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_connection_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_delegation_is_set": {
+              "nullable": true,
               "type": "boolean"
             },
             "connection_manager_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
+              "type": "string"
+            },
+            "dlp_managed_cloud_id": {
+              "nullable": true,
+              "type": "string"
+            },
+            "dlp_managed_cluster_id": {
+              "nullable": true,
+              "type": "string"
+            },
+            "dlp_managed_connection_manager_connection_id": {
+              "nullable": true,
+              "type": "string"
+            },
+            "dlp_managed_connection_manager_delegation_is_set": {
+              "nullable": true,
+              "type": "boolean"
+            },
+            "dlp_managed_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "enforce_collate": {
@@ -20591,15 +21195,22 @@
               "type": "string"
             },
             "mdb_cluster_id": {
+              "nullable": true,
               "type": "string"
             },
             "mdb_folder_id": {
+              "nullable": true,
               "type": "string"
+            },
+            "mode": {
+              "nullable": true,
+              "type": "enum"
             },
             "name": {
               "type": "string"
             },
             "password": {
+              "nullable": true,
               "type": "string"
             },
             "port": {
@@ -20609,29 +21220,37 @@
               "type": "enum"
             },
             "ssl_ca": {
-              "type": "object"
+              "nullable": true,
+              "type": "string"
             },
             "ssl_enable": {
-              "type": "string"
+              "type": "enum"
             },
             "type": {
               "type": "string"
             },
             "username": {
+              "nullable": true,
               "type": "string"
             },
+            "variant": {
+              "type": "enum"
+            },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
             "host",
-            "port"
+            "port",
+            "type"
           ],
           "schema": "mysql"
         },
         "oracle": {
           "available_fields": [
+            "ai_access_level",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
             "collection_id",
@@ -20652,12 +21271,23 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
             "description": "",
+            "dir_path": "Connection",
             "raw_sql_level": "off",
             "ssl_enable": "off"
           },
           "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ],
             "db_connect_method": [
               "sid",
               "service_name"
@@ -20666,29 +21296,42 @@
               "off",
               "subselect",
               "template",
-              "dashsql"
+              "dashsql",
+              "readwrite"
+            ],
+            "ssl_enable": [
+              "on",
+              "off"
             ]
           },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "db_connect_method": {
               "type": "enum"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -20710,10 +21353,11 @@
               "type": "enum"
             },
             "ssl_ca": {
-              "type": "object"
+              "nullable": true,
+              "type": "string"
             },
             "ssl_enable": {
-              "type": "string"
+              "type": "enum"
             },
             "type": {
               "type": "string"
@@ -20722,6 +21366,7 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -20730,12 +21375,14 @@
             "host",
             "password",
             "port",
+            "type",
             "username"
           ],
           "schema": "oracle"
         },
         "postgres": {
           "available_fields": [
+            "ai_access_level",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
             "collection_id",
@@ -20747,10 +21394,16 @@
             "db_name",
             "description",
             "dir_path",
+            "dlp_managed_cloud_id",
+            "dlp_managed_cluster_id",
+            "dlp_managed_connection_manager_connection_id",
+            "dlp_managed_connection_manager_delegation_is_set",
+            "dlp_managed_folder_id",
             "enforce_collate",
             "host",
             "mdb_cluster_id",
             "mdb_folder_id",
+            "mode",
             "name",
             "password",
             "port",
@@ -20759,60 +21412,119 @@
             "ssl_enable",
             "type",
             "username",
+            "variant",
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
             "description": "",
+            "dir_path": "Connection",
             "enforce_collate": "auto",
             "raw_sql_level": "off",
-            "ssl_enable": "off"
+            "ssl_enable": "off",
+            "variant": "default"
           },
           "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ],
             "enforce_collate": [
               "auto",
               "on",
               "off"
             ],
+            "mode": [
+              "onpremise",
+              "managed",
+              null
+            ],
             "raw_sql_level": [
               "off",
               "subselect",
               "template",
-              "dashsql"
+              "dashsql",
+              "readwrite"
+            ],
+            "ssl_enable": [
+              "on",
+              "off"
+            ],
+            "variant": [
+              "default",
+              "dlp"
             ]
           },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_cloud_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_connection_id": {
+              "nullable": true,
               "type": "string"
             },
             "connection_manager_delegation_is_set": {
+              "nullable": true,
               "type": "boolean"
             },
             "connection_manager_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
+              "type": "string"
+            },
+            "dlp_managed_cloud_id": {
+              "nullable": true,
+              "type": "string"
+            },
+            "dlp_managed_cluster_id": {
+              "nullable": true,
+              "type": "string"
+            },
+            "dlp_managed_connection_manager_connection_id": {
+              "nullable": true,
+              "type": "string"
+            },
+            "dlp_managed_connection_manager_delegation_is_set": {
+              "nullable": true,
+              "type": "boolean"
+            },
+            "dlp_managed_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "enforce_collate": {
@@ -20822,15 +21534,22 @@
               "type": "string"
             },
             "mdb_cluster_id": {
+              "nullable": true,
               "type": "string"
             },
             "mdb_folder_id": {
+              "nullable": true,
               "type": "string"
+            },
+            "mode": {
+              "nullable": true,
+              "type": "enum"
             },
             "name": {
               "type": "string"
             },
             "password": {
+              "nullable": true,
               "type": "string"
             },
             "port": {
@@ -20840,29 +21559,37 @@
               "type": "enum"
             },
             "ssl_ca": {
-              "type": "object"
+              "nullable": true,
+              "type": "string"
             },
             "ssl_enable": {
-              "type": "string"
+              "type": "enum"
             },
             "type": {
               "type": "string"
             },
             "username": {
+              "nullable": true,
               "type": "string"
             },
+            "variant": {
+              "type": "enum"
+            },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
             "host",
-            "port"
+            "port",
+            "type"
           ],
           "schema": "postgres"
         },
         "promql": {
           "available_fields": [
+            "ai_access_level",
             "auth_header",
             "auth_type",
             "cache_invalidation_throttling_interval_sec",
@@ -20883,34 +21610,59 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "auth_type": "password",
             "data_export_forbidden": "off",
-            "description": ""
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "auth_type": [
+              "header",
+              "password"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ]
+          },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "auth_header": {
+              "nullable": true,
               "type": "string"
             },
             "auth_type": {
-              "type": "string"
+              "type": "enum"
             },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -20923,9 +21675,11 @@
               "type": "string"
             },
             "password": {
+              "nullable": true,
               "type": "string"
             },
             "path": {
+              "nullable": true,
               "type": "string"
             },
             "port": {
@@ -20938,20 +21692,24 @@
               "type": "string"
             },
             "username": {
+              "nullable": true,
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
             "host",
-            "port"
+            "port",
+            "type"
           ],
           "schema": "promql"
         },
         "smb_heatmaps": {
           "available_fields": [
+            "ai_access_level",
             "collection_id",
             "description",
             "dir_path",
@@ -20961,14 +21719,27 @@
             "workbook_id"
           ],
           "defaults": {
-            "description": ""
+            "ai_access_level": "allow",
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ]
+          },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -20984,17 +21755,20 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
-            "token"
+            "token",
+            "type"
           ],
           "schema": "smb_heatmaps"
         },
         "snowflake": {
           "available_fields": [
             "account_name",
+            "ai_access_level",
             "client_id",
             "client_secret",
             "collection_id",
@@ -21014,21 +21788,36 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
             "description": "",
+            "dir_path": "Connection",
             "raw_sql_level": "off"
           },
           "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ],
             "raw_sql_level": [
               "off",
               "subselect",
               "template",
-              "dashsql"
+              "dashsql",
+              "readwrite"
             ]
           },
           "fields": {
             "account_name": {
               "type": "string"
+            },
+            "ai_access_level": {
+              "type": "enum"
             },
             "client_id": {
               "type": "string"
@@ -21037,15 +21826,17 @@
               "type": "string"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "db_name": {
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -21061,6 +21852,7 @@
               "type": "string"
             },
             "refresh_token_expire_time": {
+              "nullable": true,
               "type": "string"
             },
             "schema": {
@@ -21073,12 +21865,14 @@
               "type": "string"
             },
             "user_role": {
+              "nullable": true,
               "type": "string"
             },
             "warehouse": {
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -21088,6 +21882,7 @@
             "client_secret",
             "db_name",
             "schema",
+            "type",
             "user_name",
             "warehouse"
           ],
@@ -21095,6 +21890,7 @@
         },
         "speechsense": {
           "available_fields": [
+            "ai_access_level",
             "auth_type",
             "cloud_id",
             "collection_id",
@@ -21110,34 +21906,58 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "auth_type": "user_credentials",
             "data_export_forbidden": "off",
-            "description": ""
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "auth_type": [
+              "service_account",
+              "user_credentials"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ]
+          },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "auth_type": {
-              "type": "string"
+              "type": "enum"
             },
             "cloud_id": {
+              "nullable": true,
               "type": "string"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "delegation_is_set": {
+              "nullable": true,
               "type": "boolean"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
               "type": "string"
             },
             "folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "name": {
@@ -21147,33 +21967,40 @@
               "type": "string"
             },
             "service_account_id": {
+              "nullable": true,
               "type": "string"
             },
             "type": {
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
-            "project_id"
+            "project_id",
+            "type"
           ],
           "schema": "speechsense"
         },
         "trino": {
           "available_fields": [
+            "ai_access_level",
             "auth_type",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
             "cloud_id",
+            "cluster_entry_id",
             "collection_id",
             "data_export_forbidden",
             "db_name",
             "delegation_is_set",
             "description",
             "dir_path",
+            "extra_credentials",
             "folder_id",
+            "form_fill_mode",
             "host",
             "jwt",
             "listing_sources",
@@ -21190,104 +22017,177 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
             "description": "",
+            "dir_path": "Connection",
             "raw_sql_level": "off",
             "ssl_enable": "off"
           },
           "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "auth_type": [
+              "certificate",
+              "header",
+              "jwt",
+              "kerberos",
+              "none",
+              "oauth2",
+              "password",
+              null
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ],
+            "form_fill_mode": [
+              "cloud",
+              "manually",
+              "platform"
+            ],
+            "listing_sources": [
+              "off",
+              "on"
+            ],
             "raw_sql_level": [
               "off",
               "subselect",
               "template",
-              "dashsql"
+              "dashsql",
+              "readwrite"
+            ],
+            "ssl_enable": [
+              "on",
+              "off"
             ]
           },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "auth_type": {
-              "type": "object"
+              "nullable": true,
+              "type": "enum"
             },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cloud_id": {
+              "nullable": true,
+              "type": "string"
+            },
+            "cluster_entry_id": {
+              "nullable": true,
               "type": "string"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "db_name": {
+              "nullable": true,
               "type": "string"
             },
             "delegation_is_set": {
+              "nullable": true,
               "type": "boolean"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
               "type": "string"
             },
+            "extra_credentials": {
+              "mapping_nullable": true,
+              "mapping_value_types": [
+                "string",
+                "null"
+              ],
+              "nullable": true,
+              "type": "object"
+            },
             "folder_id": {
+              "nullable": true,
               "type": "string"
             },
+            "form_fill_mode": {
+              "type": "enum"
+            },
             "host": {
+              "nullable": true,
               "type": "string"
             },
             "jwt": {
+              "nullable": true,
               "type": "string"
             },
             "listing_sources": {
-              "type": "object"
+              "type": "enum"
             },
             "mdb_cluster_id": {
+              "nullable": true,
               "type": "string"
             },
             "name": {
               "type": "string"
             },
             "password": {
+              "nullable": true,
               "type": "string"
             },
             "port": {
+              "nullable": true,
               "type": "integer"
             },
             "raw_sql_level": {
               "type": "enum"
             },
             "service_account_id": {
+              "nullable": true,
               "type": "string"
             },
             "ssl_ca": {
-              "type": "object"
+              "nullable": true,
+              "type": "string"
             },
             "ssl_enable": {
-              "type": "string"
+              "type": "enum"
             },
             "type": {
               "type": "string"
             },
             "username": {
+              "nullable": true,
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
-            "host",
-            "listing_sources"
+            "listing_sources",
+            "type"
           ],
           "schema": "trino"
         },
         "usage_analytics_detailed": {
           "available_fields": [
+            "ai_access_level",
             "collection_id",
             "description",
             "dir_path",
@@ -21296,14 +22196,27 @@
             "workbook_id"
           ],
           "defaults": {
-            "description": ""
+            "ai_access_level": "allow",
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ]
+          },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -21316,14 +22229,18 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
-          "required": [],
+          "required": [
+            "type"
+          ],
           "schema": "usage_analytics_detailed"
         },
         "usage_analytics_light": {
           "available_fields": [
+            "ai_access_level",
             "collection_id",
             "description",
             "dir_path",
@@ -21332,14 +22249,27 @@
             "workbook_id"
           ],
           "defaults": {
-            "description": ""
+            "ai_access_level": "allow",
+            "description": "",
+            "dir_path": "Connection"
           },
-          "enum_restrictions": {},
+          "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ]
+          },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -21352,14 +22282,18 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
-          "required": [],
+          "required": [
+            "type"
+          ],
           "schema": "usage_analytics_light"
         },
         "ydb": {
           "available_fields": [
+            "ai_access_level",
             "auth_type",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
@@ -21386,50 +22320,77 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
             "description": "",
+            "dir_path": "Connection",
             "raw_sql_level": "off",
             "ssl_enable": "on"
           },
           "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
             "auth_type": [
               "anonymous",
               "password",
-              "oauth"
+              "oauth",
+              null
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
             ],
             "raw_sql_level": [
               "off",
               "subselect",
               "template",
-              "dashsql"
+              "dashsql",
+              "readwrite"
+            ],
+            "ssl_enable": [
+              "on",
+              "off"
             ]
           },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "auth_type": {
+              "nullable": true,
               "type": "enum"
             },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cloud_id": {
+              "nullable": true,
               "type": "string"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "db_name": {
               "type": "string"
             },
             "delegation_is_set": {
+              "nullable": true,
               "type": "boolean"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -21442,9 +22403,11 @@
               "type": "string"
             },
             "mdb_cluster_id": {
+              "nullable": true,
               "type": "string"
             },
             "mdb_folder_id": {
+              "nullable": true,
               "type": "string"
             },
             "name": {
@@ -21460,21 +22423,25 @@
               "type": "string"
             },
             "ssl_ca": {
-              "type": "object"
-            },
-            "ssl_enable": {
+              "nullable": true,
               "type": "string"
             },
+            "ssl_enable": {
+              "type": "enum"
+            },
             "token": {
+              "nullable": true,
               "type": "string"
             },
             "type": {
               "type": "string"
             },
             "username": {
+              "nullable": true,
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -21484,12 +22451,14 @@
             "folder_id",
             "host",
             "port",
-            "service_account_id"
+            "service_account_id",
+            "type"
           ],
           "schema": "ydb"
         },
         "yq": {
           "available_fields": [
+            "ai_access_level",
             "cache_invalidation_throttling_interval_sec",
             "cache_ttl_sec",
             "cloud_id",
@@ -21506,38 +22475,59 @@
             "workbook_id"
           ],
           "defaults": {
+            "ai_access_level": "allow",
             "data_export_forbidden": "off",
             "description": "",
+            "dir_path": "Connection",
             "raw_sql_level": "off"
           },
           "enum_restrictions": {
+            "ai_access_level": [
+              "allow",
+              "allow_trusted",
+              "deny"
+            ],
+            "data_export_forbidden": [
+              "on",
+              "off"
+            ],
             "raw_sql_level": [
               "off",
               "subselect",
               "template",
-              "dashsql"
+              "dashsql",
+              "readwrite"
             ]
           },
           "fields": {
+            "ai_access_level": {
+              "type": "enum"
+            },
             "cache_invalidation_throttling_interval_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cache_ttl_sec": {
+              "nullable": true,
               "type": "integer"
             },
             "cloud_id": {
+              "nullable": true,
               "type": "string"
             },
             "collection_id": {
+              "nullable": true,
               "type": "string"
             },
             "data_export_forbidden": {
-              "type": "string"
+              "type": "enum"
             },
             "delegation_is_set": {
+              "nullable": true,
               "type": "boolean"
             },
             "description": {
+              "nullable": true,
               "type": "string"
             },
             "dir_path": {
@@ -21559,13 +22549,15 @@
               "type": "string"
             },
             "workbook_id": {
+              "nullable": true,
               "type": "string"
             }
           },
           "required": [
             "cloud_id",
             "folder_id",
-            "service_account_id"
+            "service_account_id",
+            "type"
           ],
           "schema": "yq"
         }
@@ -21577,6 +22569,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "APPMETRICA_API"
@@ -21585,6 +22578,7 @@
           "connection_type": "bigquery",
           "method": "bigquery_subselect",
           "parameters": {
+            "manual": "bool",
             "subsql": "str"
           },
           "schema": "BIGQUERY_SUBSELECT"
@@ -21595,6 +22589,7 @@
           "parameters": {
             "dataset_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "BIGQUERY_TABLE"
@@ -21605,6 +22600,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "BITRIX_GDS"
@@ -21613,6 +22609,7 @@
           "connection_type": "chyt",
           "method": "chyt_ytsaurus_subselect",
           "parameters": {
+            "manual": "bool",
             "subsql": "str"
           },
           "schema": "CHYT_YTSAURUS_SUBSELECT"
@@ -21623,6 +22620,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "CHYT_YTSAURUS_TABLE"
@@ -21631,6 +22629,7 @@
           "connection_type": "chyt",
           "method": "chyt_ytsaurus_table_list",
           "parameters": {
+            "manual": "bool",
             "table_names": "str"
           },
           "schema": "CHYT_YTSAURUS_TABLE_LIST"
@@ -21640,6 +22639,7 @@
           "method": "chyt_ytsaurus_table_range",
           "parameters": {
             "directory_path": "str",
+            "manual": "bool",
             "range_from": "str",
             "range_to": "str"
           },
@@ -21651,6 +22651,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "CH_BILLING_ANALYTICS_TABLE"
@@ -21661,6 +22662,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "CH_SMB_HEATMAPS_TABLE"
@@ -21669,6 +22671,7 @@
           "connection_type": "clickhouse",
           "method": "ch_subselect",
           "parameters": {
+            "manual": "bool",
             "subsql": "str"
           },
           "schema": "CH_SUBSELECT"
@@ -21679,6 +22682,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "CH_TABLE"
@@ -21689,6 +22693,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "CH_USAGE_TRACKING_AGG_TABLE"
@@ -21699,6 +22704,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "CH_USAGE_TRACKING_TABLE"
@@ -21709,6 +22715,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "CH_YA_MUSIC_PODCAST_STATS_TABLE"
@@ -21719,6 +22726,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "EQUEO_CH_TABLE"
@@ -21729,6 +22737,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "EXTRACTOR_1C_CH_TABLE"
@@ -21737,6 +22746,7 @@
           "connection_type": "greenplum",
           "method": "gp_subselect",
           "parameters": {
+            "manual": "bool",
             "subsql": "str"
           },
           "schema": "GP_SUBSELECT"
@@ -21747,6 +22757,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "schema_name": "str",
             "table_name": "str"
           },
@@ -21755,13 +22766,17 @@
         "GSHEETS": {
           "connection_type": "gsheets",
           "method": "gsheets",
-          "parameters": {},
+          "parameters": {
+            "manual": "bool"
+          },
           "schema": "GSHEETS"
         },
         "JSON_API": {
           "connection_type": "json_api",
           "method": "json_api",
-          "parameters": {},
+          "parameters": {
+            "manual": "bool"
+          },
           "schema": "JSON_API"
         },
         "KONTUR_MARKET_CH_TABLE": {
@@ -21770,6 +22785,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "KONTUR_MARKET_CH_TABLE"
@@ -21780,6 +22796,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "METRIKA_API"
@@ -21787,7 +22804,9 @@
         "MONITORING": {
           "connection_type": "monitoring",
           "method": "monitoring",
-          "parameters": {},
+          "parameters": {
+            "manual": "bool"
+          },
           "schema": "MONITORING"
         },
         "MOYSKLAD_CH_TABLE": {
@@ -21796,6 +22815,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "MOYSKLAD_CH_TABLE"
@@ -21804,6 +22824,7 @@
           "connection_type": "mssql",
           "method": "mssql_subselect",
           "parameters": {
+            "manual": "bool",
             "subsql": "str"
           },
           "schema": "MSSQL_SUBSELECT"
@@ -21814,6 +22835,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "schema_name": "str",
             "table_name": "str"
           },
@@ -21823,6 +22845,7 @@
           "connection_type": "mysql",
           "method": "mysql_subselect",
           "parameters": {
+            "manual": "bool",
             "subsql": "str"
           },
           "schema": "MYSQL_SUBSELECT"
@@ -21833,6 +22856,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "MYSQL_TABLE"
@@ -21841,6 +22865,7 @@
           "connection_type": "oracle",
           "method": "oracle_subselect",
           "parameters": {
+            "manual": "bool",
             "subsql": "str"
           },
           "schema": "ORACLE_SUBSELECT"
@@ -21851,6 +22876,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "schema_name": "str",
             "table_name": "str"
           },
@@ -21860,6 +22886,7 @@
           "connection_type": "postgres",
           "method": "pg_subselect",
           "parameters": {
+            "manual": "bool",
             "subsql": "str"
           },
           "schema": "PG_SUBSELECT"
@@ -21870,6 +22897,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "schema_name": "str",
             "table_name": "str"
           },
@@ -21878,7 +22906,9 @@
         "PROMQL": {
           "connection_type": "promql",
           "method": "promql",
-          "parameters": {},
+          "parameters": {
+            "manual": "bool"
+          },
           "schema": "PROMQL"
         },
         "SNOWFLAKE_TABLE": {
@@ -21886,6 +22916,7 @@
           "method": "snowflake_table",
           "parameters": {
             "db_name": "str",
+            "manual": "bool",
             "schema": "str",
             "table_name": "str"
           },
@@ -21897,6 +22928,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "SPEECHSENSE_TABLE"
@@ -21905,6 +22937,7 @@
           "connection_type": "trino",
           "method": "trino_subselect",
           "parameters": {
+            "manual": "bool",
             "subsql": "str"
           },
           "schema": "TRINO_SUBSELECT"
@@ -21915,6 +22948,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "schema_name": "str",
             "table_name": "str"
           },
@@ -21924,6 +22958,7 @@
           "connection_type": "ydb",
           "method": "ydb_subselect",
           "parameters": {
+            "manual": "bool",
             "subsql": "str"
           },
           "schema": "YDB_SUBSELECT"
@@ -21934,6 +22969,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "YDB_TABLE"
@@ -21942,6 +22978,7 @@
           "connection_type": "yq",
           "method": "yq_subselect",
           "parameters": {
+            "manual": "bool",
             "subsql": "str"
           },
           "schema": "YQ_SUBSELECT"
@@ -21952,6 +22989,7 @@
           "parameters": {
             "db_name": "str",
             "db_version": "str",
+            "manual": "bool",
             "table_name": "str"
           },
           "schema": "YQ_TABLE"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 
 from typing_extensions import Self
 
@@ -11,6 +12,21 @@ from datalens_sdk.domain.specs.connection import ConnectionCreateSpec
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError, NotSupportedError
 
 _LOCATION_FIELDS = frozenset({"name", "dir_path", "workbook_id", "collection_id"})
+_BUILDER_MANAGED_FIELDS = _LOCATION_FIELDS | {"type"}
+
+
+def _matches_scalar_type(value: object, schema_type: str) -> bool:
+    if schema_type == "null":
+        return value is None
+    if schema_type == "string":
+        return type(value) is str
+    if schema_type == "boolean":
+        return type(value) is bool
+    if schema_type == "integer":
+        return type(value) is int
+    if schema_type == "number":
+        return type(value) in (int, float)
+    return False
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +36,7 @@ class ConnectorMetadata:
     available_fields: frozenset[str]
     defaults: dict[str, object]
     enum_restrictions: dict[str, list[object]]
+    mapping_value_types: dict[str, tuple[bool, tuple[str, ...]]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,7 +68,9 @@ class BaseConnectionCreate:
         self._connector = connector
         self._metadata = metadata
         self._operations = operations
-        self._params: dict[str, object] = dict(metadata.defaults)
+        self._params: dict[str, object] = {
+            field: value for field, value in metadata.defaults.items() if field not in _LOCATION_FIELDS
+        }
         self._params["type"] = connector
 
     @property
@@ -75,13 +94,13 @@ class BaseConnectionCreate:
         return self._set("description", value)
 
     def required_fields(self) -> list[str]:
-        return sorted(self._metadata.required)
+        return sorted(self._metadata.required - _BUILDER_MANAGED_FIELDS)
 
     def missing_required(self) -> list[str]:
         return sorted(field for field in self._metadata.required if self._params.get(field) in (None, ""))
 
     def optional_fields(self) -> list[str]:
-        return sorted(self._metadata.available_fields - self._metadata.required - _LOCATION_FIELDS)
+        return sorted(self._metadata.available_fields - self._metadata.required - _BUILDER_MANAGED_FIELDS)
 
     def allowed_values(self, field: str) -> list[object] | None:
         return self._metadata.enum_restrictions.get(field)
@@ -99,7 +118,7 @@ class BaseConnectionCreate:
                 ),
             )
             for field in sorted(self._metadata.available_fields)
-            if field not in _LOCATION_FIELDS
+            if field not in _BUILDER_MANAGED_FIELDS
         }
 
     def _set(self, field: str, value: object) -> Self:
@@ -108,6 +127,21 @@ class BaseConnectionCreate:
         allowed = self._metadata.enum_restrictions.get(field)
         if allowed is not None and value not in allowed:
             raise NotSupportedError(f"{self._connector}.{field}={value!r} is not allowed. Allowed: {allowed}")
+        mapping_types = self._metadata.mapping_value_types.get(field)
+        if mapping_types is not None:
+            nullable, value_types = mapping_types
+            if value is None:
+                if not nullable:
+                    raise DataLensValidationError(f"{self._connector}.{field} cannot be null")
+            elif not isinstance(value, Mapping):
+                raise DataLensValidationError(f"{self._connector}.{field} must be a mapping")
+            else:
+                for key, item in value.items():
+                    if not isinstance(key, str):
+                        raise DataLensValidationError(f"{self._connector}.{field} keys must be strings")
+                    if not any(_matches_scalar_type(item, schema_type) for schema_type in value_types):
+                        raise DataLensValidationError(f"{self._connector}.{field}[{key!r}] has an invalid value")
+                value = dict(value)
         self._params[field] = value
         return self
 
