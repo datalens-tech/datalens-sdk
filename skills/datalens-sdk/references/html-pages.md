@@ -89,28 +89,36 @@ edits need the original document.
 
 ## Update and delete
 
-Fetch the current entry, then choose exactly one update form. Writing new HTML
-creates a content update; selecting a known revision reuses that revision:
+Follow the [shared revision lifecycle](core-concepts.md#revision-lifecycle)
+to choose a content update or publication of an existing revision. Content
+updates need authored HTML; metadata reads do not return it:
 
 ```python
-updated = page.update.content(new_html_document).mode("save").execute()
-warnings = updated.warnings
+draft = page.update.content(new_html_document).mode("save").execute()
+warnings = draft.warnings
 
-known_revision_id = updated.rev_id
-if known_revision_id is None:
-    raise ValueError("Update response omitted a revision id")
-published = updated.update.revision(known_revision_id).mode("publish").execute()
+# Publish the existing saved draft without creating another revision.
+assert draft.saved_id is not None
+published = draft.publish_revision(rev_id=draft.saved_id)
+
+# Write and publish edited source as a new revision.
+revised = published.update.content(edited_html_document).mode("publish").execute()
+
+# Any existing historical revision can also be published while keeping its ID.
+restored = revised.publish_revision(rev_id=historical_revision_id)
 ```
 
-Both forms accept `mode("save")` or `mode("publish")`. Use `save` to keep a
-draft and `publish` when the page should be visible at its published
-revision. Do not mix `content` and `rev_id` in one update. A content update
-can also change the entry description with `.description(text)`; a revision
-update cannot change the description. Inspect update warnings and re-fetch
+Revision-only updates remain available through `.update.revision(...)` for
+explicit revision selection. Do not mix `content` and `rev_id` in one update.
+A content update can also change the entry description with `.description(text)`;
+a revision update cannot change the description. Inspect update warnings and re-fetch
 the branch you changed. The metadata response can confirm revision ids
 and `object_id`; it cannot prove how the page rendered. Follow the linked
 authoring skill's validator and arrange a render check through an authorized
 DataLens viewing flow when that matters.
+
+`page.get_revisions(page_size=..., page_token=..., rev_ids=...)`
+uses the common lazy history pager described in [navigation.md](navigation.md).
 
 ```python
 page.delete()

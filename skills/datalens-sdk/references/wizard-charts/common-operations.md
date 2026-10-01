@@ -188,6 +188,9 @@ Start from `chart.update`, chain methods, then call:
 .execute() -> WizardChart
 ```
 
+Content updates and publication of existing revisions follow the
+[shared revision lifecycle](../core-concepts.md#revision-lifecycle).
+
 No update is persisted before `.execute()`. Create and update responses can be
 minimal, so re-fetch by ID before reading `.fields` or `.dataset_ids`, or before
 starting another update that depends on the persisted chart state.

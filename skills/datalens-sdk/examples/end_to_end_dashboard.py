@@ -108,9 +108,11 @@ def main() -> None:
             # MANDATORY re-get: the create response omits field snapshots, so
             # fields.by_name(...) on the create result cannot see the schema.
             dataset = client.get.dataset(by_id=dataset.id)
-            dataset = dataset.update.change_field_aggregation(
-                field=dataset.fields.by_name(args.measure_field), to="sum"
-            ).execute()
+            dataset = (
+                dataset.update.change_field_aggregation(field=dataset.fields.by_name(args.measure_field), to="sum")
+                .mode("publish")
+                .execute()
+            )
 
             dimension = dataset.fields.by_name(args.dimension_field)
             measure = dataset.fields.by_name(args.measure_field)

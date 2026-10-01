@@ -71,8 +71,10 @@ Facts to keep straight about bundles:
 So each factory is *callable* (in-memory snapshot) and also has a `.from_file(...)` method (artifact on disk); both return the same builder, and — as everywhere in the SDK — nothing persists until the terminal call. Resource-specific extras:
 
 - **connection** create and replace accept `overrides=` — a mapping merged over the snapshot-derived payload. Identity, location, connector, and server-owned keys are rejected in overrides.
-- **dashboard** replace terminates with `.execute(publish=..., lock_token=None)` — `publish` is a required keyword, same as dashboard updates.
-- **chart** replace supports `.mode("save" | "publish")` before `.execute()` (default `"save"`).
+- **dashboard** replace requires `.mode("save" | "publish")` or the compatible `.execute(publish=bool, lock_token=...)` form; `publish=` itself is not mandatory.
+
+Replacement modes and publication of existing revisions follow the
+[shared revision lifecycle](core-concepts.md#revision-lifecycle).
 
 For `from_file`, `path` is the **artifact directory** (`My Dash [abc123]/`), not the JSON file inside it. Chart artifacts are category-checked: loading a wizard artifact through `client.raw.create.ql_chart.from_file` raises `DataLensValidationError`.
 
@@ -148,7 +150,7 @@ target.to_file("backups")  # rollback artifact
 client.raw.replace.dashboard.from_file(
     "artifacts/My Dash [abc123]",
     target=target,
-).execute(publish=False)
+).mode("save").execute()
 ```
 
 ## Recipe: clone across workbooks

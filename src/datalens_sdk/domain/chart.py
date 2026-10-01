@@ -72,6 +72,19 @@ class Chart(ABC):
             return None
         return _optional_str(annotation.get("description"))
 
+    @property
+    def rev_id(self) -> str | None:
+        """The revision loaded into this chart."""
+        return _optional_str(self.raw.get("revId")) or _optional_str(self.raw.get("rev_id"))
+
+    @property
+    def saved_id(self) -> str | None:
+        return _optional_str(self.raw.get("savedId")) or _optional_str(self.raw.get("saved_id"))
+
+    @property
+    def published_id(self) -> str | None:
+        return _optional_str(self.raw.get("publishedId")) or _optional_str(self.raw.get("published_id"))
+
     def get_revisions(
         self,
         *,

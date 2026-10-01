@@ -204,8 +204,14 @@ or from an exported artifact directory with
 Replace an existing resource with
 `client.raw.replace.<resource>(target=..., response_snapshot=raw).execute(...)` or
 `client.raw.replace.<resource>.from_file(path, target=...).execute(...)`.
-Dashboard replace requires `publish=` on `execute()`; chart replace can select
-`.mode("save")` or `.mode("publish")` before `execute()`.
+Dataset, chart, and Dashboard replace can select `.mode("save")` or
+`.mode("publish")` before `execute()`. Dashboard still requires an explicit
+choice and accepts the compatible `execute(publish=bool)` form.
+Raw replacement writes supplied content as a new revision; source and target
+revision selectors are excluded from the write payload. Use `.mode("publish")`
+to publish that content. Publishing an existing saved draft or historical
+revision is the separate `publish_revision(rev_id=existing_revision_id)`
+operation on Wizard, Editor, Dashboard, and HTML pages.
 Replace overwrites the supported mutable content and is last-write-wins: it
 does not fetch, merge, or check for concurrent changes. Each `build()` or
 `execute()` call performs a new mutation and has no idempotency guarantee.

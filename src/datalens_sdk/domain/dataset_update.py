@@ -33,6 +33,7 @@ from datalens_sdk.domain.dataset_types import (
     WhereOperation,
     cache_invalidation_source_payload,
 )
+from datalens_sdk.domain.entry_types import EntryUpdateMode, validate_entry_update_mode
 from datalens_sdk.domain.fields import DatasetField, FieldRef
 from datalens_sdk.domain.ports import DatasetOperations
 from datalens_sdk.domain.specs.dataset import DatasetUpdateSpec
@@ -111,6 +112,7 @@ class DatasetUpdate:
         self._actions: list[DatasetUpdateAction] = []
         self._name_change: str | None = None
         self._rls2_changes: list[RLSChange] = []
+        self._mode: EntryUpdateMode = "save"
 
     @property
     def actions(self) -> tuple[DatasetUpdateAction, ...]:
@@ -127,6 +129,10 @@ class DatasetUpdate:
 
     def name(self, value: str) -> Self:
         self._name_change = value
+        return self
+
+    def mode(self, value: EntryUpdateMode) -> Self:
+        self._mode = validate_entry_update_mode(value)
         return self
 
     def description(self, value: str) -> Self:
@@ -631,6 +637,7 @@ class DatasetUpdate:
             actions=tuple(self._actions),
             name_change=self._name_change,
             rls2_changes=self.rls2_changes,
+            mode=self._mode,
         )
 
     def execute(self) -> Dataset:

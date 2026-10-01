@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Literal, get_args
+from typing import Literal
 
 from typing_extensions import Self
 
@@ -15,8 +15,10 @@ from datalens_sdk.domain.entry_location import (
     validate_entry_name,
     workbook_id_from_location,
 )
-from datalens_sdk.domain.entry_types import EntryUpdateMode
+from datalens_sdk.domain.entry_types import EntryUpdateMode, validate_entry_update_mode
+from datalens_sdk.domain.navigation import Pager
 from datalens_sdk.domain.ports import HtmlPageOperations
+from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.specs.html_page import (
     HtmlPageContentUpdateSpec,
     HtmlPageCreateSpec,
@@ -157,6 +159,37 @@ class HtmlPage:
     def update(self) -> HtmlPageUpdate:
         return HtmlPageUpdate(page=self, operations=self._operations)
 
+    def publish_revision(self, *, rev_id: str) -> HtmlPage:
+        """Publish an explicitly selected existing revision without creating a new one.
+
+        Select a saved draft or a historical revision without resending its HTML.
+        Write and publish new source with ``page.update.content(...).mode("publish").execute()``.
+        """
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot publish an HTML page without an id")
+        if not isinstance(rev_id, str) or not rev_id:
+            raise DataLensValidationError("rev_id must be a non-empty string")
+        return self.update.revision(rev_id).mode("publish").execute()
+
+    def get_revisions(
+        self,
+        *,
+        page_size: int = 200,
+        page_token: str | None = None,
+        rev_ids: Sequence[str] | None = None,
+    ) -> Pager[EntryRevision]:
+        """Lazily list this entry's revisions, optionally filtered or resumed."""
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot get revisions for an HTML page without an id")
+        return self._operations.get_entry_revisions(
+            self.id,
+            EntryRevisionsOptions.create(page_size=page_size, page_token=page_token, rev_ids=rev_ids),
+        )
+
     def delete(self) -> None:
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
@@ -193,9 +226,7 @@ class HtmlPageUpdate:
         return self
 
     def mode(self, value: EntryUpdateMode) -> Self:
-        if value not in get_args(EntryUpdateMode):
-            raise DataLensValidationError(f"mode must be one of {get_args(EntryUpdateMode)}, got {value!r}")
-        self._mode = value
+        self._mode = validate_entry_update_mode(value)
         return self
 
     def description(self, value: str) -> Self:

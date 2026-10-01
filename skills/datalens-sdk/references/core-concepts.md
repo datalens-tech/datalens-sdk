@@ -1,6 +1,6 @@
 # Core concepts
 
-Read this when the object model is unclear: client namespaces, the entity lifecycle, locations, field references, retries, pagination, or the update sentinels.
+Read this for client namespaces, the entity and revision lifecycles, locations, field references, retries, pagination, or the update sentinels.
 
 ## One client, four namespaces
 
@@ -29,7 +29,10 @@ fold = client.get.folder(by_path="Users/someone/dir")  # the one path-based gett
 preview_url = client.get.html_page_preview_url(by_id="...")  # temporary URL, not HTML source
 ```
 
-Chart and dashboard getters additionally accept `branch=` (`"saved"` or `"published"`) and `rev_id=`. Passing **both** `rev_id=` and `branch=` emits a `UserWarning` and silently drops `branch` — an explicit `rev_id` already pins the revision. Do not pass both.
+Dataset, chart, Dashboard, and HTML-page getters accept `branch=`
+(`"saved"` or `"published"`) and `rev_id=`. Passing both emits a `UserWarning`
+and ignores `branch`: the explicit `rev_id` pins the revision. Use one selector.
+Connection getters also accept `rev_id=`, but have no branch selector.
 
 ### `client.create.*` — fluent builders, terminal `.build()`
 
@@ -65,16 +68,23 @@ Connection types (`client.create.connection.<type>`), dataset source types (`cli
 
 ```python
 ds = client.get.dataset(by_id=dataset_id)
-ds = ds.update.add_calculation(
-    name="Margin",
-    formula="SUM([Profit]) / SUM([Sales])",
-    kind="MEASURE",
-).execute()
+ds = (
+    ds.update.add_calculation(
+        name="Margin",
+        formula="SUM([Profit]) / SUM([Sales])",
+        kind="MEASURE",
+    )
+    .mode("publish")
+    .execute()
+)
 
 cht = cht.update.palette(id="datalens-neo-20").execute()
 
-dash = dash.update.settings(hide_tabs=True).execute(publish=True)  # dashboards require publish=
+dash = dash.update.settings(hide_tabs=True).mode("publish").execute()
 ```
+
+Content-update modes and publication of existing revisions follow the
+[shared revision lifecycle](#revision-lifecycle).
 
 Every entity also has direct `rename(name)` (returns the renamed object) and `delete()` methods. `Dashboard.delete()` additionally accepts `lock_token=`. Dashboard updates are **last-write-wins** — the server has no optimistic locking, so call `dash.refresh()` right before `.update` and keep the builder short-lived, or concurrent edits are silently overwritten.
 
@@ -132,6 +142,35 @@ connection -> source -> dataset -> chart -> dashboard
 - A **dataset** owns fields (dimensions, measures, calculations, parameters).
 - A **wizard chart** binds one dataset with `.dataset(ds)` and places fields into placeholders; QL charts skip datasets and query a connection directly; editor charts are hand-written code.
 - A **dashboard** references charts by id and adds tabs, selectors, and layout.
+
+## Revision lifecycle
+
+Content updates and raw replacements write the supplied content as a new
+revision. Choose `.mode("save")` to save a draft or `.mode("publish")` to write
+and publish content, then call `.execute()`.
+
+| Resource | Default update mode | Publish an existing revision without creating another |
+|---|---|---|
+| Dataset, QL chart | `save` | Not supported |
+| Wizard chart, Editor chart, HTML page | `save` | `publish_revision(rev_id=existing_revision_id)` |
+| Dashboard | Explicit mode or compatible `publish=bool` required | `publish_revision(rev_id=existing_revision_id)` |
+
+Connections have no save/publish mode. Raw replacements use content from their
+snapshot; source and target revision identifiers do not select the revision
+written by the replacement.
+
+`publish_revision(rev_id=...)` publishes an existing saved draft or historical
+revision while preserving its ID. Wizard and Dashboard also allow
+`publish_revision()` with no arguments, which publishes the revision loaded
+into that object. HTML content updates require retained authored source;
+publishing an existing HTML revision does not.
+
+`rev_id` identifies the loaded revision. `saved_id` and `published_id` identify
+the branches reported by the response and can be unavailable. Compare those
+pointers when both are known to check whether the branches differ; a missing
+pointer does not establish whether they differ. Read a branch or exact revision
+with the [getter selectors](#clientget--by-id-only), and list history with
+[`get_revisions()`](navigation.md#revision-history-on-an-entry).
 
 ## Locations: where an entity lives
 
@@ -232,8 +271,8 @@ Dashboard update settings distinguish three intents: `UNSET` (default — leave 
 ```python
 from datalens_sdk import REMOVE_PARAM, UNSET
 
-dash.update.settings(hide_tabs=True).execute(publish=False)  # others stay UNSET
-dash.update.global_params({"region": REMOVE_PARAM}).execute(publish=False)
+dash.update.settings(hide_tabs=True).mode("save").execute()  # others stay UNSET
+dash.update.global_params({"region": REMOVE_PARAM}).mode("save").execute()
 ```
 
 Never substitute `None` for "remove" or "skip" — `None` is a written value; `UNSET` skips; `REMOVE_PARAM` deletes.

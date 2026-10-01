@@ -57,7 +57,7 @@ Editor use the key exported by the `params` tab.
 tab.add_chart(chart, item_id="prod_chart", params={"env": "prod"})
 
 # Dashboard-wide stored value: update-only, deep-merged by key.
-dashboard = dashboard.update.global_params({"env": "prod"}).execute(publish=True)
+dashboard = dashboard.update.global_params({"env": "prod"}).mode("publish").execute()
 ```
 
 `global_params` and `set_chart_params` normalize each scalar or sequence to a
@@ -66,12 +66,16 @@ list of strings. On update:
 ```python
 from datalens_sdk import REMOVE_PARAM
 
-dashboard = dashboard.update.global_params(
-    {
-        "env": "prod",  # merge/replace this key
-        "obsolete": REMOVE_PARAM,  # delete this key
-    }
-).execute(publish=True)
+dashboard = (
+    dashboard.update.global_params(
+        {
+            "env": "prod",  # merge/replace this key
+            "obsolete": REMOVE_PARAM,  # delete this key
+        }
+    )
+    .mode("publish")
+    .execute()
+)
 ```
 
 `set_chart_params(item_id=..., params=..., merge=True)` merges keys by
@@ -113,7 +117,7 @@ dashboard.update.set_chart_params(
     widget_tab_id=widget_tab_id,
     params={"env": "prod"},
     merge=False,
-).execute(publish=True)
+).mode("publish").execute()
 
 # The write has succeeded. If verification fails, rerun only this read phase.
 dashboard = client.get.dashboard(by_id=dashboard_id, branch="published")

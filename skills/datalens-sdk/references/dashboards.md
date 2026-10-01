@@ -7,7 +7,7 @@ params, and precedence, also read [parameters.md](parameters.md).
 
 ## The model in one paragraph
 
-A dashboard is a set of **tabs**; each tab holds **items** (charts, text, titles, images, selectors) placed on a **36-column grid** (`datalens_sdk.GRID_COLUMNS == 36`; height is unbounded). Charts are referenced by object or id — the dashboard does not own them. You build each tab standalone with `DashboardTab`, then attach it to a create or update builder with `.add_tab(tab)`. **A create builder must have at least one tab before `.build()`**; an empty dashboard raises `DataLensValidationError` before HTTP. The terminal calls are the usual ones: `client.create.dashboard(...).build()` and `dash.update...execute(publish=...)` — dashboards are the one entity whose `execute()` **requires** the `publish=` keyword.
+A dashboard is a set of **tabs**; each tab holds **items** (charts, text, titles, images, selectors) placed on a **36-column grid** (`datalens_sdk.GRID_COLUMNS == 36`; height is unbounded). Charts are referenced by object or id — the dashboard does not own them. You build each tab standalone with `DashboardTab`, then attach it to a create or update builder with `.add_tab(tab)`. **A create builder must have at least one tab before `.build()`**; an empty dashboard raises `DataLensValidationError` before HTTP. Use `client.create.dashboard(...).build()` to create and `dash.update...mode("save" | "publish").execute()` to update. Dashboard updates require an explicit mode or the compatible `publish=` keyword.
 
 ## `DashboardTab` — build tabs before the dashboard
 
@@ -391,7 +391,7 @@ the ids shown by the read model.
 
 ## Updating an existing dashboard
 
-`get` → `.update` (a property, fresh builder) → chain operations → `.execute(publish=, lock_token=)`:
+`get` → `.update` (a property, fresh builder) → chain operations → `.mode(...)` → `.execute(lock_token=...)`:
 
 ```python
 dash = client.get.dashboard(by_id=dashboard_id)
@@ -402,14 +402,23 @@ dash = (
     .add_selector(tab="Overview", item_id="flt_city", dataset=ds, field=ds.fields.by_name("City"), multiselect=True)
     .resize_item("gmv", h=14)
     .remove_item("note")
-    .execute(publish=True)  # publish= is REQUIRED and keyword-only
+    .mode("publish")
+    .execute()
 )
 
 issues = dash.validate()
 assert not issues, issues
 ```
 
-`publish=True` persists **and** publishes in one call; `publish=False` saves a draft revision (check `dash.is_draft`; publish later with `dash.publish_revision()`).
+Content updates and publication of existing revisions follow the
+[shared revision lifecycle](core-concepts.md#revision-lifecycle).
+
+The compatible `execute(publish=bool)` form remains available for typed and
+raw updates: `publish=True` chooses publish and `publish=False` chooses save.
+Without `.mode(...)` or `publish=...`, execution raises `TypeError`.
+If both are supplied they must agree; conflicting values and non-bool publish
+arguments are rejected before HTTP. The existing `is_draft` boolean retains
+its behavior and compares `saved_id` with `published_id`.
 
 Update-only operations beyond the tab-builder set (all `add_*` content methods
 exist here too, taking `tab=` — a tab id or title): `add_tab` / `remove_tab` /

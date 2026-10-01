@@ -323,7 +323,8 @@ def test_split_tabs_is_not_exposed_by_non_editor_charts(tmp_path: Path, chart: d
     assert tuple(tmp_path.iterdir()) == ()
 
 
-def test_raw_wizard_create_and_update_project_only_mutable_content() -> None:
+@pytest.mark.parametrize("mode", ["save", "publish"])
+def test_raw_wizard_create_and_update_project_only_mutable_content(mode: dl.EntryUpdateMode) -> None:
     recorder = RecordedTransport(
         {
             "/rpc/createWizardChart": httpx.Response(200, json=_wizard_snapshot(chart_id="wizard-clone")),
@@ -349,7 +350,7 @@ def test_raw_wizard_create_and_update_project_only_mutable_content() -> None:
     replace = client.raw.replace.wizard_chart(
         target=target,
         response_snapshot=_raw(_wizard_snapshot()),
-    ).mode("publish")
+    ).mode(mode)
     assert isinstance(replace, RawWizardChartReplace)
     updated = replace.execute()
 
@@ -363,8 +364,8 @@ def test_raw_wizard_create_and_update_project_only_mutable_content() -> None:
     assert set(create_payload) == {"data", "key", "annotation"}
     update_payload = recorder.request_json(2)
     assert update_payload["chartId"] == "wizard-target"
-    assert update_payload["mode"] == "publish"
-    assert update_payload["revId"] == "target-revision"
+    assert update_payload["mode"] == mode
+    assert "revId" not in update_payload
     assert cast(dict[str, object], update_payload["data"])["futureData"] == {"nested": {"preserved": True}}
 
 

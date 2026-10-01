@@ -963,6 +963,42 @@ def build_entry_move_contract_meta(spec: Mapping[str, object]) -> EntryMoveContr
     }
 
 
+def validate_dataset_update_mode_contract(spec: Mapping[str, object]) -> None:
+    """Validate data.mode from the RPC exporter without changing downloaded specs.
+
+    The exporter currently attaches a Zod optional enum next to the data
+    $ref instead of placing mode inside DatasetUpdate.properties. Accept the
+    equivalent standard OpenAPI form as well so an exporter fix needs no
+    SDK contract change.
+    """
+    context = "/rpc/updateDataset"
+    paths = _string_object_dict(spec.get("paths"), context="paths")
+    route = _string_object_dict(paths.get(context), context=context)
+    operation = _string_object_dict(route.get("post"), context=f"{context}.post")
+    request = _string_object_dict(operation.get("requestBody"), context=f"{context}.requestBody")
+    content = _string_object_dict(request.get("content"), context=f"{context}.content")
+    json_content = _string_object_dict(content.get("application/json"), context=f"{context}.application/json")
+    schema = _string_object_dict(json_content.get("schema"), context=f"{context}.schema")
+    properties = _string_object_dict(schema.get("properties"), context=f"{context}.properties")
+    data = _string_object_dict(properties.get("data"), context=f"{context}.data")
+    if data.get("$ref") is not None:
+        referenced = _schemas(spec).get(_ref_name(str(data["$ref"])))
+        if referenced is None:
+            raise ValueError("updateDataset data references a missing schema")
+        data_properties = _string_object_dict(referenced.get("properties"), context=f"{context}.data.properties")
+    else:
+        data_properties = _string_object_dict(data.get("properties"), context=f"{context}.data.properties")
+    mode = _string_object_dict(data_properties.get("mode", data.get("mode")), context=f"{context}.data.mode")
+    values = mode.get("enum")
+    if values is None and mode.get("type") == "optional":
+        definition = _string_object_dict(mode.get("def"), context=f"{context}.data.mode.def")
+        inner = _string_object_dict(definition.get("innerType"), context=f"{context}.data.mode.innerType")
+        values = inner.get("options")
+    modes = sorted(_string_list(values, context=f"{context}.data.mode.enum"))
+    if modes != ["publish", "save"]:
+        raise ValueError(f"updateDataset data.mode must support save and publish, got {modes!r}")
+
+
 def _allow_nullable_html_page_version(schema: JsonValue, *, context: str, wrapper: bool) -> JsonValue:
     """The YaTeam RPC has returned version=null even though all three specs enumerate version=1."""
 
@@ -1924,6 +1960,7 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
         schemas = _schemas(spec)
+        validate_dataset_update_mode_contract(spec)
         dashboard_contract = build_dashboard_contract_meta(spec)
         dashboard_contracts.append((installation, dashboard_contract))
         entry_revisions_contracts.append((installation, build_entry_revisions_contract_meta(spec)))
@@ -3782,14 +3819,27 @@ class DatasetValidateDTO(BaseModel):
         return {{"datasetId": self.dataset_id, "data": dict(self.data)}}
 
 
+class DatasetUpdateDataDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dataset: Mapping[str, object]
+    mode: Literal['publish', 'save'] | None = None
+
+    def to_payload(self) -> dict[str, object]:
+        payload: dict[str, object] = {{"dataset": dict(self.dataset)}}
+        if self.mode is not None:
+            payload["mode"] = self.mode
+        return payload
+
+
 class DatasetUpdateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     dataset_id: str = Field(serialization_alias="datasetId")
-    data: Mapping[str, object]
+    data: DatasetUpdateDataDTO
 
     def to_payload(self) -> dict[str, object]:
-        return {{"datasetId": self.dataset_id, "data": dict(self.data)}}
+        return {{"datasetId": self.dataset_id, "data": self.data.to_payload()}}
 
 
 class EntryMoveDTO(BaseModel):

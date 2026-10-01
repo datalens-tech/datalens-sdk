@@ -3,7 +3,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
+from typing_extensions import Self
+
+from datalens_sdk.domain.dashboard_update_mode import PUBLISH_UNSET, _PublishUnset, resolve_dashboard_publish
 from datalens_sdk.domain.entry_location import EntryLocation, resolve_entry_location, validate_entry_name
+from datalens_sdk.domain.entry_types import EntryUpdateMode, validate_entry_update_mode
 from datalens_sdk.domain.ports import DashboardOperations
 from datalens_sdk.domain.raw_resource import _validate_target_installation
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
@@ -68,17 +72,23 @@ class RawDashboardReplace:
             target_location=target.location,
         )
         self._operations = operations
+        self._mode: EntryUpdateMode | None = None
+
+    def mode(self, value: EntryUpdateMode) -> Self:
+        self._mode = validate_entry_update_mode(value)
+        return self
 
     def execute(
         self,
         *,
-        publish: bool,
+        publish: bool | _PublishUnset = PUBLISH_UNSET,
         lock_token: str | None = None,
     ) -> Dashboard:
+        resolved_publish = resolve_dashboard_publish(mode=self._mode, publish=publish)
         if self._operations is None:
             raise DataLensConfigurationError("Object is not bound to client operations. Use a client namespace.")
         return self._operations.replace_dashboard_from_raw(
             self._spec,
-            publish=publish,
+            publish=resolved_publish,
             lock_token=lock_token,
         )

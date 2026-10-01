@@ -142,7 +142,7 @@ Check relations before deleting anything shared — a dataset with dependent cha
 
 ## Revision history on an entry
 
-`Connection`, `Dataset`, `Dashboard`, and every chart family (Wizard, QL,
+`Connection`, `Dataset`, `Dashboard`, `HtmlPage`, and every chart family (Wizard, QL,
 Editor, including `client.get.chart(...)`) expose `get_revisions()`. The
 object supplies its entry id; it must be bound to a client and have an id.
 `Folder`, `Collection`, `Workbook`, and navigation `EntrySummary` do not
@@ -221,7 +221,7 @@ Read a selected revision's contents with the existing getter:
 
 ```python
 historical = client.get.dataset(by_id=dataset.id, rev_id=selected_revision_id)
-# Likewise: connection, dashboard, wizard_chart, ql_chart, editor_chart, or chart.
+# Likewise: connection, dashboard, html_page, wizard_chart, ql_chart, editor_chart, or chart.
 ```
 
 Calling `historical.get_revisions()` still lists the entry's history; the

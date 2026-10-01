@@ -1,8 +1,10 @@
 # Wizard charts: routing and full operation matrix
 
-Read this file first for any wizard-chart task. Pick the chart type from the
-routing table, then read exactly the one `chart-*.md` file it points to, plus
-[common operations](common-operations.md) for lifecycle and shared methods.
+Read this file first for any wizard-chart task. For creation or content
+edits, select the chart type from the routing table and read its `chart-*.md`
+reference plus [common operations](common-operations.md). For publication of
+an existing revision, reads, or other shared entry operations, go directly to
+common operations.
 
 ## Chart-type routing
 

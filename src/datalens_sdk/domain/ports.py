@@ -153,13 +153,19 @@ class DatasetOperations(EntryRevisionsOperations, Protocol):
         dataset_id: str,
         workbook_id: str | None = None,
         rev_id: str | None = None,
+        branch: EntryBranch | None = None,
     ) -> Dataset: ...
 
     def get_dataset_data(self, query: DatasetDataQuery) -> DatasetData: ...
 
     def update_dataset(self, builder: DatasetUpdate) -> Dataset: ...
 
-    def replace_dataset_from_raw(self, spec: RawReplaceSpec) -> Dataset: ...
+    def replace_dataset_from_raw(
+        self,
+        spec: RawReplaceSpec,
+        *,
+        mode: EntryUpdateMode = "save",
+    ) -> Dataset: ...
 
     def delete_dataset(self, dataset_id: str) -> None: ...
 
@@ -253,7 +259,7 @@ class FolderOperations(Protocol):
 
 
 @runtime_checkable
-class HtmlPageOperations(Protocol):
+class HtmlPageOperations(EntryRevisionsOperations, Protocol):
     def create_html_page(self, builder: HtmlPageCreate) -> HtmlPage: ...
 
     def get_html_page(
@@ -398,6 +404,8 @@ class ChartOperations(EntryRevisionsOperations, Protocol):
     ) -> EditorChart: ...
 
     def update_editor_chart(self, builder: EditorChartUpdate) -> EditorChart: ...
+
+    def publish_editor_chart(self, chart: EditorChart, rev_id: str) -> EditorChart: ...
 
     def replace_editor_chart_from_raw(
         self,

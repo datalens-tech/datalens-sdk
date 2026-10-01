@@ -1013,7 +1013,7 @@ def test_dataset_update_continues_with_validation_result_from_http_400(
         "/rpc/validateDataset",
         "/rpc/updateDataset",
     ]
-    assert recorder.request_json(2)["data"] == {"dataset": validated_dataset}
+    assert recorder.request_json(2)["data"] == {"dataset": validated_dataset, "mode": "save"}
     assert caplog.text.count("Accepting DataLens error response as API payload") == 1
     assert caplog.text.count("DataLens dataset component errors") == 1
     assert "DataLens dataset component errors: operation=validateDataset" in caplog.text

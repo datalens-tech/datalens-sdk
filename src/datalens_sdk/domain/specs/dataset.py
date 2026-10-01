@@ -10,6 +10,7 @@ from datalens_sdk.domain.dataset_types import (
     DatasetUpdateAction,
 )
 from datalens_sdk.domain.entry_location import EntryLocation
+from datalens_sdk.domain.entry_types import EntryUpdateMode
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.dataset import Source
@@ -52,3 +53,4 @@ class DatasetUpdateSpec:
     actions: tuple[DatasetUpdateAction, ...]
     name_change: str | None
     rls2_changes: tuple[RLSChange, ...]
+    mode: EntryUpdateMode = "save"

@@ -17,7 +17,7 @@ from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirect
 from datalens_sdk.domain.ports import ConnectionOperations
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.specs.connection import ConnectionUpdateSpec
-from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError, NotSupportedError
 from datalens_sdk.serialization.artifacts import ArtifactPath, write_connection_artifact
 from datalens_sdk.serialization.json_types import JsonValue
 
@@ -181,6 +181,8 @@ class ConnectionUpdate:
         return self._set(field, value)
 
     def _set(self, field: str, value: object) -> ConnectionUpdate:
+        if field == "mode":
+            raise NotSupportedError("Connections do not support save/publish modes")
         self._changes[field] = value
         return self
 

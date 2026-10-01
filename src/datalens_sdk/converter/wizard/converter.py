@@ -344,7 +344,6 @@ class WizardChartConverter:
             mode=mode,
             data=source.data,
             annotation=source.optional_object("annotation"),
-            rev_id=spec.target_revision_id,
         )
 
     @staticmethod

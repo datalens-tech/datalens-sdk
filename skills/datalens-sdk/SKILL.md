@@ -130,6 +130,12 @@ connection -> source -> dataset -> chart -> dashboard
 
 Standalone HTML pages are independent artifacts with their own revisions.
 
+Dataset, chart, Dashboard, and HTML content updates use
+`.mode("save" | "publish")`. Save is the default except for Dashboard, which
+requires an explicit choice. For content writes, publication of existing
+revisions, and revision metadata, read the shared
+[revision lifecycle](references/core-concepts.md#revision-lifecycle).
+
 One client, four namespaces:
 
 | Namespace                          | Role                              | Terminal call         |

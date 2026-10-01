@@ -5,6 +5,7 @@ from typing import cast
 from pydantic import BaseModel, ConfigDict, Field
 
 from datalens_sdk.converter._dataset_policy import with_supported_rls2_state
+from datalens_sdk.domain.entry_types import EntryUpdateMode
 from datalens_sdk.serialization.artifacts import DatasetSnapshotView
 from datalens_sdk.serialization.json_types import JsonValue
 
@@ -28,6 +29,7 @@ class RawDatasetReplaceData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     dataset: dict[str, JsonValue]
+    mode: EntryUpdateMode | None = None
 
 
 class RawDatasetReplaceEnvelope(BaseModel):
@@ -37,7 +39,7 @@ class RawDatasetReplaceEnvelope(BaseModel):
     data: RawDatasetReplaceData
 
     def to_payload(self) -> dict[str, object]:
-        return cast(dict[str, object], self.model_dump(by_alias=True))
+        return cast(dict[str, object], self.model_dump(by_alias=True, exclude_none=True))
 
 
 def dataset_content_from_snapshot(source: DatasetSnapshotView) -> dict[str, JsonValue]:

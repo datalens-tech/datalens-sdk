@@ -42,7 +42,6 @@ class RawWizardChartReplaceEnvelope(BaseModel):
     mode: Literal["save", "publish"]
     data: dict[str, JsonValue]
     annotation: dict[str, JsonValue] | None = None
-    rev_id: str | None = Field(default=None, serialization_alias="revId")
 
     @model_validator(mode="after")
     def _validate_data(self) -> RawWizardChartReplaceEnvelope:

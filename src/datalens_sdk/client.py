@@ -416,10 +416,17 @@ class GetNamespace:
         by_id: str | None = None,
         workbook_id: str | None = None,
         rev_id: str | None = None,
+        branch: EntryBranch | None = None,
     ) -> Dataset:
         if by_id is None:
             raise ValueError("by_id must be provided")
-        return self._dataset_operations.get_dataset(by_id, workbook_id=workbook_id, rev_id=rev_id)
+        if rev_id is not None and branch is not None:
+            warnings.warn(
+                "branch is ignored because an explicit rev_id already pins the revision",
+                UserWarning,
+                stacklevel=2,
+            )
+        return self._dataset_operations.get_dataset(by_id, workbook_id=workbook_id, rev_id=rev_id, branch=branch)
 
     def wizard_chart(
         self,
@@ -770,6 +777,7 @@ class DataLensClientBase:
         self._html_page_service = HtmlPageService(
             installation=self.INSTALLATION,
             api=HtmlPageAPI(self._http),
+            entries_service=entries_service,
             navigation_operations=self._navigation_service,
             dto_module=cast(HtmlPageDtoModule, dto_module),
         )

@@ -268,7 +268,7 @@ def test_dataset_rls_mutations_compose_in_one_save(
     updated = update.execute()
 
     assert [request.url.path for request in recorder.requests] == ["/rpc/getDataset", "/rpc/updateDataset"]
-    assert recorder.request_json(1) == {"datasetId": "ds-1", "data": {"dataset": saved_dataset}}
+    assert recorder.request_json(1) == {"datasetId": "ds-1", "data": {"dataset": saved_dataset, "mode": "save"}}
     assert updated.rls2 == expected_rls
     assert dataset.raw == raw_before
     assert dataset.response_snapshot == snapshot_before
@@ -297,7 +297,7 @@ def test_dataset_rls_clear_is_explicit_even_without_existing_rules(has_rls2: boo
 
     expected_dataset = {**source_dataset, "rls2": {}} if clear else source_dataset
     assert [request.url.path for request in recorder.requests] == ["/rpc/getDataset", "/rpc/updateDataset"]
-    assert recorder.request_json(1) == {"datasetId": "ds-1", "data": {"dataset": expected_dataset}}
+    assert recorder.request_json(1) == {"datasetId": "ds-1", "data": {"dataset": expected_dataset, "mode": "save"}}
 
 
 @pytest.mark.parametrize("clear_all", [False, True], ids=["replace-field", "replace-all"])
@@ -345,7 +345,7 @@ def test_dataset_rls_changes_apply_to_validated_state(clear_all: bool) -> None:
             "updates": [{"action": "update_description", "description": "Requested description"}],
         },
     }
-    assert recorder.request_json(2) == {"datasetId": "ds-1", "data": {"dataset": saved_dataset}}
+    assert recorder.request_json(2) == {"datasetId": "ds-1", "data": {"dataset": saved_dataset, "mode": "save"}}
     assert dataset.raw == raw_before
 
 
