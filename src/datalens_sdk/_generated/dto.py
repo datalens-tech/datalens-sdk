@@ -4793,6 +4793,18 @@ class GetHtmlPageArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class GetHtmlPagePreviewUrlArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    branch: Literal['published', 'saved'] = _UNVALIDATED_NONE_DEFAULT
+    entry_id: str = Field(alias='entryId')
+    lang: Literal['en', 'ru'] = _UNVALIDATED_NONE_DEFAULT
+    rev_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revId')
+    theme: Literal['dark', 'dark-hc', 'light', 'light-hc', 'system'] = _UNVALIDATED_NONE_DEFAULT
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class UpdateHtmlPageArgsAnyOf0DTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -4869,6 +4881,11 @@ class CreateHtmlPageResultReadDTO(BaseModel):
 
     entry: CreateHtmlPageResultEntryReadDTO
     warnings: list[str]
+
+class GetHtmlPagePreviewUrlResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    url: str
 
 class GetHtmlPageResultReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)

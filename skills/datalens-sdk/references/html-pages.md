@@ -56,10 +56,36 @@ The returned `HtmlPage` is an entry record. It exposes `id`, `name`, `key`,
 nullable `version`. Set `include_favorite=True` or
 `include_permissions=True` when those optional status fields matter. A fresh
 get has no processing warnings; warning codes are returned by create and
-update. The get response schema has no `content` field. Its `data` object
-is versioned entry data, not a documented HTML-text result, and `object_id`
-is storage metadata rather than a download URL. Keep your authored source
-separately if later edits need the original document.
+update. The `getHtmlPage` response schema has no `content` field. Its `data`
+object is versioned entry data, not a documented HTML-text result, and
+`object_id` is storage metadata rather than a download URL.
+
+To view a page, request a temporary preview URL with a separate RPC:
+
+```python
+preview_url = client.get.html_page_preview_url(
+    by_id=page_id,
+    branch="published",
+    lang="en",
+    theme="dark",
+)
+# Or pin a revision: client.get.html_page_preview_url(by_id=page_id, rev_id=known_revision_id)
+```
+
+The default branch is `published`; `branch="saved"` previews a saved
+revision. An explicit `rev_id` takes precedence over `branch`, with a
+warning when both are passed. The optional `lang` uses shared `UILanguage`
+values `"ru"` and `"en"`; `theme` uses `UITheme` and accepts `"light"`,
+`"dark"`, `"light-hc"`,
+`"dark-hc"`, and `"system"`. The method returns a `str` URL, not the
+HTML source. The URL is temporary and may grant access to the preview while
+it is valid, so handle it only as the user requested. The linked authoring
+skill's CSP and sandbox serving guidance explains how DataLens issues a
+short-lived signed GET URL and injects policy
+content when storing the page. Upload may strip a leading BOM or an earlier
+injection block. The preview response is therefore not a guaranteed copy of
+the original uploaded bytes. Keep your authored source separately if later
+edits need the original document.
 
 ## Update and delete
 
@@ -94,7 +120,7 @@ Deletion removes the entry. Apply the bundled skill's approval rule before
 deleting a page you did not create in the current session.
 
 The checked-in Enterprise and Yandex Cloud specs contain
-`createHtmlPage`, `getHtmlPage`, `updateHtmlPage`, and `deleteHtmlPage`.
-They do not define an HTML-source download or preview-URL RPC in the SDK
-contract. Do not derive a direct object-store URL from `object_id` or claim
-that `get.html_page` returns source HTML.
+`createHtmlPage`, `getHtmlPage`, `getHtmlPagePreviewUrl`,
+`updateHtmlPage`, and `deleteHtmlPage`. They do not define an
+HTML-source download RPC. Do not derive a direct object-store URL from
+`object_id` or claim that `get.html_page` returns source HTML.

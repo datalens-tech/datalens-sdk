@@ -1,7 +1,7 @@
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.chart_types import GeoLayerFilter, QLCast, QLParamType
 from datalens_sdk.domain.collection import Collection, CollectionCreate, CollectionUpdate
-from datalens_sdk.domain.common_types import SortDirection
+from datalens_sdk.domain.common_types import SortDirection, UILanguage, UITheme
 from datalens_sdk.domain.connection import Connection, ConnectionUpdate
 from datalens_sdk.domain.dashboard import (
     ControlMemberView,
@@ -78,7 +78,12 @@ from datalens_sdk.domain.fields import (
     WizardLocalField,
 )
 from datalens_sdk.domain.folder import Folder, FolderCreate, FolderUpdate
-from datalens_sdk.domain.html_page import HtmlPage, HtmlPageCreate, HtmlPagePermissions, HtmlPageUpdate
+from datalens_sdk.domain.html_page import (
+    HtmlPage,
+    HtmlPageCreate,
+    HtmlPagePermissions,
+    HtmlPageUpdate,
+)
 from datalens_sdk.domain.license import (
     License,
     LicenseLimit,
@@ -247,6 +252,8 @@ __all__ = [
     "StructureOrderField",
     "StructureSummary",
     "ThemedColor",
+    "UILanguage",
+    "UITheme",
     "WhereOperation",
     "WizardAggregatedMeasure",
     "WizardChart",

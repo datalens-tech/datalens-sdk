@@ -103,6 +103,7 @@ _HTML_PAGE_ROUTES = {
     "/rpc/createHtmlPage": ("CreateHtmlPageArgs", "CreateHtmlPageResult"),
     "/rpc/deleteHtmlPage": ("DeleteHtmlPageArgs", None),
     "/rpc/getHtmlPage": ("GetHtmlPageArgs", "GetHtmlPageResult"),
+    "/rpc/getHtmlPagePreviewUrl": ("GetHtmlPagePreviewUrlArgs", "GetHtmlPagePreviewUrlResult"),
     "/rpc/updateHtmlPage": ("UpdateHtmlPageArgs", "UpdateHtmlPageResult"),
 }
 _HTML_PAGE_WRITE_DTO_NAMES = frozenset(
@@ -110,6 +111,7 @@ _HTML_PAGE_WRITE_DTO_NAMES = frozenset(
         "CreateHtmlPageArgsDTO",
         "DeleteHtmlPageArgsDTO",
         "GetHtmlPageArgsDTO",
+        "GetHtmlPagePreviewUrlArgsDTO",
         "UpdateHtmlPageArgsAnyOf0DTO",
         "UpdateHtmlPageArgsAnyOf1DTO",
     }
@@ -985,7 +987,7 @@ def _allow_nullable_html_page_version(schema: JsonValue, *, context: str, wrappe
 
 
 def build_html_page_contract_meta(spec: Mapping[str, object]) -> HtmlPageContractMeta:
-    """Extract the four HTML-page RPC routes and their focused schema closure."""
+    """Extract the HTML-page RPC routes and their focused schema closure."""
 
     paths = _string_object_dict(spec.get("paths"), context="paths")
     discovered = {path for path in paths if "HtmlPage" in path}
@@ -3467,12 +3469,20 @@ def _emit_html_page_dto(metadata: Metadata) -> str:
         schemas,
         read=False,
         contract="HtmlPages",
-    ).emit(("CreateHtmlPageArgs", "DeleteHtmlPageArgs", "GetHtmlPageArgs", "UpdateHtmlPageArgs"))
+    ).emit(
+        (
+            "CreateHtmlPageArgs",
+            "DeleteHtmlPageArgs",
+            "GetHtmlPageArgs",
+            "GetHtmlPagePreviewUrlArgs",
+            "UpdateHtmlPageArgs",
+        )
+    )
     result_models = _PydanticSchemaEmitter(
         schemas,
         read=True,
         contract="HtmlPages",
-    ).emit(("CreateHtmlPageResult", "GetHtmlPageResult", "UpdateHtmlPageResult"))
+    ).emit(("CreateHtmlPageResult", "GetHtmlPageResult", "GetHtmlPagePreviewUrlResult", "UpdateHtmlPageResult"))
     return f"\n{request_models}\n{result_models}".rstrip() + "\n"
 
 

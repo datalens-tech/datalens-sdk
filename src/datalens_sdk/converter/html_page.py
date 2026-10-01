@@ -5,6 +5,7 @@ from typing import Literal, Protocol, cast
 
 from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.converter._navigation import name_from_key
+from datalens_sdk.domain.common_types import UILanguage, UITheme
 from datalens_sdk.domain.entry_location import (
     EntryLocation,
     key_from_location,
@@ -12,7 +13,10 @@ from datalens_sdk.domain.entry_location import (
     workbook_id_from_location,
 )
 from datalens_sdk.domain.entry_types import EntryBranch
-from datalens_sdk.domain.html_page import HtmlPage, HtmlPagePermissions
+from datalens_sdk.domain.html_page import (
+    HtmlPage,
+    HtmlPagePermissions,
+)
 from datalens_sdk.domain.ports import HtmlPageOperations
 from datalens_sdk.domain.specs.html_page import (
     HtmlPageContentUpdateSpec,
@@ -34,13 +38,23 @@ class HtmlPageReadDTOClass(Protocol):
     def model_validate(self, obj: object) -> object: ...
 
 
+class HtmlPagePreviewUrlResultDTOProtocol(Protocol):
+    url: str
+
+
+class HtmlPagePreviewUrlResultDTOClass(Protocol):
+    def model_validate(self, obj: object) -> HtmlPagePreviewUrlResultDTOProtocol: ...
+
+
 class HtmlPageDtoModule(Protocol):
     CreateHtmlPageArgsDTO: HtmlPageWriteDTOClass
     GetHtmlPageArgsDTO: HtmlPageWriteDTOClass
+    GetHtmlPagePreviewUrlArgsDTO: HtmlPageWriteDTOClass
     DeleteHtmlPageArgsDTO: HtmlPageWriteDTOClass
     UpdateHtmlPageArgsAnyOf0DTO: HtmlPageWriteDTOClass
     UpdateHtmlPageArgsAnyOf1DTO: HtmlPageWriteDTOClass
     GetHtmlPageResultReadDTO: HtmlPageReadDTOClass
+    GetHtmlPagePreviewUrlResultReadDTO: HtmlPagePreviewUrlResultDTOClass
     CreateHtmlPageResultReadDTO: HtmlPageReadDTOClass
     UpdateHtmlPageResultReadDTO: HtmlPageReadDTOClass
 
@@ -136,6 +150,32 @@ class HtmlPageConverter:
         if include_permissions is not None:
             payload["include_permissions"] = include_permissions
         return generated.GetHtmlPageArgsDTO.model_validate(payload)
+
+    @staticmethod
+    def from_domain_get_preview_url(
+        entry_id: str,
+        *,
+        branch: EntryBranch | None = None,
+        rev_id: str | None = None,
+        lang: UILanguage | None = None,
+        theme: UITheme | None = None,
+        dto_module: HtmlPageDtoModule | None = None,
+    ) -> HtmlPageWriteDTOProtocol:
+        generated = _dto_module(dto_module)
+        payload: dict[str, object] = {"entry_id": entry_id}
+        if rev_id is not None:
+            payload["rev_id"] = rev_id
+        elif branch is not None:
+            payload["branch"] = branch
+        if lang is not None:
+            payload["lang"] = lang
+        if theme is not None:
+            payload["theme"] = theme
+        return generated.GetHtmlPagePreviewUrlArgsDTO.model_validate(payload)
+
+    @staticmethod
+    def to_preview_url(raw: Mapping[str, object], *, dto_module: HtmlPageDtoModule | None = None) -> str:
+        return _dto_module(dto_module).GetHtmlPagePreviewUrlResultReadDTO.model_validate(raw).url
 
     @staticmethod
     def from_domain_update(

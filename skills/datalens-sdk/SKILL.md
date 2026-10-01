@@ -134,7 +134,7 @@ One client, four namespaces:
 
 | Namespace                          | Role                              | Terminal call         |
 |------------------------------------|-----------------------------------|-----------------------|
-| `client.get.*`                     | fetch by id (`by_id=`)            | returns the object    |
+| `client.get.*`                     | fetch by id (`by_id=`)            | entity or preview URL |
 | `client.create.*`                  | fluent builders                   | `.build()` persists   |
 | `obj.update...`                    | fluent update on a fetched object | `.execute()` persists |
 | `client.navigation` / `client.raw` | listing / snapshot import-export  | —                     |
@@ -278,7 +278,7 @@ Editor index replaces the public Editor subtree for that installation.
 | Installation configuration, auth, tokens, preflight states                | [references/setup.md](references/setup.md)                               |
 | Object model unclear; lifecycle, errors, retries, pagination               | [references/core-concepts.md](references/core-concepts.md)               |
 | Creating/updating a connection or data source                              | [references/connections.md](references/connections.md)                   |
-| Creating, reading, updating, or deleting a standalone HTML page            | [references/html-pages.md](references/html-pages.md)                     |
+| Creating, reading, previewing, updating, or deleting a standalone HTML page | [references/html-pages.md](references/html-pages.md)                     |
 | Datasets: fields, calculations, parameters, joins, RLS                     | [references/datasets.md](references/datasets.md)                         |
 | Reading rows from a dataset                                                 | [references/dataset-data.md](references/dataset-data.md)                 |
 | Writing, fixing, or reviewing a calculated field or formula                | [references/formulas/_index.md](references/formulas/_index.md)           |
@@ -387,7 +387,7 @@ Use the non-executing allowlisted reader from [references/setup.md](references/s
 | `references/setup.md`                           | configuring the installation, interpreting preflight output, anything about auth or tokens          |
 | `references/core-concepts.md`                   | you need the object model: namespaces, lifecycle, field references, retries, pagination, sentinels |
 | `references/connections.md`                     | creating or editing connections to the databases                                                   |
-| `references/html-pages.md`                      | standalone HTML-page CRUD, revision modes, metadata-only reads, and authoring-skill link            |
+| `references/html-pages.md`                      | standalone HTML-page CRUD, revision modes, metadata reads, preview URLs, and authoring-skill link            |
 | `references/datasets.md`                        | dataset creation, the fields update DSL, joins, parameters, RLS, formulas                          |
 | `references/formulas/_index.md`                 | official formula documentation routing plus SDK ownership, persistence, and validation boundaries  |
 | `references/wizard-charts/_index.md`            | routing to one of the wizard chart types; read before any wizard work                              |

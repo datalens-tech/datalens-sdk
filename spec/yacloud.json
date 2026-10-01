@@ -2986,6 +2986,28 @@
         "properties": {},
         "type": "object"
       },
+      "CancelSparkJobArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "clusterId": {
+            "description": "ID of the Spark cluster.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "jobId": {
+            "description": "ID of the Spark job to cancel.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "clusterId",
+          "jobId"
+        ],
+        "type": "object"
+      },
       "CancelWorkbookExportArgs": {
         "properties": {
           "exportId": {
@@ -4872,6 +4894,943 @@
         },
         "required": [
           "entry"
+        ],
+        "type": "object"
+      },
+      "CreateSparkClusterArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "cloudEnvironmentId": {
+            "description": "ID of the cloud environment in which to create the cluster.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "collectionId": {
+            "description": "ID of the DataLens collection in which to create the cluster.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "config": {
+            "additionalProperties": false,
+            "properties": {
+              "dependencies": {
+                "additionalProperties": false,
+                "description": "Packages to install in the cluster.",
+                "properties": {
+                  "debPackages": {
+                    "description": "Debian packages to install in the cluster.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "pipPackages": {
+                    "description": "Python packages to install in the cluster.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "logging": {
+                "description": "Cluster logging configuration.",
+                "properties": {
+                  "enabled": {
+                    "description": "Whether cluster logging is enabled.",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "enabled"
+                ],
+                "type": "object"
+              },
+              "resourcePools": {
+                "additionalProperties": false,
+                "properties": {
+                  "driver": {
+                    "additionalProperties": false,
+                    "description": "Driver resource pool.",
+                    "properties": {
+                      "resourcePresetId": {
+                        "description": "ID of the Spark resource preset.",
+                        "maxLength": 50,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "scalePolicy": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "fixedScale": {
+                                "properties": {
+                                  "size": {
+                                    "description": "Number of instances in the resource pool.",
+                                    "pattern": "^(?:[1-9]|[1-9]\\d|100)$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "size"
+                                ],
+                                "type": "object"
+                              }
+                            },
+                            "required": [
+                              "fixedScale"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "autoScale": {
+                                "properties": {
+                                  "initialSize": {
+                                    "description": "Initial number of instances in the resource pool.",
+                                    "pattern": "^(?:0|[1-9]\\d?|100)$",
+                                    "type": "string"
+                                  },
+                                  "maxSize": {
+                                    "description": "Maximum number of instances in the resource pool.",
+                                    "pattern": "^(?:[1-9]|[1-9]\\d|100)$",
+                                    "type": "string"
+                                  },
+                                  "minSize": {
+                                    "description": "Minimum number of instances in the resource pool.",
+                                    "pattern": "^(?:0|[1-9]\\d?|100)$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "minSize",
+                                  "maxSize",
+                                  "initialSize"
+                                ],
+                                "type": "object"
+                              }
+                            },
+                            "required": [
+                              "autoScale"
+                            ],
+                            "type": "object"
+                          }
+                        ],
+                        "description": "Resource pool scaling policy."
+                      }
+                    },
+                    "required": [
+                      "resourcePresetId",
+                      "scalePolicy"
+                    ],
+                    "type": "object"
+                  },
+                  "executor": {
+                    "additionalProperties": false,
+                    "description": "Executor resource pool.",
+                    "properties": {
+                      "resourcePresetId": {
+                        "description": "ID of the Spark resource preset.",
+                        "maxLength": 50,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "scalePolicy": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "fixedScale": {
+                                "properties": {
+                                  "size": {
+                                    "description": "Number of instances in the resource pool.",
+                                    "pattern": "^(?:[1-9]|[1-9]\\d|100)$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "size"
+                                ],
+                                "type": "object"
+                              }
+                            },
+                            "required": [
+                              "fixedScale"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "autoScale": {
+                                "properties": {
+                                  "initialSize": {
+                                    "description": "Initial number of instances in the resource pool.",
+                                    "pattern": "^(?:0|[1-9]\\d?|100)$",
+                                    "type": "string"
+                                  },
+                                  "maxSize": {
+                                    "description": "Maximum number of instances in the resource pool.",
+                                    "pattern": "^(?:[1-9]|[1-9]\\d|100)$",
+                                    "type": "string"
+                                  },
+                                  "minSize": {
+                                    "description": "Minimum number of instances in the resource pool.",
+                                    "pattern": "^(?:0|[1-9]\\d?|100)$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "minSize",
+                                  "maxSize",
+                                  "initialSize"
+                                ],
+                                "type": "object"
+                              }
+                            },
+                            "required": [
+                              "autoScale"
+                            ],
+                            "type": "object"
+                          }
+                        ],
+                        "description": "Resource pool scaling policy."
+                      }
+                    },
+                    "required": [
+                      "resourcePresetId",
+                      "scalePolicy"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "driver",
+                  "executor"
+                ],
+                "type": "object"
+              },
+              "sparkVersion": {
+                "description": "Spark version. The service default is used when omitted.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "resourcePools"
+            ],
+            "type": "object"
+          },
+          "description": {
+            "description": "Description of the Spark cluster.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": {
+              "maxLength": 63,
+              "pattern": "^[-_0-9a-z]*$",
+              "type": "string"
+            },
+            "description": "Spark cluster labels.",
+            "type": "object"
+          },
+          "name": {
+            "description": "Name of the Spark cluster.",
+            "maxLength": 63,
+            "pattern": "^[a-zA-Z0-9ЁёА-я]\\S{1,61}[a-zA-Z0-9ЁёА-я]$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collectionId",
+          "cloudEnvironmentId",
+          "name",
+          "config"
+        ],
+        "type": "object"
+      },
+      "CreateSparkJobArgs": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "catalogs": {
+                "description": "REST catalogs to attach to the Spark job.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark job.",
+                "maxLength": 255,
+                "pattern": "^(?:|[a-z][-a-z0-9]{1,61}[a-z0-9])$",
+                "type": "string"
+              },
+              "sparkJob": {
+                "additionalProperties": false,
+                "properties": {
+                  "archiveUris": {
+                    "description": "Archives extracted in the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "args": {
+                    "description": "Arguments passed to the Spark driver.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "excludePackages": {
+                    "description": "Maven packages excluded during dependency resolution.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "fileUris": {
+                    "description": "Files copied to the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "jarFileUris": {
+                    "description": "JAR files added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "mainClass": {
+                    "description": "Name of the driver main class.",
+                    "maxLength": 255,
+                    "type": "string"
+                  },
+                  "mainJarFileUri": {
+                    "description": "URI of the JAR file that contains the main class.",
+                    "maxLength": 2047,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "packages": {
+                    "description": "Maven packages added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "properties": {
+                    "additionalProperties": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "description": "Spark configuration properties.",
+                    "type": "object"
+                  },
+                  "repositories": {
+                    "description": "Additional Maven repositories.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "mainJarFileUri"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "clusterId",
+              "sparkJob"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "catalogs": {
+                "description": "REST catalogs to attach to the Spark job.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark job.",
+                "maxLength": 255,
+                "pattern": "^(?:|[a-z][-a-z0-9]{1,61}[a-z0-9])$",
+                "type": "string"
+              },
+              "pysparkJob": {
+                "additionalProperties": false,
+                "properties": {
+                  "archiveUris": {
+                    "description": "Archives extracted in the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "args": {
+                    "description": "Arguments passed to the PySpark driver.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "excludePackages": {
+                    "description": "Maven packages excluded during dependency resolution.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "fileUris": {
+                    "description": "Files copied to the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "jarFileUris": {
+                    "description": "JAR files added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "mainPythonFileUri": {
+                    "description": "URI of the main Python file.",
+                    "maxLength": 2047,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "packages": {
+                    "description": "Maven packages added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "properties": {
+                    "additionalProperties": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "description": "Spark configuration properties.",
+                    "type": "object"
+                  },
+                  "pythonFileUris": {
+                    "description": "Additional Python files passed to PySpark.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "repositories": {
+                    "description": "Additional Maven repositories.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "mainPythonFileUri"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "clusterId",
+              "pysparkJob"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "catalogs": {
+                "description": "REST catalogs to attach to the Spark job.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark job.",
+                "maxLength": 255,
+                "pattern": "^(?:|[a-z][-a-z0-9]{1,61}[a-z0-9])$",
+                "type": "string"
+              },
+              "sparkConnectJob": {
+                "additionalProperties": false,
+                "properties": {
+                  "archiveUris": {
+                    "description": "Archives extracted in the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "excludePackages": {
+                    "description": "Maven packages excluded during dependency resolution.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "fileUris": {
+                    "description": "Files copied to the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "jarFileUris": {
+                    "description": "JAR files added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "packages": {
+                    "description": "Maven packages added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "properties": {
+                    "additionalProperties": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "description": "Spark configuration properties.",
+                    "type": "object"
+                  },
+                  "repositories": {
+                    "description": "Additional Maven repositories.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "required": [
+              "clusterId",
+              "sparkConnectJob"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "CreateSqlQueryArgs": {
+        "properties": {
+          "connectionId": {
+            "description": "ID of the connection. Supported connection types: PostgreSQL, ClickHouse, MySQL, Greenplum, Trino.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description of the SQL query.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name of the SQL query in the workbook.",
+            "type": "string"
+          },
+          "params": {
+            "description": "Parameters of the SQL query.",
+            "items": {
+              "allOf": [
+                {
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "defaultValue": {
+                          "description": "Default value of the parameter.",
+                          "properties": {
+                            "from": {
+                              "description": "Start of the interval.",
+                              "type": "string"
+                            },
+                            "to": {
+                              "description": "End of the interval.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ],
+                          "type": "object"
+                        },
+                        "type": {
+                          "anyOf": [
+                            {
+                              "enum": [
+                                "date-interval"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "enum": [
+                                "datetime-interval"
+                              ],
+                              "type": "string"
+                            }
+                          ],
+                          "description": "Type of the parameter."
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "defaultValue": {
+                          "description": "Default value of the parameter.",
+                          "type": "string"
+                        },
+                        "type": {
+                          "anyOf": [
+                            {
+                              "enum": [
+                                "date"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "enum": [
+                                "datetime"
+                              ],
+                              "type": "string"
+                            }
+                          ],
+                          "description": "Type of the parameter."
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "defaultValue": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            }
+                          ],
+                          "description": "Default value of the parameter."
+                        },
+                        "type": {
+                          "anyOf": [
+                            {
+                              "enum": [
+                                "string"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "enum": [
+                                "number"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "enum": [
+                                "boolean"
+                              ],
+                              "type": "string"
+                            }
+                          ],
+                          "description": "Type of the parameter."
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "query": {
+            "description": "Text of the SQL query.",
+            "type": "string"
+          },
+          "workbookId": {
+            "description": "ID of the workbook where the SQL query should be created.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workbookId",
+          "name",
+          "connectionId",
+          "query"
+        ],
+        "type": "object"
+      },
+      "CreateSqlQueryResult": {
+        "properties": {
+          "entry": {
+            "$ref": "#/components/schemas/SqlQuery"
+          }
+        },
+        "required": [
+          "entry"
+        ],
+        "type": "object"
+      },
+      "CreateTrinoClusterArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "catalogsConfig": {
+            "description": "REST catalogs to attach to the cluster.",
+            "items": {
+              "properties": {
+                "catalogId": {
+                  "description": "ID of the REST catalog.",
+                  "maxLength": 50,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "catalogId"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "cloudEnvironmentId": {
+            "description": "ID of the cloud environment in which to create the cluster.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "collectionId": {
+            "description": "ID of the DataLens collection in which to create the cluster.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "description": {
+            "description": "Description of the Trino cluster.",
+            "maxLength": 256,
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": {
+              "maxLength": 63,
+              "pattern": "^[-_0-9a-z]*$",
+              "type": "string"
+            },
+            "description": "Trino cluster labels.",
+            "type": "object"
+          },
+          "name": {
+            "description": "Name of the Trino cluster.",
+            "maxLength": 63,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "type": "string"
+          },
+          "trinoVersion": {
+            "description": "Trino version. The service default is used when omitted.",
+            "type": "string"
+          },
+          "workerConfig": {
+            "additionalProperties": false,
+            "properties": {
+              "resources": {
+                "description": "Resources assigned to each worker.",
+                "properties": {
+                  "resourcePresetId": {
+                    "description": "ID of the Trino resource preset.",
+                    "maxLength": 50,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resourcePresetId"
+                ],
+                "type": "object"
+              },
+              "scalePolicy": {
+                "additionalProperties": false,
+                "properties": {
+                  "autoScale": {
+                    "properties": {
+                      "maxCount": {
+                        "description": "Maximum number of worker instances.",
+                        "pattern": "^(?:[1-9]|[1-5]\\d|6[0-4])$",
+                        "type": "string"
+                      },
+                      "minCount": {
+                        "description": "Minimum number of worker instances.",
+                        "pattern": "^(?:0|[1-5]?\\d|6[0-4])$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "minCount",
+                      "maxCount"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "autoScale"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "resources",
+              "scalePolicy"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "collectionId",
+          "cloudEnvironmentId",
+          "name",
+          "workerConfig"
         ],
         "type": "object"
       },
@@ -8467,6 +9426,48 @@
         },
         "required": [
           "entryId"
+        ],
+        "type": "object"
+      },
+      "DeleteSparkClusterArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "ID of the Spark cluster to delete.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "DeleteSqlQueryArgs": {
+        "properties": {
+          "sqlQueryId": {
+            "description": "ID of the SQL query to delete.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sqlQueryId"
+        ],
+        "type": "object"
+      },
+      "DeleteTrinoClusterArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "ID of the Trino cluster to delete.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
         ],
         "type": "object"
       },
@@ -12400,6 +13401,61 @@
         ],
         "type": "object"
       },
+      "GetHtmlPagePreviewUrlArgs": {
+        "properties": {
+          "branch": {
+            "description": "HTML page branch to preview. Defaults to published.",
+            "enum": [
+              "saved",
+              "published"
+            ],
+            "type": "string"
+          },
+          "entryId": {
+            "description": "ID of the HTML page to preview.",
+            "type": "string"
+          },
+          "lang": {
+            "description": "Language of the HTML page preview.",
+            "enum": [
+              "ru",
+              "en"
+            ],
+            "type": "string"
+          },
+          "revId": {
+            "description": "ID of the HTML page revision to preview.",
+            "type": "string"
+          },
+          "theme": {
+            "description": "Theme of the HTML page preview.",
+            "enum": [
+              "light",
+              "dark",
+              "light-hc",
+              "dark-hc",
+              "system"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "entryId"
+        ],
+        "type": "object"
+      },
+      "GetHtmlPagePreviewUrlResult": {
+        "properties": {
+          "url": {
+            "description": "Temporary URL for previewing the HTML page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
       "GetHtmlPageResult": {
         "properties": {
           "annotation": {
@@ -12592,6 +13648,21 @@
           "hidden",
           "version",
           "public"
+        ],
+        "type": "object"
+      },
+      "GetLakehouseOperationArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "operationId": {
+            "description": "ID of the operation to return.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "operationId"
         ],
         "type": "object"
       },
@@ -13270,6 +14341,110 @@
         ],
         "type": "object"
       },
+      "GetSparkClusterArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "ID of the Spark cluster to return.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "GetSparkJobArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "clusterId": {
+            "description": "ID of the Spark cluster.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "jobId": {
+            "description": "ID of the Spark job to return.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "clusterId",
+          "jobId"
+        ],
+        "type": "object"
+      },
+      "GetSqlQueryArgs": {
+        "properties": {
+          "includeFavorite": {
+            "description": "Whether to include the favorite status.",
+            "type": "boolean"
+          },
+          "includePermissions": {
+            "description": "Whether to include SQL query permissions.",
+            "type": "boolean"
+          },
+          "revId": {
+            "description": "ID of the SQL query revision to retrieve.",
+            "type": "string"
+          },
+          "sqlQueryId": {
+            "description": "ID of the SQL query to retrieve.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sqlQueryId"
+        ],
+        "type": "object"
+      },
+      "GetSqlQueryResult": {
+        "properties": {
+          "entry": {
+            "$ref": "#/components/schemas/SqlQuery"
+          },
+          "isFavorite": {
+            "description": "Whether the SQL query is a favorite.",
+            "type": "boolean"
+          },
+          "permissions": {
+            "description": "Permissions for the SQL query.",
+            "properties": {
+              "admin": {
+                "description": "Indicates if there are permissions for admin.",
+                "type": "boolean"
+              },
+              "edit": {
+                "description": "Indicates if there are permissions to edit.",
+                "type": "boolean"
+              },
+              "execute": {
+                "description": "Indicates if there are permissions to execute.",
+                "type": "boolean"
+              },
+              "read": {
+                "description": "Indicates if there are permissions to read.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "execute",
+              "read",
+              "edit",
+              "admin"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "entry"
+        ],
+        "type": "object"
+      },
       "GetStructureItemsArgs": {
         "properties": {
           "collectionId": {
@@ -13651,6 +14826,21 @@
         },
         "required": [
           "items"
+        ],
+        "type": "object"
+      },
+      "GetTrinoClusterArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "ID of the Trino cluster to return.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
         ],
         "type": "object"
       },
@@ -15004,6 +16194,99 @@
         "title": "KONTUR_MARKET_CH_TABLE",
         "type": "object"
       },
+      "LakehouseOperation": {
+        "properties": {
+          "createdAt": {
+            "description": "Time when the operation was created.",
+            "properties": {
+              "nanos": {
+                "description": "Fractional seconds in nanoseconds.",
+                "type": "number"
+              },
+              "seconds": {
+                "description": "Number of seconds since the Unix epoch.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "seconds"
+            ],
+            "type": "object"
+          },
+          "createdBy": {
+            "description": "ID of the operation creator.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description of the operation.",
+            "type": "string"
+          },
+          "done": {
+            "description": "Whether the operation has completed.",
+            "type": "boolean"
+          },
+          "error": {
+            "description": "Operation error, if the operation failed.",
+            "properties": {
+              "code": {
+                "description": "Operation error code.",
+                "type": "number"
+              },
+              "details": {
+                "description": "Additional operation error details.",
+                "items": {},
+                "type": "array"
+              },
+              "message": {
+                "description": "Operation error message.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "description": "Unique ID of the operation.",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": {},
+            "description": "Service-specific operation metadata.",
+            "type": "object"
+          },
+          "modifiedAt": {
+            "description": "Time when the operation was last modified.",
+            "properties": {
+              "nanos": {
+                "description": "Fractional seconds in nanoseconds.",
+                "type": "number"
+              },
+              "seconds": {
+                "description": "Number of seconds since the Unix epoch.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "seconds"
+            ],
+            "type": "object"
+          },
+          "response": {
+            "additionalProperties": {},
+            "description": "Service-specific operation response.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "done",
+          "metadata"
+        ],
+        "type": "object"
+      },
       "License": {
         "properties": {
           "createdAt": {
@@ -15234,6 +16517,224 @@
           "updatedBy",
           "updatedAt",
           "lastLoginAt"
+        ],
+        "type": "object"
+      },
+      "ListCatalogsArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "cloudEnvironmentId": {
+            "description": "ID of the cloud environment to list REST catalogs in. Lists the whole tenant when omitted.",
+            "type": "string"
+          },
+          "filter": {
+            "description": "Filter expressions such as name=\"…\"; only matching REST catalogs are returned.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "includePermissions": {
+            "description": "Include permission information in the response.",
+            "type": "boolean"
+          },
+          "pageSize": {
+            "description": "Maximum number of REST catalogs to return. The default is 100.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "Token for the next page of REST catalogs.",
+            "type": "string"
+          },
+          "reverseOrder": {
+            "description": "Whether to sort REST catalogs in descending order.",
+            "type": "boolean"
+          },
+          "sortBy": {
+            "description": "Field used to sort REST catalogs.",
+            "enum": [
+              "name",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ListCatalogsResult": {
+        "properties": {
+          "nextPageToken": {
+            "description": "Token for the next page of REST catalogs.",
+            "type": "string"
+          },
+          "restCatalogs": {
+            "description": "REST catalogs matching the request.",
+            "items": {
+              "properties": {
+                "bucket": {
+                  "description": "Bucket associated with the REST catalog.",
+                  "properties": {
+                    "details": {
+                      "description": "Current details of the REST catalog bucket.",
+                      "properties": {
+                        "maxSize": {
+                          "description": "Maximum size of the bucket in bytes.",
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "description": "Time when the bucket details were updated.",
+                          "properties": {
+                            "nanos": {
+                              "description": "Fractional seconds in nanoseconds.",
+                              "type": "number"
+                            },
+                            "seconds": {
+                              "description": "Number of seconds since the Unix epoch.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "seconds"
+                          ],
+                          "type": "object"
+                        },
+                        "usedSize": {
+                          "description": "Current size of the bucket in bytes.",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "settings": {
+                      "description": "Settings of the REST catalog bucket.",
+                      "properties": {
+                        "alias": {
+                          "description": "Human-readable alias of the REST catalog bucket.",
+                          "type": "string"
+                        },
+                        "description": {
+                          "description": "Description of the REST catalog bucket.",
+                          "type": "string"
+                        },
+                        "maxSize": {
+                          "description": "Maximum size of the REST catalog bucket in bytes.",
+                          "type": "string"
+                        },
+                        "storageClass": {
+                          "description": "Storage class of the REST catalog bucket.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "storageClass",
+                        "maxSize",
+                        "alias"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "settings"
+                  ],
+                  "type": "object"
+                },
+                "cloudEnvironmentId": {
+                  "description": "ID of the associated cloud environment.",
+                  "type": "string"
+                },
+                "createdAt": {
+                  "description": "Time when the REST catalog was created.",
+                  "properties": {
+                    "nanos": {
+                      "description": "Fractional seconds in nanoseconds.",
+                      "type": "number"
+                    },
+                    "seconds": {
+                      "description": "Number of seconds since the Unix epoch.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "seconds"
+                  ],
+                  "type": "object"
+                },
+                "createdById": {
+                  "description": "ID of the user who created the REST catalog.",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "Description of the REST catalog.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "ID of the REST catalog.",
+                  "type": "string"
+                },
+                "labels": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "REST catalog labels.",
+                  "type": "object"
+                },
+                "name": {
+                  "description": "Name of the REST catalog.",
+                  "type": "string"
+                },
+                "organizationId": {
+                  "description": "ID of the organization that owns the REST catalog.",
+                  "type": "string"
+                },
+                "permissions": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "description": "Permissions for the REST catalog.",
+                  "type": "object"
+                },
+                "tenantId": {
+                  "description": "ID of the tenant that owns the REST catalog.",
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "description": "Time when the REST catalog was last updated.",
+                  "properties": {
+                    "nanos": {
+                      "description": "Fractional seconds in nanoseconds.",
+                      "type": "number"
+                    },
+                    "seconds": {
+                      "description": "Number of seconds since the Unix epoch.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "seconds"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "id",
+                "organizationId",
+                "tenantId",
+                "cloudEnvironmentId",
+                "name",
+                "description",
+                "createdById",
+                "bucket"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "restCatalogs",
+          "nextPageToken"
         ],
         "type": "object"
       },
@@ -15641,6 +17142,203 @@
         },
         "required": [
           "entryId"
+        ],
+        "type": "object"
+      },
+      "ListSparkClustersArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "filter": {
+            "description": "Filter expressions applied to the Spark cluster list.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "pageSize": {
+            "description": "Maximum number of Spark clusters to return. The default is 100.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "Token for the next page of Spark clusters.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ListSparkClustersResult": {
+        "properties": {
+          "nextPageToken": {
+            "description": "Token for the next page of Spark clusters.",
+            "type": "string"
+          },
+          "sparkClusters": {
+            "description": "Spark clusters matching the request.",
+            "items": {
+              "$ref": "#/components/schemas/SparkCluster"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sparkClusters",
+          "nextPageToken"
+        ],
+        "type": "object"
+      },
+      "ListSparkJobLogArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "clusterId": {
+            "description": "ID of the Spark cluster.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "jobId": {
+            "description": "ID of the Spark job.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "Maximum length of the returned log fragment.",
+            "maximum": 1048576,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "Token for the next fragment of the Spark job log.",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "clusterId",
+          "jobId"
+        ],
+        "type": "object"
+      },
+      "ListSparkJobLogResult": {
+        "properties": {
+          "content": {
+            "description": "Requested fragment of the Spark job log.",
+            "type": "string"
+          },
+          "nextPageToken": {
+            "description": "Token for the next fragment of the Spark job log.",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "nextPageToken"
+        ],
+        "type": "object"
+      },
+      "ListSparkJobsArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "clusterId": {
+            "description": "ID of the Spark cluster.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "filter": {
+            "description": "Filter expression applied to the Spark job list.",
+            "maxLength": 1000,
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "Maximum number of Spark jobs to return. The default is 100.",
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "Token for the next page of Spark jobs.",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "clusterId"
+        ],
+        "type": "object"
+      },
+      "ListSparkJobsResult": {
+        "properties": {
+          "jobs": {
+            "description": "Spark jobs matching the request.",
+            "items": {
+              "$ref": "#/components/schemas/SparkJob"
+            },
+            "type": "array"
+          },
+          "nextPageToken": {
+            "description": "Token for the next page of Spark jobs.",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobs",
+          "nextPageToken"
+        ],
+        "type": "object"
+      },
+      "ListTrinoClustersArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "catalogId": {
+            "description": "ID of the REST catalog attached to the Trino clusters.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "collectionId": {
+            "description": "ID of the DataLens collection that contains the Trino clusters.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "filter": {
+            "description": "Filter expressions applied to the Trino cluster list.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "pageSize": {
+            "description": "Maximum number of Trino clusters to return. The default is 100.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "Token for the next page of Trino clusters.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ListTrinoClustersResult": {
+        "properties": {
+          "clusters": {
+            "description": "Trino clusters matching the request.",
+            "items": {
+              "$ref": "#/components/schemas/TrinoCluster"
+            },
+            "type": "array"
+          },
+          "nextPageToken": {
+            "description": "Token for the next page of Trino clusters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "clusters",
+          "nextPageToken"
         ],
         "type": "object"
       },
@@ -19625,6 +21323,239 @@
         "properties": {},
         "type": "object"
       },
+      "RunSqlQueryArgs": {
+        "properties": {
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ],
+                    "description": "Value of the parameter."
+                  },
+                  "type": "array"
+                },
+                {
+                  "properties": {
+                    "from": {
+                      "description": "Start of the interval.",
+                      "type": "string"
+                    },
+                    "to": {
+                      "description": "End of the interval.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "from",
+                    "to"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "description": "Values of the query parameters, keyed by name. A parameter left out here falls back to its default value.",
+            "type": "object"
+          },
+          "sqlQueryId": {
+            "description": "ID of the SQL query to run.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sqlQueryId"
+        ],
+        "type": "object"
+      },
+      "RunSqlQueryResult": {
+        "properties": {
+          "connectionId": {
+            "description": "ID of the connection the query was executed on.",
+            "type": "string"
+          },
+          "createdAt": {
+            "description": "Date and time when the query run was created.",
+            "type": "string"
+          },
+          "createdBy": {
+            "description": "ID of the user who ran the query.",
+            "type": "string"
+          },
+          "id": {
+            "description": "ID of the query run.",
+            "type": "string"
+          },
+          "query": {
+            "description": "Text of the executed query.",
+            "type": "string"
+          },
+          "results": {
+            "description": "Results of the executed statements, in the order of the statements.",
+            "items": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "affectedRows": {
+                      "description": "Number of rows affected by the statement.",
+                      "type": "number"
+                    },
+                    "columns": {
+                      "description": "Columns of the statement result. Empty for statements that return no rows.",
+                      "items": {
+                        "properties": {
+                          "name": {
+                            "description": "Name of the column.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "rows": {
+                      "description": "Rows of the statement result, with values in the order of the columns.",
+                      "items": {
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "type": "array"
+                      },
+                      "type": "array"
+                    },
+                    "status": {
+                      "description": "Status of the statement.",
+                      "enum": [
+                        "success"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "columns",
+                    "rows"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "code": {
+                      "description": "Error code.",
+                      "type": "string"
+                    },
+                    "databaseMessage": {
+                      "description": "Message returned by the database.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Error message.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "description": "Status of the statement.",
+                      "enum": [
+                        "error"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "code",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "statementPositions": {
+            "description": "Start and end indexes of the executed statements.",
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "Status of the query run.",
+            "enum": [
+              "success",
+              "error",
+              "pending",
+              "partial_success"
+            ],
+            "type": "string"
+          },
+          "tenantId": {
+            "description": "ID of the DataLens tenant.",
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "Date and time when the query run was updated.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "connectionId",
+          "tenantId",
+          "status",
+          "query",
+          "statementPositions",
+          "results",
+          "createdBy",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
       "SNOWFLAKE_TABLE": {
         "properties": {
           "connection_id": {
@@ -20175,6 +22106,1467 @@
         },
         "type": "object"
       },
+      "SparkCluster": {
+        "properties": {
+          "cloudEnvironmentId": {
+            "description": "ID of the associated cloud environment.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "clusterId": {
+            "description": "ID of the managed Spark cluster.",
+            "type": "string"
+          },
+          "collectionId": {
+            "description": "ID of the DataLens collection that contains the cluster.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "config": {
+            "properties": {
+              "dependencies": {
+                "description": "Packages installed in the cluster.",
+                "properties": {
+                  "debPackages": {
+                    "description": "Debian packages installed in the cluster.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "pipPackages": {
+                    "description": "Python packages installed in the cluster.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "pipPackages",
+                  "debPackages"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "logging": {
+                "description": "Cluster logging configuration.",
+                "properties": {
+                  "enabled": {
+                    "description": "Whether cluster logging is enabled.",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "enabled"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "resourcePools": {
+                "properties": {
+                  "driver": {
+                    "description": "Driver resource pool.",
+                    "properties": {
+                      "resourcePresetId": {
+                        "description": "ID of the Spark resource preset.",
+                        "maxLength": 50,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "scalePolicy": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "fixedScale": {
+                                "properties": {
+                                  "size": {
+                                    "description": "Number of instances in the resource pool.",
+                                    "pattern": "^(?:[1-9]|[1-9]\\d|100)$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "size"
+                                ],
+                                "type": "object"
+                              },
+                              "scaleType": {
+                                "enum": [
+                                  "fixedScale"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "fixedScale",
+                              "scaleType"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "properties": {
+                              "autoScale": {
+                                "properties": {
+                                  "initialSize": {
+                                    "description": "Initial number of instances in the resource pool.",
+                                    "pattern": "^(?:0|[1-9]\\d?|100)$",
+                                    "type": "string"
+                                  },
+                                  "maxSize": {
+                                    "description": "Maximum number of instances in the resource pool.",
+                                    "pattern": "^(?:[1-9]|[1-9]\\d|100)$",
+                                    "type": "string"
+                                  },
+                                  "minSize": {
+                                    "description": "Minimum number of instances in the resource pool.",
+                                    "pattern": "^(?:0|[1-9]\\d?|100)$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "minSize",
+                                  "maxSize",
+                                  "initialSize"
+                                ],
+                                "type": "object"
+                              },
+                              "scaleType": {
+                                "enum": [
+                                  "autoScale"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "autoScale",
+                              "scaleType"
+                            ],
+                            "type": "object"
+                          }
+                        ],
+                        "description": "Resource pool scaling policy."
+                      }
+                    },
+                    "required": [
+                      "resourcePresetId",
+                      "scalePolicy"
+                    ],
+                    "type": "object"
+                  },
+                  "executor": {
+                    "description": "Executor resource pool.",
+                    "properties": {
+                      "resourcePresetId": {
+                        "description": "ID of the Spark resource preset.",
+                        "maxLength": 50,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "scalePolicy": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "fixedScale": {
+                                "properties": {
+                                  "size": {
+                                    "description": "Number of instances in the resource pool.",
+                                    "pattern": "^(?:[1-9]|[1-9]\\d|100)$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "size"
+                                ],
+                                "type": "object"
+                              },
+                              "scaleType": {
+                                "enum": [
+                                  "fixedScale"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "fixedScale",
+                              "scaleType"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "properties": {
+                              "autoScale": {
+                                "properties": {
+                                  "initialSize": {
+                                    "description": "Initial number of instances in the resource pool.",
+                                    "pattern": "^(?:0|[1-9]\\d?|100)$",
+                                    "type": "string"
+                                  },
+                                  "maxSize": {
+                                    "description": "Maximum number of instances in the resource pool.",
+                                    "pattern": "^(?:[1-9]|[1-9]\\d|100)$",
+                                    "type": "string"
+                                  },
+                                  "minSize": {
+                                    "description": "Minimum number of instances in the resource pool.",
+                                    "pattern": "^(?:0|[1-9]\\d?|100)$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "minSize",
+                                  "maxSize",
+                                  "initialSize"
+                                ],
+                                "type": "object"
+                              },
+                              "scaleType": {
+                                "enum": [
+                                  "autoScale"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "autoScale",
+                              "scaleType"
+                            ],
+                            "type": "object"
+                          }
+                        ],
+                        "description": "Resource pool scaling policy."
+                      }
+                    },
+                    "required": [
+                      "resourcePresetId",
+                      "scalePolicy"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "driver",
+                  "executor"
+                ],
+                "type": "object"
+              },
+              "sparkVersion": {
+                "description": "Spark version used by the cluster.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "sparkVersion",
+              "resourcePools",
+              "dependencies",
+              "logging"
+            ],
+            "type": "object"
+          },
+          "description": {
+            "description": "Description of the Spark cluster.",
+            "type": "string"
+          },
+          "health": {
+            "description": "Aggregated health of the Spark cluster.",
+            "enum": [
+              "HEALTH_UNKNOWN",
+              "ALIVE",
+              "DEAD",
+              "DEGRADED"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "description": "ID of the Spark cluster.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Spark cluster labels.",
+            "type": "object"
+          },
+          "name": {
+            "description": "Name of the Spark cluster.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "description": "Current status of the Spark cluster.",
+            "enum": [
+              "STATUS_UNSPECIFIED",
+              "CREATING",
+              "RUNNING",
+              "UPDATING",
+              "ERROR",
+              "STOPPING",
+              "STOPPED",
+              "STARTING"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "clusterId",
+          "collectionId",
+          "cloudEnvironmentId",
+          "name",
+          "description",
+          "labels",
+          "config",
+          "health",
+          "status"
+        ],
+        "type": "object"
+      },
+      "SparkJob": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "catalogs": {
+                "description": "REST catalogs attached to the Spark job.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "connectUrl": {
+                "description": "Spark Connect URL.",
+                "type": "string"
+              },
+              "createdAt": {
+                "description": "Time when the Spark job was created.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": "object"
+              },
+              "createdBy": {
+                "description": "ID of the user who created the Spark job.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "finishedAt": {
+                "description": "Time when the Spark job was finished.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "id": {
+                "description": "ID of the Spark job.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "jobSpec": {
+                "enum": [
+                  "sparkJob"
+                ],
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark job.",
+                "type": "string"
+              },
+              "sparkJob": {
+                "properties": {
+                  "archiveUris": {
+                    "description": "Archives extracted in the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "args": {
+                    "description": "Arguments passed to the Spark driver.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "excludePackages": {
+                    "description": "Maven packages excluded during dependency resolution.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "fileUris": {
+                    "description": "Files copied to the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "jarFileUris": {
+                    "description": "JAR files added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "mainClass": {
+                    "description": "Name of the driver main class.",
+                    "maxLength": 255,
+                    "type": "string"
+                  },
+                  "mainJarFileUri": {
+                    "description": "URI of the JAR file that contains the main class.",
+                    "maxLength": 2047,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "packages": {
+                    "description": "Maven packages added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "properties": {
+                    "additionalProperties": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "description": "Spark configuration properties.",
+                    "type": "object"
+                  },
+                  "repositories": {
+                    "description": "Additional Maven repositories.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "args",
+                  "jarFileUris",
+                  "fileUris",
+                  "archiveUris",
+                  "properties",
+                  "mainJarFileUri",
+                  "mainClass",
+                  "packages",
+                  "repositories",
+                  "excludePackages"
+                ],
+                "type": "object"
+              },
+              "startedAt": {
+                "description": "Time when the Spark job was started.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "status": {
+                "description": "Current status of the Spark job.",
+                "enum": [
+                  "STATUS_UNSPECIFIED",
+                  "PROVISIONING",
+                  "PENDING",
+                  "RUNNING",
+                  "ERROR",
+                  "DONE",
+                  "CANCELLED",
+                  "CANCELLING"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "clusterId",
+              "createdAt",
+              "startedAt",
+              "finishedAt",
+              "name",
+              "createdBy",
+              "status",
+              "connectUrl",
+              "catalogs",
+              "sparkJob",
+              "jobSpec"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "catalogs": {
+                "description": "REST catalogs attached to the Spark job.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "connectUrl": {
+                "description": "Spark Connect URL.",
+                "type": "string"
+              },
+              "createdAt": {
+                "description": "Time when the Spark job was created.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": "object"
+              },
+              "createdBy": {
+                "description": "ID of the user who created the Spark job.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "finishedAt": {
+                "description": "Time when the Spark job was finished.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "id": {
+                "description": "ID of the Spark job.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "jobSpec": {
+                "enum": [
+                  "pysparkJob"
+                ],
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark job.",
+                "type": "string"
+              },
+              "pysparkJob": {
+                "properties": {
+                  "archiveUris": {
+                    "description": "Archives extracted in the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "args": {
+                    "description": "Arguments passed to the PySpark driver.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "excludePackages": {
+                    "description": "Maven packages excluded during dependency resolution.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "fileUris": {
+                    "description": "Files copied to the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "jarFileUris": {
+                    "description": "JAR files added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "mainPythonFileUri": {
+                    "description": "URI of the main Python file.",
+                    "maxLength": 2047,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "packages": {
+                    "description": "Maven packages added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "properties": {
+                    "additionalProperties": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "description": "Spark configuration properties.",
+                    "type": "object"
+                  },
+                  "pythonFileUris": {
+                    "description": "Additional Python files passed to PySpark.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "repositories": {
+                    "description": "Additional Maven repositories.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "args",
+                  "jarFileUris",
+                  "fileUris",
+                  "archiveUris",
+                  "properties",
+                  "mainPythonFileUri",
+                  "pythonFileUris",
+                  "packages",
+                  "repositories",
+                  "excludePackages"
+                ],
+                "type": "object"
+              },
+              "startedAt": {
+                "description": "Time when the Spark job was started.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "status": {
+                "description": "Current status of the Spark job.",
+                "enum": [
+                  "STATUS_UNSPECIFIED",
+                  "PROVISIONING",
+                  "PENDING",
+                  "RUNNING",
+                  "ERROR",
+                  "DONE",
+                  "CANCELLED",
+                  "CANCELLING"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "clusterId",
+              "createdAt",
+              "startedAt",
+              "finishedAt",
+              "name",
+              "createdBy",
+              "status",
+              "connectUrl",
+              "catalogs",
+              "pysparkJob",
+              "jobSpec"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "catalogs": {
+                "description": "REST catalogs attached to the Spark job.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "connectUrl": {
+                "description": "Spark Connect URL.",
+                "type": "string"
+              },
+              "createdAt": {
+                "description": "Time when the Spark job was created.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": "object"
+              },
+              "createdBy": {
+                "description": "ID of the user who created the Spark job.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "finishedAt": {
+                "description": "Time when the Spark job was finished.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "id": {
+                "description": "ID of the Spark job.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "jobSpec": {
+                "enum": [
+                  "sparkConnectJob"
+                ],
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark job.",
+                "type": "string"
+              },
+              "sparkConnectJob": {
+                "properties": {
+                  "archiveUris": {
+                    "description": "Archives extracted in the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "excludePackages": {
+                    "description": "Maven packages excluded during dependency resolution.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "fileUris": {
+                    "description": "Files copied to the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "jarFileUris": {
+                    "description": "JAR files added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "packages": {
+                    "description": "Maven packages added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "properties": {
+                    "additionalProperties": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "description": "Spark configuration properties.",
+                    "type": "object"
+                  },
+                  "repositories": {
+                    "description": "Additional Maven repositories.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "jarFileUris",
+                  "fileUris",
+                  "archiveUris",
+                  "properties",
+                  "packages",
+                  "repositories",
+                  "excludePackages"
+                ],
+                "type": "object"
+              },
+              "startedAt": {
+                "description": "Time when the Spark job was started.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "status": {
+                "description": "Current status of the Spark job.",
+                "enum": [
+                  "STATUS_UNSPECIFIED",
+                  "PROVISIONING",
+                  "PENDING",
+                  "RUNNING",
+                  "ERROR",
+                  "DONE",
+                  "CANCELLED",
+                  "CANCELLING"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "clusterId",
+              "createdAt",
+              "startedAt",
+              "finishedAt",
+              "name",
+              "createdBy",
+              "status",
+              "connectUrl",
+              "catalogs",
+              "sparkConnectJob",
+              "jobSpec"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "catalogs": {
+                "description": "REST catalogs attached to the Spark job.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "connectUrl": {
+                "description": "Spark Connect URL.",
+                "type": "string"
+              },
+              "createdAt": {
+                "description": "Time when the Spark job was created.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": "object"
+              },
+              "createdBy": {
+                "description": "ID of the user who created the Spark job.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "finishedAt": {
+                "description": "Time when the Spark job was finished.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "id": {
+                "description": "ID of the Spark job.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark job.",
+                "type": "string"
+              },
+              "startedAt": {
+                "description": "Time when the Spark job was started.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "status": {
+                "description": "Current status of the Spark job.",
+                "enum": [
+                  "STATUS_UNSPECIFIED",
+                  "PROVISIONING",
+                  "PENDING",
+                  "RUNNING",
+                  "ERROR",
+                  "DONE",
+                  "CANCELLED",
+                  "CANCELLING"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "clusterId",
+              "createdAt",
+              "startedAt",
+              "finishedAt",
+              "name",
+              "createdBy",
+              "status",
+              "connectUrl",
+              "catalogs"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "SqlQuery": {
+        "properties": {
+          "annotation": {
+            "description": "Annotation of the SQL query.",
+            "properties": {
+              "description": {
+                "description": "Description of the entry.",
+                "type": "string"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "collectionId": {
+            "description": "ID of the collection containing the SQL query.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "description": "Date and time when the SQL query was created.",
+            "type": "string"
+          },
+          "createdBy": {
+            "description": "ID of the user who created the SQL query.",
+            "type": "string"
+          },
+          "data": {
+            "description": "Data of the SQL query entry.",
+            "properties": {
+              "connectionId": {
+                "description": "ID of the connection.",
+                "type": "string"
+              },
+              "params": {
+                "description": "Parameters of the SQL query.",
+                "items": {
+                  "allOf": [
+                    {
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "defaultValue": {
+                              "description": "Default value of the parameter.",
+                              "properties": {
+                                "from": {
+                                  "description": "Start of the interval.",
+                                  "type": "string"
+                                },
+                                "to": {
+                                  "description": "End of the interval.",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ],
+                              "type": "object"
+                            },
+                            "type": {
+                              "anyOf": [
+                                {
+                                  "enum": [
+                                    "date-interval"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "enum": [
+                                    "datetime-interval"
+                                  ],
+                                  "type": "string"
+                                }
+                              ],
+                              "description": "Type of the parameter."
+                            }
+                          },
+                          "required": [
+                            "type"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "defaultValue": {
+                              "description": "Default value of the parameter.",
+                              "type": "string"
+                            },
+                            "type": {
+                              "anyOf": [
+                                {
+                                  "enum": [
+                                    "date"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "enum": [
+                                    "datetime"
+                                  ],
+                                  "type": "string"
+                                }
+                              ],
+                              "description": "Type of the parameter."
+                            }
+                          },
+                          "required": [
+                            "type"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "defaultValue": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "boolean"
+                                }
+                              ],
+                              "description": "Default value of the parameter."
+                            },
+                            "type": {
+                              "anyOf": [
+                                {
+                                  "enum": [
+                                    "string"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "enum": [
+                                    "number"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "enum": [
+                                    "boolean"
+                                  ],
+                                  "type": "string"
+                                }
+                              ],
+                              "description": "Type of the parameter."
+                            }
+                          },
+                          "required": [
+                            "type"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "query": {
+                "description": "Text of the SQL query.",
+                "type": "string"
+              },
+              "statementPositions": {
+                "description": "Start and end indexes of the query statements.",
+                "items": {
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "type": "array"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "connectionId",
+              "query",
+              "statementPositions"
+            ],
+            "type": "object"
+          },
+          "entryId": {
+            "description": "Unique identifier of the SQL query.",
+            "type": "string"
+          },
+          "hidden": {
+            "description": "Whether the SQL query is hidden.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "Key of the SQL query entry.",
+            "type": "string"
+          },
+          "links": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Links to the entries the SQL query depends on.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "publishedId": {
+            "description": "ID of the published SQL query revision.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revId": {
+            "description": "ID of the current SQL query revision.",
+            "type": "string"
+          },
+          "revUpdatedAt": {
+            "description": "Date and time when the current revision was last updated.",
+            "type": "string"
+          },
+          "revUpdatedBy": {
+            "description": "ID of the user who last updated the current revision.",
+            "type": "string"
+          },
+          "savedId": {
+            "description": "ID of the saved SQL query revision.",
+            "type": "string"
+          },
+          "scope": {
+            "description": "Scope of the SQL query entry.",
+            "enum": [
+              "sql_query"
+            ],
+            "type": "string"
+          },
+          "tenantId": {
+            "description": "ID of the tenant that owns the SQL query.",
+            "type": "string"
+          },
+          "type": {
+            "description": "Type of the SQL query entry.",
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "Date and time when the SQL query was last updated.",
+            "type": "string"
+          },
+          "updatedBy": {
+            "description": "ID of the user who last updated the SQL query.",
+            "type": "string"
+          },
+          "version": {
+            "description": "Schema version of the SQL query.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "workbookId": {
+            "description": "ID of the workbook containing the SQL query.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entryId",
+          "scope",
+          "type",
+          "key",
+          "workbookId",
+          "collectionId",
+          "revId",
+          "savedId",
+          "publishedId",
+          "data",
+          "annotation",
+          "createdBy",
+          "createdAt",
+          "updatedBy",
+          "updatedAt",
+          "tenantId",
+          "hidden",
+          "version"
+        ],
+        "type": "object"
+      },
       "StartWorkbookExportArgs": {
         "properties": {
           "workbookId": {
@@ -20687,6 +24079,206 @@
           "title"
         ],
         "title": "TRINO_TABLE",
+        "type": "object"
+      },
+      "TrinoCluster": {
+        "properties": {
+          "cloudEnvironmentId": {
+            "description": "ID of the associated cloud environment.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "clusterId": {
+            "description": "ID of the managed Trino cluster.",
+            "type": "string"
+          },
+          "collectionId": {
+            "description": "ID of the DataLens collection that contains the cluster.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "config": {
+            "properties": {
+              "catalogsConfig": {
+                "description": "REST catalogs attached to the cluster.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "coordinatorConfig": {
+                "properties": {
+                  "resources": {
+                    "description": "Resources assigned to the coordinator.",
+                    "properties": {
+                      "resourcePresetId": {
+                        "description": "ID of the Trino resource preset.",
+                        "maxLength": 50,
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "resourcePresetId"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "resources"
+                ],
+                "type": "object"
+              },
+              "trinoVersion": {
+                "description": "Trino version used by the cluster.",
+                "type": "string"
+              },
+              "workerConfig": {
+                "properties": {
+                  "resources": {
+                    "description": "Resources assigned to each worker.",
+                    "properties": {
+                      "resourcePresetId": {
+                        "description": "ID of the Trino resource preset.",
+                        "maxLength": 50,
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "resourcePresetId"
+                    ],
+                    "type": "object"
+                  },
+                  "scalePolicy": {
+                    "properties": {
+                      "autoScale": {
+                        "properties": {
+                          "maxCount": {
+                            "description": "Maximum number of worker instances.",
+                            "pattern": "^(?:[1-9]|[1-5]\\d|6[0-4])$",
+                            "type": "string"
+                          },
+                          "minCount": {
+                            "description": "Minimum number of worker instances.",
+                            "pattern": "^(?:0|[1-5]?\\d|6[0-4])$",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "minCount",
+                          "maxCount"
+                        ],
+                        "type": "object"
+                      },
+                      "scaleType": {
+                        "enum": [
+                          "autoScale"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "autoScale",
+                      "scaleType"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "resources",
+                  "scalePolicy"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "trinoVersion",
+              "catalogsConfig",
+              "coordinatorConfig",
+              "workerConfig"
+            ],
+            "type": "object"
+          },
+          "coordinatorUrl": {
+            "description": "Address of the Trino coordinator.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description of the Trino cluster.",
+            "type": "string"
+          },
+          "entryId": {
+            "description": "ID of the entry.",
+            "type": "string"
+          },
+          "health": {
+            "description": "Aggregated health of the Trino cluster.",
+            "enum": [
+              "HEALTH_UNKNOWN",
+              "ALIVE",
+              "DEAD",
+              "DEGRADED"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "description": "ID of the Trino cluster.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Trino cluster labels.",
+            "type": "object"
+          },
+          "name": {
+            "description": "Name of the Trino cluster.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "description": "Current status of the Trino cluster.",
+            "enum": [
+              "STATUS_UNKNOWN",
+              "CREATING",
+              "RUNNING",
+              "ERROR",
+              "STOPPING",
+              "STOPPED",
+              "STARTING",
+              "UPDATING"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "clusterId",
+          "collectionId",
+          "cloudEnvironmentId",
+          "name",
+          "description",
+          "labels",
+          "config",
+          "health",
+          "status",
+          "coordinatorUrl",
+          "entryId"
+        ],
         "type": "object"
       },
       "USAccessBindingDelta": {
@@ -21860,6 +25452,183 @@
         "properties": {
           "entry": {
             "$ref": "#/components/schemas/ReportV2"
+          }
+        },
+        "required": [
+          "entry"
+        ],
+        "type": "object"
+      },
+      "UpdateSqlQueryArgs": {
+        "properties": {
+          "connectionId": {
+            "description": "ID of the connection. Supported connection types: PostgreSQL, ClickHouse, MySQL, Greenplum, Trino.",
+            "type": "string"
+          },
+          "description": {
+            "description": "New description of the SQL query.",
+            "type": "string"
+          },
+          "params": {
+            "description": "Parameters of the SQL query.",
+            "items": {
+              "allOf": [
+                {
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "defaultValue": {
+                          "description": "Default value of the parameter.",
+                          "properties": {
+                            "from": {
+                              "description": "Start of the interval.",
+                              "type": "string"
+                            },
+                            "to": {
+                              "description": "End of the interval.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ],
+                          "type": "object"
+                        },
+                        "type": {
+                          "anyOf": [
+                            {
+                              "enum": [
+                                "date-interval"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "enum": [
+                                "datetime-interval"
+                              ],
+                              "type": "string"
+                            }
+                          ],
+                          "description": "Type of the parameter."
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "defaultValue": {
+                          "description": "Default value of the parameter.",
+                          "type": "string"
+                        },
+                        "type": {
+                          "anyOf": [
+                            {
+                              "enum": [
+                                "date"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "enum": [
+                                "datetime"
+                              ],
+                              "type": "string"
+                            }
+                          ],
+                          "description": "Type of the parameter."
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "defaultValue": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            }
+                          ],
+                          "description": "Default value of the parameter."
+                        },
+                        "type": {
+                          "anyOf": [
+                            {
+                              "enum": [
+                                "string"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "enum": [
+                                "number"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "enum": [
+                                "boolean"
+                              ],
+                              "type": "string"
+                            }
+                          ],
+                          "description": "Type of the parameter."
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "query": {
+            "description": "Text of the SQL query.",
+            "type": "string"
+          },
+          "sqlQueryId": {
+            "description": "ID of the SQL query to update.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sqlQueryId",
+          "connectionId",
+          "query"
+        ],
+        "type": "object"
+      },
+      "UpdateSqlQueryResult": {
+        "properties": {
+          "entry": {
+            "$ref": "#/components/schemas/SqlQuery"
           }
         },
         "required": [
@@ -47811,6 +51580,50 @@
         "x-mcp-scope": "read"
       }
     },
+    "/rpc/cancelSparkJob": {
+      "post": {
+        "description": "Cancels a Spark job and returns an asynchronous operation.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelSparkJobArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LakehouseOperation"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Cancel Spark job",
+        "tags": [
+          "SparkJobs"
+        ],
+        "x-mcp-scope": "privileged"
+      }
+    },
     "/rpc/cancelWorkbookExport": {
       "post": {
         "description": "Cancels the specified workbook export.",
@@ -48391,6 +52204,182 @@
           "Reports"
         ],
         "x-mcp-scope": "write"
+      }
+    },
+    "/rpc/createSparkCluster": {
+      "post": {
+        "description": "Creates a Spark cluster and returns an asynchronous operation.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSparkClusterArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LakehouseOperation"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Create Spark cluster",
+        "tags": [
+          "SparkClusters"
+        ],
+        "x-mcp-scope": "privileged"
+      }
+    },
+    "/rpc/createSparkJob": {
+      "post": {
+        "description": "Creates a Spark job and returns an asynchronous operation.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSparkJobArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LakehouseOperation"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Create Spark job",
+        "tags": [
+          "SparkJobs"
+        ],
+        "x-mcp-scope": "privileged"
+      }
+    },
+    "/rpc/createSqlQuery": {
+      "post": {
+        "description": "Creates a saved SQL query in the specified workbook.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSqlQueryArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateSqlQueryResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Create SQL query",
+        "tags": [
+          "SqlQueries"
+        ],
+        "x-mcp-scope": "write"
+      }
+    },
+    "/rpc/createTrinoCluster": {
+      "post": {
+        "description": "Creates a Trino cluster and returns an asynchronous operation.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTrinoClusterArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LakehouseOperation"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Create Trino cluster",
+        "tags": [
+          "TrinoClusters"
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/createWizardChart": {
@@ -49069,6 +53058,139 @@
         "summary": "Delete report",
         "tags": [
           "Reports"
+        ],
+        "x-mcp-scope": "privileged"
+      }
+    },
+    "/rpc/deleteSparkCluster": {
+      "post": {
+        "description": "Deletes a Spark cluster and returns an asynchronous operation.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteSparkClusterArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LakehouseOperation"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Delete Spark cluster",
+        "tags": [
+          "SparkClusters"
+        ],
+        "x-mcp-scope": "privileged"
+      }
+    },
+    "/rpc/deleteSqlQuery": {
+      "post": {
+        "description": "Deletes the specified saved SQL query.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteSqlQueryArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {},
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Delete SQL query",
+        "tags": [
+          "SqlQueries"
+        ],
+        "x-mcp-scope": "privileged"
+      }
+    },
+    "/rpc/deleteTrinoCluster": {
+      "post": {
+        "description": "Deletes a Trino cluster and returns an asynchronous operation.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteTrinoClusterArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LakehouseOperation"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Delete Trino cluster",
+        "tags": [
+          "TrinoClusters"
         ],
         "x-mcp-scope": "privileged"
       }
@@ -50375,6 +54497,94 @@
         "x-mcp-scope": "read"
       }
     },
+    "/rpc/getHtmlPagePreviewUrl": {
+      "post": {
+        "description": "Returns a temporary URL for previewing the specified HTML page.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetHtmlPagePreviewUrlArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetHtmlPagePreviewUrlResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "Get HTML page preview URL",
+        "tags": [
+          "HtmlPages"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/getLakehouseOperation": {
+      "post": {
+        "description": "Returns the status and result of an asynchronous Lakehouse operation.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetLakehouseOperationArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LakehouseOperation"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Get Lakehouse operation",
+        "tags": [
+          "LakehouseOperations"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
     "/rpc/getLicenses": {
       "post": {
         "description": "Returns tenant licenses with optional filters by user IDs and license status, sorting, and pagination.",
@@ -50725,6 +54935,182 @@
         "summary": "Get root collection permissions",
         "tags": [
           "Collection"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/getSparkCluster": {
+      "post": {
+        "description": "Returns the specified Spark cluster.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetSparkClusterArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparkCluster"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Get Spark cluster",
+        "tags": [
+          "SparkClusters"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/getSparkJob": {
+      "post": {
+        "description": "Returns the specified Spark job.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetSparkJobArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparkJob"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Get Spark job",
+        "tags": [
+          "SparkJobs"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/getSqlQuery": {
+      "post": {
+        "description": "Returns the specified saved SQL query.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetSqlQueryArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSqlQueryResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Get SQL query",
+        "tags": [
+          "SqlQueries"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/getTrinoCluster": {
+      "post": {
+        "description": "Returns the specified Trino cluster.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetTrinoClusterArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrinoCluster"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Get Trino cluster",
+        "tags": [
+          "TrinoClusters"
         ],
         "x-mcp-scope": "read"
       }
@@ -51117,6 +55503,50 @@
         "x-mcp-scope": "read"
       }
     },
+    "/rpc/listCatalogs": {
+      "post": {
+        "description": "Returns a list of REST catalogs available to the current DataLens tenant.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListCatalogsArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListCatalogsResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] List REST catalogs",
+        "tags": [
+          "RestCatalogs"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
     "/rpc/listCollectionAccessBindings": {
       "post": {
         "description": "Lists access bindings for the specified collection.",
@@ -51340,6 +55770,182 @@
         "summary": "List shared entry access bindings",
         "tags": [
           "SharedEntry"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/listSparkClusters": {
+      "post": {
+        "description": "Returns a list of Spark clusters available to the current DataLens tenant.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListSparkClustersArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSparkClustersResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] List Spark clusters",
+        "tags": [
+          "SparkClusters"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/listSparkJobLog": {
+      "post": {
+        "description": "Returns a fragment of the specified Spark job log.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListSparkJobLogArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSparkJobLogResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] List Spark job log",
+        "tags": [
+          "SparkJobs"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/listSparkJobs": {
+      "post": {
+        "description": "Returns a list of jobs for the specified Spark cluster.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListSparkJobsArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSparkJobsResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] List Spark jobs",
+        "tags": [
+          "SparkJobs"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/listTrinoClusters": {
+      "post": {
+        "description": "Returns a list of Trino clusters available to the current DataLens tenant.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListTrinoClustersArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListTrinoClustersResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] List Trino clusters",
+        "tags": [
+          "TrinoClusters"
         ],
         "x-mcp-scope": "read"
       }
@@ -51718,6 +56324,50 @@
           "Entries"
         ],
         "x-mcp-scope": "write"
+      }
+    },
+    "/rpc/runSqlQuery": {
+      "post": {
+        "description": "Runs the specified saved SQL query and returns its result.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunSqlQueryArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSqlQueryResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Run SQL query",
+        "tags": [
+          "SqlQueries"
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/setLicenseLimit": {
@@ -52350,6 +57000,50 @@
         "summary": "Update report",
         "tags": [
           "Reports"
+        ],
+        "x-mcp-scope": "write"
+      }
+    },
+    "/rpc/updateSqlQuery": {
+      "post": {
+        "description": "Updates the specified saved SQL query.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSqlQueryArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateSqlQueryResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Update SQL query",
+        "tags": [
+          "SqlQueries"
         ],
         "x-mcp-scope": "write"
       }

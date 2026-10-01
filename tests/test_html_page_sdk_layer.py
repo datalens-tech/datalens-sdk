@@ -67,6 +67,54 @@ def _entry(*, key: str = "/Pages/Example", rev_id: str = "rev-1", workbook_id: s
     }
 
 
+@pytest.mark.parametrize("installation", ["yacloud", "enterprise"])
+def test_html_page_preview_url_uses_its_own_rpc_and_typed_options(installation: str) -> None:
+    urls = (
+        "https://preview.example.test/default",
+        "https://preview.example.test/saved",
+        "https://preview.example.test/revision",
+    )
+    recorder = RecordedTransport(
+        {"/rpc/getHtmlPagePreviewUrl": [httpx.Response(200, json={"url": url}) for url in urls]}
+    )
+    transport = httpx.MockTransport(recorder.handler)
+    client: dl.DataLensClientYC | dl.DataLensClientEnterprise
+    if installation == "yacloud":
+        client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=transport)
+    else:
+        client = dl.DataLensClientEnterprise(auth=None, base_url="http://test", transport=transport)
+
+    assert client.get.html_page_preview_url(by_id="page-1") == urls[0]
+    assert client.get.html_page_preview_url(by_id="page-1", branch="saved", lang="en", theme="dark-hc") == urls[1]
+    with pytest.warns(UserWarning, match="branch is ignored"):
+        assert client.get.html_page_preview_url(by_id="page-1", branch="saved", rev_id="rev-2", lang="ru") == urls[2]
+
+    assert recorder.bodies("/rpc/getHtmlPagePreviewUrl") == [
+        {"entryId": "page-1"},
+        {"entryId": "page-1", "branch": "saved", "lang": "en", "theme": "dark-hc"},
+        {"entryId": "page-1", "revId": "rev-2", "lang": "ru"},
+    ]
+    assert recorder.bodies("/rpc/getHtmlPage") == []
+
+
+@pytest.mark.parametrize("response", [{}, {"url": 123}])
+def test_html_page_preview_url_rejects_invalid_responses(response: dict[str, object]) -> None:
+    recorder = RecordedTransport({"/rpc/getHtmlPagePreviewUrl": httpx.Response(200, json=response)})
+    client = _client(recorder)
+
+    with pytest.raises(dl.DTOValidationError, match="getHtmlPagePreviewUrl"):
+        client.get.html_page_preview_url(by_id="page-1")
+
+
+def test_html_page_preview_url_rejects_unsupported_options_before_http() -> None:
+    recorder = RecordedTransport({})
+    client = _client(recorder)
+
+    with pytest.raises(dl.DTOValidationError, match="getHtmlPagePreviewUrl"):
+        client.get.html_page_preview_url(by_id="page-1", theme=cast(dl.UITheme, "ultraviolet"))
+    assert recorder.requests == []
+
+
 def test_html_page_create_get_update_and_delete_use_contract_routes() -> None:
     recorder = RecordedTransport(
         {
