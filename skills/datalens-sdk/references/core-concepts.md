@@ -2,14 +2,16 @@
 
 Read this for client namespaces, the entity and revision lifecycles, locations, field references, retries, pagination, or the update sentinels.
 
-## One client, four namespaces
+## Client actions and utilities
 
-Every configured client exposes the same namespace model:
+Configured clients share core actions and utilities; the table also marks the
+Yandex Cloud-only listing extension.
 
 | Namespace                                | Role                             | Terminal call              |
 |------------------------------------------|----------------------------------|----------------------------|
 | `client.get.*`                           | fetch by id                      | entity or preview URL      |
 | `client.create.*`                        | fluent builders for new entities | `.build()`                 |
+| `client.list.*`                          | Yandex Cloud resource listing    | lazy `Pager`               |
 | `obj.update` / `.rename()` / `.delete()` | mutate a fetched object          | `.execute()` (update only) |
 | `client.navigation` / `client.raw`       | listing / snapshot import-export | —                          |
 
@@ -104,7 +106,7 @@ for entry in pager:  # EntrySummary: .id, .scope, .type, .name, .key, .workbook_
 
 ### `client.capabilities` and installation gating
 
-`client.capabilities` returns the exact surface generated for this client's
+`client.capabilities` returns generated metadata for this client's
 installation, grouped under four keys:
 
 ```python
@@ -112,22 +114,32 @@ capabilities = client.capabilities
 capabilities["connectors"]  # connection factory metadata by factory name
 capabilities["dataset_sources"]  # source factory metadata by factory name
 capabilities["chart_factories"]  # {"wizard": [...], "ql": [...], "editor": [...]}
-capabilities["namespaces"]  # available top-level client namespaces
+capabilities["namespaces"]  # generated namespace labels, not callable actions
 ```
 
 Choose a chart family first, then check its factory name in
-`capabilities["chart_factories"][family]`. Treat these local generated
-inventories as authoritative; do not infer availability from a reference table
-or another installation.
+`capabilities["chart_factories"][family]`. Connector, source, and chart-factory
+metadata describes those generated factories. `capabilities["namespaces"]`
+also includes tagged RPC contract labels; it is not an inventory of methods
+available on `client.create`, `client.get`, or `client.list`. Use the
+selected installation's documented, typed action surface instead. In
+particular, a namespace label in Enterprise metadata does not make a
+Yandex Cloud-only action callable there.
 
-Accessing a namespace the installation does not have raises `NotSupportedError` whose message names where it *is* available:
+The legacy top-level `client.licenses` check raises `NotSupportedError`
+when unavailable; its message names where it *is* available:
 
 ```python
 client.licenses
 # NotSupportedError: Namespace 'licenses' is not available on this installation
 ```
 
-`NotSupportedError` subclasses `AttributeError`, so `hasattr(client, "licenses")` is a safe feature probe. The same error guards cross-installation destinations (e.g. passing a `yacloud` workbook to an `enterprise` client).
+`NotSupportedError` subclasses `AttributeError`, so `hasattr(client, "licenses")`
+is a safe feature probe. Missing Yandex Cloud-only action methods on Enterprise
+or YaTeam instead raise ordinary `AttributeError` at the action namespace:
+for example, `client.list.rest_catalogs` is absent there. The existing
+`NotSupportedError` also guards cross-installation destinations (e.g. passing
+a `yacloud` workbook to an `enterprise` client).
 
 ## The entity lifecycle chain
 

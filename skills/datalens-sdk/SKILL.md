@@ -6,7 +6,8 @@ description: >-
   чарт, график, dashboard, дашборд, dataset, датасет, connection, подключение,
   workbook, воркбук, collection, коллекция, HTML page, HTML-страница,
   saved SQL query, сохранённый SQL-запрос, managing or executing a saved
-  DataLens SQL query,
+  DataLens SQL query, DataLens REST catalog, REST-каталог DataLens,
+  REST-каталоги DataLens, Trino catalog membership,
   wizard chart, QL chart, editor
   chart, BI automation, автоматизация DataLens, "create a dashboard",
   "построй дашборд", "создай чарт", "export dataset", or "clone dashboard";
@@ -141,12 +142,13 @@ requires an explicit choice. For content writes, publication of existing
 revisions, and revision metadata, read the shared
 [revision lifecycle](references/core-concepts.md#revision-lifecycle).
 
-One client, four namespaces:
+One client, action and utility namespaces:
 
 | Namespace                          | Role                              | Terminal call         |
 |------------------------------------|-----------------------------------|-----------------------|
 | `client.get.*`                     | fetch by id (`by_id=`)            | entity or preview URL |
 | `client.create.*`                  | fluent builders                   | `.build()` persists   |
+| `client.list.rest_catalogs`        | Yandex Cloud REST catalog listing | lazy `Pager`          |
 | `obj.update...`                    | fluent update on a fetched object | `.execute()` persists |
 | `client.navigation` / `client.raw` | listing / snapshot import-export  | —                     |
 
@@ -300,6 +302,8 @@ Editor index replaces the public Editor subtree for that installation.
 | Parameters across Dataset/Wizard, QL, Editor, widgets, dashboards, selectors, or chart clicks | [references/parameters.md](references/parameters.md) |
 | Dashboards: tabs, widgets, selectors, layout, read model                   | [references/dashboards.md](references/dashboards.md)                     |
 | Finding, listing, moving, renaming entities; revision history; containers | [references/navigation.md](references/navigation.md)                     |
+| Listing DataLens REST catalogs or selecting one for a Trino cluster (Yandex Cloud only) | [references/rest-catalogs.md](references/rest-catalogs.md)                |
+| Refreshing, waiting for, or interpreting a Trino/REST catalog operation (Yandex Cloud only) | [references/lakehouse-operations.md](references/lakehouse-operations.md) |
 | Export, import, clone, copy across workbooks                               | [references/serialization.md](references/serialization.md)               |
 | Any `DataLensAPIError` or unexpected SDK exception                         | [references/troubleshooting.md](references/troubleshooting.md)           |
 | "Make it look good" — visual design, palettes, dashboard composition       | [references/design-guide.md](references/design-guide.md)                 |
@@ -416,6 +420,8 @@ Use the non-executing allowlisted reader from [references/setup.md](references/s
 | `references/parameters.md`                      | parameter definitions, override precedence, selectors, global/widget/action params                 |
 | `references/dashboards.md`                      | building or editing dashboards; discovering existing item, selector, and chart-tab ids             |
 | `references/navigation.md`                      | listing/finding/moving entities, revision history; collections, workbooks, folders                                   |
+| `references/rest-catalogs.md`                   | Yandex Cloud REST catalog listing and Trino catalog membership references                                           |
+| `references/lakehouse-operations.md`            | Yandex Cloud Trino and REST-catalog mutation operation lifecycle                                                     |
 | `references/serialization.md`                   | export/import/clone via `to_file` and `client.raw`                                                 |
 | `references/troubleshooting.md`                 | any API error; before retrying anything                                                            |
 | `references/design-guide.md`                    | choosing visual encodings or polishing look and feel                                               |
