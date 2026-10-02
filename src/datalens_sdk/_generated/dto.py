@@ -4966,6 +4966,23 @@ def _validate_tagged_rpc_prefix_items(
         result.append(adapter.validate_python(item, strict=True))
     return result
 
+class AddTrinoClusterCatalogArgsCatalogDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    catalog_id: Annotated[str, Field(min_length=1, max_length=50, alias='catalogId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class AddTrinoClusterCatalogArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    catalog: AddTrinoClusterCatalogArgsCatalogDTO
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class CreateSqlQueryArgsParamsItemAllOf0DTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5018,10 +5035,84 @@ class CreateSqlQueryArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class CreateTrinoClusterArgsCatalogsConfigItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    catalog_id: Annotated[str, Field(min_length=1, max_length=50, alias='catalogId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateTrinoClusterArgsWorkerConfigResourcesDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    resource_preset_id: Annotated[str, Field(min_length=1, max_length=50, alias='resourcePresetId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateTrinoClusterArgsWorkerConfigScalePolicyAutoScaleDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    max_count: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:[1-9]|[1-5][0-9]|6[0-4])$'))] = Field(alias='maxCount')
+    min_count: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:0|[1-5]?[0-9]|6[0-4])$'))] = Field(alias='minCount')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateTrinoClusterArgsWorkerConfigScalePolicyDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    auto_scale: CreateTrinoClusterArgsWorkerConfigScalePolicyAutoScaleDTO = Field(alias='autoScale')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateTrinoClusterArgsWorkerConfigDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    resources: CreateTrinoClusterArgsWorkerConfigResourcesDTO
+    scale_policy: CreateTrinoClusterArgsWorkerConfigScalePolicyDTO = Field(alias='scalePolicy')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateTrinoClusterArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    catalogs_config: list[CreateTrinoClusterArgsCatalogsConfigItemDTO] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='catalogsConfig')
+    cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
+    collection_id: Annotated[str, Field(min_length=1, max_length=50, alias='collectionId')]
+    description: Annotated[str, Field(max_length=256)] = _UNVALIDATED_NONE_DEFAULT
+    labels: dict[str, Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[-_0-9a-z]*$'))]] = _UNVALIDATED_NONE_DEFAULT
+    name: Annotated[str, Field(min_length=1, max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[a-zA-Z0-9_-]+$'))]
+    trino_version: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='trinoVersion')
+    worker_config: CreateTrinoClusterArgsWorkerConfigDTO = Field(alias='workerConfig')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class DeleteSqlQueryArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     sql_query_id: str = Field(alias='sqlQueryId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class DeleteTrinoClusterArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    id: Annotated[str, Field(min_length=1, max_length=50)]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class DeleteTrinoClusterCatalogArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    catalog_id: Annotated[str, Field(min_length=1, max_length=50, alias='catalogId')]
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
@@ -5045,11 +5136,66 @@ class GetSqlQueryArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class GetTrinoClusterArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    id: Annotated[str, Field(min_length=1, max_length=50)]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class GetTrinoResourcePresetArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
+    resource_preset_id: Annotated[str, Field(min_length=1, max_length=50, alias='resourcePresetId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class ListTrinoClustersArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    catalog_id: Annotated[str, Field(min_length=1, max_length=50, alias='catalogId')] = _UNVALIDATED_NONE_DEFAULT
+    collection_id: Annotated[str, Field(min_length=1, max_length=50, alias='collectionId')] = _UNVALIDATED_NONE_DEFAULT
+    filter: list[str] = _UNVALIDATED_NONE_DEFAULT
+    page_size: Annotated[int, Field(ge=0, alias='pageSize')] = _UNVALIDATED_NONE_DEFAULT
+    page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class ListTrinoResourcePresetsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
+    page_size: Annotated[int, Field(ge=0, le=1000, alias='pageSize')] = _UNVALIDATED_NONE_DEFAULT
+    page_token: Annotated[str, Field(max_length=100, alias='pageToken')] = _UNVALIDATED_NONE_DEFAULT
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class RunSqlQueryArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     params: dict[str, list[bool | int | float | str] | CreateSqlQueryArgsParamsItemAllOf1DefaultValueDTO | bool | int | float | str] = _UNVALIDATED_NONE_DEFAULT
     sql_query_id: str = Field(alias='sqlQueryId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class StartTrinoClusterArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class StopTrinoClusterArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
@@ -5181,6 +5327,82 @@ class LakehouseOperationReadDTO(BaseModel):
     metadata: dict[str, JsonValue]
     modified_at: LakehouseOperationCreatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='modifiedAt')
     response: dict[str, JsonValue] = _UNVALIDATED_NONE_DEFAULT
+
+class TrinoClusterConfigCatalogsConfigItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    catalog_id: Annotated[str, Field(min_length=1, max_length=50, alias='catalogId')]
+
+class TrinoClusterConfigCoordinatorConfigResourcesReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    resource_preset_id: Annotated[str, Field(min_length=1, max_length=50, alias='resourcePresetId')]
+
+class TrinoClusterConfigCoordinatorConfigReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    resources: TrinoClusterConfigCoordinatorConfigResourcesReadDTO
+
+class TrinoClusterConfigWorkerConfigScalePolicyAutoScaleReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    max_count: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:[1-9]|[1-5][0-9]|6[0-4])$'))] = Field(alias='maxCount')
+    min_count: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:0|[1-5]?[0-9]|6[0-4])$'))] = Field(alias='minCount')
+
+class TrinoClusterConfigWorkerConfigScalePolicyReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    auto_scale: TrinoClusterConfigWorkerConfigScalePolicyAutoScaleReadDTO = Field(alias='autoScale')
+    scale_type: Literal['autoScale'] = Field(alias='scaleType')
+
+class TrinoClusterConfigWorkerConfigReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    resources: TrinoClusterConfigCoordinatorConfigResourcesReadDTO
+    scale_policy: TrinoClusterConfigWorkerConfigScalePolicyReadDTO = Field(alias='scalePolicy')
+
+class TrinoClusterConfigReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    catalogs_config: list[TrinoClusterConfigCatalogsConfigItemReadDTO] = Field(alias='catalogsConfig')
+    coordinator_config: TrinoClusterConfigCoordinatorConfigReadDTO = Field(alias='coordinatorConfig')
+    trino_version: str = Field(alias='trinoVersion')
+    worker_config: TrinoClusterConfigWorkerConfigReadDTO = Field(alias='workerConfig')
+
+class TrinoClusterReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    cloud_environment_id: Annotated[str, Field(min_length=1, alias='cloudEnvironmentId')]
+    cluster_id: str = Field(alias='clusterId')
+    collection_id: Annotated[str, Field(min_length=1, alias='collectionId')]
+    config: TrinoClusterConfigReadDTO
+    coordinator_url: str = Field(alias='coordinatorUrl')
+    description: str
+    entry_id: str = Field(alias='entryId')
+    health: Literal['ALIVE', 'DEAD', 'DEGRADED', 'HEALTH_UNKNOWN']
+    id: Annotated[str, Field(min_length=1)]
+    labels: dict[str, str]
+    name: Annotated[str, Field(min_length=1)]
+    status: Literal['CREATING', 'ERROR', 'RUNNING', 'STARTING', 'STATUS_UNKNOWN', 'STOPPED', 'STOPPING', 'UPDATING']
+
+class ListTrinoClustersResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    clusters: list[TrinoClusterReadDTO]
+    next_page_token: str = Field(alias='nextPageToken')
+
+class TrinoResourcePresetReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    cores: str
+    id: Annotated[str, Field(min_length=1)]
+    memory: str
+
+class ListTrinoResourcePresetsResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    next_page_token: str = Field(alias='nextPageToken')
+    resource_presets: list[TrinoResourcePresetReadDTO] = Field(alias='resourcePresets')
 
 class RunSqlQueryResultResultsItemAnyOf0ColumnsItemReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)

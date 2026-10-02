@@ -298,16 +298,19 @@ class RpcOperationMeta(TypedDict):
 class RpcNamespaceContractMeta(TypedDict):
     tag: str
     namespace: str
+    alias_only_read: bool
     operations: dict[str, RpcOperationMeta]
     roots: list[str]
     schemas: dict[str, JsonValue]
-    alias_only_read: bool
 
 
 RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (
     RpcNamespaceConfig(tag="SqlQueries", namespace="sql_queries"),
     RpcNamespaceConfig(
         tag="LakehouseOperations", namespace="lakehouse_operations", installations=("yacloud",), alias_only_read=True
+    ),
+    RpcNamespaceConfig(
+        tag="TrinoClusters", namespace="trino_clusters", installations=("yacloud",), alias_only_read=True
     ),
 )
 
@@ -620,7 +623,7 @@ def _audit_tagged_rpc_pattern(pattern: str, *, pointer: str, contract: str) -> N
     escaped = False
     for index, character in enumerate(pattern):
         if escaped:
-            if character in "dDwWsSbBAZN":
+            if character in "dDwWsSbBAZN" and not (character == "d" and not in_character_class):
                 raise ValueError(
                     f"Unsupported tagged RPC pattern at {pointer}: escape \\{character} has different "
                     "semantics in Python and ECMAScript regular expressions"
@@ -644,17 +647,16 @@ def _audit_tagged_rpc_pattern(pattern: str, *, pointer: str, contract: str) -> N
 
 
 def _python_tagged_rpc_pattern(pattern: str) -> str:
-    """Preserve ECMAScript end-anchor semantics when a pattern runs through Python re."""
+    """Translate ECMAScript regex escapes to their Python equivalents."""
     result: list[str] = []
     escaped = False
     in_character_class = False
     for character in pattern:
         if escaped:
-            result.append(character)
+            result.append("[0-9]" if character == "d" and not in_character_class else f"\\{character}")
             escaped = False
             continue
         if character == "\\":
-            result.append(character)
             escaped = True
             continue
         if character == "[":
@@ -665,6 +667,8 @@ def _python_tagged_rpc_pattern(pattern: str) -> str:
             result.append(r"\Z")
         else:
             result.append(character)
+    if escaped:
+        result.append("\\")
     return "".join(result)
 
 
@@ -1361,10 +1365,10 @@ def build_rpc_namespace_contract_meta(
     return {
         "tag": config["tag"],
         "namespace": config["namespace"],
+        "alias_only_read": config.get("alias_only_read", False),
         "operations": dict(sorted(operations.items())),
         "roots": sorted(root_contexts),
         "schemas": dict(sorted(normalized_schemas.items())),
-        "alias_only_read": config.get("alias_only_read", False),
     }
 
 
@@ -2908,9 +2912,9 @@ class _PydanticSchemaEmitter:
         self._emitted_components: dict[str, str] = {}
         self._emitted_paths: dict[str, tuple[str, ...]] = {}
         self._emitting: set[str] = set()
-        self._definitions: dict[str, str] = {}
-        self._definitions_by_schema: dict[str, str] = {}
-        self._definitions_by_schema_and_payload: dict[tuple[str, bool], str] = {}
+        self._definitions: dict[str, tuple[str, bool]] = {}
+        self._definitions_by_schema: dict[tuple[str, bool], str] = {}
+        self._definitions_by_schema_and_payload: dict[tuple[str, bool, bool], str] = {}
 
     def emit(self, schema_names: Iterable[str]) -> str:
         roots = sorted(set(schema_names))
@@ -3321,6 +3325,7 @@ class _PydanticSchemaEmitter:
         preferred_name: str | None,
     ) -> str:
         canonical = _canonical_json(schema)
+        alias_only_read = self._read and self._contract == "tagged RPC" and path[0] in self._alias_only_read_schemas
         payload_eligible = (
             canonical in self._payload_schemas
             if self._payload_methods == "recursive"
@@ -3328,9 +3333,9 @@ class _PydanticSchemaEmitter:
         )
         if preferred_name is None:
             existing_name = (
-                self._definitions_by_schema_and_payload.get((canonical, payload_eligible))
+                self._definitions_by_schema_and_payload.get((canonical, payload_eligible, alias_only_read))
                 if self._payload_methods == "roots"
-                else self._definitions_by_schema.get(canonical)
+                else self._definitions_by_schema.get((canonical, alias_only_read))
             )
             if existing_name is not None:
                 return existing_name
@@ -3338,10 +3343,12 @@ class _PydanticSchemaEmitter:
         name = preferred_name or self._model_name(path)
         previous = self._definitions.get(name)
         if previous is not None:
-            if previous != canonical:
+            if previous[0] == canonical and previous[1] != alias_only_read:
+                raise ValueError(f"{self._contract} inline model {name} has conflicting read alias policies")
+            if previous[0] != canonical:
                 raise ValueError(f"{self._contract} inline model name collision for {name}")
             return name
-        self._definitions[name] = canonical
+        self._definitions[name] = (canonical, alias_only_read)
 
         properties_value = schema.get("properties")
         properties = properties_value if isinstance(properties_value, dict) else {}
@@ -3379,8 +3386,8 @@ class _PydanticSchemaEmitter:
             fields.append((python_name, wire_name, annotation, wire_name in required, alias_in_annotation))
 
         extra = self._object_extra(schema)
+        populate_by_name = not alias_only_read
         self._lines.append(f"class {name}(BaseModel):")
-        populate_by_name = not (self._read and path[0] in self._alias_only_read_schemas)
         self._lines.append(
             f"    model_config = ConfigDict(extra={extra!r}, populate_by_name={populate_by_name!r}, strict=True)"
         )
@@ -3428,8 +3435,8 @@ class _PydanticSchemaEmitter:
         self._emitted.add(name)
         self._emitted_components[name] = path[0]
         self._emitted_paths[name] = path
-        self._definitions_by_schema.setdefault(canonical, name)
-        self._definitions_by_schema_and_payload.setdefault((canonical, payload_eligible), name)
+        self._definitions_by_schema.setdefault((canonical, alias_only_read), name)
+        self._definitions_by_schema_and_payload.setdefault((canonical, payload_eligible, alias_only_read), name)
         return name
 
     def _object_variants(
@@ -4480,6 +4487,21 @@ def _emit_html_page_dto(metadata: Metadata) -> str:
     return f"\n{request_models}\n{result_models}".rstrip() + "\n"
 
 
+def _rpc_result_schema_closure(roots: set[str], schemas: Mapping[str, JsonValue]) -> set[str]:
+    reached: set[str] = set()
+    pending = list(roots)
+    while pending:
+        name = pending.pop()
+        if name in reached:
+            continue
+        schema = schemas.get(name)
+        if schema is None:
+            raise ValueError(f"tagged RPC result references missing schema {name!r}")
+        reached.add(name)
+        pending.extend(_schema_refs(schema) - reached)
+    return reached
+
+
 def _emit_rpc_namespace_dto(
     metadata: Metadata,
     *,
@@ -4490,8 +4512,8 @@ def _emit_rpc_namespace_dto(
         return ""
     schemas: dict[str, JsonValue] = {}
     request_roots: set[str] = set()
-    result_roots: set[str] = set()
-    alias_only_read_schemas: set[str] = set()
+    alias_only_result_roots: set[str] = set()
+    default_result_roots: set[str] = set()
     for namespace, contract in sorted(contracts.items()):
         for name, schema in contract["schemas"].items():
             previous = schemas.get(name)
@@ -4500,15 +4522,11 @@ def _emit_rpc_namespace_dto(
             schemas[name] = schema
         for operation in contract["operations"].values():
             request_roots.add(operation["request_schema"])
-            result_roots.add(operation["result_schema"])
-            if contract["alias_only_read"]:
-                queue = [operation["result_schema"]]
-                while queue:
-                    schema_name = queue.pop()
-                    if schema_name in alias_only_read_schemas:
-                        continue
-                    alias_only_read_schemas.add(schema_name)
-                    queue.extend(_schema_refs(contract["schemas"][schema_name]))
+            if contract["alias_only_read"] and operation["name"].startswith(("get_", "list_")):
+                alias_only_result_roots.add(operation["result_schema"])
+            else:
+                default_result_roots.add(operation["result_schema"])
+    alias_only_read_schemas = _rpc_result_schema_closure(alias_only_result_roots, schemas)
     request_emitter = _PydanticSchemaEmitter(
         schemas,
         read=False,
@@ -4525,7 +4543,7 @@ def _emit_rpc_namespace_dto(
         empty_object_models=True,
         alias_only_read_schemas=frozenset(alias_only_read_schemas),
     )
-    response_models = response_emitter.emit(result_roots)
+    response_models = response_emitter.emit(alias_only_result_roots | default_result_roots)
     collisions = request_emitter._emitted_components.keys() & response_emitter._emitted_components.keys()
     if collisions:
         name = min(collisions)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, get_args, get_type_hints
+from typing import TYPE_CHECKING, cast, get_args, get_type_hints
 
 import httpx
 from typing_extensions import assert_type
@@ -75,6 +75,8 @@ from datalens_sdk import (
     SqlQueryStatementResult,
     SqlQueryStatementSuccess,
     SqlQueryUpdate,
+    TrinoCluster,
+    TrinoResourcePreset,
     UILanguage,
     UITheme,
     WizardAggregatedMeasure,
@@ -160,6 +162,42 @@ from datalens_sdk.raw import (
     RawWizardChartCreateFactory,
     RawWizardChartReplaceFactory,
 )
+
+
+class YaTeamStyleClient(DataLensClientBase):
+    INSTALLATION = "yateam"
+
+
+def test_trino_read_actions_have_yc_only_static_types() -> None:
+    client = DataLensClientYC(auth=None, transport=_transport())
+    assert_type(client.get, YCGetNamespace)
+    assert_type(client.list, YCListNamespace)
+    assert get_type_hints(YaTeamStyleClient)["get"] is GetNamespace
+    assert get_type_hints(YaTeamStyleClient)["list"] is ListNamespace
+    assert get_type_hints(DataLensClientEnterprise)["get"] is GetNamespace
+    assert get_type_hints(DataLensClientEnterprise)["list"] is ListNamespace
+    if TYPE_CHECKING:
+        yateam = cast(YaTeamStyleClient, client)
+        enterprise = cast(DataLensClientEnterprise, client)
+        assert_type(yateam.get, GetNamespace)
+        assert_type(yateam.list, ListNamespace)
+        assert_type(enterprise.get, GetNamespace)
+        assert_type(enterprise.list, ListNamespace)
+        cluster = client.get.trino_cluster(by_id="cluster-1")
+        preset = client.get.trino_resource_preset(by_id="preset-1", cloud_environment_id="env-1")
+        assert_type(cluster, TrinoCluster)
+        assert_type(cluster.refresh(), TrinoCluster)
+        assert_type(preset, TrinoResourcePreset)
+        clusters = client.list.trino_clusters(collection=EntryLocation.collection("collection-1"))
+        presets = client.list.trino_resource_presets(cloud_environment_id="env-1")
+        assert_type(clusters, Pager[TrinoCluster])
+        assert_type(presets, Pager[TrinoResourcePreset])
+        cluster_page = next(clusters.pages())
+        preset_page = next(presets.pages())
+        assert_type(cluster_page, Page[TrinoCluster])
+        assert_type(preset_page, Page[TrinoResourcePreset])
+        assert_type(cluster_page.items, tuple[TrinoCluster, ...])
+        assert_type(preset_page.items, tuple[TrinoResourcePreset, ...])
 
 
 def _check_entry_mutation_return_types(

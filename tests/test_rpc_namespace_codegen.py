@@ -1061,6 +1061,35 @@ def test_tagged_rpc_codegen_rejects_cross_installation_contract_drift(tmp_path: 
         )
 
 
+def test_tagged_rpc_yc_scoped_contract_uses_yc_wire_response_when_enterprise_differs(tmp_path: Path) -> None:
+    specs = {name: _installation_spec(name) for name in ("enterprise", "yacloud")}
+    for name, spec in specs.items():
+        _add_installation_rpc(
+            spec,
+            route="/rpc/getTaggedWidget",
+            tag="Widgets",
+            request_name="TaggedWidgetArgs",
+            result_name="TaggedWidgetResult",
+            result_schema={
+                "type": "object",
+                "properties": {"accepted": {"type": "boolean" if name == "yacloud" else "string"}},
+                "required": ["accepted"],
+            },
+        )
+    installations = {name: _write_installation_spec(tmp_path, name, spec) for name, spec in specs.items()}
+
+    metadata = codegen.build_metadata(
+        installations,
+        rpc_namespace_configs=({"tag": "Widgets", "namespace": "widgets", "installations": ("yacloud",)},),
+    )
+    scope = _load_models(codegen._emit_rpc_namespace_dto(metadata))
+    result = _model(scope, "TaggedWidgetResultReadDTO")
+
+    assert result.model_validate({"accepted": True}).model_dump() == {"accepted": True}
+    with pytest.raises(ValidationError):
+        result.model_validate({"accepted": "true"})
+
+
 def test_tagged_rpc_empty_installations_keep_empty_metadata() -> None:
     assert codegen.build_metadata({}, rpc_namespace_configs=({"tag": "Widgets", "namespace": "widgets"},)) == {
         "installations": {}
@@ -1130,7 +1159,26 @@ def test_tagged_rpc_write_dto_supports_ecma_regex_lookaround() -> None:
         request(value="abx")
 
 
-@pytest.mark.parametrize("pattern", [r"^\d+$", "("])
+def test_tagged_rpc_pattern_digit_matches_ecmascript_ascii_semantics() -> None:
+    request = _model(
+        _widget_models(
+            request={
+                "type": "object",
+                "properties": {"value": {"type": "string", "pattern": r"^\d+$"}},
+                "required": ["value"],
+                "additionalProperties": False,
+            },
+            result={"type": "object", "properties": {}},
+        ),
+        "WidgetArgsDTO",
+    )
+
+    assert request(value="123").to_payload() == {"value": "123"}  # type: ignore[attr-defined]
+    with pytest.raises(ValidationError):
+        request(value="٣")
+
+
+@pytest.mark.parametrize("pattern", [r"^\w+$", "("])
 def test_tagged_rpc_rejects_unsupported_regex_dialect_at_generation(pattern: str) -> None:
     with pytest.raises(ValueError, match=r"/schemas/WidgetArgs/properties/value/pattern"):
         _contract(
@@ -2012,3 +2060,48 @@ def test_html_payload_policy_keeps_nested_references_to_roots_method_free() -> N
     assert issubclass(child_type, BaseModel)
     assert not hasattr(child_type, "to_payload")
     assert _model(scope, "AWrapperDTO").model_validate({"child": {"id": "x"}}).model_dump() == {"child": {"id": "x"}}
+
+
+def test_tagged_rpc_shared_result_uses_strict_wire_alias_for_read_and_mutation() -> None:
+    request = {"$ref": "#/components/schemas/Request"}
+    result = {"$ref": "#/components/schemas/SharedResult"}
+
+    def operation(tag: str) -> dict[str, object]:
+        return {
+            "tags": [tag],
+            "requestBody": {"required": True, "content": {"application/json": {"schema": request}}},
+            "responses": {"200": {"content": {"application/json": {"schema": result}}}},
+        }
+
+    spec: dict[str, object] = {
+        "paths": {
+            "/rpc/getStrictWidget": {"post": operation("Strict")},
+            "/rpc/createRelaxedWidget": {"post": operation("Relaxed")},
+        },
+        "components": {
+            "schemas": {
+                "Request": {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]},
+                "SharedResult": {
+                    "type": "object",
+                    "properties": {"clusterId": {"type": "string"}},
+                    "required": ["clusterId"],
+                },
+            }
+        },
+    }
+    strict = codegen.build_rpc_namespace_contract_meta(
+        spec, config={"tag": "Strict", "namespace": "strict", "alias_only_read": True}
+    )
+    relaxed = codegen.build_rpc_namespace_contract_meta(spec, config={"tag": "Relaxed", "namespace": "relaxed"})
+    assert strict is not None
+    assert relaxed is not None
+
+    metadata: codegen.Metadata = {
+        "installations": {},
+        "rpc_namespaces": {"strict": strict, "relaxed": relaxed},
+    }
+    scope = _load_models(codegen._emit_rpc_namespace_dto(metadata))
+    shared_result = _model(scope, "SharedResultReadDTO")
+    assert shared_result.model_validate({"clusterId": "managed-1"}).model_dump()["cluster_id"] == "managed-1"
+    with pytest.raises(ValidationError, match="clusterId"):
+        shared_result.model_validate({"cluster_id": "managed-1"})
