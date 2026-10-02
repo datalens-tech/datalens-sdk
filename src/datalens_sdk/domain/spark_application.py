@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Literal, TypeAlias
 
@@ -124,3 +124,52 @@ class SparkApplicationListOptions:
         if any(not isinstance(value, str) for value in filters):
             raise DataLensValidationError("filters must contain only strings")
         return cls(cluster_id, tuple(filters), page_size, page_token)
+
+
+@dataclass(frozen=True, slots=True)
+class SparkJobLogPage:
+    content: str
+    next_page_token: str
+
+
+@dataclass(frozen=True, slots=True)
+class SparkJobLogOptions:
+    cluster_id: str
+    job_id: str
+    page_size: int | None = None
+    page_token: str | None = None
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        installation: str,
+        cluster: SparkCluster | str,
+        job: SparkJob | str,
+        page_size: int | None = None,
+        page_token: str | None = None,
+    ) -> SparkJobLogOptions:
+        cluster_id = normalize_spark_job_cluster(cluster, installation=installation)
+        if isinstance(job, SparkJob):
+            if not isinstance(job.installation, str) or not job.installation or job.installation != installation:
+                raise DataLensValidationError("Spark job must belong to this installation")
+            if not isinstance(job.cluster_id, str) or not job.cluster_id or job.cluster_id != cluster_id:
+                raise DataLensValidationError("Spark job must belong to the selected managed cluster")
+            job_id = job.id
+        else:
+            job_id = job
+        if not isinstance(job_id, str) or not job_id:
+            raise DataLensValidationError("Spark job id must be a non-empty string")
+        return cls(cluster_id, job_id, page_size, page_token)
+
+
+class SparkJobLogPager:
+    def __init__(self, loader: Callable[[], Iterator[SparkJobLogPage]]) -> None:
+        self._loader = loader
+
+    def pages(self) -> Iterator[SparkJobLogPage]:
+        return self._loader()
+
+    def __iter__(self) -> Iterator[str]:
+        for page in self.pages():
+            yield page.content

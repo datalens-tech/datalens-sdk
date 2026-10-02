@@ -8,28 +8,30 @@ from pydantic import TypeAdapter, ValidationError
 from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.converter.lakehouse_operation import LakehouseTimestampReadDTOProtocol, lakehouse_timestamp_from_dto
 from datalens_sdk.domain.navigation import Page
-from datalens_sdk.domain.ports import SparkApplicationOperations
-from datalens_sdk.domain.spark_application import (
-    SparkApplication,
-    SparkApplicationCatalogRef,
-    SparkApplicationConnectSpec,
-    SparkApplicationListOptions,
-    SparkApplicationPySparkSpec,
-    SparkApplicationSparkSpec,
-    SparkApplicationStatus,
+from datalens_sdk.domain.ports import SparkJobOperations
+from datalens_sdk.domain.spark_job import (
+    SparkJob,
+    SparkJobCatalogRef,
+    SparkJobConnectSpec,
+    SparkJobListOptions,
+    SparkJobLogOptions,
+    SparkJobLogPage,
+    SparkJobPySparkSpec,
+    SparkJobSparkSpec,
+    SparkJobStatus,
 )
 from datalens_sdk.errors import translate_dto_validation_error, translate_invalid_response_error
 
 
-class SparkApplicationWriteDTOProtocol(Protocol):
+class SparkJobWriteDTOProtocol(Protocol):
     def to_payload(self) -> dict[str, object]: ...
 
 
-class SparkApplicationWriteDTOClass(Protocol):
-    def model_validate(self, obj: object) -> SparkApplicationWriteDTOProtocol: ...
+class SparkJobWriteDTOClass(Protocol):
+    def model_validate(self, obj: object) -> SparkJobWriteDTOProtocol: ...
 
 
-class SparkApplicationReadDTOProtocol(Protocol):
+class SparkJobReadDTOProtocol(Protocol):
     @property
     def created_at(self) -> LakehouseTimestampReadDTOProtocol: ...
 
@@ -42,26 +44,40 @@ class SparkApplicationReadDTOProtocol(Protocol):
     def model_dump(self, *, mode: Literal["json"], by_alias: bool) -> dict[str, object]: ...
 
 
-class SparkApplicationListReadDTOProtocol(Protocol):
+class SparkJobListReadDTOProtocol(Protocol):
     @property
-    def applications(self) -> list[SparkApplicationReadDTOProtocol]: ...
+    def jobs(self) -> list[SparkJobReadDTOProtocol]: ...
 
     def model_dump(self, *, mode: Literal["json"], by_alias: bool) -> dict[str, object]: ...
 
 
-class SparkApplicationListReadDTOClass(Protocol):
-    def model_validate(self, obj: object) -> SparkApplicationListReadDTOProtocol: ...
+class SparkJobListReadDTOClass(Protocol):
+    def model_validate(self, obj: object) -> SparkJobListReadDTOProtocol: ...
 
 
-class SparkApplicationDtoModule(Protocol):
-    GetSparkApplicationArgsDTO: SparkApplicationWriteDTOClass
-    ListSparkApplicationsArgsDTO: SparkApplicationWriteDTOClass
-    ListSparkApplicationsResultReadDTO: SparkApplicationListReadDTOClass
-    SparkApplicationReadDTO: object
+class SparkJobLogReadDTOProtocol(Protocol):
+    @property
+    def content(self) -> str: ...
+
+    @property
+    def next_page_token(self) -> str: ...
 
 
-def _dto_module(dto_module: SparkApplicationDtoModule | None) -> SparkApplicationDtoModule:
-    return cast(SparkApplicationDtoModule, generated_dto if dto_module is None else dto_module)
+class SparkJobLogReadDTOClass(Protocol):
+    def model_validate(self, obj: object) -> SparkJobLogReadDTOProtocol: ...
+
+
+class SparkJobDtoModule(Protocol):
+    GetSparkJobArgsDTO: SparkJobWriteDTOClass
+    ListSparkJobLogArgsDTO: SparkJobWriteDTOClass
+    ListSparkJobLogResultReadDTO: SparkJobLogReadDTOClass
+    ListSparkJobsArgsDTO: SparkJobWriteDTOClass
+    ListSparkJobsResultReadDTO: SparkJobListReadDTOClass
+    SparkJobReadDTO: object
+
+
+def _dto_module(dto_module: SparkJobDtoModule | None) -> SparkJobDtoModule:
+    return cast(SparkJobDtoModule, generated_dto if dto_module is None else dto_module)
 
 
 def _raw_mapping(value: object, *, operation: str, field: str) -> Mapping[str, object]:
@@ -101,100 +117,118 @@ def _common_spec(data: Mapping[str, object]) -> _CommonSpec:
     }
 
 
-class SparkApplicationConverter:
+class SparkJobConverter:
     @staticmethod
     def get_payload(
-        cluster_id: str, application_id: str, *, dto_module: SparkApplicationDtoModule | None = None
-    ) -> SparkApplicationWriteDTOProtocol:
-        return _dto_module(dto_module).GetSparkApplicationArgsDTO.model_validate(
-            {"clusterId": cluster_id, "applicationId": application_id}
-        )
+        cluster_id: str, job_id: str, *, dto_module: SparkJobDtoModule | None = None
+    ) -> SparkJobWriteDTOProtocol:
+        return _dto_module(dto_module).GetSparkJobArgsDTO.model_validate({"clusterId": cluster_id, "jobId": job_id})
 
     @staticmethod
     def list_payload(
-        options: SparkApplicationListOptions,
+        options: SparkJobListOptions,
         *,
         page_token: str | None,
-        dto_module: SparkApplicationDtoModule | None = None,
-    ) -> SparkApplicationWriteDTOProtocol:
+        dto_module: SparkJobDtoModule | None = None,
+    ) -> SparkJobWriteDTOProtocol:
         payload: dict[str, object] = {"clusterId": options.cluster_id, "pageSize": options.page_size}
         if options.filters:
             payload["filter"] = list(options.filters)
         if page_token is not None:
             payload["pageToken"] = page_token
-        return _dto_module(dto_module).ListSparkApplicationsArgsDTO.model_validate(payload)
+        return _dto_module(dto_module).ListSparkJobsArgsDTO.model_validate(payload)
 
     @staticmethod
-    def to_application(
+    def log_payload(
+        options: SparkJobLogOptions,
+        *,
+        page_token: str | None,
+        dto_module: SparkJobDtoModule | None = None,
+    ) -> SparkJobWriteDTOProtocol:
+        payload: dict[str, object] = {"clusterId": options.cluster_id, "jobId": options.job_id}
+        if options.page_size is not None:
+            payload["pageSize"] = options.page_size
+        if page_token is not None:
+            payload["pageToken"] = page_token
+        return _dto_module(dto_module).ListSparkJobLogArgsDTO.model_validate(payload)
+
+    @staticmethod
+    def to_log_page(raw: Mapping[str, object], *, dto_module: SparkJobDtoModule | None = None) -> SparkJobLogPage:
+        try:
+            validated = _dto_module(dto_module).ListSparkJobLogResultReadDTO.model_validate(raw)
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="listSparkJobLog", reason=str(exc)) from exc
+        return SparkJobLogPage(content=validated.content, next_page_token=validated.next_page_token)
+
+    @staticmethod
+    def to_job(
         raw: Mapping[str, object],
         *,
         installation: str,
-        operations: SparkApplicationOperations | None,
-        operation: Literal["getSparkApplication", "listSparkApplications"],
-        dto_module: SparkApplicationDtoModule | None = None,
-    ) -> SparkApplication:
+        operations: SparkJobOperations | None,
+        operation: Literal["getSparkJob", "listSparkJobs"],
+        dto_module: SparkJobDtoModule | None = None,
+    ) -> SparkJob:
         try:
             validated = cast(
-                SparkApplicationReadDTOProtocol,
-                TypeAdapter[object](_dto_module(dto_module).SparkApplicationReadDTO).validate_python(raw),
+                SparkJobReadDTOProtocol,
+                TypeAdapter[object](_dto_module(dto_module).SparkJobReadDTO).validate_python(raw),
             )
         except ValidationError as exc:
             raise translate_dto_validation_error(operation=operation, reason=str(exc)) from exc
-        return SparkApplicationConverter._to_application_from_validated(
+        return SparkJobConverter._to_job_from_validated(
             raw, validated=validated, installation=installation, operations=operations, operation=operation
         )
 
     @staticmethod
-    def _to_application_from_validated(
+    def _to_job_from_validated(
         raw: Mapping[str, object],
         *,
-        validated: SparkApplicationReadDTOProtocol,
+        validated: SparkJobReadDTOProtocol,
         installation: str,
-        operations: SparkApplicationOperations | None,
-        operation: Literal["getSparkApplication", "listSparkApplications"],
-    ) -> SparkApplication:
+        operations: SparkJobOperations | None,
+        operation: Literal["getSparkJob", "listSparkJobs"],
+    ) -> SparkJob:
         try:
             data = validated.model_dump(mode="json", by_alias=True)
         except ValidationError as exc:
             raise translate_dto_validation_error(operation=operation, reason=str(exc)) from exc
         try:
-            kind = data.get("applicationSpec")
-            spec: SparkApplicationSparkSpec | SparkApplicationPySparkSpec | SparkApplicationConnectSpec | None
-            if kind == "sparkApplication":
-                spark = cast(Mapping[str, object], data["sparkApplication"])
-                spec = SparkApplicationSparkSpec(
+            kind = data.get("jobSpec")
+            spec: SparkJobSparkSpec | SparkJobPySparkSpec | SparkJobConnectSpec | None
+            if kind == "sparkJob":
+                spark = cast(Mapping[str, object], data["sparkJob"])
+                spec = SparkJobSparkSpec(
                     main_jar_file_uri=cast(str, spark["mainJarFileUri"]),
                     main_class=cast(str, spark["mainClass"]),
                     args=tuple(cast(list[str], spark["args"])),
                     **_common_spec(spark),
                 )
-            elif kind == "pysparkApplication":
-                pyspark = cast(Mapping[str, object], data["pysparkApplication"])
-                spec = SparkApplicationPySparkSpec(
+            elif kind == "pysparkJob":
+                pyspark = cast(Mapping[str, object], data["pysparkJob"])
+                spec = SparkJobPySparkSpec(
                     main_python_file_uri=cast(str, pyspark["mainPythonFileUri"]),
                     python_file_uris=tuple(cast(list[str], pyspark["pythonFileUris"])),
                     args=tuple(cast(list[str], pyspark["args"])),
                     **_common_spec(pyspark),
                 )
-            elif kind == "sparkConnectApplication":
-                spec = SparkApplicationConnectSpec(
-                    **_common_spec(cast(Mapping[str, object], data["sparkConnectApplication"]))
-                )
+            elif kind == "sparkConnectJob":
+                spec = SparkJobConnectSpec(**_common_spec(cast(Mapping[str, object], data["sparkConnectJob"])))
             else:
                 spec = None
             created_at = lakehouse_timestamp_from_dto(_raw_timestamp(raw, "createdAt"), dto=validated.created_at)
             if created_at is None:
                 raise ValueError("createdAt is required")
-            return SparkApplication(
+            return SparkJob(
                 id=cast(str, data["id"]),
                 cluster_id=cast(str, data["clusterId"]),
                 installation=installation,
                 name=cast(str, data["name"]),
                 created_by=cast(str, data["createdBy"]),
-                status=cast(SparkApplicationStatus, data["status"]),
+                status=cast(SparkJobStatus, data["status"]),
                 connect_url=cast(str, data["connectUrl"]),
                 catalogs=tuple(
-                    SparkApplicationCatalogRef(cast(str, cast(Mapping[str, object], item)["catalogId"]))
+                    SparkJobCatalogRef(cast(str, cast(Mapping[str, object], item)["catalogId"]))
                     for item in cast(list[object], data["catalogs"])
                 ),
                 created_at=created_at,
@@ -212,28 +246,28 @@ class SparkApplicationConverter:
         raw: Mapping[str, object],
         *,
         installation: str,
-        operations: SparkApplicationOperations | None,
-        dto_module: SparkApplicationDtoModule | None = None,
-    ) -> Page[SparkApplication]:
-        operation: Literal["listSparkApplications"] = "listSparkApplications"
+        operations: SparkJobOperations | None,
+        dto_module: SparkJobDtoModule | None = None,
+    ) -> Page[SparkJob]:
+        operation: Literal["listSparkJobs"] = "listSparkJobs"
         try:
-            validated = _dto_module(dto_module).ListSparkApplicationsResultReadDTO.model_validate(raw)
+            validated = _dto_module(dto_module).ListSparkJobsResultReadDTO.model_validate(raw)
         except ValidationError as exc:
             raise translate_dto_validation_error(operation=operation, reason=str(exc)) from exc
         data = validated.model_dump(mode="json", by_alias=True)
-        applications = raw.get("applications")
-        if not isinstance(applications, list):
-            raise translate_invalid_response_error(operation=operation, reason="applications wire key is not an array")
+        jobs = raw.get("jobs")
+        if not isinstance(jobs, list):
+            raise translate_invalid_response_error(operation=operation, reason="jobs wire key is not an array")
         return Page(
             items=tuple(
-                SparkApplicationConverter._to_application_from_validated(
-                    _raw_mapping(raw_item, operation=operation, field="applications item"),
+                SparkJobConverter._to_job_from_validated(
+                    _raw_mapping(raw_item, operation=operation, field="jobs item"),
                     validated=validated_item,
                     installation=installation,
                     operations=operations,
                     operation=operation,
                 )
-                for raw_item, validated_item in zip(applications, validated.applications, strict=True)
+                for raw_item, validated_item in zip(jobs, validated.jobs, strict=True)
             ),
             next_page_token=cast(str, data["nextPageToken"]),
         )
