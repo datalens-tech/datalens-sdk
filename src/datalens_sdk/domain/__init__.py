@@ -126,6 +126,14 @@ from datalens_sdk.domain.raw_resource import (
     RawWizardChartCreate,
     RawWizardChartReplace,
 )
+from datalens_sdk.domain.rest_catalog import (
+    RestCatalog,
+    RestCatalogBucket,
+    RestCatalogBucketDetails,
+    RestCatalogBucketSettings,
+    RestCatalogListOptions,
+    RestCatalogSortField,
+)
 from datalens_sdk.domain.revisions import EntryRevision
 from datalens_sdk.domain.sql_query import (
     SqlQuery,
@@ -282,6 +290,12 @@ __all__ = [
     "RawWizardChartCreate",
     "RawWizardChartReplace",
     "RelativeDateInterval",
+    "RestCatalog",
+    "RestCatalogBucket",
+    "RestCatalogBucketDetails",
+    "RestCatalogBucketSettings",
+    "RestCatalogListOptions",
+    "RestCatalogSortField",
     "SelectorOperation",
     "SortDirection",
     "Source",

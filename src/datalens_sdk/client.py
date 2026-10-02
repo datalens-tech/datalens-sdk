@@ -23,6 +23,7 @@ from datalens_sdk.api.html_page import HtmlPageAPI, HtmlPageService
 from datalens_sdk.api.lakehouse_operation import LakehouseOperationAPI, LakehouseOperationService
 from datalens_sdk.api.license import LicenseAPI, LicenseService
 from datalens_sdk.api.navigation import NavigationService
+from datalens_sdk.api.rest_catalog import RestCatalogAPI, RestCatalogService
 from datalens_sdk.api.sql_query import SqlQueryAPI, SqlQueryService
 from datalens_sdk.api.trino_cluster import TrinoClusterAPI, TrinoClusterService
 from datalens_sdk.api.workbook import WorkbookAPI, WorkbookService
@@ -43,6 +44,7 @@ from datalens_sdk.converter.folder import FolderDtoModule
 from datalens_sdk.converter.html_page import HtmlPageDtoModule
 from datalens_sdk.converter.lakehouse_operation import LakehouseOperationDtoModule
 from datalens_sdk.converter.license import LicenseDtoModule
+from datalens_sdk.converter.rest_catalog import RestCatalogDtoModule
 from datalens_sdk.converter.sql_query import SqlQueryDtoModule
 from datalens_sdk.converter.trino_cluster import TrinoClusterDtoModule
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
@@ -95,11 +97,13 @@ from datalens_sdk.domain.ports import (
     LakehouseOperationOperations,
     LicenseOperations,
     NavigationOperations,
+    RestCatalogOperations,
     SqlQueryOperations,
     TrinoClusterOperations,
     WorkbookOperations,
 )
 from datalens_sdk.domain.ql_chart import QLChart
+from datalens_sdk.domain.rest_catalog import RestCatalog, RestCatalogListOptions, RestCatalogSortField
 from datalens_sdk.domain.sql_query import SqlQuery, SqlQueryCreate
 from datalens_sdk.domain.trino_cluster import (
     TrinoCluster,
@@ -704,8 +708,14 @@ class ListNamespace:
 
 
 class YCListNamespace(ListNamespace):
-    def __init__(self, *, trino_cluster_operations: TrinoClusterOperations) -> None:
+    def __init__(
+        self,
+        *,
+        trino_cluster_operations: TrinoClusterOperations,
+        rest_catalog_operations: RestCatalogOperations,
+    ) -> None:
         self._trino_cluster_operations = trino_cluster_operations
+        self._rest_catalog_operations = rest_catalog_operations
 
     def trino_clusters(
         self,
@@ -737,6 +747,29 @@ class YCListNamespace(ListNamespace):
             page_token=page_token,
         )
         return self._trino_cluster_operations.list_trino_resource_presets(options)
+
+    def rest_catalogs(
+        self,
+        *,
+        cloud_environment_id: str | None = None,
+        filters: Sequence[str] = (),
+        include_permissions: bool | None = None,
+        sort_by: RestCatalogSortField | None = None,
+        order: SortDirection = "asc",
+        page_size: int = 100,
+        page_token: str | None = None,
+    ) -> Pager[RestCatalog]:
+        return self._rest_catalog_operations.list_rest_catalogs(
+            RestCatalogListOptions.create(
+                cloud_environment_id=cloud_environment_id,
+                filters=filters,
+                include_permissions=include_permissions,
+                sort_by=sort_by,
+                order=order,
+                page_size=page_size,
+                page_token=page_token,
+            )
+        )
 
 
 class NavigationNamespace:
@@ -1154,6 +1187,11 @@ class DataLensClientYC(DataLensClientBase):
             api=TrinoClusterAPI(self._http),
             dto_module=cast(TrinoClusterDtoModule, dto_module),
         )
+        rest_catalog_service = RestCatalogService(
+            installation=self.INSTALLATION,
+            api=RestCatalogAPI(self._http),
+            dto_module=cast(RestCatalogDtoModule, dto_module),
+        )
         return (
             YCCreateNamespace(
                 sql_query_operations=sql_query_service,
@@ -1185,7 +1223,10 @@ class DataLensClientYC(DataLensClientBase):
                 html_page_operations=deps.html_page_operations,
                 workbook_operations=deps.workbook_operations,
             ),
-            YCListNamespace(trino_cluster_operations=trino_cluster_service),
+            YCListNamespace(
+                trino_cluster_operations=trino_cluster_service,
+                rest_catalog_operations=rest_catalog_service,
+            ),
         )
 
     if TYPE_CHECKING:
