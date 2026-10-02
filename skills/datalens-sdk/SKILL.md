@@ -10,7 +10,8 @@ description: >-
   REST-каталоги DataLens, Trino catalog membership, managed DataLens Trino
   cluster, Trino resource preset, кластер Trino, ресурсный пресет Trino,
   managed Spark cluster, Spark resource preset, кластер Spark,
-  ресурсный пресет Spark,
+  ресурсный пресет Spark, Spark job, Spark jobs, PySpark job, Spark Connect
+  job, Spark job logs, SparkJobs,
   wizard chart, QL chart, editor chart, BI automation, автоматизация DataLens,
   "create a dashboard", "построй дашборд", "создай чарт", "export dataset",
   or "clone dashboard"; entity IDs: dataset_id, chart_id, dashboard_id, or
@@ -145,7 +146,10 @@ an ordinary Trino database connection or raw SQL analysis.
 Managed Yandex Cloud Spark follows `collection + cloud environment -> Spark
 cluster -> asynchronous Lakehouse operation`. A Spark cluster is distinct
 from Spark job submission and ordinary Apache Spark programming. The user
-supplies the cloud environment.
+supplies the cloud environment. Spark jobs run on an existing managed Spark
+cluster. Create and cancel return a Lakehouse operation; operation completion
+does not establish job status. Job snapshots and log fragments have separate
+read actions.
 
 Dataset, chart, Dashboard, and HTML content updates use
 `.mode("save" | "publish")`. Save is the default except for Dashboard, which
@@ -317,6 +321,7 @@ Editor index replaces the public Editor subtree for that installation.
 | Creating, getting, listing, starting, stopping, deleting, or changing catalog membership on a managed Trino cluster; Trino resource presets (Yandex Cloud only) | [references/trino-clusters.md](references/trino-clusters.md) |
 | Refreshing, waiting for, or interpreting a Trino/Spark/REST catalog operation (Yandex Cloud only) | [references/lakehouse-operations.md](references/lakehouse-operations.md) |
 | Creating, getting, listing, starting, stopping, refreshing, or deleting a managed Spark cluster; Spark resource presets (Yandex Cloud only) | [references/spark-clusters.md](references/spark-clusters.md) |
+| Submitting, getting, listing, or canceling a managed DataLens Spark job; reading Spark job log fragments (Yandex Cloud only) | [references/spark-jobs.md](references/spark-jobs.md) |
 | Export, import, clone, copy across workbooks                               | [references/serialization.md](references/serialization.md)               |
 | Any `DataLensAPIError` or unexpected SDK exception                         | [references/troubleshooting.md](references/troubleshooting.md)           |
 | "Make it look good" — visual design, palettes, dashboard composition       | [references/design-guide.md](references/design-guide.md)                 |
