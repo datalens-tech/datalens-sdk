@@ -7,11 +7,12 @@ description: >-
   workbook, воркбук, collection, коллекция, HTML page, HTML-страница,
   saved SQL query, сохранённый SQL-запрос, managing or executing a saved
   DataLens SQL query, DataLens REST catalog, REST-каталог DataLens,
-  REST-каталоги DataLens, Trino catalog membership,
-  wizard chart, QL chart, editor
-  chart, BI automation, автоматизация DataLens, "create a dashboard",
-  "построй дашборд", "создай чарт", "export dataset", or "clone dashboard";
-  entity ids such as dataset_id, chart_id, dashboard_id, or workbook_id; and
+  REST-каталоги DataLens, Trino catalog membership, managed DataLens Trino
+  cluster, Trino resource preset, кластер Trino, ресурсный пресет Trino,
+  wizard chart, QL chart, editor chart, BI automation, автоматизация DataLens,
+  "create a dashboard", "построй дашборд", "создай чарт", "export dataset",
+  or "clone dashboard"; entity ids such as dataset_id, chart_id, dashboard_id,
+  or workbook_id; and
   requests to create, update, inspect, import, export, copy, or diagnose
   DataLens objects with code. NOT for: business questions about metric values;
   viewing or screenshotting the DataLens web UI; embedding or iframes; raw
@@ -135,6 +136,10 @@ Standalone HTML pages are independent artifacts with their own revisions.
 Saved SQL queries follow `connection -> saved SQL query -> run result` on
 Yandex Cloud. Create/get are action-first; update/run/delete are bound to a
 saved `SqlQuery` returned by `.build()` or `client.get.sql_query(...)`.
+Managed Yandex Cloud Trino follows `collection + cloud environment -> Trino
+cluster -> asynchronous Lakehouse operation`; existing REST catalogs become
+cluster memberships. The user supplies the cloud environment. This is not
+an ordinary Trino database connection or raw SQL analysis.
 
 Dataset, chart, Dashboard, and HTML content updates use
 `.mode("save" | "publish")`. Save is the default except for Dashboard, which
@@ -148,7 +153,7 @@ One client, action and utility namespaces:
 |------------------------------------|-----------------------------------|-----------------------|
 | `client.get.*`                     | fetch by id (`by_id=`)            | entity or preview URL |
 | `client.create.*`                  | fluent builders                   | `.build()` persists   |
-| `client.list.rest_catalogs`        | Yandex Cloud REST catalog listing | lazy `Pager`          |
+| `client.list.*`                    | Yandex Cloud resource listing     | lazy `Pager`          |
 | `obj.update...`                    | fluent update on a fetched object | `.execute()` persists |
 | `client.navigation` / `client.raw` | listing / snapshot import-export  | —                     |
 
@@ -303,6 +308,7 @@ Editor index replaces the public Editor subtree for that installation.
 | Dashboards: tabs, widgets, selectors, layout, read model                   | [references/dashboards.md](references/dashboards.md)                     |
 | Finding, listing, moving, renaming entities; revision history; containers | [references/navigation.md](references/navigation.md)                     |
 | Listing DataLens REST catalogs or selecting one for a Trino cluster (Yandex Cloud only) | [references/rest-catalogs.md](references/rest-catalogs.md)                |
+| Creating, getting, listing, starting, stopping, deleting, or changing catalog membership on a managed Trino cluster; Trino resource presets (Yandex Cloud only) | [references/trino-clusters.md](references/trino-clusters.md) |
 | Refreshing, waiting for, or interpreting a Trino/REST catalog operation (Yandex Cloud only) | [references/lakehouse-operations.md](references/lakehouse-operations.md) |
 | Export, import, clone, copy across workbooks                               | [references/serialization.md](references/serialization.md)               |
 | Any `DataLensAPIError` or unexpected SDK exception                         | [references/troubleshooting.md](references/troubleshooting.md)           |
@@ -421,7 +427,8 @@ Use the non-executing allowlisted reader from [references/setup.md](references/s
 | `references/dashboards.md`                      | building or editing dashboards; discovering existing item, selector, and chart-tab ids             |
 | `references/navigation.md`                      | listing/finding/moving entities, revision history; collections, workbooks, folders                                   |
 | `references/rest-catalogs.md`                   | Yandex Cloud REST catalog listing and Trino catalog membership references                                           |
-| `references/lakehouse-operations.md`            | Yandex Cloud Trino and REST-catalog mutation operation lifecycle                                                     |
+| `references/trino-clusters.md`                  | Yandex Cloud managed Trino clusters, resource presets, lifecycle, and catalog membership                           |
+| `references/lakehouse-operations.md`            | Yandex Cloud Trino and REST-catalog operation snapshots, explicit refresh/wait, errors, and timeouts              |
 | `references/serialization.md`                   | export/import/clone via `to_file` and `client.raw`                                                 |
 | `references/troubleshooting.md`                 | any API error; before retrying anything                                                            |
 | `references/design-guide.md`                    | choosing visual encodings or polishing look and feel                                               |

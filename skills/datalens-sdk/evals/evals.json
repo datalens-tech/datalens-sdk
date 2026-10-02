@@ -332,6 +332,23 @@
         {"text": "Does NOT currently call attach_catalog, detach_catalog, wait, or otherwise mutate cluster membership or inspect an operation result", "type": "workflow"},
         {"text": "Does NOT use raw HTTP, hand-built API payloads, generated DTO imports, or private SDK imports", "type": "code"}
       ]
+    },
+    {
+      "id": 23,
+      "name": "trino-cluster-prepare-without-execution",
+      "prompt": "Prepare and save a Python script for Yandex Cloud DataLens that can later discover resource preset 'preset-7' and REST catalog 'analytics', create managed Trino cluster 'analytics-trino' in collection 'c-1' and cloud environment 'e-1', and wait for the returned operation. I authorize only preparing the script now. Do not run it, fetch or list anything, iterate a pager, inspect an operation or result, or create/change any cluster. Tell me where the script is saved; ask how future results should be handled before any future read, and require my fresh confirmation immediately before any future cost-bearing or disruptive mutation.",
+      "expected_output": "Saves an unexecuted Python script routed to the Trino cluster and shared Lakehouse-operation references. It uses package-root public SDK types, action-first Trino preset/catalog discovery, EntryLocation.collection('c-1'), client.create.trino_cluster(name='analytics-trino', cloud_environment_id='e-1', ...), required worker configuration, exact preset/catalog selection, a fail-closed confirmation immediately before .build(), and explicit later operation.wait() without automatic execution now. It reports the path and asks where/how future data-returning results should be handled, waiting for an answer. It does not read, iterate, mutate, poll, inspect, or contact an installation during this prepare-only request.",
+      "files": [],
+      "assertions": [
+        {"text": "Routes managed Trino cluster work to trino-clusters.md and operation polling to lakehouse-operations.md, not an ordinary Trino database connection or raw SQL recipe", "type": "workflow"},
+        {"text": "Saves an unexecuted Python script with only public package-root datalens_sdk imports, client.list.trino_resource_presets or client.get.trino_resource_preset, client.list.rest_catalogs, and exact requested preset/catalog selection; reports its path", "type": "code"},
+        {"text": "Saved code uses EntryLocation.collection('c-1'), caller-supplied cloud_environment_id='e-1', client.create.trino_cluster(name='analytics-trino', ...), required .worker(...), and terminal .build() returning a LakehouseOperation", "type": "code"},
+        {"text": "Saved code has a fresh explicit user-confirmation guard immediately before any later .build(), .start(), .stop(), .delete(), .attach_catalog(), or .detach_catalog() it includes; blank, negative, or noninteractive execution cancels", "type": "code"},
+        {"text": "Saved code may call operation.wait(timeout=600.0, poll_interval=2.0) later, but the agent does NOT launch it, poll, or inspect metadata, response, error, or timeout.last_operation now", "type": "workflow"},
+        {"text": "Asks where/how future preset, catalog, and operation results should be handled and waits for that answer before any future get/list, pager request or iteration, refresh/wait, or result inspection; a destination alone is not execution approval", "type": "workflow"},
+        {"text": "Does NOT currently fetch or list presets/catalogs/clusters, iterate a pager, use a smoke-test read, call .build() or any bound mutation, wait, or inspect any result", "type": "workflow"},
+        {"text": "Does NOT invent cloud-environment discovery, use raw HTTP or hand-built API payloads, import generated/private modules, or claim catalog detachment deletes the REST catalog", "type": "code"}
+      ]
     }
   ]
 }
