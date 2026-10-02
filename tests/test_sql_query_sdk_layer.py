@@ -21,6 +21,7 @@ from datalens_sdk.api.workbook import WorkbookAPI
 from datalens_sdk.converter.sql_query import SqlQueryConverter, SqlQueryDtoModule
 from datalens_sdk.domain.connection import Connection
 from datalens_sdk.domain.entry_location import EntryLocation
+from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
 from datalens_sdk.domain.ports import SqlQueryOperations
 from datalens_sdk.domain.specs.sql_query import SqlQueryCreateSpec, SqlQueryUpdateSpec
 from datalens_sdk.domain.sql_query import (
@@ -51,15 +52,18 @@ from datalens_sdk.http import DataLensHTTPClient
 
 
 class RecordedTransport:
-    def __init__(self, routes: dict[str, httpx.Response]) -> None:
+    def __init__(self, routes: dict[str, httpx.Response | list[httpx.Response]]) -> None:
         self.requests: list[httpx.Request] = []
-        self._routes = dict(routes)
+        self._routes = {
+            path: responses if isinstance(responses, list) else [responses] for path, responses in routes.items()
+        }
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
-        response = self._routes.pop(request.url.path, None)
-        if response is None:
+        responses = self._routes.get(request.url.path)
+        if not responses:
             return httpx.Response(404, json={"message": f"Unexpected {request.url.path}"})
+        response = responses.pop(0)
         response.request = request
         return response
 
@@ -152,7 +156,14 @@ def _navigation_entry(entry_id: str, name: str) -> dict[str, object]:
     return {"entryId": entry_id, "scope": "sql_query", "type": "sql_query", "key": "", "name": name}
 
 
-def test_yc_sql_query_actions_create_and_get_bound_queries() -> None:
+def test_yc_sql_and_lakehouse_actions_dispatch_without_metadata_tags(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    installations = client_module._load_installations("datalens_sdk._generated")
+    installations["yacloud"]["namespaces"] = [
+        name for name in installations["yacloud"]["namespaces"] if name not in {"sql_queries", "lakehouse_operations"}
+    ]
+    monkeypatch.setattr(client_module, "_load_installations", lambda package: installations)
     recorder = RecordedTransport(
         {
             "/rpc/createSqlQuery": httpx.Response(200, json={"entry": _sql_query_entry()}),
@@ -160,6 +171,10 @@ def test_yc_sql_query_actions_create_and_get_bound_queries() -> None:
             "/rpc/getEntries": httpx.Response(200, json={"entries": [_navigation_entry("query-1", "Saved revenue")]}),
             "/rpc/deleteSqlQuery": httpx.Response(200, json={}),
             "/rpc/runSqlQuery": httpx.Response(200, json=_sql_query_run_result()),
+            "/rpc/getLakehouseOperation": [
+                httpx.Response(200, json={"id": "operation-1", "done": False, "metadata": {}}),
+                httpx.Response(200, json={"id": "operation-1", "done": True, "metadata": {"phase": "done"}}),
+            ],
         }
     )
     client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
@@ -177,6 +192,23 @@ def test_yc_sql_query_actions_create_and_get_bound_queries() -> None:
         assert loaded.name == "Saved revenue"
         assert loaded.run().status == "partial_success"
         created.delete()
+        operation = client.get.lakehouse_operation(by_id="operation-1")
+        refreshed = operation.refresh()
+
+    assert operation == LakehouseOperation(
+        id="operation-1",
+        done=False,
+        metadata={},
+        raw={"id": "operation-1", "done": False, "metadata": {}},
+    )
+    assert refreshed == LakehouseOperation(
+        id="operation-1",
+        done=True,
+        metadata={"phase": "done"},
+        raw={"id": "operation-1", "done": True, "metadata": {"phase": "done"}},
+    )
+    assert refreshed is not operation
+    assert recorder.bodies("/rpc/getLakehouseOperation") == [{"operationId": "operation-1"}] * 2
 
     assert recorder.bodies("/rpc/createSqlQuery") == [
         {

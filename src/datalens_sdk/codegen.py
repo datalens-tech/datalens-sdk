@@ -280,6 +280,8 @@ class RpcNamespaceConfig(TypedDict):
     tag: str
     namespace: str
     operation_name_overrides: NotRequired[dict[str, str]]
+    installations: NotRequired[tuple[str, ...]]
+    alias_only_read: NotRequired[bool]
 
 
 class RpcOperationMeta(TypedDict):
@@ -299,9 +301,15 @@ class RpcNamespaceContractMeta(TypedDict):
     operations: dict[str, RpcOperationMeta]
     roots: list[str]
     schemas: dict[str, JsonValue]
+    alias_only_read: bool
 
 
-RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (RpcNamespaceConfig(tag="SqlQueries", namespace="sql_queries"),)
+RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (
+    RpcNamespaceConfig(tag="SqlQueries", namespace="sql_queries"),
+    RpcNamespaceConfig(
+        tag="LakehouseOperations", namespace="lakehouse_operations", installations=("yacloud",), alias_only_read=True
+    ),
+)
 
 
 class InstallationMetadata(TypedDict):
@@ -1356,6 +1364,7 @@ def build_rpc_namespace_contract_meta(
         "operations": dict(sorted(operations.items())),
         "roots": sorted(root_contexts),
         "schemas": dict(sorted(normalized_schemas.items())),
+        "alias_only_read": config.get("alias_only_read", False),
     }
 
 
@@ -2681,7 +2690,12 @@ def build_metadata(
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
-        installation_rpc_contracts = build_rpc_namespace_contracts(spec, configs=configs)
+        installation_rpc_contracts = build_rpc_namespace_contracts(
+            spec,
+            configs=(
+                config for config in configs if "installations" not in config or installation in config["installations"]
+            ),
+        )
         for namespace, contract in installation_rpc_contracts.items():
             previous_rpc = rpc_namespace_contracts.get(namespace)
             if previous_rpc is not None and previous_rpc[1] != contract:
@@ -2868,6 +2882,7 @@ class _PydanticSchemaEmitter:
         payload_methods: Literal["none", "roots", "recursive"] = "none",
         strict_write_extra: bool = False,
         empty_object_models: bool = False,
+        alias_only_read_schemas: frozenset[str] = frozenset(),
     ) -> None:
         self._schemas = schemas
         self._read = read
@@ -2883,6 +2898,7 @@ class _PydanticSchemaEmitter:
         self._payload_methods = payload_methods
         self._strict_write_extra = strict_write_extra
         self._empty_object_models = empty_object_models
+        self._alias_only_read_schemas = alias_only_read_schemas
         self._payload_schemas: set[str] = set()
         self._payload_paths: set[tuple[str, ...]] = set()
         self._root_level_paths: set[tuple[str, ...]] = set()
@@ -3364,7 +3380,10 @@ class _PydanticSchemaEmitter:
 
         extra = self._object_extra(schema)
         self._lines.append(f"class {name}(BaseModel):")
-        self._lines.append(f"    model_config = ConfigDict(extra={extra!r}, populate_by_name=True, strict=True)")
+        populate_by_name = not (self._read and path[0] in self._alias_only_read_schemas)
+        self._lines.append(
+            f"    model_config = ConfigDict(extra={extra!r}, populate_by_name={populate_by_name!r}, strict=True)"
+        )
         self._lines.append("")
         if not fields:
             self._lines.append("    pass")
@@ -4472,6 +4491,7 @@ def _emit_rpc_namespace_dto(
     schemas: dict[str, JsonValue] = {}
     request_roots: set[str] = set()
     result_roots: set[str] = set()
+    alias_only_read_schemas: set[str] = set()
     for namespace, contract in sorted(contracts.items()):
         for name, schema in contract["schemas"].items():
             previous = schemas.get(name)
@@ -4481,6 +4501,14 @@ def _emit_rpc_namespace_dto(
         for operation in contract["operations"].values():
             request_roots.add(operation["request_schema"])
             result_roots.add(operation["result_schema"])
+            if contract["alias_only_read"]:
+                queue = [operation["result_schema"]]
+                while queue:
+                    schema_name = queue.pop()
+                    if schema_name in alias_only_read_schemas:
+                        continue
+                    alias_only_read_schemas.add(schema_name)
+                    queue.extend(_schema_refs(contract["schemas"][schema_name]))
     request_emitter = _PydanticSchemaEmitter(
         schemas,
         read=False,
@@ -4495,6 +4523,7 @@ def _emit_rpc_namespace_dto(
         read=True,
         contract="tagged RPC",
         empty_object_models=True,
+        alias_only_read_schemas=frozenset(alias_only_read_schemas),
     )
     response_models = response_emitter.emit(result_roots)
     collisions = request_emitter._emitted_components.keys() & response_emitter._emitted_components.keys()

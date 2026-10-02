@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
 
 
 @dataclass(slots=True)
@@ -25,6 +29,26 @@ class DataLensValidationError(DataLensError, ValueError):
 
 class DataLensConfigurationError(DataLensError):
     """The client is missing configuration required for an operation."""
+
+
+class DataLensOperationTimeoutError(DataLensError, TimeoutError):
+    """A Lakehouse operation remained pending past the local polling deadline."""
+
+    operation_id: str
+    timeout: float
+    last_operation: LakehouseOperation
+
+    def __init__(
+        self,
+        *,
+        operation_id: str,
+        timeout: float,
+        last_operation: LakehouseOperation,
+    ) -> None:
+        self.operation_id = operation_id
+        self.timeout = timeout
+        self.last_operation = last_operation
+        super().__init__(f"Lakehouse operation {operation_id!r} did not finish within {timeout} seconds")
 
 
 class NotSupportedError(DataLensError, AttributeError):

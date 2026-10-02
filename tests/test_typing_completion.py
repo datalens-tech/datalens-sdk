@@ -17,6 +17,7 @@ from datalens_sdk import (
     DashboardTabView,
     DataLensClientEnterprise,
     DataLensClientYC,
+    DataLensOperationTimeoutError,
     Dataset,
     DatasetData,
     DatasetDataFilter,
@@ -38,6 +39,9 @@ from datalens_sdk import (
     HtmlPageCreate,
     HtmlPageUpdate,
     JsonValue,
+    LakehouseOperation,
+    LakehouseOperationError,
+    LakehouseTimestamp,
     License,
     Page,
     Pager,
@@ -116,13 +120,16 @@ from datalens_sdk._generated.builders.yacloud import (
 from datalens_sdk.client import (
     CreateNamespace,
     DashboardCreateFactory,
+    DataLensClientBase,
     DataNamespace,
     DatasetCreateFactory,
     GetNamespace,
     LicensesNamespace,
+    ListNamespace,
     NavigationNamespace,
     YCCreateNamespace,
     YCGetNamespace,
+    YCListNamespace,
 )
 from datalens_sdk.domain import (
     Connection,
@@ -708,6 +715,7 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
     )
     assert_type(client.create.dataset, DatasetCreateFactory)
     assert_type(client.get, YCGetNamespace)
+    assert_type(client.list, YCListNamespace)
     assert_type(client.data, DataNamespace)
     assert_type(
         client.data.get_dataset_data(
@@ -827,6 +835,7 @@ def test_enterprise_client_namespaces_are_visible_to_static_tools() -> None:
     )
     assert_type(client.create.connection, EnterpriseConnectionCreateFactory)
     assert_type(client.get, GetNamespace)
+    assert_type(client.list, ListNamespace)
     assert_type(
         client.raw.create.connection(
             response_snapshot={"id": "source", "type": "postgres", "name": "Source"},
@@ -881,6 +890,26 @@ def test_sql_query_builders_parameters_and_run_results_are_visible_to_static_too
             else:
                 assert_type(statement, SqlQueryStatementError)
                 assert_type(statement.database_message, str | None)
+
+
+def test_lakehouse_operation_surface_is_visible_to_static_tools() -> None:
+    client = DataLensClientYC(auth=None, transport=_transport())
+    base_client: DataLensClientBase = client
+    assert_type(base_client.list, ListNamespace)
+    if TYPE_CHECKING:
+        operation = client.get.lakehouse_operation(by_id="operation-1")
+        assert_type(operation, LakehouseOperation)
+        assert_type(operation.refresh(), LakehouseOperation)
+        assert_type(operation.wait(timeout=None, poll_interval=1.0), LakehouseOperation)
+        assert_type(operation.created_at, LakehouseTimestamp | None)
+        assert_type(operation.modified_at, LakehouseTimestamp | None)
+        assert_type(operation.error, LakehouseOperationError | None)
+        assert_type(LakehouseTimestamp(seconds="0", nanos=0).seconds, str)
+        assert_type(LakehouseTimestamp(seconds="0", nanos=0).nanos, int | float | None)
+        assert_type(LakehouseOperationError(code=0, message="error").code, int | float)
+        assert_type(LakehouseOperationError(code=0, message="error").details, tuple[object, ...])
+        timeout_error = DataLensOperationTimeoutError(operation_id="operation-1", timeout=1.0, last_operation=operation)
+        assert_type(timeout_error.last_operation, LakehouseOperation)
 
 
 def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> None:
