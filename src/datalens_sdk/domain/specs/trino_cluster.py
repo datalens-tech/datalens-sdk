@@ -19,3 +19,4 @@ class TrinoClusterCreateSpec:
     description: str | None
     labels: Mapping[str, str] | None
     trino_version: str | None
+    catalog_ids: tuple[str, ...] | None = None

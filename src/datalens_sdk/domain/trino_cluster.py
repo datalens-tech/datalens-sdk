@@ -13,6 +13,7 @@ from datalens_sdk.domain.entry_location import (
 )
 from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
 from datalens_sdk.domain.ports import TrinoClusterOperations
+from datalens_sdk.domain.rest_catalog import RestCatalog
 from datalens_sdk.domain.specs.trino_cluster import TrinoClusterCreateSpec
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
@@ -27,6 +28,25 @@ TrinoClusterStatus: TypeAlias = Literal[
     "STARTING",
     "UPDATING",
 ]
+
+
+def _catalog_id(
+    catalog: RestCatalog | str,
+    *,
+    installation: str,
+    cloud_environment_id: str | None = None,
+) -> str:
+    if isinstance(catalog, RestCatalog):
+        if not isinstance(catalog.id, str) or not catalog.id:
+            raise DataLensValidationError("catalog id must be a non-empty string")
+        if not catalog.installation or catalog.installation != installation:
+            raise DataLensValidationError("catalog installation does not match the client")
+        if cloud_environment_id is not None and catalog.cloud_environment_id != cloud_environment_id:
+            raise DataLensValidationError("catalog cloud_environment_id does not match the cluster")
+        return catalog.id
+    if not isinstance(catalog, str) or not catalog:
+        raise DataLensValidationError("catalog must be a non-empty ID or RestCatalog")
+    return catalog
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,6 +130,20 @@ class TrinoCluster:
             raise DataLensValidationError("Trino cluster id must be a non-empty string")
         return self._operations.delete_trino_cluster(self.id)
 
+    def attach_catalog(self, catalog: RestCatalog | str) -> LakehouseOperation:
+        if self._operations is None:
+            raise DataLensConfigurationError("Trino cluster is not bound to client operations")
+        if not isinstance(self.cluster_id, str) or not self.cluster_id:
+            raise DataLensValidationError("Trino cluster cluster_id must be a non-empty string")
+        return self._operations.attach_trino_cluster_catalog(self, catalog)
+
+    def detach_catalog(self, catalog: RestCatalog | str) -> LakehouseOperation:
+        if self._operations is None:
+            raise DataLensConfigurationError("Trino cluster is not bound to client operations")
+        if not isinstance(self.cluster_id, str) or not self.cluster_id:
+            raise DataLensValidationError("Trino cluster cluster_id must be a non-empty string")
+        return self._operations.detach_trino_cluster_catalog(self, catalog)
+
 
 @dataclass(frozen=True, slots=True)
 class TrinoResourcePreset:
@@ -151,6 +185,7 @@ class TrinoClusterCreate:
         self._description: str | None = None
         self._labels: Mapping[str, str] | None = None
         self._trino_version: str | None = None
+        self._catalog_ids: tuple[str, ...] | None = None
 
     def worker(
         self,
@@ -199,6 +234,15 @@ class TrinoClusterCreate:
         self._trino_version = value
         return self
 
+    def catalogs(self, values: Sequence[RestCatalog | str]) -> Self:
+        if isinstance(values, (str, bytes)) or not isinstance(values, Sequence):
+            raise DataLensValidationError("catalogs must be a sequence of catalog references")
+        self._catalog_ids = tuple(
+            _catalog_id(value, installation=self._installation, cloud_environment_id=self._cloud_environment_id)
+            for value in values
+        )
+        return self
+
     def to_spec(self) -> TrinoClusterCreateSpec:
         if self._worker is None:
             raise DataLensValidationError("Trino cluster creation requires worker configuration")
@@ -210,6 +254,7 @@ class TrinoClusterCreate:
             description=self._description,
             labels=None if self._labels is None else dict(self._labels),
             trino_version=self._trino_version,
+            catalog_ids=self._catalog_ids,
         )
 
     def build(self) -> LakehouseOperation:
@@ -225,12 +270,14 @@ class TrinoClusterListOptions:
     filters: tuple[str, ...] = ()
     page_size: int = 100
     page_token: str | None = None
+    catalog_id: str | None = None
 
     @classmethod
     def create(
         cls,
         *,
         installation: str,
+        catalog: RestCatalog | str | None = None,
         collection: EntryLocation | str | None = None,
         filters: Sequence[str] = (),
         page_size: int = 100,
@@ -254,6 +301,7 @@ class TrinoClusterListOptions:
         if isinstance(filters, (str, bytes)) or not isinstance(filters, Sequence):
             raise DataLensValidationError("filters must be a sequence of strings, not a scalar string")
         return cls(
+            catalog_id=None if catalog is None else _catalog_id(catalog, installation=installation),
             collection_id=collection_id,
             filters=tuple(filters),
             page_size=page_size,

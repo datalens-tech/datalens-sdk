@@ -20,6 +20,7 @@ from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
 from datalens_sdk.domain.navigation import Pager
 from datalens_sdk.domain.ports import TrinoClusterOperations
+from datalens_sdk.domain.rest_catalog import RestCatalog, RestCatalogBucket, RestCatalogBucketSettings
 from datalens_sdk.domain.trino_cluster import (
     TrinoAutoScalePolicy,
     TrinoCatalogRef,
@@ -170,6 +171,12 @@ class RecordingTrinoLifecycleOperations:
         self.calls.append(("delete", trino_cluster_id))
         return LakehouseOperation(id="operation-4", done=False, metadata={})
 
+    def attach_trino_cluster_catalog(self, cluster: TrinoCluster, catalog: RestCatalog | str) -> LakehouseOperation:
+        raise AssertionError("creation and lifecycle must not attach catalogs")
+
+    def detach_trino_cluster_catalog(self, cluster: TrinoCluster, catalog: RestCatalog | str) -> LakehouseOperation:
+        raise AssertionError("creation and lifecycle must not detach catalogs")
+
     def get_trino_cluster(self, trino_cluster_id: str) -> TrinoCluster:
         raise AssertionError("creation and lifecycle must not fetch clusters")
 
@@ -195,6 +202,32 @@ def _create_builder(
         location=location if location is not None else EntryLocation.collection("collection-1"),
         cloud_environment_id=cloud_environment_id,
         operations=operations,
+    )
+
+
+def _catalog_ref(
+    *,
+    catalog_id: str = "catalog-1",
+    installation: str = "yacloud",
+    cloud_environment_id: str = "env-1",
+) -> RestCatalog:
+    return RestCatalog(
+        id=catalog_id,
+        installation=installation,
+        organization_id="organization-1",
+        tenant_id="tenant-1",
+        cloud_environment_id=cloud_environment_id,
+        name="Analytics catalog",
+        description="",
+        created_by_id="user-1",
+        bucket=RestCatalogBucket(
+            settings=RestCatalogBucketSettings(storage_class="standard", max_size="100", alias="analytics")
+        ),
+        labels={},
+        permissions=None,
+        created_at=None,
+        updated_at=None,
+        raw={},
     )
 
 
@@ -365,6 +398,257 @@ def test_trino_create_distinguishes_omitted_and_explicit_empty_optional_values()
     assert second["description"] == ""
     assert second["labels"] == {}
     assert second["trinoVersion"] == ""
+
+
+def test_trino_create_catalogs_distinguish_omission_empty_and_replacement() -> None:
+    recorder = RecordedTrinoTransport(
+        *(httpx.Response(200, json={"id": f"operation-{index}", "done": False, "metadata": {}}) for index in range(3))
+    )
+    client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handle))
+    with client:
+        client.create.trino_cluster(
+            name="analytics-trino",
+            location=EntryLocation.collection("collection-1"),
+            cloud_environment_id="env-1",
+        ).worker(resource_preset="preset-1", min_count=1, max_count=8).build()
+        (
+            client.create.trino_cluster(
+                name="analytics-trino",
+                location=EntryLocation.collection("collection-1"),
+                cloud_environment_id="env-1",
+            )
+            .worker(resource_preset="preset-1", min_count=1, max_count=8)
+            .catalogs(())
+            .build()
+        )
+        (
+            client.create.trino_cluster(
+                name="analytics-trino",
+                location=EntryLocation.collection("collection-1"),
+                cloud_environment_id="env-1",
+            )
+            .worker(resource_preset="preset-1", min_count=1, max_count=8)
+            .catalogs(["old-catalog"])
+            .catalogs([_catalog_ref(), "catalog-2"])
+            .build()
+        )
+
+    base_payload = {
+        "collectionId": "collection-1",
+        "cloudEnvironmentId": "env-1",
+        "name": "analytics-trino",
+        "workerConfig": {
+            "resources": {"resourcePresetId": "preset-1"},
+            "scalePolicy": {"autoScale": {"minCount": "1", "maxCount": "8"}},
+        },
+    }
+    assert recorder.bodies() == [
+        base_payload,
+        {**base_payload, "catalogsConfig": []},
+        {**base_payload, "catalogsConfig": [{"catalogId": "catalog-1"}, {"catalogId": "catalog-2"}]},
+    ]
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        "",
+        _catalog_ref(catalog_id=""),
+        _catalog_ref(installation="enterprise"),
+        _catalog_ref(installation=""),
+        _catalog_ref(cloud_environment_id="other-env"),
+    ],
+    ids=["empty-id", "model-empty-id", "foreign-installation", "missing-installation", "wrong-environment"],
+)
+def test_trino_create_catalogs_reject_invalid_references_before_http(reference: RestCatalog | str) -> None:
+    recorder = RecordedTrinoTransport()
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://trino.test",
+        transport=httpx.MockTransport(recorder.handle),
+    ) as http_client:
+        builder = _create_builder(operations=_service(http_client)).worker(
+            resource_preset="preset-1", min_count=1, max_count=8
+        )
+        with pytest.raises(DataLensValidationError):
+            builder.catalogs([reference])
+    assert recorder.requests == []
+
+
+def test_trino_create_catalogs_reject_scalar_string_before_http() -> None:
+    recorder = RecordedTrinoTransport()
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://trino.test",
+        transport=httpx.MockTransport(recorder.handle),
+    ) as http_client:
+        builder = _create_builder(operations=_service(http_client)).worker(
+            resource_preset="preset-1", min_count=1, max_count=8
+        )
+        with pytest.raises(DataLensValidationError):
+            builder.catalogs(cast(list[str], "catalog-1"))
+    assert recorder.requests == []
+
+
+def test_trino_list_catalog_filter_is_lazy_and_preserves_page_resumption() -> None:
+    recorder = RecordedTrinoTransport(
+        *(httpx.Response(200, json={"clusters": [], "nextPageToken": ""}) for _ in range(3))
+    )
+    client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handle))
+    with client:
+        by_model = client.list.trino_clusters(catalog=_catalog_ref(), page_token="resume")
+        by_id = client.list.trino_clusters(catalog="catalog-2")
+        without_catalog = client.list.trino_clusters(catalog=None)
+        assert recorder.requests == []
+        assert next(by_model.pages()).items == ()
+        assert next(by_id.pages()).items == ()
+        assert next(without_catalog.pages()).items == ()
+
+    assert recorder.bodies() == [
+        {"catalogId": "catalog-1", "pageSize": 100, "pageToken": "resume"},
+        {"catalogId": "catalog-2", "pageSize": 100},
+        {"pageSize": 100},
+    ]
+
+
+@pytest.mark.parametrize(
+    "reference",
+    ["", _catalog_ref(catalog_id=""), _catalog_ref(installation="enterprise"), _catalog_ref(installation="")],
+    ids=["empty-id", "model-empty-id", "foreign-installation", "missing-installation"],
+)
+def test_trino_list_catalog_filter_rejects_invalid_references_before_http(reference: RestCatalog | str) -> None:
+    recorder = RecordedTrinoTransport()
+    client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handle))
+    with client, pytest.raises(DataLensValidationError):
+        client.list.trino_clusters(catalog=reference)
+    assert recorder.requests == []
+
+
+def test_trino_attach_and_detach_use_distinct_payloads_and_bind_operations() -> None:
+    pending = {"id": "operation-1", "done": False, "metadata": {}}
+    recorder = RecordedTrinoTransport(
+        httpx.Response(200, json=_cluster_response()),
+        httpx.Response(200, json=pending),
+        httpx.Response(200, json=pending),
+        httpx.Response(200, json={**pending, "done": True}),
+    )
+    client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handle))
+    with client:
+        cluster = client.get.trino_cluster(by_id="trino-1")
+        attached = cluster.attach_catalog(_catalog_ref())
+        detached = cluster.detach_catalog("catalog-2")
+        assert (attached.id, attached.done, detached.id, detached.done) == ("operation-1", False, "operation-1", False)
+        assert len(recorder.requests) == 3
+        assert attached.refresh().done is True
+
+    assert [request.url.path for request in recorder.requests] == [
+        "/rpc/getTrinoCluster",
+        "/rpc/addTrinoClusterCatalog",
+        "/rpc/deleteTrinoClusterCatalog",
+        "/rpc/getLakehouseOperation",
+    ]
+    assert recorder.bodies() == [
+        {"id": "trino-1"},
+        {"clusterId": "managed-2", "catalog": {"catalogId": "catalog-1"}},
+        {"clusterId": "managed-2", "catalogId": "catalog-2"},
+        {"operationId": "operation-1"},
+    ]
+
+
+@pytest.mark.parametrize("method", ["attach_catalog", "detach_catalog"])
+@pytest.mark.parametrize(
+    "reference",
+    [
+        "",
+        _catalog_ref(catalog_id=""),
+        _catalog_ref(installation="enterprise"),
+        _catalog_ref(installation=""),
+        _catalog_ref(cloud_environment_id="other-env"),
+    ],
+    ids=["empty-id", "model-empty-id", "foreign-installation", "missing-installation", "wrong-environment"],
+)
+def test_trino_catalog_mutations_reject_invalid_references_before_http(
+    method: str, reference: RestCatalog | str
+) -> None:
+    recorder = RecordedTrinoTransport()
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://trino.test",
+        transport=httpx.MockTransport(recorder.handle),
+    ) as http_client:
+        service = _service(http_client)
+        cluster = TrinoClusterConverter.to_cluster(
+            _cluster_response(), installation="yacloud", operations=service, operation="getTrinoCluster"
+        )
+        with pytest.raises(DataLensValidationError):
+            getattr(cluster, method)(reference)
+    assert recorder.requests == []
+
+
+@pytest.mark.parametrize("method", ["attach_catalog", "detach_catalog"])
+def test_trino_catalog_mutations_reject_missing_cluster_id_and_unbound_cluster(method: str) -> None:
+    recorder = RecordedTrinoTransport()
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://trino.test",
+        transport=httpx.MockTransport(recorder.handle),
+    ) as http_client:
+        service = _service(http_client)
+        cluster = TrinoClusterConverter.to_cluster(
+            _cluster_response(), installation="yacloud", operations=service, operation="getTrinoCluster"
+        )
+        with pytest.raises(DataLensValidationError):
+            getattr(replace(cluster, cluster_id=""), method)("catalog-1")
+        with pytest.raises(DataLensConfigurationError):
+            getattr(replace(cluster, _operations=None), method)("catalog-1")
+    assert recorder.requests == []
+
+
+@pytest.mark.parametrize(
+    ("method", "route"),
+    [("attach_catalog", "/rpc/addTrinoClusterCatalog"), ("detach_catalog", "/rpc/deleteTrinoClusterCatalog")],
+)
+def test_trino_catalog_mutations_do_not_retry_transient_failures(method: str, route: str) -> None:
+    recorder = RecordedTrinoTransport(httpx.Response(503, json={"code": "UNAVAILABLE", "message": "Try again"}))
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://trino.test",
+        transport=httpx.MockTransport(recorder.handle),
+    ) as http_client:
+        service = _service(http_client)
+        cluster = TrinoClusterConverter.to_cluster(
+            _cluster_response(), installation="yacloud", operations=service, operation="getTrinoCluster"
+        )
+        with pytest.raises(DataLensAPIError) as raised:
+            getattr(cluster, method)("catalog-1")
+    assert raised.value.context.attempts == 1
+    assert [request.url.path for request in recorder.requests] == [route]
+
+
+@pytest.mark.parametrize(
+    ("method", "operation"),
+    [("attach_catalog", "addTrinoClusterCatalog"), ("detach_catalog", "deleteTrinoClusterCatalog")],
+)
+def test_trino_catalog_mutations_report_operation_specific_invalid_responses(method: str, operation: str) -> None:
+    recorder = RecordedTrinoTransport(httpx.Response(200, json={"done": False, "metadata": {}}))
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://trino.test",
+        transport=httpx.MockTransport(recorder.handle),
+    ) as http_client:
+        service = _service(http_client)
+        cluster = TrinoClusterConverter.to_cluster(
+            _cluster_response(), installation="yacloud", operations=service, operation="getTrinoCluster"
+        )
+        with pytest.raises((DTOValidationError, InvalidResponseError), match=operation):
+            getattr(cluster, method)("catalog-1")
+    assert len(recorder.requests) == 1
 
 
 @pytest.mark.parametrize(("min_count", "max_count"), [(-1, 8), (65, 8), (0, 0), (1, 65)])

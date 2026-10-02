@@ -39,7 +39,9 @@ class TrinoClusterReadDTOClass(Protocol):
 
 
 class TrinoClusterDtoModule(LakehouseOperationReadDtoModule, Protocol):
+    AddTrinoClusterCatalogArgsDTO: TrinoClusterWriteDTOClass
     CreateTrinoClusterArgsDTO: TrinoClusterWriteDTOClass
+    DeleteTrinoClusterCatalogArgsDTO: TrinoClusterWriteDTOClass
     StartTrinoClusterArgsDTO: TrinoClusterWriteDTOClass
     StopTrinoClusterArgsDTO: TrinoClusterWriteDTOClass
     DeleteTrinoClusterArgsDTO: TrinoClusterWriteDTOClass
@@ -147,6 +149,8 @@ class TrinoClusterConverter:
             payload["labels"] = dict(spec.labels)
         if spec.trino_version is not None:
             payload["trinoVersion"] = spec.trino_version
+        if spec.catalog_ids is not None:
+            payload["catalogsConfig"] = [{"catalogId": catalog_id} for catalog_id in spec.catalog_ids]
         return _dto_module(dto_module).CreateTrinoClusterArgsDTO.model_validate(payload)
 
     @staticmethod
@@ -174,6 +178,28 @@ class TrinoClusterConverter:
         return _dto_module(dto_module).DeleteTrinoClusterArgsDTO.model_validate({"id": trino_cluster_id})
 
     @staticmethod
+    def attach_catalog_payload(
+        cluster_id: str,
+        catalog_id: str,
+        *,
+        dto_module: TrinoClusterDtoModule | None = None,
+    ) -> TrinoClusterWriteDTOProtocol:
+        return _dto_module(dto_module).AddTrinoClusterCatalogArgsDTO.model_validate(
+            {"clusterId": cluster_id, "catalog": {"catalogId": catalog_id}}
+        )
+
+    @staticmethod
+    def detach_catalog_payload(
+        cluster_id: str,
+        catalog_id: str,
+        *,
+        dto_module: TrinoClusterDtoModule | None = None,
+    ) -> TrinoClusterWriteDTOProtocol:
+        return _dto_module(dto_module).DeleteTrinoClusterCatalogArgsDTO.model_validate(
+            {"clusterId": cluster_id, "catalogId": catalog_id}
+        )
+
+    @staticmethod
     def get_payload(
         trino_cluster_id: str,
         *,
@@ -189,6 +215,8 @@ class TrinoClusterConverter:
         dto_module: TrinoClusterDtoModule | None = None,
     ) -> TrinoClusterWriteDTOProtocol:
         payload: dict[str, object] = {"pageSize": options.page_size}
+        if options.catalog_id is not None:
+            payload["catalogId"] = options.catalog_id
         if options.collection_id is not None:
             payload["collectionId"] = options.collection_id
         if options.filters:

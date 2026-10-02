@@ -761,6 +761,7 @@ class YCListNamespace(ListNamespace):
     def trino_clusters(
         self,
         *,
+        catalog: RestCatalog | str | None = None,
         collection: EntryLocation | str | None = None,
         filters: Sequence[str] = (),
         page_size: int = 100,
@@ -768,6 +769,7 @@ class YCListNamespace(ListNamespace):
     ) -> Pager[TrinoCluster]:
         options = TrinoClusterListOptions.create(
             installation="yacloud",
+            catalog=catalog,
             collection=collection,
             filters=filters,
             page_size=page_size,
