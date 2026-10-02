@@ -13,14 +13,19 @@ import pytest
 from datalens_sdk import DataLensClientEnterprise, DataLensClientYC
 from datalens_sdk import client as client_module
 from datalens_sdk._generated import dto as generated_dto
+from datalens_sdk.api.lakehouse_operation import LakehouseOperationAPI, LakehouseOperationService
 from datalens_sdk.api.trino_cluster import TrinoClusterAPI, TrinoClusterService
+from datalens_sdk.converter.trino_cluster import TrinoClusterConverter
 from datalens_sdk.domain.entry_location import EntryLocation
+from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
 from datalens_sdk.domain.navigation import Pager
+from datalens_sdk.domain.ports import TrinoClusterOperations
 from datalens_sdk.domain.trino_cluster import (
     TrinoAutoScalePolicy,
     TrinoCatalogRef,
     TrinoCluster,
     TrinoClusterConfig,
+    TrinoClusterCreate,
     TrinoClusterListOptions,
     TrinoCoordinatorConfig,
     TrinoResourceConfig,
@@ -29,6 +34,7 @@ from datalens_sdk.domain.trino_cluster import (
     TrinoWorkerConfig,
 )
 from datalens_sdk.errors import (
+    DataLensAPIError,
     DataLensConfigurationError,
     DataLensValidationError,
     DTOValidationError,
@@ -77,7 +83,462 @@ class RecordedTrinoTransport:
 
 
 def _service(http_client: DataLensHTTPClient) -> TrinoClusterService:
-    return TrinoClusterService(installation="yacloud", api=TrinoClusterAPI(http_client))
+    return TrinoClusterService(
+        installation="yacloud",
+        api=TrinoClusterAPI(http_client),
+        lakehouse_operations=LakehouseOperationService(api=LakehouseOperationAPI(http_client)),
+    )
+
+
+def test_yc_trino_create_dispatches_and_returns_bound_operation(monkeypatch: pytest.MonkeyPatch) -> None:
+    original_load_installations = client_module._load_installations
+
+    def load_without_trino_namespace(generated_package: str) -> dict[str, client_module.InstallationInfo]:
+        installations = original_load_installations(generated_package)
+        installations["yacloud"]["namespaces"] = [
+            namespace for namespace in installations["yacloud"]["namespaces"] if namespace != "trino_clusters"
+        ]
+        return installations
+
+    monkeypatch.setattr(client_module, "_load_installations", load_without_trino_namespace)
+    recorder = RecordedTrinoTransport(
+        httpx.Response(200, json={"id": "operation-1", "done": False, "metadata": {}}),
+        httpx.Response(200, json={"id": "operation-1", "done": True, "metadata": {}}),
+    )
+    client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handle))
+    with client:
+        operation = (
+            client.create.trino_cluster(
+                name="analytics-trino",
+                location=EntryLocation.collection("collection-1"),
+                cloud_environment_id="env-1",
+            )
+            .worker(resource_preset="preset-1", min_count=1, max_count=8)
+            .build()
+        )
+        assert operation.id == "operation-1"
+        assert operation.done is False
+        assert operation.refresh().done is True
+
+    assert [request.url.path for request in recorder.requests] == [
+        "/rpc/createTrinoCluster",
+        "/rpc/getLakehouseOperation",
+    ]
+    assert recorder.bodies() == [
+        {
+            "collectionId": "collection-1",
+            "cloudEnvironmentId": "env-1",
+            "name": "analytics-trino",
+            "workerConfig": {
+                "resources": {"resourcePresetId": "preset-1"},
+                "scalePolicy": {"autoScale": {"minCount": "1", "maxCount": "8"}},
+            },
+        },
+        {"operationId": "operation-1"},
+    ]
+
+
+def test_yc_unknown_create_action_raises_plain_attribute_error_without_http() -> None:
+    recorder = RecordedTrinoTransport()
+    client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handle))
+
+    action = "unrelated_action"
+    with client, pytest.raises(AttributeError) as raised:
+        getattr(client.create, action)
+
+    assert type(raised.value) is AttributeError
+    assert recorder.requests == []
+
+
+class RecordingTrinoLifecycleOperations:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []
+
+    def create_trino_cluster(self, builder: TrinoClusterCreate) -> LakehouseOperation:
+        self.calls.append(("create", builder.to_spec().name))
+        return LakehouseOperation(id="operation-1", done=False, metadata={})
+
+    def start_trino_cluster(self, cluster_id: str) -> LakehouseOperation:
+        self.calls.append(("start", cluster_id))
+        return LakehouseOperation(id="operation-2", done=False, metadata={})
+
+    def stop_trino_cluster(self, cluster_id: str) -> LakehouseOperation:
+        self.calls.append(("stop", cluster_id))
+        return LakehouseOperation(id="operation-3", done=False, metadata={})
+
+    def delete_trino_cluster(self, trino_cluster_id: str) -> LakehouseOperation:
+        self.calls.append(("delete", trino_cluster_id))
+        return LakehouseOperation(id="operation-4", done=False, metadata={})
+
+    def get_trino_cluster(self, trino_cluster_id: str) -> TrinoCluster:
+        raise AssertionError("creation and lifecycle must not fetch clusters")
+
+    def list_trino_clusters(self, options: TrinoClusterListOptions) -> Pager[TrinoCluster]:
+        raise AssertionError("creation and lifecycle must not list clusters")
+
+    def get_trino_resource_preset(self, resource_preset_id: str, *, cloud_environment_id: str) -> TrinoResourcePreset:
+        raise AssertionError("creation and lifecycle must not fetch presets")
+
+    def list_trino_resource_presets(self, options: TrinoResourcePresetListOptions) -> Pager[TrinoResourcePreset]:
+        raise AssertionError("creation and lifecycle must not list presets")
+
+
+def _create_builder(
+    *,
+    operations: TrinoClusterOperations | None = None,
+    location: EntryLocation | None = None,
+    cloud_environment_id: str = "env-1",
+) -> TrinoClusterCreate:
+    return TrinoClusterCreate(
+        installation="yacloud",
+        name="analytics-trino",
+        location=location if location is not None else EntryLocation.collection("collection-1"),
+        cloud_environment_id=cloud_environment_id,
+        operations=operations,
+    )
+
+
+def test_trino_create_requires_collection_location_environment_and_worker() -> None:
+    class ForeignCollection(EntryLocation):
+        installation = "enterprise"
+
+        def _as_entry_location(self) -> EntryLocation:
+            return EntryLocation.collection("collection-1")
+
+    operations = RecordingTrinoLifecycleOperations()
+    for location in (EntryLocation.path("/folder"), EntryLocation.workbook("workbook-1")):
+        with pytest.raises(DataLensValidationError):
+            _create_builder(operations=operations, location=location)
+    with pytest.raises(DataLensValidationError):
+        _create_builder(operations=operations, location=cast(EntryLocation, ""))
+    with pytest.raises(NotSupportedError):
+        _create_builder(operations=operations, location=ForeignCollection())
+    with pytest.raises(DataLensValidationError, match="cloud_environment_id"):
+        _create_builder(operations=operations, cloud_environment_id="")
+    with pytest.raises(DataLensValidationError, match="worker"):
+        _create_builder(operations=operations).build()
+    assert operations.calls == []
+
+
+def test_trino_create_rejects_malformed_collection_reference_before_operations() -> None:
+    operations = RecordingTrinoLifecycleOperations()
+    malformed = EntryLocation.collection("collection-1")
+    object.__setattr__(malformed, "value", "")
+
+    with pytest.raises(DataLensValidationError, match="collection"):
+        _create_builder(operations=operations, location=malformed)
+    assert operations.calls == []
+
+
+def test_trino_create_accepts_preset_or_id_and_normalizes_worker() -> None:
+    preset = TrinoResourcePreset(
+        id="preset-1", installation="yacloud", cloud_environment_id="env-1", cores="2", memory="8 GiB", raw={}
+    )
+    expected = TrinoWorkerConfig(
+        resources=TrinoResourceConfig(resource_preset_id="preset-1"),
+        scale_policy=TrinoAutoScalePolicy(min_count=1, max_count=8),
+    )
+    for reference in ("preset-1", preset):
+        operations = RecordingTrinoLifecycleOperations()
+        builder = _create_builder(operations=operations).worker(resource_preset=reference, min_count=1, max_count=8)
+        assert builder.to_spec().worker == expected
+        assert builder.build().id == "operation-1"
+        assert operations.calls == [("create", "analytics-trino")]
+
+
+def test_trino_create_rejects_invalid_preset_provenance_and_worker_types() -> None:
+    operations = RecordingTrinoLifecycleOperations()
+    matching = TrinoResourcePreset(
+        id="preset-1", installation="yacloud", cloud_environment_id="env-1", cores="2", memory="8 GiB", raw={}
+    )
+    bad_references: tuple[object, ...] = (
+        "",
+        replace(matching, id=""),
+        replace(matching, id=cast(str, 42)),
+        replace(matching, installation="enterprise"),
+        replace(matching, cloud_environment_id="other-env"),
+        42,
+    )
+    for reference in bad_references:
+        with pytest.raises(DataLensValidationError):
+            _create_builder(operations=operations).worker(
+                resource_preset=cast(str, reference), min_count=1, max_count=8
+            )
+    for min_count, max_count in ((True, 8), (1, False), (1.5, 8), (1, "8")):
+        with pytest.raises(DataLensValidationError, match="count"):
+            _create_builder(operations=operations).worker(
+                resource_preset="preset-1", min_count=cast(int, min_count), max_count=cast(int, max_count)
+            )
+    assert operations.calls == []
+
+
+def test_trino_create_preserves_optional_omission_and_explicit_empty_values() -> None:
+    builder = _create_builder().worker(resource_preset="preset-1", min_count=0, max_count=1)
+    omitted = builder.to_spec()
+    assert (omitted.description, omitted.labels, omitted.trino_version) == (None, None, None)
+    explicit = builder.description("").labels({}).trino_version("").to_spec()
+    assert (explicit.description, explicit.labels, explicit.trino_version) == ("", {}, "")
+
+
+def test_trino_create_sends_exact_payload_and_returns_bound_operation() -> None:
+    created = {
+        "id": "operation-1",
+        "done": False,
+        "metadata": {"resource": "trino-1"},
+        "createdBy": "user-1",
+        "description": "Creating cluster",
+    }
+    refreshed = {"id": "operation-1", "done": True, "metadata": {"resource": "trino-1"}}
+    recorder = RecordedTrinoTransport(httpx.Response(200, json=created), httpx.Response(200, json=refreshed))
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://trino.test",
+        transport=httpx.MockTransport(recorder.handle),
+    ) as http_client:
+        operation = (
+            _create_builder(operations=_service(http_client))
+            .worker(resource_preset="preset-1", min_count=1, max_count=8)
+            .description("Interactive analytics cluster")
+            .labels({"team": "analytics"})
+            .trino_version("476")
+            .build()
+        )
+        assert isinstance(operation, LakehouseOperation)
+        assert operation.id == "operation-1"
+        assert operation.done is False
+        assert operation.metadata == {"resource": "trino-1"}
+        assert operation.created_by == "user-1"
+        assert operation.description == "Creating cluster"
+        assert operation.raw == created
+        assert [request.url.path for request in recorder.requests] == ["/rpc/createTrinoCluster"]
+        assert operation.refresh().done is True
+
+    assert [request.url.path for request in recorder.requests] == [
+        "/rpc/createTrinoCluster",
+        "/rpc/getLakehouseOperation",
+    ]
+    assert recorder.bodies() == [
+        {
+            "collectionId": "collection-1",
+            "cloudEnvironmentId": "env-1",
+            "name": "analytics-trino",
+            "workerConfig": {
+                "resources": {"resourcePresetId": "preset-1"},
+                "scalePolicy": {"autoScale": {"minCount": "1", "maxCount": "8"}},
+            },
+            "description": "Interactive analytics cluster",
+            "labels": {"team": "analytics"},
+            "trinoVersion": "476",
+        },
+        {"operationId": "operation-1"},
+    ]
+
+
+def test_trino_create_distinguishes_omitted_and_explicit_empty_optional_values() -> None:
+    recorder = RecordedTrinoTransport(
+        httpx.Response(200, json={"id": "operation-1", "done": False, "metadata": {}}),
+        httpx.Response(200, json={"id": "operation-2", "done": False, "metadata": {}}),
+    )
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://trino.test",
+        transport=httpx.MockTransport(recorder.handle),
+    ) as http_client:
+        service = _service(http_client)
+        _create_builder(operations=service).worker(resource_preset="preset-1", min_count=0, max_count=1).build()
+        (
+            _create_builder(operations=service)
+            .worker(resource_preset="preset-1", min_count=0, max_count=1)
+            .description("")
+            .labels({})
+            .trino_version("")
+            .build()
+        )
+
+    first, second = recorder.bodies()
+    assert isinstance(first, dict)
+    assert isinstance(second, dict)
+    for field in ("description", "labels", "trinoVersion"):
+        assert field not in first
+    assert second["description"] == ""
+    assert second["labels"] == {}
+    assert second["trinoVersion"] == ""
+
+
+@pytest.mark.parametrize(("min_count", "max_count"), [(-1, 8), (65, 8), (0, 0), (1, 65)])
+def test_trino_create_generated_dto_rejects_out_of_range_worker_counts_before_http(
+    min_count: int, max_count: int
+) -> None:
+    recorder = RecordedTrinoTransport()
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://trino.test",
+        transport=httpx.MockTransport(recorder.handle),
+    ) as http_client:
+        builder = _create_builder(operations=_service(http_client)).worker(
+            resource_preset="preset-1", min_count=min_count, max_count=max_count
+        )
+        with pytest.raises(DTOValidationError, match="createTrinoCluster"):
+            builder.build()
+    assert recorder.requests == []
+
+
+def test_yc_trino_create_empty_name_fails_generated_validation_before_http() -> None:
+    recorder = RecordedTrinoTransport()
+    client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handle))
+
+    with client:
+        builder = client.create.trino_cluster(
+            name="",
+            location=EntryLocation.collection("collection-1"),
+            cloud_environment_id="env-1",
+        ).worker(resource_preset="preset-1", min_count=1, max_count=8)
+        with pytest.raises(DTOValidationError, match="createTrinoCluster") as raised:
+            builder.build()
+
+    assert type(raised.value) is DTOValidationError
+    assert recorder.requests == []
+
+
+def test_trino_bound_lifecycle_requires_operations_and_correct_identifier() -> None:
+    cluster = TrinoCluster(
+        id="trino-1",
+        cluster_id="managed-1",
+        installation="yacloud",
+        location=EntryLocation.collection("collection-1"),
+        cloud_environment_id="env-1",
+        name="Analytics",
+        description="",
+        labels={},
+        config=TrinoClusterConfig(
+            trino_version="476",
+            catalogs=(),
+            coordinator=TrinoCoordinatorConfig(resources=TrinoResourceConfig(resource_preset_id="preset-1")),
+            worker=TrinoWorkerConfig(
+                resources=TrinoResourceConfig(resource_preset_id="preset-2"),
+                scale_policy=TrinoAutoScalePolicy(min_count=1, max_count=8),
+            ),
+        ),
+        health="ALIVE",
+        status="RUNNING",
+        coordinator_url="",
+        entry_id="",
+        raw={},
+    )
+    for action in (cluster.start, cluster.stop, cluster.delete):
+        with pytest.raises(DataLensConfigurationError):
+            action()
+
+    operations = RecordingTrinoLifecycleOperations()
+    bound = replace(cluster, _operations=operations)
+    for action in (replace(bound, cluster_id="").start, replace(bound, cluster_id="").stop):
+        with pytest.raises(DataLensValidationError):
+            action()
+    with pytest.raises(DataLensValidationError):
+        replace(bound, id="").delete()
+    assert [bound.start().id, bound.stop().id, bound.delete().id] == ["operation-2", "operation-3", "operation-4"]
+    assert operations.calls == [("start", "managed-1"), ("stop", "managed-1"), ("delete", "trino-1")]
+
+
+def test_trino_start_stop_and_delete_use_distinct_identifiers_and_bound_operations() -> None:
+    operation_response = {"id": "operation-1", "done": False, "metadata": {"resource": "trino-1"}}
+    recorder = RecordedTrinoTransport(
+        *(httpx.Response(200, json=operation_response) for _ in range(3)),
+        httpx.Response(200, json={**operation_response, "done": True}),
+    )
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://trino.test",
+        transport=httpx.MockTransport(recorder.handle),
+    ) as http_client:
+        service = _service(http_client)
+        cluster = TrinoClusterConverter.to_cluster(
+            _cluster_response(),
+            installation="yacloud",
+            operations=service,
+            operation="getTrinoCluster",
+        )
+        operations = (cluster.start(), cluster.stop(), cluster.delete())
+        assert all(isinstance(operation, LakehouseOperation) and operation.done is False for operation in operations)
+        assert [request.url.path for request in recorder.requests] == [
+            "/rpc/startTrinoCluster",
+            "/rpc/stopTrinoCluster",
+            "/rpc/deleteTrinoCluster",
+        ]
+        assert operations[0].refresh().done is True
+
+    assert [request.url.path for request in recorder.requests] == [
+        "/rpc/startTrinoCluster",
+        "/rpc/stopTrinoCluster",
+        "/rpc/deleteTrinoCluster",
+        "/rpc/getLakehouseOperation",
+    ]
+    assert recorder.bodies() == [
+        {"clusterId": "managed-2"},
+        {"clusterId": "managed-2"},
+        {"id": "trino-1"},
+        {"operationId": "operation-1"},
+    ]
+
+
+def _run_trino_mutation(service: TrinoClusterService, mutation: str) -> LakehouseOperation:
+    if mutation == "create":
+        return _create_builder(operations=service).worker(resource_preset="preset-1", min_count=1, max_count=8).build()
+    if mutation == "start":
+        return service.start_trino_cluster("managed-2")
+    if mutation == "stop":
+        return service.stop_trino_cluster("managed-2")
+    if mutation == "delete":
+        return service.delete_trino_cluster("trino-1")
+    raise AssertionError(f"unknown test mutation: {mutation}")
+
+
+@pytest.mark.parametrize("mutation", ["create", "start", "stop", "delete"])
+def test_trino_mutations_never_retry_transient_failures(mutation: str) -> None:
+    recorder = RecordedTrinoTransport(httpx.Response(503, json={"code": "UNAVAILABLE", "message": "Try again"}))
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://trino.test",
+        transport=httpx.MockTransport(recorder.handle),
+    ) as http_client:
+        service = _service(http_client)
+        with pytest.raises(DataLensAPIError) as raised:
+            _run_trino_mutation(service, mutation)
+
+    assert raised.value.context.attempts == 1
+    assert [request.url.path for request in recorder.requests] == [f"/rpc/{mutation}TrinoCluster"]
+
+
+@pytest.mark.parametrize("mutation", ["create", "start", "stop", "delete"])
+@pytest.mark.parametrize(
+    "invalid_response",
+    [
+        {"done": False, "metadata": {}},
+        {"id": "operation-1", "done": False, "metadata": {}, "createdAt": {"nanos": 0}},
+        {"id": "operation-1", "done": True, "metadata": {}, "error": {"code": 13}},
+    ],
+    ids=["missing-id", "malformed-timestamp", "malformed-error"],
+)
+def test_trino_mutations_report_operation_specific_invalid_responses(
+    mutation: str, invalid_response: dict[str, object]
+) -> None:
+    recorder = RecordedTrinoTransport(httpx.Response(200, json=invalid_response))
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://trino.test",
+        transport=httpx.MockTransport(recorder.handle),
+    ) as http_client:
+        service = _service(http_client)
+        with pytest.raises((DTOValidationError, InvalidResponseError), match=f"{mutation}TrinoCluster"):
+            _run_trino_mutation(service, mutation)
+
+    assert len(recorder.requests) == 1
 
 
 @pytest.fixture
@@ -131,7 +592,7 @@ def unsupported_trino_clients(
     )
 
 
-def test_trino_read_surface_is_yc_only() -> None:
+def test_trino_read_client_construction_and_reads_survive_required_operation_dependency() -> None:
     recorder = RecordedTrinoTransport(
         httpx.Response(200, json=_cluster_response()),
         httpx.Response(200, json={"id": "preset-1", "cores": "2", "memory": "8 GiB"}),
@@ -196,6 +657,22 @@ def test_trino_read_surface_is_yc_only_on_unsupported_installations(
         assert type(client.get) is client_module.GetNamespace
         assert type(client.list) is client_module.ListNamespace
     assert recorder.requests == []
+
+
+def test_trino_create_is_absent_on_unsupported_installations(
+    unsupported_trino_clients: tuple[
+        DataLensClientEnterprise, client_module.DataLensClientBase, RecordedTrinoTransport
+    ],
+) -> None:
+    enterprise, yateam, unsupported_recorder = unsupported_trino_clients
+    for unsupported in (enterprise, yateam):
+        with unsupported:
+            for action in ("trino_cluster", "unknown_action"):
+                with pytest.raises(AttributeError) as missing:
+                    getattr(unsupported.create, action)
+                assert type(missing.value) is AttributeError
+            assert type(unsupported.create) is client_module.CreateNamespace
+    assert unsupported_recorder.requests == []
 
 
 def test_trino_read_responses_reject_invalid_nested_values_and_ignore_extra_fields() -> None:
@@ -318,8 +795,9 @@ def test_bound_trino_cluster_refresh_requires_operations_and_public_id() -> None
     with pytest.raises(DataLensConfigurationError):
         cluster.refresh()
 
-    class RecordingOperations:
+    class RecordingOperations(RecordingTrinoLifecycleOperations):
         def __init__(self) -> None:
+            super().__init__()
             self.received_id: str | None = None
 
         def get_trino_cluster(self, trino_cluster_id: str) -> TrinoCluster:

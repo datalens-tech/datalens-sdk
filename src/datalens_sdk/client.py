@@ -113,6 +113,7 @@ from datalens_sdk.domain.rest_catalog import (
 from datalens_sdk.domain.sql_query import SqlQuery, SqlQueryCreate
 from datalens_sdk.domain.trino_cluster import (
     TrinoCluster,
+    TrinoClusterCreate,
     TrinoClusterListOptions,
     TrinoResourcePreset,
     TrinoResourcePresetListOptions,
@@ -393,6 +394,7 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
         *,
         rest_catalog_operations: RestCatalogOperations,
         sql_query_operations: SqlQueryOperations,
+        trino_cluster_operations: TrinoClusterOperations,
         installation: str,
         connection_operations: ConnectionOperations,
         dashboard_operations: DashboardOperations,
@@ -426,6 +428,7 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
         )
         self._rest_catalog_operations = rest_catalog_operations
         self._sql_query_operations = sql_query_operations
+        self._trino_cluster_operations = trino_cluster_operations
 
     def rest_catalog(
         self,
@@ -448,6 +451,21 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
             name=name,
             location=location,
             operations=self._sql_query_operations,
+        )
+
+    def trino_cluster(
+        self,
+        *,
+        name: str,
+        location: EntryLocation,
+        cloud_environment_id: str,
+    ) -> TrinoClusterCreate:
+        return TrinoClusterCreate(
+            installation=self._installation,
+            name=name,
+            location=location,
+            cloud_environment_id=cloud_environment_id,
+            operations=self._trino_cluster_operations,
         )
 
 
@@ -1208,6 +1226,7 @@ class DataLensClientYC(DataLensClientBase):
         trino_cluster_service = TrinoClusterService(
             installation=self.INSTALLATION,
             api=TrinoClusterAPI(self._http),
+            lakehouse_operations=lakehouse_operation_service,
             dto_module=cast(TrinoClusterDtoModule, dto_module),
         )
         rest_catalog_service = RestCatalogService(
@@ -1220,6 +1239,7 @@ class DataLensClientYC(DataLensClientBase):
             YCCreateNamespace(
                 rest_catalog_operations=rest_catalog_service,
                 sql_query_operations=sql_query_service,
+                trino_cluster_operations=trino_cluster_service,
                 installation=deps.installation,
                 chart_operations=deps.chart_operations,
                 collection_operations=deps.collection_operations,

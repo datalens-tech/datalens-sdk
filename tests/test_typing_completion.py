@@ -78,6 +78,7 @@ from datalens_sdk import (
     SqlQueryStatementSuccess,
     SqlQueryUpdate,
     TrinoCluster,
+    TrinoClusterCreate,
     TrinoResourcePreset,
     UILanguage,
     UITheme,
@@ -146,6 +147,7 @@ from datalens_sdk.domain import (
     RawDatasetReplace,
     SourceCreate,
 )
+from datalens_sdk.domain.dataset import SourceBuilder
 from datalens_sdk.domain.fields import FieldRef
 from datalens_sdk.domain.rest_catalog import (
     RestCatalog,
@@ -176,6 +178,37 @@ from datalens_sdk.raw import (
 
 class YaTeamStyleClient(DataLensClientBase):
     INSTALLATION = "yateam"
+
+
+def test_trino_lifecycle_surface_is_yc_only_for_static_tools() -> None:
+    client = DataLensClientYC(auth=None, transport=_transport())
+    if TYPE_CHECKING:
+        yateam = cast(YaTeamStyleClient, client)
+        enterprise = cast(DataLensClientEnterprise, client)
+        assert_type(yateam.create, CreateNamespace[object, SourceBuilder, object])
+        assert_type(
+            enterprise.create,
+            CreateNamespace[
+                EnterpriseConnectionCreateFactory,
+                EnterpriseSourceCreateFactory,
+                EnterpriseEditorChartCreateFactory,
+            ],
+        )
+        builder = client.create.trino_cluster(
+            name="analytics-trino",
+            location=EntryLocation.collection("collection-1"),
+            cloud_environment_id="env-1",
+        )
+        assert_type(builder, TrinoClusterCreate)
+        assert_type(builder.worker(resource_preset="preset-1", min_count=1, max_count=8), TrinoClusterCreate)
+        assert_type(builder.description(""), TrinoClusterCreate)
+        assert_type(builder.labels({}), TrinoClusterCreate)
+        assert_type(builder.trino_version("476"), TrinoClusterCreate)
+        assert_type(builder.build(), LakehouseOperation)
+        cluster = client.get.trino_cluster(by_id="trino-1")
+        assert_type(cluster.start(), LakehouseOperation)
+        assert_type(cluster.stop(), LakehouseOperation)
+        assert_type(cluster.delete(), LakehouseOperation)
 
 
 def test_trino_read_actions_have_yc_only_static_types() -> None:

@@ -4,12 +4,16 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Literal, TypeAlias
 
+from typing_extensions import Self
+
 from datalens_sdk.domain.entry_location import (
     EntryLocation,
     collection_id_from_location,
     resolve_entry_location,
 )
+from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
 from datalens_sdk.domain.ports import TrinoClusterOperations
+from datalens_sdk.domain.specs.trino_cluster import TrinoClusterCreateSpec
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 TrinoClusterHealth: TypeAlias = Literal["HEALTH_UNKNOWN", "ALIVE", "DEAD", "DEGRADED"]
@@ -85,6 +89,27 @@ class TrinoCluster:
             raise DataLensConfigurationError("Trino cluster is not bound to client operations")
         return self._operations.get_trino_cluster(self.id)
 
+    def start(self) -> LakehouseOperation:
+        if self._operations is None:
+            raise DataLensConfigurationError("Trino cluster is not bound to client operations")
+        if not isinstance(self.cluster_id, str) or not self.cluster_id:
+            raise DataLensValidationError("Trino cluster cluster_id must be a non-empty string")
+        return self._operations.start_trino_cluster(self.cluster_id)
+
+    def stop(self) -> LakehouseOperation:
+        if self._operations is None:
+            raise DataLensConfigurationError("Trino cluster is not bound to client operations")
+        if not isinstance(self.cluster_id, str) or not self.cluster_id:
+            raise DataLensValidationError("Trino cluster cluster_id must be a non-empty string")
+        return self._operations.stop_trino_cluster(self.cluster_id)
+
+    def delete(self) -> LakehouseOperation:
+        if self._operations is None:
+            raise DataLensConfigurationError("Trino cluster is not bound to client operations")
+        if not isinstance(self.id, str) or not self.id:
+            raise DataLensValidationError("Trino cluster id must be a non-empty string")
+        return self._operations.delete_trino_cluster(self.id)
+
 
 @dataclass(frozen=True, slots=True)
 class TrinoResourcePreset:
@@ -94,6 +119,104 @@ class TrinoResourcePreset:
     cores: str
     memory: str
     raw: Mapping[str, object]
+
+
+class TrinoClusterCreate:
+    def __init__(
+        self,
+        *,
+        installation: str,
+        name: str,
+        location: EntryLocation,
+        cloud_environment_id: str,
+        operations: TrinoClusterOperations | None = None,
+    ) -> None:
+        resolved = resolve_entry_location(
+            location=location,
+            installation=installation,
+            allowed_kinds={"collection"},
+            context="Trino cluster creation",
+        )
+        collection_id = collection_id_from_location(resolved)
+        if not isinstance(collection_id, str) or not collection_id:
+            raise DataLensValidationError("collection ID must be a non-empty string")
+        if not isinstance(cloud_environment_id, str) or not cloud_environment_id:
+            raise DataLensValidationError("cloud_environment_id must be a non-empty string")
+        self._installation = installation
+        self._name = name
+        self._location = resolved
+        self._cloud_environment_id = cloud_environment_id
+        self._operations = operations
+        self._worker: TrinoWorkerConfig | None = None
+        self._description: str | None = None
+        self._labels: Mapping[str, str] | None = None
+        self._trino_version: str | None = None
+
+    def worker(
+        self,
+        *,
+        resource_preset: TrinoResourcePreset | str,
+        min_count: int,
+        max_count: int,
+    ) -> Self:
+        if isinstance(resource_preset, TrinoResourcePreset):
+            if not isinstance(resource_preset.id, str) or not resource_preset.id:
+                raise DataLensValidationError("resource_preset id must be a non-empty string")
+            if resource_preset.installation != self._installation:
+                raise DataLensValidationError("resource_preset installation does not match the client")
+            if resource_preset.cloud_environment_id != self._cloud_environment_id:
+                raise DataLensValidationError("resource_preset cloud_environment_id does not match the cluster")
+            resource_preset_id = resource_preset.id
+        elif isinstance(resource_preset, str) and resource_preset:
+            resource_preset_id = resource_preset
+        else:
+            raise DataLensValidationError("resource_preset must be a non-empty ID or TrinoResourcePreset")
+        if type(min_count) is not int or type(max_count) is not int:
+            raise DataLensValidationError("worker min_count and max_count must be integers")
+        self._worker = TrinoWorkerConfig(
+            resources=TrinoResourceConfig(resource_preset_id=resource_preset_id),
+            scale_policy=TrinoAutoScalePolicy(min_count=min_count, max_count=max_count),
+        )
+        return self
+
+    def description(self, value: str) -> Self:
+        if not isinstance(value, str):
+            raise DataLensValidationError("description must be a string")
+        self._description = value
+        return self
+
+    def labels(self, values: Mapping[str, str]) -> Self:
+        if not isinstance(values, Mapping) or any(
+            not isinstance(key, str) or not isinstance(value, str) for key, value in values.items()
+        ):
+            raise DataLensValidationError("labels must map strings to strings")
+        self._labels = dict(values)
+        return self
+
+    def trino_version(self, value: str) -> Self:
+        if not isinstance(value, str):
+            raise DataLensValidationError("trino_version must be a string")
+        self._trino_version = value
+        return self
+
+    def to_spec(self) -> TrinoClusterCreateSpec:
+        if self._worker is None:
+            raise DataLensValidationError("Trino cluster creation requires worker configuration")
+        return TrinoClusterCreateSpec(
+            name=self._name,
+            location=self._location,
+            cloud_environment_id=self._cloud_environment_id,
+            worker=self._worker,
+            description=self._description,
+            labels=None if self._labels is None else dict(self._labels),
+            trino_version=self._trino_version,
+        )
+
+    def build(self) -> LakehouseOperation:
+        self.to_spec()
+        if self._operations is None:
+            raise DataLensConfigurationError("Trino cluster creation is not bound to client operations")
+        return self._operations.create_trino_cluster(self)
 
 
 @dataclass(frozen=True, slots=True)

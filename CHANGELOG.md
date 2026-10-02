@@ -31,6 +31,7 @@
 
 ### Added
 
+- Add Yandex Cloud Trino cluster create, start, stop, and delete support.
 - Add Yandex Cloud Trino cluster and resource preset get, list, and refresh support.
 - Add typed Yandex Cloud REST catalog listing with filtering, sorting,
   permissions, and resumable pagination.
