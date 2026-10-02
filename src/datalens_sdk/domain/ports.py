@@ -49,6 +49,12 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate
     from datalens_sdk.domain.rest_catalog import RestCatalog, RestCatalogCreate, RestCatalogListOptions
     from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
+    from datalens_sdk.domain.spark_cluster import (
+        SparkCluster,
+        SparkClusterListOptions,
+        SparkResourcePreset,
+        SparkResourcePresetListOptions,
+    )
     from datalens_sdk.domain.specs.raw_resource import (
         RawCreateSpec,
         RawReplaceSpec,
@@ -105,6 +111,19 @@ class RestCatalogOperations(Protocol):
     def create_rest_catalog(self, builder: RestCatalogCreate) -> LakehouseOperation: ...
 
     def list_rest_catalogs(self, options: RestCatalogListOptions) -> Pager[RestCatalog]: ...
+
+
+@runtime_checkable
+class SparkClusterOperations(Protocol):
+    def get_spark_cluster(self, spark_cluster_id: str) -> SparkCluster: ...
+
+    def list_spark_clusters(self, options: SparkClusterListOptions) -> Pager[SparkCluster]: ...
+
+    def get_spark_resource_preset(
+        self, resource_preset_id: str, *, cloud_environment_id: str
+    ) -> SparkResourcePreset: ...
+
+    def list_spark_resource_presets(self, options: SparkResourcePresetListOptions) -> Pager[SparkResourcePreset]: ...
 
 
 @runtime_checkable

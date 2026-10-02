@@ -156,12 +156,14 @@ def _navigation_entry(entry_id: str, name: str) -> dict[str, object]:
     return {"entryId": entry_id, "scope": "sql_query", "type": "sql_query", "key": "", "name": name}
 
 
-def test_yc_sql_and_lakehouse_actions_dispatch_without_metadata_tags(
+def test_yc_sql_lakehouse_and_spark_actions_dispatch_without_metadata_tags(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     installations = client_module._load_installations("datalens_sdk._generated")
     installations["yacloud"]["namespaces"] = [
-        name for name in installations["yacloud"]["namespaces"] if name not in {"sql_queries", "lakehouse_operations"}
+        name
+        for name in installations["yacloud"]["namespaces"]
+        if name not in {"sql_queries", "lakehouse_operations", "spark_clusters"}
     ]
     monkeypatch.setattr(client_module, "_load_installations", lambda package: installations)
     recorder = RecordedTransport(
@@ -175,6 +177,39 @@ def test_yc_sql_and_lakehouse_actions_dispatch_without_metadata_tags(
                 httpx.Response(200, json={"id": "operation-1", "done": False, "metadata": {}}),
                 httpx.Response(200, json={"id": "operation-1", "done": True, "metadata": {"phase": "done"}}),
             ],
+            "/rpc/getSparkCluster": httpx.Response(
+                200,
+                json={
+                    "id": "spark-public-1",
+                    "clusterId": "spark-managed-1",
+                    "collectionId": "collection-1",
+                    "cloudEnvironmentId": "environment-1",
+                    "name": "Spark analytics",
+                    "description": "",
+                    "labels": {},
+                    "health": "ALIVE",
+                    "status": "RUNNING",
+                    "entryId": "",
+                    "config": {
+                        "sparkVersion": "3.5",
+                        "dependencies": None,
+                        "logging": None,
+                        "resourcePools": {
+                            "driver": {
+                                "resourcePresetId": "driver-1",
+                                "scalePolicy": {"scaleType": "fixedScale", "fixedScale": {"size": "1"}},
+                            },
+                            "executor": {
+                                "resourcePresetId": "executor-1",
+                                "scalePolicy": {
+                                    "scaleType": "autoScale",
+                                    "autoScale": {"minSize": "0", "initialSize": "1", "maxSize": "10"},
+                                },
+                            },
+                        },
+                    },
+                },
+            ),
         }
     )
     client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
@@ -194,6 +229,7 @@ def test_yc_sql_and_lakehouse_actions_dispatch_without_metadata_tags(
         created.delete()
         operation = client.get.lakehouse_operation(by_id="operation-1")
         refreshed = operation.refresh()
+        spark_cluster = client.get.spark_cluster(by_id="spark-public-1")
 
     assert operation == LakehouseOperation(
         id="operation-1",
@@ -209,6 +245,9 @@ def test_yc_sql_and_lakehouse_actions_dispatch_without_metadata_tags(
     )
     assert refreshed is not operation
     assert recorder.bodies("/rpc/getLakehouseOperation") == [{"operationId": "operation-1"}] * 2
+    assert spark_cluster.id == "spark-public-1"
+    assert spark_cluster.cluster_id == "spark-managed-1"
+    assert recorder.bodies("/rpc/getSparkCluster") == [{"id": "spark-public-1"}]
 
     assert recorder.bodies("/rpc/createSqlQuery") == [
         {

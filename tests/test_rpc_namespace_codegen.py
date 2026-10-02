@@ -1178,6 +1178,33 @@ def test_tagged_rpc_pattern_digit_matches_ecmascript_ascii_semantics() -> None:
         request(value="٣")
 
 
+def test_tagged_rpc_pattern_non_whitespace_matches_ecmascript_semantics() -> None:
+    request = _model(
+        _widget_models(
+            request={
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "type": "string",
+                        "pattern": r"^\S+$",
+                    }
+                },
+                "required": ["value"],
+                "additionalProperties": False,
+            },
+            result={"type": "object", "properties": {}},
+        ),
+        "WidgetArgsDTO",
+    )
+
+    assert request(value="spark-cluster").to_payload() == {"value": "spark-cluster"}  # type: ignore[attr-defined]
+    assert request(value="spark\u0085cluster").to_payload() == {"value": "spark\u0085cluster"}  # type: ignore[attr-defined]
+    with pytest.raises(ValidationError):
+        request(value="spark cluster")
+    with pytest.raises(ValidationError):
+        request(value="spark\ufeffcluster")
+
+
 @pytest.mark.parametrize("pattern", [r"^\w+$", "("])
 def test_tagged_rpc_rejects_unsupported_regex_dialect_at_generation(pattern: str) -> None:
     with pytest.raises(ValueError, match=r"/schemas/WidgetArgs/properties/value/pattern"):

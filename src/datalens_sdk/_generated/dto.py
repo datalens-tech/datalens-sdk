@@ -5006,6 +5006,99 @@ class CreateRestCatalogArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class CreateSparkClusterArgsConfigDependenciesDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    deb_packages: list[str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='debPackages')
+    pip_packages: list[str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pipPackages')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkClusterArgsConfigLoggingDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    enabled: bool
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkClusterArgsConfigResourcePoolsDriverScalePolicyAnyOf0AutoScaleDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    initial_size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:0|[1-9][0-9]?|100)\\Z'))] = Field(alias='initialSize')
+    max_size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:[1-9]|[1-9][0-9]|100)\\Z'))] = Field(alias='maxSize')
+    min_size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:0|[1-9][0-9]?|100)\\Z'))] = Field(alias='minSize')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkClusterArgsConfigResourcePoolsDriverScalePolicyAnyOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    auto_scale: CreateSparkClusterArgsConfigResourcePoolsDriverScalePolicyAnyOf0AutoScaleDTO = Field(alias='autoScale')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkClusterArgsConfigResourcePoolsDriverScalePolicyAnyOf1FixedScaleDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:[1-9]|[1-9][0-9]|100)\\Z'))]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkClusterArgsConfigResourcePoolsDriverScalePolicyAnyOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    fixed_scale: CreateSparkClusterArgsConfigResourcePoolsDriverScalePolicyAnyOf1FixedScaleDTO = Field(alias='fixedScale')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkClusterArgsConfigResourcePoolsDriverDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    resource_preset_id: Annotated[str, Field(min_length=1, max_length=50, alias='resourcePresetId')]
+    scale_policy: CreateSparkClusterArgsConfigResourcePoolsDriverScalePolicyAnyOf0DTO | CreateSparkClusterArgsConfigResourcePoolsDriverScalePolicyAnyOf1DTO = Field(alias='scalePolicy')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkClusterArgsConfigResourcePoolsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    driver: CreateSparkClusterArgsConfigResourcePoolsDriverDTO
+    executor: CreateSparkClusterArgsConfigResourcePoolsDriverDTO
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkClusterArgsConfigDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    dependencies: CreateSparkClusterArgsConfigDependenciesDTO = _UNVALIDATED_NONE_DEFAULT
+    logging: CreateSparkClusterArgsConfigLoggingDTO = _UNVALIDATED_NONE_DEFAULT
+    resource_pools: CreateSparkClusterArgsConfigResourcePoolsDTO = Field(alias='resourcePools')
+    spark_version: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='sparkVersion')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkClusterArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
+    collection_id: Annotated[str, Field(min_length=1, max_length=50, alias='collectionId')]
+    config: CreateSparkClusterArgsConfigDTO
+    description: Annotated[str, Field(max_length=200)] = _UNVALIDATED_NONE_DEFAULT
+    labels: dict[str, Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[-_0-9a-z]*\\Z'))]] = _UNVALIDATED_NONE_DEFAULT
+    name: Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[a-zA-Z0-9ЁёА-я][^\\u0009-\\u000d\\u0020\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]{1,61}[a-zA-Z0-9ЁёА-я]\\Z'))]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class CreateSqlQueryArgsParamsItemAllOf0DTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5115,6 +5208,14 @@ class CreateTrinoClusterArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class DeleteSparkClusterArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    id: Annotated[str, Field(min_length=1, max_length=50)]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class DeleteSqlQueryArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5144,6 +5245,23 @@ class GetLakehouseOperationArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     operation_id: Annotated[str, Field(min_length=1, max_length=50, alias='operationId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class GetSparkClusterArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    id: Annotated[str, Field(min_length=1, max_length=50)]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class GetSparkResourcePresetArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
+    resource_preset_id: Annotated[str, Field(min_length=1, max_length=50, alias='resourcePresetId')]
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
@@ -5190,6 +5308,27 @@ class ListCatalogsArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class ListSparkClustersArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    collection_id: Annotated[str, Field(min_length=1, max_length=50, alias='collectionId')] = _UNVALIDATED_NONE_DEFAULT
+    filter: list[str] = _UNVALIDATED_NONE_DEFAULT
+    page_size: Annotated[int, Field(ge=0, alias='pageSize')] = _UNVALIDATED_NONE_DEFAULT
+    page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class ListSparkResourcePresetsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
+    page_size: Annotated[int, Field(ge=0, le=1000, alias='pageSize')] = _UNVALIDATED_NONE_DEFAULT
+    page_token: Annotated[str, Field(max_length=100, alias='pageToken')] = _UNVALIDATED_NONE_DEFAULT
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class ListTrinoClustersArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5221,7 +5360,23 @@ class RunSqlQueryArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class StartSparkClusterArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class StartTrinoClusterArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class StopSparkClusterArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
@@ -5413,6 +5568,95 @@ class ListCatalogsResultReadDTO(BaseModel):
 
     next_page_token: str = Field(alias='nextPageToken')
     rest_catalogs: list[ListCatalogsResultRestCatalogsItemReadDTO] = Field(alias='restCatalogs')
+
+class SparkClusterConfigDependenciesObjectReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    deb_packages: list[str] = Field(alias='debPackages')
+    pip_packages: list[str] = Field(alias='pipPackages')
+
+class SparkClusterConfigLoggingObjectReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    enabled: bool
+
+class SparkClusterConfigResourcePoolsDriverScalePolicyAnyOf0AutoScaleReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    initial_size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:0|[1-9][0-9]?|100)\\Z'))] = Field(alias='initialSize')
+    max_size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:[1-9]|[1-9][0-9]|100)\\Z'))] = Field(alias='maxSize')
+    min_size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:0|[1-9][0-9]?|100)\\Z'))] = Field(alias='minSize')
+
+class SparkClusterConfigResourcePoolsDriverScalePolicyAnyOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    auto_scale: SparkClusterConfigResourcePoolsDriverScalePolicyAnyOf0AutoScaleReadDTO = Field(alias='autoScale')
+    scale_type: Literal['autoScale'] = Field(alias='scaleType')
+
+class SparkClusterConfigResourcePoolsDriverScalePolicyAnyOf1FixedScaleReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:[1-9]|[1-9][0-9]|100)\\Z'))]
+
+class SparkClusterConfigResourcePoolsDriverScalePolicyAnyOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    fixed_scale: SparkClusterConfigResourcePoolsDriverScalePolicyAnyOf1FixedScaleReadDTO = Field(alias='fixedScale')
+    scale_type: Literal['fixedScale'] = Field(alias='scaleType')
+
+class SparkClusterConfigResourcePoolsDriverReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    resource_preset_id: Annotated[str, Field(min_length=1, max_length=50, alias='resourcePresetId')]
+    scale_policy: SparkClusterConfigResourcePoolsDriverScalePolicyAnyOf0ReadDTO | SparkClusterConfigResourcePoolsDriverScalePolicyAnyOf1ReadDTO = Field(alias='scalePolicy')
+
+class SparkClusterConfigResourcePoolsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    driver: SparkClusterConfigResourcePoolsDriverReadDTO
+    executor: SparkClusterConfigResourcePoolsDriverReadDTO
+
+class SparkClusterConfigReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    dependencies: None | SparkClusterConfigDependenciesObjectReadDTO
+    logging: None | SparkClusterConfigLoggingObjectReadDTO
+    resource_pools: SparkClusterConfigResourcePoolsReadDTO = Field(alias='resourcePools')
+    spark_version: str = Field(alias='sparkVersion')
+
+class SparkClusterReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    cloud_environment_id: Annotated[str, Field(min_length=1, alias='cloudEnvironmentId')]
+    cluster_id: str = Field(alias='clusterId')
+    collection_id: Annotated[str, Field(min_length=1, alias='collectionId')]
+    config: SparkClusterConfigReadDTO
+    description: str
+    entry_id: str = Field(alias='entryId')
+    health: Literal['ALIVE', 'DEAD', 'DEGRADED', 'HEALTH_UNKNOWN']
+    id: Annotated[str, Field(min_length=1)]
+    labels: dict[str, str]
+    name: Annotated[str, Field(min_length=1)]
+    status: Literal['CREATING', 'ERROR', 'RUNNING', 'STARTING', 'STATUS_UNSPECIFIED', 'STOPPED', 'STOPPING', 'UPDATING']
+
+class ListSparkClustersResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    next_page_token: str = Field(alias='nextPageToken')
+    spark_clusters: list[SparkClusterReadDTO] = Field(alias='sparkClusters')
+
+class SparkResourcePresetReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    cores: str
+    id: Annotated[str, Field(min_length=1)]
+    memory: str
+
+class ListSparkResourcePresetsResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    next_page_token: str = Field(alias='nextPageToken')
+    resource_presets: list[SparkResourcePresetReadDTO] = Field(alias='resourcePresets')
 
 class TrinoClusterConfigCatalogsConfigItemReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)

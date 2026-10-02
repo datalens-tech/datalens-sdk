@@ -313,6 +313,9 @@ RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (
         tag="TrinoClusters", namespace="trino_clusters", installations=("yacloud",), alias_only_read=True
     ),
     RpcNamespaceConfig(tag="RestCatalogs", namespace="rest_catalogs", installations=("yacloud",)),
+    RpcNamespaceConfig(
+        tag="SparkClusters", namespace="spark_clusters", installations=("yacloud",), alias_only_read=True
+    ),
 )
 
 
@@ -624,7 +627,7 @@ def _audit_tagged_rpc_pattern(pattern: str, *, pointer: str, contract: str) -> N
     escaped = False
     for index, character in enumerate(pattern):
         if escaped:
-            if character in "dDwWsSbBAZN" and not (character == "d" and not in_character_class):
+            if character in "dDwWsSbBAZN" and not (character in {"d", "S"} and not in_character_class):
                 raise ValueError(
                     f"Unsupported tagged RPC pattern at {pointer}: escape \\{character} has different "
                     "semantics in Python and ECMAScript regular expressions"
@@ -648,13 +651,18 @@ def _audit_tagged_rpc_pattern(pattern: str, *, pointer: str, contract: str) -> N
 
 
 def _python_tagged_rpc_pattern(pattern: str) -> str:
-    """Translate ECMAScript regex escapes to their Python equivalents."""
+    """Translate supported ECMAScript regex escapes to Python equivalents."""
     result: list[str] = []
     escaped = False
     in_character_class = False
     for character in pattern:
         if escaped:
-            result.append("[0-9]" if character == "d" and not in_character_class else f"\\{character}")
+            if character == "d" and not in_character_class:
+                result.append("[0-9]")
+            elif character == "S" and not in_character_class:
+                result.append(r"[^\u0009-\u000d\u0020\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]")
+            else:
+                result.append(f"\\{character}")
             escaped = False
             continue
         if character == "\\":
