@@ -4934,3 +4934,256 @@ class UpdateHtmlPageResultReadDTO(BaseModel):
 
     entry: CreateHtmlPageResultEntryReadDTO
     warnings: list[str]
+
+import re
+from functools import partial
+from pydantic import AfterValidator, TypeAdapter
+from typing import Protocol
+
+
+class _TaggedRpcTypeAdapter(Protocol):
+    def validate_python(self, object: object, *, strict: bool) -> object: ...
+
+
+def _validate_tagged_rpc_pattern(value: object, pattern: str) -> object:
+    if not isinstance(value, str) or re.search(pattern, value) is None:
+        raise ValueError("value does not match the OpenAPI pattern")
+    return value
+
+
+def _validate_tagged_rpc_prefix_items(
+    value: object,
+    prefix_adapters: tuple[_TaggedRpcTypeAdapter, ...],
+    tail_adapter: _TaggedRpcTypeAdapter | None,
+) -> list[object]:
+    if not isinstance(value, (list, tuple)):
+        raise ValueError("tagged RPC prefixItems value must be an array")
+    result: list[object] = []
+    for index, item in enumerate(value):
+        adapter = prefix_adapters[index] if index < len(prefix_adapters) else tail_adapter
+        if adapter is None:
+            raise ValueError("tagged RPC prefixItems array has forbidden tail items")
+        result.append(adapter.validate_python(item, strict=True))
+    return result
+
+class CreateSqlQueryArgsParamsItemAllOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    default_value: bool | int | float | str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultValue')
+    name: str
+    type: Literal['boolean'] | Literal['number'] | Literal['string']
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSqlQueryArgsParamsItemAllOf1DefaultValueDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    from_: str = Field(alias='from')
+    to: str
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSqlQueryArgsParamsItemAllOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    default_value: CreateSqlQueryArgsParamsItemAllOf1DefaultValueDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultValue')
+    name: str
+    type: Literal['date-interval'] | Literal['datetime-interval']
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSqlQueryArgsParamsItemAllOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    default_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultValue')
+    name: str
+    type: Literal['date'] | Literal['datetime']
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSqlQueryArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    connection_id: str = Field(alias='connectionId')
+    description: str = _UNVALIDATED_NONE_DEFAULT
+    name: str
+    params: list[CreateSqlQueryArgsParamsItemAllOf0DTO | CreateSqlQueryArgsParamsItemAllOf1DTO | CreateSqlQueryArgsParamsItemAllOf2DTO] = _UNVALIDATED_NONE_DEFAULT
+    query: str
+    workbook_id: str = Field(alias='workbookId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class DeleteSqlQueryArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    sql_query_id: str = Field(alias='sqlQueryId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class GetSqlQueryArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    include_favorite: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includeFavorite')
+    include_permissions: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includePermissions')
+    rev_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revId')
+    sql_query_id: str = Field(alias='sqlQueryId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class RunSqlQueryArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    params: dict[str, list[bool | int | float | str] | CreateSqlQueryArgsParamsItemAllOf1DefaultValueDTO | bool | int | float | str] = _UNVALIDATED_NONE_DEFAULT
+    sql_query_id: str = Field(alias='sqlQueryId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class UpdateSqlQueryArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    connection_id: str = Field(alias='connectionId')
+    description: str = _UNVALIDATED_NONE_DEFAULT
+    params: list[CreateSqlQueryArgsParamsItemAllOf0DTO | CreateSqlQueryArgsParamsItemAllOf1DTO | CreateSqlQueryArgsParamsItemAllOf2DTO] = _UNVALIDATED_NONE_DEFAULT
+    query: str
+    sql_query_id: str = Field(alias='sqlQueryId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class SqlQueryAnnotationObjectReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    description: str = _UNVALIDATED_NONE_DEFAULT
+
+class SqlQueryDataParamsItemAllOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    default_value: bool | int | float | str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultValue')
+    name: str
+    type: Literal['boolean'] | Literal['number'] | Literal['string']
+
+class SqlQueryDataParamsItemAllOf1DefaultValueReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    from_: str = Field(alias='from')
+    to: str
+
+class SqlQueryDataParamsItemAllOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    default_value: SqlQueryDataParamsItemAllOf1DefaultValueReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultValue')
+    name: str
+    type: Literal['date-interval'] | Literal['datetime-interval']
+
+class SqlQueryDataParamsItemAllOf2ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    default_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultValue')
+    name: str
+    type: Literal['date'] | Literal['datetime']
+
+class SqlQueryDataReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    connection_id: str = Field(alias='connectionId')
+    params: list[SqlQueryDataParamsItemAllOf0ReadDTO | SqlQueryDataParamsItemAllOf1ReadDTO | SqlQueryDataParamsItemAllOf2ReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    query: str
+    statement_positions: list[Annotated[list[object], BeforeValidator(partial(_validate_tagged_rpc_prefix_items, prefix_adapters=(TypeAdapter(int | float), TypeAdapter(int | float)), tail_adapter=TypeAdapter(JsonValue)))]] = Field(alias='statementPositions')
+
+class SqlQueryReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    annotation: None | SqlQueryAnnotationObjectReadDTO
+    collection_id: None | str = Field(alias='collectionId')
+    created_at: str = Field(alias='createdAt')
+    created_by: str = Field(alias='createdBy')
+    data: SqlQueryDataReadDTO
+    entry_id: str = Field(alias='entryId')
+    hidden: bool
+    key: str
+    links: None | dict[str, str] = _UNVALIDATED_NONE_DEFAULT
+    published_id: None | str = Field(alias='publishedId')
+    rev_id: str = Field(alias='revId')
+    rev_updated_at: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revUpdatedAt')
+    rev_updated_by: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='revUpdatedBy')
+    saved_id: str = Field(alias='savedId')
+    scope: Literal['sql_query']
+    tenant_id: str = Field(alias='tenantId')
+    type: str
+    updated_at: str = Field(alias='updatedAt')
+    updated_by: str = Field(alias='updatedBy')
+    version: None | int | float
+    workbook_id: str = Field(alias='workbookId')
+
+class CreateSqlQueryResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    entry: SqlQueryReadDTO
+
+class DeleteSqlQueryResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    pass
+
+class GetSqlQueryResultPermissionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    admin: bool
+    edit: bool
+    execute: bool
+    read: bool
+
+class GetSqlQueryResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    entry: SqlQueryReadDTO
+    is_favorite: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='isFavorite')
+    permissions: GetSqlQueryResultPermissionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class RunSqlQueryResultResultsItemAnyOf0ColumnsItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    name: str
+
+class RunSqlQueryResultResultsItemAnyOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    affected_rows: int | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='affectedRows')
+    columns: list[RunSqlQueryResultResultsItemAnyOf0ColumnsItemReadDTO]
+    rows: list[list[bool | None | int | float | str]]
+    status: Literal['success']
+
+class RunSqlQueryResultResultsItemAnyOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    code: str
+    database_message: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='databaseMessage')
+    message: str
+    status: Literal['error']
+
+class RunSqlQueryResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    connection_id: str = Field(alias='connectionId')
+    created_at: str = Field(alias='createdAt')
+    created_by: str = Field(alias='createdBy')
+    id: str
+    query: str
+    results: list[RunSqlQueryResultResultsItemAnyOf0ReadDTO | RunSqlQueryResultResultsItemAnyOf1ReadDTO]
+    statement_positions: list[Annotated[list[object], BeforeValidator(partial(_validate_tagged_rpc_prefix_items, prefix_adapters=(TypeAdapter(int | float), TypeAdapter(int | float)), tail_adapter=TypeAdapter(JsonValue)))]] = Field(alias='statementPositions')
+    status: Literal['error', 'partial_success', 'pending', 'success']
+    tenant_id: str = Field(alias='tenantId')
+    updated_at: str = Field(alias='updatedAt')
+
+class UpdateSqlQueryResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    entry: SqlQueryReadDTO

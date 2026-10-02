@@ -301,7 +301,7 @@ class RpcNamespaceContractMeta(TypedDict):
     schemas: dict[str, JsonValue]
 
 
-RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = ()
+RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (RpcNamespaceConfig(tag="SqlQueries", namespace="sql_queries"),)
 
 
 class InstallationMetadata(TypedDict):

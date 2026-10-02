@@ -29,6 +29,11 @@
 - Add optional `manual` to generated Yandex Cloud dataset source builders;
   explicit `False` is preserved in validation and creation requests.
 
+### Added
+
+- Add Yandex Cloud SQL query create, get, update, delete, and run support,
+  including typed saved parameters and per-statement results.
+
 ## 3.1.0 - 2026-10-01
 
 ### Breaking changes

@@ -1972,7 +1972,8 @@
         "datasets",
         "folders",
         "html_pages",
-        "workbooks"
+        "workbooks",
+        "sql_queries"
       ],
       "wizard": {
         "field_structure": {
@@ -23005,7 +23006,8 @@
         "folders",
         "html_pages",
         "licenses",
-        "workbooks"
+        "workbooks",
+        "sql_queries"
       ],
       "wizard": {
         "field_structure": {

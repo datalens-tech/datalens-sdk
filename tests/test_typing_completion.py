@@ -54,6 +54,23 @@ from datalens_sdk import (
     RawQLChartReplace,
     RawWizardChartCreate,
     RawWizardChartReplace,
+    SqlQuery,
+    SqlQueryCell,
+    SqlQueryCreate,
+    SqlQueryInterval,
+    SqlQueryParameter,
+    SqlQueryParameterType,
+    SqlQueryPermissions,
+    SqlQueryRun,
+    SqlQueryRunColumn,
+    SqlQueryRunStatus,
+    SqlQueryRunValue,
+    SqlQueryScalar,
+    SqlQueryStatementError,
+    SqlQueryStatementPosition,
+    SqlQueryStatementResult,
+    SqlQueryStatementSuccess,
+    SqlQueryUpdate,
     UILanguage,
     UITheme,
     WizardAggregatedMeasure,
@@ -104,6 +121,8 @@ from datalens_sdk.client import (
     GetNamespace,
     LicensesNamespace,
     NavigationNamespace,
+    YCCreateNamespace,
+    YCGetNamespace,
 )
 from datalens_sdk.domain import (
     Connection,
@@ -665,7 +684,7 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
 
     assert_type(
         client.create,
-        CreateNamespace[YacloudConnectionCreateFactory, YacloudSourceCreateFactory, YacloudEditorChartCreateFactory],
+        YCCreateNamespace[YacloudConnectionCreateFactory, YacloudSourceCreateFactory, YacloudEditorChartCreateFactory],
     )
     assert_type(client.create.connection, YacloudConnectionCreateFactory)
     assert_type(
@@ -688,7 +707,7 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
         RawDashboardCreate,
     )
     assert_type(client.create.dataset, DatasetCreateFactory)
-    assert_type(client.get, GetNamespace)
+    assert_type(client.get, YCGetNamespace)
     assert_type(client.data, DataNamespace)
     assert_type(
         client.data.get_dataset_data(
@@ -807,6 +826,7 @@ def test_enterprise_client_namespaces_are_visible_to_static_tools() -> None:
         ],
     )
     assert_type(client.create.connection, EnterpriseConnectionCreateFactory)
+    assert_type(client.get, GetNamespace)
     assert_type(
         client.raw.create.connection(
             response_snapshot={"id": "source", "type": "postgres", "name": "Source"},
@@ -819,6 +839,48 @@ def test_enterprise_client_namespaces_are_visible_to_static_tools() -> None:
     assert_type(client.create.source(using=connection), EnterpriseSourceCreateFactory)
     clickhouse_builder = client.create.connection.clickhouse(name="CH", location=EntryLocation.path("/sdk"))
     assert_type(clickhouse_builder.secure("on"), EnterpriseClickhouseConnectionCreate)
+
+
+def test_sql_query_builders_parameters_and_run_results_are_visible_to_static_tools() -> None:
+    client = DataLensClientYC(auth=None, transport=_transport())
+    builder = client.create.sql_query(name="Revenue", location=EntryLocation.workbook("workbook-1"))
+    assert_type(builder, SqlQueryCreate)
+    assert_type(builder.connection("connection-1").query("select :day"), SqlQueryCreate)
+    assert_type(SqlQueryParameter.string("text", "revenue"), SqlQueryParameter)
+    assert_type(SqlQueryParameter.number("amount", 1.5), SqlQueryParameter)
+    assert_type(SqlQueryParameter.boolean("enabled", False), SqlQueryParameter)
+    assert_type(SqlQueryParameter.date("day", "2026-09-29"), SqlQueryParameter)
+    assert_type(SqlQueryParameter.datetime("time", "2026-09-29T00:00:00"), SqlQueryParameter)
+    interval = SqlQueryInterval("start", "end")
+    assert_type(SqlQueryParameter.date_interval("days", interval), SqlQueryParameter)
+    assert_type(SqlQueryParameter.datetime_interval("times", interval), SqlQueryParameter)
+    parameter = SqlQueryParameter.date("day")
+    assert_type(parameter.type, SqlQueryParameterType)
+    assert_type(parameter.default_value, SqlQueryScalar | SqlQueryInterval | None)
+    assert_type(builder.parameters([parameter]).description("Daily revenue"), SqlQueryCreate)
+
+    if TYPE_CHECKING:
+        assert_type(builder.build(), SqlQuery)
+        query = client.get.sql_query(by_id="query-1", include_favorite=False)
+        assert_type(query, SqlQuery)
+        assert_type(query.permissions, SqlQueryPermissions | None)
+        assert_type(query.statement_positions, tuple[SqlQueryStatementPosition, ...])
+        assert_type(query.update, SqlQueryUpdate)
+        assert_type(query.update.query("select 1").parameters([]).clear_parameters().description(""), SqlQueryUpdate)
+        assert_type(query.update.connection("connection-2").execute(), SqlQuery)
+        overrides: Mapping[str, SqlQueryRunValue] = {"day": "2026-09-29", "range": interval, "values": [1, False]}
+        run = query.run(params=overrides)
+        assert_type(run, SqlQueryRun)
+        assert_type(run.status, SqlQueryRunStatus)
+        assert_type(run.results, tuple[SqlQueryStatementResult, ...])
+        for statement in run.results:
+            if statement.status == "success":
+                assert_type(statement, SqlQueryStatementSuccess)
+                assert_type(statement.columns, tuple[SqlQueryRunColumn, ...])
+                assert_type(statement.rows, tuple[tuple[SqlQueryCell, ...], ...])
+            else:
+                assert_type(statement, SqlQueryStatementError)
+                assert_type(statement.database_message, str | None)
 
 
 def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> None:
