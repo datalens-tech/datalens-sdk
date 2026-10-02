@@ -33,6 +33,7 @@
 
 - Add Yandex Cloud Trino catalog selection, filtering, attachment, and detachment support.
 - Add Yandex Cloud Trino cluster create, start, stop, and delete support.
+- Add Yandex Cloud Spark cluster create, start, stop, and delete support.
 - Add Yandex Cloud Spark cluster and resource preset get, list, and refresh support.
 - Add Yandex Cloud Trino cluster and resource preset get, list, and refresh support.
 - Add typed Yandex Cloud REST catalog listing with filtering, sorting,

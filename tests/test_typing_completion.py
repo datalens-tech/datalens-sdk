@@ -63,6 +63,7 @@ from datalens_sdk import (
     SparkAutoScalePolicy,
     SparkCluster,
     SparkClusterConfig,
+    SparkClusterCreate,
     SparkClusterDependencies,
     SparkClusterHealth,
     SparkClusterStatus,
@@ -1108,6 +1109,50 @@ def test_rest_catalog_list_is_typed_only_on_yandex_cloud() -> None:
             assert_type(catalog.bucket.details.max_size, str | None)
             assert_type(catalog.bucket.details.used_size, str | None)
             assert_type(catalog.bucket.details.updated_at, LakehouseTimestamp | None)
+
+
+def test_spark_lifecycle_surface_is_visible_to_static_tools() -> None:
+    client = DataLensClientYC(auth=None, transport=_transport())
+    base_client: DataLensClientBase = client
+    enterprise = DataLensClientEnterprise(auth=None, base_url="https://enterprise.test", transport=_transport())
+    assert_type(base_client.create, CreateNamespace[object, SourceBuilder, object])
+    assert_type(
+        enterprise.create,
+        CreateNamespace[
+            EnterpriseConnectionCreateFactory,
+            EnterpriseSourceCreateFactory,
+            EnterpriseEditorChartCreateFactory,
+        ],
+    )
+    if TYPE_CHECKING:
+        builder = client.create.spark_cluster(
+            name="analytics-spark",
+            location=EntryLocation.collection("collection-1"),
+            cloud_environment_id="environment-1",
+        )
+        assert_type(builder, SparkClusterCreate)
+        preset = SparkResourcePreset(
+            id="driver-1",
+            installation="yacloud",
+            cloud_environment_id="environment-1",
+            cores="2",
+            memory="8GiB",
+            raw={},
+        )
+        fixed = SparkFixedScalePolicy(size=1)
+        auto = SparkAutoScalePolicy(min_size=0, max_size=10, initial_size=2)
+        assert_type(builder.driver(resource_preset=preset, scale_policy=fixed), SparkClusterCreate)
+        assert_type(builder.executor(resource_preset="executor-1", scale_policy=auto), SparkClusterCreate)
+        assert_type(builder.dependencies(pip_packages=["pandas"], deb_packages=[]), SparkClusterCreate)
+        assert_type(builder.logging(enabled=False), SparkClusterCreate)
+        assert_type(builder.description(""), SparkClusterCreate)
+        assert_type(builder.labels({}), SparkClusterCreate)
+        assert_type(builder.spark_version(""), SparkClusterCreate)
+        assert_type(builder.build(), LakehouseOperation)
+        cluster = client.get.spark_cluster(by_id="public-1")
+        assert_type(cluster.start(), LakehouseOperation)
+        assert_type(cluster.stop(), LakehouseOperation)
+        assert_type(cluster.delete(), LakehouseOperation)
 
 
 def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> None:

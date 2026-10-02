@@ -115,6 +115,7 @@ from datalens_sdk.domain.rest_catalog import (
 )
 from datalens_sdk.domain.spark_cluster import (
     SparkCluster,
+    SparkClusterCreate,
     SparkClusterListOptions,
     SparkResourcePreset,
     SparkResourcePresetListOptions,
@@ -404,6 +405,7 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
         rest_catalog_operations: RestCatalogOperations,
         sql_query_operations: SqlQueryOperations,
         trino_cluster_operations: TrinoClusterOperations,
+        spark_cluster_operations: SparkClusterOperations,
         installation: str,
         connection_operations: ConnectionOperations,
         dashboard_operations: DashboardOperations,
@@ -438,6 +440,7 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
         self._rest_catalog_operations = rest_catalog_operations
         self._sql_query_operations = sql_query_operations
         self._trino_cluster_operations = trino_cluster_operations
+        self._spark_cluster_operations = spark_cluster_operations
 
     def rest_catalog(
         self,
@@ -475,6 +478,21 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
             location=location,
             cloud_environment_id=cloud_environment_id,
             operations=self._trino_cluster_operations,
+        )
+
+    def spark_cluster(
+        self,
+        *,
+        name: str,
+        location: EntryLocation,
+        cloud_environment_id: str,
+    ) -> SparkClusterCreate:
+        return SparkClusterCreate(
+            installation=self._installation,
+            name=name,
+            location=location,
+            cloud_environment_id=cloud_environment_id,
+            operations=self._spark_cluster_operations,
         )
 
 
@@ -1294,6 +1312,7 @@ class DataLensClientYC(DataLensClientBase):
         spark_cluster_service = SparkClusterService(
             installation=self.INSTALLATION,
             api=SparkClusterAPI(self._http),
+            lakehouse_operations=lakehouse_operation_service,
             dto_module=cast(SparkClusterDtoModule, dto_module),
         )
         rest_catalog_service = RestCatalogService(
@@ -1307,6 +1326,7 @@ class DataLensClientYC(DataLensClientBase):
                 rest_catalog_operations=rest_catalog_service,
                 sql_query_operations=sql_query_service,
                 trino_cluster_operations=trino_cluster_service,
+                spark_cluster_operations=spark_cluster_service,
                 installation=deps.installation,
                 chart_operations=deps.chart_operations,
                 collection_operations=deps.collection_operations,

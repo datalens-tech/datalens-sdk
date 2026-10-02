@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
     from datalens_sdk.domain.spark_cluster import (
         SparkCluster,
+        SparkClusterCreate,
         SparkClusterListOptions,
         SparkResourcePreset,
         SparkResourcePresetListOptions,
@@ -115,7 +116,15 @@ class RestCatalogOperations(Protocol):
 
 @runtime_checkable
 class SparkClusterOperations(Protocol):
+    def create_spark_cluster(self, builder: SparkClusterCreate) -> LakehouseOperation: ...
+
     def get_spark_cluster(self, spark_cluster_id: str) -> SparkCluster: ...
+
+    def start_spark_cluster(self, cluster_id: str) -> LakehouseOperation: ...
+
+    def stop_spark_cluster(self, cluster_id: str) -> LakehouseOperation: ...
+
+    def delete_spark_cluster(self, spark_cluster_id: str) -> LakehouseOperation: ...
 
     def list_spark_clusters(self, options: SparkClusterListOptions) -> Pager[SparkCluster]: ...
 

@@ -23,6 +23,7 @@ from datalens_sdk.domain.connection import Connection
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
 from datalens_sdk.domain.ports import SqlQueryOperations
+from datalens_sdk.domain.spark_cluster import SparkFixedScalePolicy
 from datalens_sdk.domain.specs.sql_query import SqlQueryCreateSpec, SqlQueryUpdateSpec
 from datalens_sdk.domain.sql_query import (
     SqlQuery,
@@ -210,6 +211,9 @@ def test_yc_sql_lakehouse_and_spark_actions_dispatch_without_metadata_tags(
                     },
                 },
             ),
+            "/rpc/createSparkCluster": httpx.Response(
+                200, json={"id": "spark-operation-1", "done": False, "metadata": {}}
+            ),
         }
     )
     client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
@@ -230,6 +234,16 @@ def test_yc_sql_lakehouse_and_spark_actions_dispatch_without_metadata_tags(
         operation = client.get.lakehouse_operation(by_id="operation-1")
         refreshed = operation.refresh()
         spark_cluster = client.get.spark_cluster(by_id="spark-public-1")
+        spark_create_operation = (
+            client.create.spark_cluster(
+                name="SparkAnalytics",
+                location=EntryLocation.collection("collection-1"),
+                cloud_environment_id="environment-1",
+            )
+            .driver(resource_preset="driver-1", scale_policy=SparkFixedScalePolicy(size=1))
+            .executor(resource_preset="executor-1", scale_policy=SparkFixedScalePolicy(size=2))
+            .build()
+        )
 
     assert operation == LakehouseOperation(
         id="operation-1",
@@ -248,6 +262,20 @@ def test_yc_sql_lakehouse_and_spark_actions_dispatch_without_metadata_tags(
     assert spark_cluster.id == "spark-public-1"
     assert spark_cluster.cluster_id == "spark-managed-1"
     assert recorder.bodies("/rpc/getSparkCluster") == [{"id": "spark-public-1"}]
+    assert spark_create_operation.id == "spark-operation-1"
+    assert recorder.bodies("/rpc/createSparkCluster") == [
+        {
+            "name": "SparkAnalytics",
+            "collectionId": "collection-1",
+            "cloudEnvironmentId": "environment-1",
+            "config": {
+                "resourcePools": {
+                    "driver": {"resourcePresetId": "driver-1", "scalePolicy": {"fixedScale": {"size": "1"}}},
+                    "executor": {"resourcePresetId": "executor-1", "scalePolicy": {"fixedScale": {"size": "2"}}},
+                }
+            },
+        }
+    ]
 
     assert recorder.bodies("/rpc/createSqlQuery") == [
         {
