@@ -56,6 +56,7 @@ if TYPE_CHECKING:
         SparkResourcePreset,
         SparkResourcePresetListOptions,
     )
+    from datalens_sdk.domain.spark_job import SparkJob, SparkJobListOptions
     from datalens_sdk.domain.specs.raw_resource import (
         RawCreateSpec,
         RawReplaceSpec,
@@ -133,6 +134,13 @@ class SparkClusterOperations(Protocol):
     ) -> SparkResourcePreset: ...
 
     def list_spark_resource_presets(self, options: SparkResourcePresetListOptions) -> Pager[SparkResourcePreset]: ...
+
+
+@runtime_checkable
+class SparkJobOperations(Protocol):
+    def get_spark_job(self, cluster_id: str, job_id: str) -> SparkJob: ...
+
+    def list_spark_jobs(self, options: SparkJobListOptions) -> Pager[SparkJob]: ...
 
 
 @runtime_checkable

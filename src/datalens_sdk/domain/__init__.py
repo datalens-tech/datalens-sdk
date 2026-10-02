@@ -151,6 +151,14 @@ from datalens_sdk.domain.spark_cluster import (
     SparkResourcePreset,
     SparkScalePolicy,
 )
+from datalens_sdk.domain.spark_job import (
+    SparkJob,
+    SparkJobCatalogRef,
+    SparkJobConnectSpec,
+    SparkJobPySparkSpec,
+    SparkJobSparkSpec,
+    SparkJobStatus,
+)
 from datalens_sdk.domain.sql_query import (
     SqlQuery,
     SqlQueryCell,
@@ -326,6 +334,12 @@ __all__ = [
     "SparkClusterHealth",
     "SparkClusterStatus",
     "SparkFixedScalePolicy",
+    "SparkJob",
+    "SparkJobCatalogRef",
+    "SparkJobConnectSpec",
+    "SparkJobPySparkSpec",
+    "SparkJobSparkSpec",
+    "SparkJobStatus",
     "SparkLoggingConfig",
     "SparkResourcePoolConfig",
     "SparkResourcePoolsConfig",

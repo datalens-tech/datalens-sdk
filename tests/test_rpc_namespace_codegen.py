@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Annotated, Literal, cast
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, TypeAdapter, ValidationError
 import pytest
 
 from datalens_sdk import codegen
@@ -156,6 +156,195 @@ def test_subscriptions_dto_rejects_id_with_trailing_newline(subscriptions_models
 
 def _model(scope: dict[str, object], name: str) -> type[BaseModel]:
     return cast(type[BaseModel], scope[name])
+
+
+def test_tagged_read_union_does_not_discard_known_sibling_fields() -> None:
+    result: dict[str, object] = {
+        "anyOf": [
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "id": {"type": "string"},
+                    "tag": {"type": "string", "enum": ["alpha"]},
+                    "alpha": {"type": "integer"},
+                },
+                "required": ["id", "tag", "alpha"],
+            },
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {"id": {"type": "string"}},
+                "required": ["id"],
+            },
+        ]
+    }
+    scope = _widget_models(request={"type": "object"}, result=result)
+    adapter: TypeAdapter[object] = TypeAdapter(scope["WidgetResultReadDTO"])
+
+    with pytest.raises(ValidationError):
+        adapter.validate_python({"id": "i", "tag": "alpha", "alpha": "wrong"})
+    with pytest.raises(ValidationError):
+        adapter.validate_python({"id": "i", "alpha": 1})
+
+    assert cast(BaseModel, adapter.validate_python({"id": "i", "futureFlag": True})).model_dump()["id"] == "i"
+
+
+def test_tagged_read_union_does_not_discard_sibling_python_alias() -> None:
+    scope = _widget_models(
+        request={"type": "object"},
+        result={
+            "anyOf": [
+                {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {"id": {"type": "string"}, "alphaValue": {"type": "integer"}},
+                    "required": ["id", "alphaValue"],
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {"id": {"type": "string"}},
+                    "required": ["id"],
+                },
+            ]
+        },
+    )
+    adapter: TypeAdapter[object] = TypeAdapter(scope["WidgetResultReadDTO"])
+
+    with pytest.raises(ValidationError):
+        adapter.validate_python({"id": "i", "alpha_value": "wrong"})
+
+
+def test_tagged_rpc_union_request_root_validates_and_serializes_selected_branch() -> None:
+    scope = _widget_models(
+        request={
+            "anyOf": [
+                {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "id": {"type": "string"},
+                        "left": {"type": "integer"},
+                        "wireName": {"type": "string"},
+                        "note": {"type": ["string", "null"]},
+                    },
+                    "required": ["id", "left"],
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {"id": {"type": "string"}, "right": {"type": "string"}},
+                    "required": ["id", "right"],
+                },
+            ]
+        },
+        result={"type": "object"},
+    )
+    root = _model(scope, "WidgetArgsDTO")
+
+    assert root.model_validate({"id": "i", "left": 2, "wireName": "wire", "note": None}).to_payload() == {  # type: ignore[attr-defined]
+        "id": "i",
+        "left": 2,
+        "wireName": "wire",
+        "note": None,
+    }
+    assert root.model_validate({"id": "i", "right": "x"}).to_payload() == {  # type: ignore[attr-defined]
+        "id": "i",
+        "right": "x",
+    }
+    with pytest.raises(ValidationError):
+        root.model_validate({"id": "i", "left": 2, "right": "x"})
+
+
+@pytest.mark.parametrize("referenced", [False, True])
+def test_tagged_rpc_union_request_root_rejects_map_branch_without_model_dump(referenced: bool) -> None:
+    map_schema = {"type": "object", "additionalProperties": {"type": "string"}}
+    map_branch = {"$ref": "#/components/schemas/WidgetArgsMap"} if referenced else map_schema
+    spec = _spec(
+        {"/rpc/createWidget": {"post": _operation()}},
+        schemas={
+            "WidgetArgs": {
+                "anyOf": [
+                    {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]},
+                    map_branch,
+                ]
+            },
+            "WidgetArgsMap": map_schema,
+            "WidgetResult": {"type": "object"},
+        },
+    )
+
+    pointer = r"/schemas/WidgetArgsMap" if referenced else r"/schemas/WidgetArgs/anyOf/[01]"
+    with pytest.raises(ValueError, match=rf"{pointer}/additionalProperties"):
+        _contract(spec)
+
+
+def test_tagged_rpc_union_request_root_supports_referenced_model_branch() -> None:
+    spec = _spec(
+        {"/rpc/createWidget": {"post": _operation()}},
+        schemas={
+            "WidgetArgs": {
+                "anyOf": [
+                    {"$ref": "#/components/schemas/WidgetArgsById"},
+                    {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]},
+                ]
+            },
+            "WidgetArgsById": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {"id": {"type": "string"}},
+                "required": ["id"],
+            },
+            "WidgetResult": {"type": "object"},
+        },
+    )
+    root = _model(_models(_contract(spec)), "WidgetArgsDTO")
+
+    assert root.model_validate({"id": "i"}).to_payload() == {"id": "i"}  # type: ignore[attr-defined]
+    assert root.model_validate({"name": "n"}).to_payload() == {"name": "n"}  # type: ignore[attr-defined]
+
+
+def test_tagged_read_union_reference_guard_is_local_to_each_union() -> None:
+    schemas: dict[str, object] = {
+        "WidgetArgs": {"type": "object", "properties": {}},
+        "Alpha": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"id": {"type": "string"}, "alpha": {"type": "integer"}},
+            "required": ["id", "alpha"],
+        },
+        "Beta": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"id": {"type": "string"}, "beta": {"type": "integer"}},
+            "required": ["id", "beta"],
+        },
+        "Common": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"id": {"type": "string"}},
+            "required": ["id"],
+        },
+        "WidgetResult": {"anyOf": [{"$ref": "#/components/schemas/Alpha"}, {"$ref": "#/components/schemas/Common"}]},
+        "OtherResult": {"anyOf": [{"$ref": "#/components/schemas/Beta"}, {"$ref": "#/components/schemas/Common"}]},
+    }
+    spec = _spec(
+        {
+            "/rpc/createWidget": {"post": _operation()},
+            "/rpc/getWidget": {
+                "post": _operation(result={"$ref": "#/components/schemas/OtherResult"}),
+            },
+        },
+        schemas=schemas,
+    )
+    scope = _models(_contract(spec))
+    first: TypeAdapter[object] = TypeAdapter(scope["WidgetResultReadDTO"])
+    second: TypeAdapter[object] = TypeAdapter(scope["OtherResultReadDTO"])
+
+    with pytest.raises(ValidationError):
+        first.validate_python({"id": "i", "alpha": "wrong"})
+    assert cast(BaseModel, second.validate_python({"id": "i", "alpha": "future"})).model_dump()["id"] == "i"
 
 
 def _installation_spec(name: str) -> dict[str, object]:

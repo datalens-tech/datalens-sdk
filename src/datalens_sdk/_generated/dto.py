@@ -4935,9 +4935,10 @@ class UpdateHtmlPageResultReadDTO(BaseModel):
     entry: CreateHtmlPageResultEntryReadDTO
     warnings: list[str]
 
+from collections.abc import Mapping
 import re
 from functools import partial
-from pydantic import AfterValidator, TypeAdapter
+from pydantic import AfterValidator, RootModel, TypeAdapter
 from typing import Protocol
 
 
@@ -4948,6 +4949,16 @@ class _TaggedRpcTypeAdapter(Protocol):
 def _validate_tagged_rpc_pattern(value: object, pattern: str) -> object:
     if not isinstance(value, str) or re.search(pattern, value) is None:
         raise ValueError("value does not match the OpenAPI pattern")
+def _validate_tagged_rpc_read_union_branch(
+    value: object,
+    *,
+    known_properties: frozenset[str],
+    branch_properties: frozenset[str],
+) -> object:
+    if isinstance(value, Mapping) and any(
+        isinstance(key, str) and key in known_properties and key not in branch_properties for key in value
+    ):
+        raise ValueError("tagged RPC read union contains a field from another variant")
     return value
 
 
