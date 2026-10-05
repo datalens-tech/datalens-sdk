@@ -312,7 +312,7 @@ RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (
     RpcNamespaceConfig(
         tag="TrinoClusters", namespace="trino_clusters", installations=("yacloud",), alias_only_read=True
     ),
-    RpcNamespaceConfig(tag="RestCatalogs", namespace="rest_catalogs"),
+    RpcNamespaceConfig(tag="RestCatalogs", namespace="rest_catalogs", installations=("yacloud",)),
 )
 
 
