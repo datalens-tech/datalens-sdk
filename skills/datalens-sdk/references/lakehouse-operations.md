@@ -1,8 +1,8 @@
 # Lakehouse operations (Yandex Cloud)
 
 Use this reference for asynchronous operations returned by Yandex Cloud Trino
-and Spark cluster mutations, REST catalog attach/detach calls, and Spark job
-submissions or cancellations. They return a `LakehouseOperation` snapshot and
+and Spark cluster mutations, REST catalog attach/detach calls, and Spark
+application submissions or cancellations. They return a `LakehouseOperation` snapshot and
 do not wait for completion. Enterprise and YaTeam do not expose
 `client.get.lakehouse_operation`; the missing action raises ordinary
 `AttributeError`. Stop at the public SDK boundary: do not substitute raw HTTP,
@@ -15,7 +15,8 @@ mapping, and optional opaque `.response` mapping. Only `.done` says whether
 the operation is terminal.
 A terminal snapshot may contain an error; the SDK returns that error as data,
 not as an exception. `refresh()` returns a new bound snapshot and does not
-change the original. Cluster and job mutations return an operation immediately;
+change the original. Cluster and application mutations return an operation
+immediately;
 they do not wait for completion.
 
 ## Authorize result handling before reads or inspection
