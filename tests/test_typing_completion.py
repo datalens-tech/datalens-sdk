@@ -59,6 +59,7 @@ from datalens_sdk import (
     RawQLChartReplace,
     RawWizardChartCreate,
     RawWizardChartReplace,
+    RestCatalogCreate,
     SqlQuery,
     SqlQueryCell,
     SqlQueryCreate,
@@ -761,6 +762,18 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
         RawDashboardCreate,
     )
     assert_type(client.create.dataset, DatasetCreateFactory)
+    if TYPE_CHECKING:
+        rest_catalog_create = client.create.rest_catalog(
+            name="analytics",
+            cloud_environment_id="environment-1",
+            bucket_settings=RestCatalogBucketSettings(
+                storage_class="STANDARD",
+                max_size="1073741824",
+                alias="analytics-bucket",
+            ),
+        )
+        assert_type(rest_catalog_create, RestCatalogCreate)
+        assert_type(rest_catalog_create.build(), LakehouseOperation)
     assert_type(client.get, YCGetNamespace)
     assert_type(client.list, YCListNamespace)
     assert_type(client.data, DataNamespace)

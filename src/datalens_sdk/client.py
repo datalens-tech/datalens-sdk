@@ -103,7 +103,13 @@ from datalens_sdk.domain.ports import (
     WorkbookOperations,
 )
 from datalens_sdk.domain.ql_chart import QLChart
-from datalens_sdk.domain.rest_catalog import RestCatalog, RestCatalogListOptions, RestCatalogSortField
+from datalens_sdk.domain.rest_catalog import (
+    RestCatalog,
+    RestCatalogBucketSettings,
+    RestCatalogCreate,
+    RestCatalogListOptions,
+    RestCatalogSortField,
+)
 from datalens_sdk.domain.sql_query import SqlQuery, SqlQueryCreate
 from datalens_sdk.domain.trino_cluster import (
     TrinoCluster,
@@ -385,6 +391,7 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
     def __init__(
         self,
         *,
+        rest_catalog_operations: RestCatalogOperations,
         sql_query_operations: SqlQueryOperations,
         installation: str,
         connection_operations: ConnectionOperations,
@@ -417,7 +424,23 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
             editor_chart_factory=editor_chart_factory,
             ql_chart_factory=ql_chart_factory,
         )
+        self._rest_catalog_operations = rest_catalog_operations
         self._sql_query_operations = sql_query_operations
+
+    def rest_catalog(
+        self,
+        *,
+        name: str,
+        cloud_environment_id: str,
+        bucket_settings: RestCatalogBucketSettings,
+    ) -> RestCatalogCreate:
+        return RestCatalogCreate(
+            installation=self._installation,
+            name=name,
+            cloud_environment_id=cloud_environment_id,
+            bucket_settings=bucket_settings,
+            operations=self._rest_catalog_operations,
+        )
 
     def sql_query(self, *, name: str, location: EntryLocation) -> SqlQueryCreate:
         return SqlQueryCreate(
@@ -1190,10 +1213,12 @@ class DataLensClientYC(DataLensClientBase):
         rest_catalog_service = RestCatalogService(
             installation=self.INSTALLATION,
             api=RestCatalogAPI(self._http),
+            lakehouse_operations=lakehouse_operation_service,
             dto_module=cast(RestCatalogDtoModule, dto_module),
         )
         return (
             YCCreateNamespace(
+                rest_catalog_operations=rest_catalog_service,
                 sql_query_operations=sql_query_service,
                 installation=deps.installation,
                 chart_operations=deps.chart_operations,

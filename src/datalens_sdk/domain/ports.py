@@ -47,7 +47,7 @@ if TYPE_CHECKING:
         WorkbookListOptions,
     )
     from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate
-    from datalens_sdk.domain.rest_catalog import RestCatalog, RestCatalogListOptions
+    from datalens_sdk.domain.rest_catalog import RestCatalog, RestCatalogCreate, RestCatalogListOptions
     from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
     from datalens_sdk.domain.specs.raw_resource import (
         RawCreateSpec,
@@ -89,6 +89,8 @@ class TrinoClusterOperations(Protocol):
 
 @runtime_checkable
 class RestCatalogOperations(Protocol):
+    def create_rest_catalog(self, builder: RestCatalogCreate) -> LakehouseOperation: ...
+
     def list_rest_catalogs(self, options: RestCatalogListOptions) -> Pager[RestCatalog]: ...
 
 

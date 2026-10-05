@@ -14,6 +14,7 @@ from datalens_sdk.domain.rest_catalog import (
     RestCatalogBucketSettings,
     RestCatalogListOptions,
 )
+from datalens_sdk.domain.specs.rest_catalog import RestCatalogCreateSpec
 from datalens_sdk.errors import translate_invalid_response_error
 
 
@@ -109,6 +110,7 @@ class RestCatalogListResultDTOClass(Protocol):
 
 
 class RestCatalogDtoModule(Protocol):
+    CreateRestCatalogArgsDTO: RestCatalogWriteDTOClass
     ListCatalogsArgsDTO: RestCatalogWriteDTOClass
     ListCatalogsResultReadDTO: RestCatalogListResultDTOClass
 
@@ -174,6 +176,30 @@ def _catalog_from_dto(raw: Mapping[str, object], dto: RestCatalogItemDTOProtocol
 
 
 class RestCatalogConverter:
+    @staticmethod
+    def create_payload(
+        spec: RestCatalogCreateSpec,
+        *,
+        dto_module: RestCatalogDtoModule | None = None,
+    ) -> RestCatalogWriteDTOProtocol:
+        bucket_settings: dict[str, object] = {
+            "storageClass": spec.bucket_settings.storage_class,
+            "maxSize": spec.bucket_settings.max_size,
+            "alias": spec.bucket_settings.alias,
+        }
+        if spec.bucket_settings.description is not None:
+            bucket_settings["description"] = spec.bucket_settings.description
+        payload: dict[str, object] = {
+            "name": spec.name,
+            "cloudEnvironmentId": spec.cloud_environment_id,
+            "bucketSettings": bucket_settings,
+        }
+        if spec.description is not None:
+            payload["description"] = spec.description
+        if spec.labels is not None:
+            payload["labels"] = dict(spec.labels)
+        return _dto_module(dto_module).CreateRestCatalogArgsDTO.model_validate(payload)
+
     @staticmethod
     def list_payload(
         options: RestCatalogListOptions,

@@ -2,13 +2,21 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal, TypeAlias
+
+from typing_extensions import Self
 
 from datalens_sdk.domain.common_types import SortDirection
 from datalens_sdk.domain.lakehouse_operation import LakehouseTimestamp
-from datalens_sdk.errors import DataLensValidationError
+from datalens_sdk.domain.specs.rest_catalog import RestCatalogCreateSpec
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
+
+if TYPE_CHECKING:
+    from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
+    from datalens_sdk.domain.ports import RestCatalogOperations
 
 RestCatalogSortField: TypeAlias = Literal["name", "created_at", "updated_at"]
+_UNBOUND_CREATE = "REST catalog create builder is not bound to client operations"
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,6 +25,61 @@ class RestCatalogBucketSettings:
     max_size: str
     alias: str
     description: str | None = None
+
+
+class RestCatalogCreate:
+    def __init__(
+        self,
+        *,
+        installation: str,
+        name: str,
+        cloud_environment_id: str,
+        bucket_settings: RestCatalogBucketSettings,
+        operations: RestCatalogOperations | None = None,
+    ) -> None:
+        if not isinstance(installation, str) or not installation:
+            raise DataLensValidationError("installation must be a non-empty string")
+        if not isinstance(name, str) or not name:
+            raise DataLensValidationError("name must be a non-empty string")
+        if not isinstance(cloud_environment_id, str) or not cloud_environment_id:
+            raise DataLensValidationError("cloud_environment_id must be a non-empty string")
+        if not isinstance(bucket_settings, RestCatalogBucketSettings):
+            raise DataLensValidationError("bucket_settings must be RestCatalogBucketSettings")
+        self._name = name
+        self._cloud_environment_id = cloud_environment_id
+        self._bucket_settings = bucket_settings
+        self._operations = operations
+        self._description: str | None = None
+        self._labels: Mapping[str, str] | None = None
+
+    def description(self, value: str) -> Self:
+        if not isinstance(value, str):
+            raise DataLensValidationError("description must be a string")
+        self._description = value
+        return self
+
+    def labels(self, values: Mapping[str, str]) -> Self:
+        if not isinstance(values, Mapping) or any(
+            not isinstance(key, str) or not isinstance(value, str) for key, value in values.items()
+        ):
+            raise DataLensValidationError("labels must map strings to strings")
+        self._labels = dict(values)
+        return self
+
+    def to_spec(self) -> RestCatalogCreateSpec:
+        return RestCatalogCreateSpec(
+            name=self._name,
+            cloud_environment_id=self._cloud_environment_id,
+            bucket_settings=self._bucket_settings,
+            description=self._description,
+            labels=self._labels,
+        )
+
+    def build(self) -> LakehouseOperation:
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND_CREATE)
+        self.to_spec()
+        return self._operations.create_rest_catalog(self)
 
 
 @dataclass(frozen=True, slots=True)

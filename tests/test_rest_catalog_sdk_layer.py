@@ -12,10 +12,11 @@ import pytest
 from datalens_sdk import DataLensClientEnterprise, DataLensClientYC
 from datalens_sdk import client as client_module
 from datalens_sdk._generated import dto as generated_dto
+from datalens_sdk.api.lakehouse_operation import LakehouseOperationAPI, LakehouseOperationService
 from datalens_sdk.api.rest_catalog import RestCatalogAPI, RestCatalogService
 from datalens_sdk.converter.rest_catalog import RestCatalogConverter
 from datalens_sdk.domain.common_types import SortDirection
-from datalens_sdk.domain.lakehouse_operation import LakehouseTimestamp
+from datalens_sdk.domain.lakehouse_operation import LakehouseOperation, LakehouseTimestamp
 from datalens_sdk.domain.navigation import Page
 from datalens_sdk.domain.rest_catalog import (
     RestCatalog,
@@ -109,7 +110,14 @@ def _catalog_service(recorder: RecordedCatalogTransport) -> tuple[RestCatalogSer
         base_url="https://datalens.test",
         transport=httpx.MockTransport(recorder.handle),
     )
-    return RestCatalogService(installation="yacloud", api=RestCatalogAPI(http_client)), http_client
+    return (
+        RestCatalogService(
+            installation="yacloud",
+            api=RestCatalogAPI(http_client),
+            lakehouse_operations=LakehouseOperationService(api=LakehouseOperationAPI(http_client)),
+        ),
+        http_client,
+    )
 
 
 def _empty_page(next_token: str = "") -> dict[str, object]:
@@ -126,6 +134,70 @@ def test_rest_catalog_list_defaults_are_lazy_and_send_exact_payload() -> None:
 
     assert [request.url.path for request in recorder.requests] == ["/rpc/listCatalogs"]
     assert recorder.bodies() == [{"pageSize": 100, "reverseOrder": False}]
+
+
+def test_yc_create_rest_catalog_posts_schema_payload_and_returns_operation() -> None:
+    response = {"id": "operation-1", "done": False, "metadata": {}}
+    refreshed_response = {"id": "operation-1", "done": True, "metadata": {}}
+    recorder = RecordedCatalogTransport(response, refreshed_response)
+    client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handle))
+
+    with client:
+        operation = (
+            client.create.rest_catalog(
+                name="analytics",
+                cloud_environment_id="environment-1",
+                bucket_settings=RestCatalogBucketSettings(
+                    storage_class="STANDARD",
+                    max_size="1073741824",
+                    alias="analytics-bucket",
+                    description="Catalog data",
+                ),
+            )
+            .description("Analytics catalog")
+            .labels({"team": "data-platform"})
+            .build()
+        )
+        refreshed = operation.refresh()
+
+    assert operation == LakehouseOperation(id="operation-1", done=False, metadata={}, raw=response)
+    assert refreshed == LakehouseOperation(id="operation-1", done=True, metadata={}, raw=refreshed_response)
+    assert [(request.url.path, body) for request, body in zip(recorder.requests, recorder.bodies())] == [
+        (
+            "/rpc/createRestCatalog",
+            {
+                "cloudEnvironmentId": "environment-1",
+                "name": "analytics",
+                "bucketSettings": {
+                    "storageClass": "STANDARD",
+                    "maxSize": "1073741824",
+                    "alias": "analytics-bucket",
+                    "description": "Catalog data",
+                },
+                "description": "Analytics catalog",
+                "labels": {"team": "data-platform"},
+            },
+        ),
+        ("/rpc/getLakehouseOperation", {"operationId": "operation-1"}),
+    ]
+
+
+def test_yc_create_rest_catalog_rejects_invalid_bucket_size_before_http() -> None:
+    recorder = RecordedCatalogTransport({"id": "operation-1", "done": False, "metadata": {}})
+    client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handle))
+
+    with client, pytest.raises(DTOValidationError, match="createRestCatalog"):
+        client.create.rest_catalog(
+            name="analytics",
+            cloud_environment_id="environment-1",
+            bucket_settings=RestCatalogBucketSettings(
+                storage_class="STANDARD",
+                max_size="not-a-number",
+                alias="analytics-bucket",
+            ),
+        ).build()
+
+    assert recorder.requests == []
 
 
 @pytest.mark.parametrize(

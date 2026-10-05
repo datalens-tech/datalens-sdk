@@ -34,6 +34,7 @@
 - Add Yandex Cloud Trino cluster and resource preset get, list, and refresh support.
 - Add typed Yandex Cloud REST catalog listing with filtering, sorting,
   permissions, and resumable pagination.
+- Add typed Yandex Cloud REST catalog creation returning a Lakehouse operation.
 - Add Yandex Cloud Lakehouse operation retrieval and explicit refresh/wait
   polling for asynchronous Trino and Spark workflows.
 - Add Yandex Cloud SQL query create, get, update, delete, and run support,

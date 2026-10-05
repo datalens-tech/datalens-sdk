@@ -131,6 +131,7 @@ from datalens_sdk.domain.rest_catalog import (
     RestCatalogBucket,
     RestCatalogBucketDetails,
     RestCatalogBucketSettings,
+    RestCatalogCreate,
     RestCatalogListOptions,
     RestCatalogSortField,
 )
@@ -294,6 +295,7 @@ __all__ = [
     "RestCatalogBucket",
     "RestCatalogBucketDetails",
     "RestCatalogBucketSettings",
+    "RestCatalogCreate",
     "RestCatalogListOptions",
     "RestCatalogSortField",
     "SelectorOperation",
