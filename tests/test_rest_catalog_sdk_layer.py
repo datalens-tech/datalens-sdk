@@ -162,7 +162,7 @@ def test_yc_create_rest_catalog_posts_schema_payload_and_returns_operation() -> 
 
     assert operation == LakehouseOperation(id="operation-1", done=False, metadata={}, raw=response)
     assert refreshed == LakehouseOperation(id="operation-1", done=True, metadata={}, raw=refreshed_response)
-    assert [(request.url.path, body) for request, body in zip(recorder.requests, recorder.bodies())] == [
+    assert [(request.url.path, body) for request, body in zip(recorder.requests, recorder.bodies(), strict=True)] == [
         (
             "/rpc/createRestCatalog",
             {
