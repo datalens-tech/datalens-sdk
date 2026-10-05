@@ -127,15 +127,15 @@ class SparkApplicationListOptions:
 
 
 @dataclass(frozen=True, slots=True)
-class SparkJobLogPage:
+class SparkApplicationLogPage:
     content: str
     next_page_token: str
 
 
 @dataclass(frozen=True, slots=True)
-class SparkJobLogOptions:
+class SparkApplicationLogOptions:
     cluster_id: str
-    job_id: str
+    application_id: str
     page_size: int | None = None
     page_token: str | None = None
 
@@ -145,29 +145,37 @@ class SparkJobLogOptions:
         *,
         installation: str,
         cluster: SparkCluster | str,
-        job: SparkJob | str,
+        application: SparkApplication | str,
         page_size: int | None = None,
         page_token: str | None = None,
-    ) -> SparkJobLogOptions:
-        cluster_id = normalize_spark_job_cluster(cluster, installation=installation)
-        if isinstance(job, SparkJob):
-            if not isinstance(job.installation, str) or not job.installation or job.installation != installation:
-                raise DataLensValidationError("Spark job must belong to this installation")
-            if not isinstance(job.cluster_id, str) or not job.cluster_id or job.cluster_id != cluster_id:
-                raise DataLensValidationError("Spark job must belong to the selected managed cluster")
-            job_id = job.id
+    ) -> SparkApplicationLogOptions:
+        cluster_id = normalize_spark_application_cluster(cluster, installation=installation)
+        if isinstance(application, SparkApplication):
+            if (
+                not isinstance(application.installation, str)
+                or not application.installation
+                or application.installation != installation
+            ):
+                raise DataLensValidationError("Spark application must belong to this installation")
+            if (
+                not isinstance(application.cluster_id, str)
+                or not application.cluster_id
+                or application.cluster_id != cluster_id
+            ):
+                raise DataLensValidationError("Spark application must belong to the selected managed cluster")
+            application_id = application.id
         else:
-            job_id = job
-        if not isinstance(job_id, str) or not job_id:
-            raise DataLensValidationError("Spark job id must be a non-empty string")
-        return cls(cluster_id, job_id, page_size, page_token)
+            application_id = application
+        if not isinstance(application_id, str) or not application_id:
+            raise DataLensValidationError("Spark application id must be a non-empty string")
+        return cls(cluster_id, application_id, page_size, page_token)
 
 
-class SparkJobLogPager:
-    def __init__(self, loader: Callable[[], Iterator[SparkJobLogPage]]) -> None:
+class SparkApplicationLogPager:
+    def __init__(self, loader: Callable[[], Iterator[SparkApplicationLogPage]]) -> None:
         self._loader = loader
 
-    def pages(self) -> Iterator[SparkJobLogPage]:
+    def pages(self) -> Iterator[SparkApplicationLogPage]:
         return self._loader()
 
     def __iter__(self) -> Iterator[str]:

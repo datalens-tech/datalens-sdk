@@ -63,6 +63,8 @@ from datalens_sdk import (
     SparkApplication,
     SparkApplicationCatalogRef,
     SparkApplicationConnectSpec,
+    SparkApplicationLogPage,
+    SparkApplicationLogPager,
     SparkApplicationPySparkSpec,
     SparkApplicationSparkSpec,
     SparkApplicationStatus,
@@ -74,14 +76,6 @@ from datalens_sdk import (
     SparkClusterHealth,
     SparkClusterStatus,
     SparkFixedScalePolicy,
-    SparkJob,
-    SparkJobCatalogRef,
-    SparkJobConnectSpec,
-    SparkJobLogPage,
-    SparkJobLogPager,
-    SparkJobPySparkSpec,
-    SparkJobSparkSpec,
-    SparkJobStatus,
     SparkLoggingConfig,
     SparkResourcePoolConfig,
     SparkResourcePoolsConfig,
@@ -1070,34 +1064,36 @@ def test_spark_read_surface_is_visible_to_static_tools() -> None:
         assert_type(SparkAutoScalePolicy(min_size=0, max_size=10, initial_size=1), SparkAutoScalePolicy)
 
 
-def test_spark_job_read_types_preserve_variant_narrowing() -> None:
+def test_spark_application_read_types_preserve_variant_narrowing() -> None:
     client = DataLensClientYC(auth=None, transport=_transport())
     if TYPE_CHECKING:
-        job = client.get.spark_job(cluster="managed-1", by_id="job-1")
-        pager = client.list.spark_jobs(cluster="managed-1", filters=['name="analytics"'])
-        assert_type(job, SparkJob)
-        assert_type(job.refresh(), SparkJob)
-        assert_type(job.status, SparkJobStatus)
-        assert_type(job.catalogs, tuple[SparkJobCatalogRef, ...])
-        assert_type(job.started_at, LakehouseTimestamp | None)
-        assert_type(pager, Pager[SparkJob])
-        assert_type(next(pager.pages()), Page[SparkJob])
-        if isinstance(job.spec, SparkJobSparkSpec):
-            assert_type(job.spec.main_jar_file_uri, str)
-        elif isinstance(job.spec, SparkJobPySparkSpec):
-            assert_type(job.spec.main_python_file_uri, str)
-        elif isinstance(job.spec, SparkJobConnectSpec):
-            assert_type(job.spec.properties, Mapping[str, str])
+        application = client.get.spark_application(cluster="managed-1", by_id="application-1")
+        pager = client.list.spark_applications(cluster="managed-1", filters=['name="analytics"'])
+        assert_type(application, SparkApplication)
+        assert_type(application.refresh(), SparkApplication)
+        assert_type(application.status, SparkApplicationStatus)
+        assert_type(application.catalogs, tuple[SparkApplicationCatalogRef, ...])
+        assert_type(application.started_at, LakehouseTimestamp | None)
+        assert_type(pager, Pager[SparkApplication])
+        assert_type(next(pager.pages()), Page[SparkApplication])
+        if isinstance(application.spec, SparkApplicationSparkSpec):
+            assert_type(application.spec.main_jar_file_uri, str)
+        elif isinstance(application.spec, SparkApplicationPySparkSpec):
+            assert_type(application.spec.main_python_file_uri, str)
+        elif isinstance(application.spec, SparkApplicationConnectSpec):
+            assert_type(application.spec.properties, Mapping[str, str])
 
 
-def test_spark_job_log_action_has_yc_only_pager_types() -> None:
+def test_spark_application_log_action_has_yc_only_pager_types() -> None:
     client = DataLensClientYC(auth=None, transport=_transport())
     assert get_type_hints(DataLensClientEnterprise)["list"] is ListNamespace
     assert get_type_hints(YaTeamStyleClient)["list"] is ListNamespace
     if TYPE_CHECKING:
-        pager = client.list.spark_job_log(cluster="managed", job="job", page_size=0, page_token="")
-        assert_type(pager, SparkJobLogPager)
-        assert_type(next(pager.pages()), SparkJobLogPage)
+        pager = client.list.spark_application_log(
+            cluster="managed", application="application", page_size=0, page_token=""
+        )
+        assert_type(pager, SparkApplicationLogPager)
+        assert_type(next(pager.pages()), SparkApplicationLogPage)
         assert_type(next(iter(pager)), str)
 
 

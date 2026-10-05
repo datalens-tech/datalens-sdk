@@ -24,8 +24,8 @@ from datalens_sdk.api.lakehouse_operation import LakehouseOperationAPI, Lakehous
 from datalens_sdk.api.license import LicenseAPI, LicenseService
 from datalens_sdk.api.navigation import NavigationService
 from datalens_sdk.api.rest_catalog import RestCatalogAPI, RestCatalogService
+from datalens_sdk.api.spark_application import SparkApplicationAPI, SparkApplicationService
 from datalens_sdk.api.spark_cluster import SparkClusterAPI, SparkClusterService
-from datalens_sdk.api.spark_job import SparkJobAPI, SparkJobService
 from datalens_sdk.api.sql_query import SqlQueryAPI, SqlQueryService
 from datalens_sdk.api.trino_cluster import TrinoClusterAPI, TrinoClusterService
 from datalens_sdk.api.workbook import WorkbookAPI, WorkbookService
@@ -47,8 +47,8 @@ from datalens_sdk.converter.html_page import HtmlPageDtoModule
 from datalens_sdk.converter.lakehouse_operation import LakehouseOperationDtoModule
 from datalens_sdk.converter.license import LicenseDtoModule
 from datalens_sdk.converter.rest_catalog import RestCatalogDtoModule
+from datalens_sdk.converter.spark_application import SparkApplicationDtoModule
 from datalens_sdk.converter.spark_cluster import SparkClusterDtoModule
-from datalens_sdk.converter.spark_job import SparkJobDtoModule
 from datalens_sdk.converter.sql_query import SqlQueryDtoModule
 from datalens_sdk.converter.trino_cluster import TrinoClusterDtoModule
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
@@ -102,8 +102,8 @@ from datalens_sdk.domain.ports import (
     LicenseOperations,
     NavigationOperations,
     RestCatalogOperations,
+    SparkApplicationOperations,
     SparkClusterOperations,
-    SparkJobOperations,
     SqlQueryOperations,
     TrinoClusterOperations,
     WorkbookOperations,
@@ -119,6 +119,8 @@ from datalens_sdk.domain.rest_catalog import (
 from datalens_sdk.domain.spark_application import (
     SparkApplication,
     SparkApplicationListOptions,
+    SparkApplicationLogOptions,
+    SparkApplicationLogPager,
     normalize_spark_application_cluster,
 )
 from datalens_sdk.domain.spark_cluster import (
@@ -127,13 +129,6 @@ from datalens_sdk.domain.spark_cluster import (
     SparkClusterListOptions,
     SparkResourcePreset,
     SparkResourcePresetListOptions,
-)
-from datalens_sdk.domain.spark_job import (
-    SparkJob,
-    SparkJobListOptions,
-    SparkJobLogOptions,
-    SparkJobLogPager,
-    normalize_spark_job_cluster,
 )
 from datalens_sdk.domain.sql_query import SqlQuery, SqlQueryCreate
 from datalens_sdk.domain.trino_cluster import (
@@ -726,7 +721,7 @@ class YCGetNamespace(GetNamespace):
         sql_query_operations: SqlQueryOperations,
         lakehouse_operation_operations: LakehouseOperationOperations,
         spark_cluster_operations: SparkClusterOperations,
-        spark_job_operations: SparkJobOperations,
+        spark_application_operations: SparkApplicationOperations,
         trino_cluster_operations: TrinoClusterOperations,
         chart_operations: ChartOperations,
         collection_operations: CollectionOperations,
@@ -750,7 +745,7 @@ class YCGetNamespace(GetNamespace):
         self._sql_query_operations = sql_query_operations
         self._lakehouse_operation_operations = lakehouse_operation_operations
         self._spark_cluster_operations = spark_cluster_operations
-        self._spark_job_operations = spark_job_operations
+        self._spark_application_operations = spark_application_operations
         self._trino_cluster_operations = trino_cluster_operations
 
     def spark_cluster(self, *, by_id: str) -> SparkCluster:
@@ -758,11 +753,11 @@ class YCGetNamespace(GetNamespace):
             raise DataLensValidationError("by_id must be a non-empty string")
         return self._spark_cluster_operations.get_spark_cluster(by_id)
 
-    def spark_job(self, *, cluster: SparkCluster | str, by_id: str) -> SparkJob:
-        cluster_id = normalize_spark_job_cluster(cluster, installation="yacloud")
+    def spark_application(self, *, cluster: SparkCluster | str, by_id: str) -> SparkApplication:
+        cluster_id = normalize_spark_application_cluster(cluster, installation="yacloud")
         if not isinstance(by_id, str) or not by_id:
             raise DataLensValidationError("by_id must be a non-empty string")
-        return self._spark_job_operations.get_spark_job(cluster_id, by_id)
+        return self._spark_application_operations.get_spark_application(cluster_id, by_id)
 
     def spark_resource_preset(self, *, by_id: str, cloud_environment_id: str) -> SparkResourcePreset:
         if not isinstance(by_id, str) or not by_id:
@@ -819,12 +814,12 @@ class YCListNamespace(ListNamespace):
         self,
         *,
         spark_cluster_operations: SparkClusterOperations,
-        spark_job_operations: SparkJobOperations,
+        spark_application_operations: SparkApplicationOperations,
         trino_cluster_operations: TrinoClusterOperations,
         rest_catalog_operations: RestCatalogOperations,
     ) -> None:
         self._spark_cluster_operations = spark_cluster_operations
-        self._spark_job_operations = spark_job_operations
+        self._spark_application_operations = spark_application_operations
         self._trino_cluster_operations = trino_cluster_operations
         self._rest_catalog_operations = rest_catalog_operations
 
@@ -846,16 +841,16 @@ class YCListNamespace(ListNamespace):
             )
         )
 
-    def spark_jobs(
+    def spark_applications(
         self,
         *,
         cluster: SparkCluster | str,
         filters: Sequence[str] = (),
         page_size: int = 100,
         page_token: str | None = None,
-    ) -> Pager[SparkJob]:
-        return self._spark_job_operations.list_spark_jobs(
-            SparkJobListOptions.create(
+    ) -> Pager[SparkApplication]:
+        return self._spark_application_operations.list_spark_applications(
+            SparkApplicationListOptions.create(
                 installation="yacloud",
                 cluster=cluster,
                 filters=filters,
@@ -864,19 +859,19 @@ class YCListNamespace(ListNamespace):
             )
         )
 
-    def spark_job_log(
+    def spark_application_log(
         self,
         *,
         cluster: SparkCluster | str,
-        job: SparkJob | str,
+        application: SparkApplication | str,
         page_size: int | None = None,
         page_token: str | None = None,
-    ) -> SparkJobLogPager:
-        return self._spark_job_operations.list_spark_job_log(
-            SparkJobLogOptions.create(
+    ) -> SparkApplicationLogPager:
+        return self._spark_application_operations.list_spark_application_log(
+            SparkApplicationLogOptions.create(
                 installation="yacloud",
                 cluster=cluster,
-                job=job,
+                application=application,
                 page_size=page_size,
                 page_token=page_token,
             )
@@ -1376,10 +1371,10 @@ class DataLensClientYC(DataLensClientBase):
             lakehouse_operations=lakehouse_operation_service,
             dto_module=cast(SparkClusterDtoModule, dto_module),
         )
-        spark_job_service = SparkJobService(
+        spark_application_service = SparkApplicationService(
             installation=self.INSTALLATION,
-            api=SparkJobAPI(self._http),
-            dto_module=cast(SparkJobDtoModule, dto_module),
+            api=SparkApplicationAPI(self._http),
+            dto_module=cast(SparkApplicationDtoModule, dto_module),
         )
         rest_catalog_service = RestCatalogService(
             installation=self.INSTALLATION,
@@ -1412,7 +1407,7 @@ class DataLensClientYC(DataLensClientBase):
                 sql_query_operations=sql_query_service,
                 lakehouse_operation_operations=lakehouse_operation_service,
                 spark_cluster_operations=spark_cluster_service,
-                spark_job_operations=spark_job_service,
+                spark_application_operations=spark_application_service,
                 trino_cluster_operations=trino_cluster_service,
                 chart_operations=deps.chart_operations,
                 collection_operations=deps.collection_operations,
@@ -1425,7 +1420,7 @@ class DataLensClientYC(DataLensClientBase):
             ),
             YCListNamespace(
                 spark_cluster_operations=spark_cluster_service,
-                spark_job_operations=spark_job_service,
+                spark_application_operations=spark_application_service,
                 trino_cluster_operations=trino_cluster_service,
                 rest_catalog_operations=rest_catalog_service,
             ),
