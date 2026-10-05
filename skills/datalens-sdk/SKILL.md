@@ -443,6 +443,7 @@ Use the non-executing allowlisted reader from [references/setup.md](references/s
 | `references/rest-catalogs.md`                   | Yandex Cloud REST catalog listing and Trino catalog membership references                                           |
 | `references/trino-clusters.md`                  | Yandex Cloud managed Trino clusters, resource presets, lifecycle, and catalog membership                           |
 | `references/spark-clusters.md`                  | Yandex Cloud managed Spark clusters, resource presets, driver/executor pools, and lifecycle                        |
+| `references/spark-applications.md`               | Yandex Cloud Spark application reads, logs, submission, and cancellation                                           |
 | `references/lakehouse-operations.md`            | Yandex Cloud Trino, Spark, and REST-catalog operation snapshots, explicit refresh/wait, errors, and timeouts     |
 | `references/serialization.md`                   | export/import/clone via `to_file` and `client.raw`                                                 |
 | `references/troubleshooting.md`                 | any API error; before retrying anything                                                            |
