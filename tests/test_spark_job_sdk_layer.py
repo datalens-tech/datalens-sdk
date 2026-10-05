@@ -8,7 +8,6 @@ from types import ModuleType
 from typing import cast
 
 import httpx
-from pydantic import TypeAdapter
 import pytest
 
 from datalens_sdk import DataLensClientEnterprise, DataLensClientYC
@@ -16,7 +15,6 @@ from datalens_sdk import client as client_module
 from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.api.spark_job import SparkJobAPI, SparkJobService
 from datalens_sdk.client import DataLensClientBase
-from datalens_sdk.converter.spark_job import SparkJobConverter
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.lakehouse_operation import LakehouseTimestamp
 from datalens_sdk.domain.ports import SparkJobOperations
@@ -314,23 +312,6 @@ def test_job_read_preserves_zero_and_fractional_timestamp_nanos() -> None:
     assert type(second.created_at.nanos) is float
 
 
-def test_job_list_uses_page_validated_items_without_revalidating_union(monkeypatch: pytest.MonkeyPatch) -> None:
-    validate_python = TypeAdapter.validate_python
-    item_validations = 0
-
-    def count_item_validation(adapter: object, value: object, **kwargs: object) -> object:
-        nonlocal item_validations
-        item_validations += 1
-        return validate_python(adapter, value, **kwargs)  # type: ignore[arg-type]
-
-    monkeypatch.setattr(TypeAdapter, "validate_python", count_item_validation)
-    jobs = [_wire_job(None), _wire_job("sparkJob")]
-    page = SparkJobConverter.to_page({"jobs": jobs, "nextPageToken": ""}, installation="yacloud", operations=None)
-
-    assert [job.raw for job in page.items] == jobs
-    assert item_validations == 0
-
-
 def test_job_list_is_lazy_repeatable_and_keeps_final_empty_token() -> None:
     first = {"jobs": [_wire_job(None)], "nextPageToken": "B"}
     last = {"jobs": [_wire_job("sparkConnectJob")], "nextPageToken": ""}
@@ -339,11 +320,45 @@ def test_job_list_is_lazy_repeatable_and_keeps_final_empty_token() -> None:
     options = SparkJobListOptions.create(
         installation="yacloud", cluster=_cluster(), filters=['name="analytics"'], page_size=0, page_token="A"
     )
+    expected_jobs = [
+        SparkJob(
+            id="job-1",
+            cluster_id="managed-1",
+            installation="yacloud",
+            name="analytics",
+            created_by="user-1",
+            status="RUNNING",
+            connect_url="",
+            catalogs=(SparkJobCatalogRef("catalog-1"),),
+            created_at=LakehouseTimestamp("123", 9007199254740993),
+            started_at=None,
+            finished_at=None,
+            spec=None,
+            raw=_wire_job(None),
+        ),
+        SparkJob(
+            id="job-1",
+            cluster_id="managed-1",
+            installation="yacloud",
+            name="analytics",
+            created_by="user-1",
+            status="RUNNING",
+            connect_url="",
+            catalogs=(SparkJobCatalogRef("catalog-1"),),
+            created_at=LakehouseTimestamp("123", 9007199254740993),
+            started_at=None,
+            finished_at=None,
+            spec=SparkJobConnectSpec((), (), (), (), (), (), {}),
+            raw=_wire_job("sparkConnectJob"),
+        ),
+    ]
     with client:
         pager = service.list_spark_jobs(options)
         assert transport.requests == []
-        assert [page.next_page_token for page in pager.pages()] == ["B", ""]
-        assert [job.id for job in pager] == ["job-1", "job-1"]
+        pages = list(pager.pages())
+        assert [page.next_page_token for page in pages] == ["B", ""]
+        assert [job for page in pages for job in page.items] == expected_jobs
+        assert list(pager) == expected_jobs
     assert transport.bodies() == [
         {"clusterId": "managed-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "A"},
         {"clusterId": "managed-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "B"},

@@ -280,6 +280,7 @@ class RpcNamespaceConfig(TypedDict):
     tag: str
     namespace: str
     operation_name_overrides: NotRequired[dict[str, str]]
+    operation_routes: NotRequired[tuple[str, ...]]
     installations: NotRequired[tuple[str, ...]]
     alias_only_read: NotRequired[bool]
 
@@ -316,7 +317,13 @@ RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (
     RpcNamespaceConfig(
         tag="SparkClusters", namespace="spark_clusters", installations=("yacloud",), alias_only_read=True
     ),
-    RpcNamespaceConfig(tag="SparkJobs", namespace="spark_jobs", installations=("yacloud",), alias_only_read=True),
+    RpcNamespaceConfig(
+        tag="SparkJobs",
+        namespace="spark_jobs",
+        installations=("yacloud",),
+        alias_only_read=True,
+        operation_routes=("/rpc/getSparkJob", "/rpc/listSparkJobs"),
+    ),
 )
 
 
@@ -1207,6 +1214,8 @@ def build_rpc_namespace_contract_meta(
 
     paths = _string_object_dict(spec.get("paths"), context="paths")
     selected: list[tuple[str, str, dict[str, object], dict[str, object]]] = []
+    tagged_routes: set[str] = set()
+    operation_routes = config.get("operation_routes")
     http_methods = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
     for route, raw_path in sorted(paths.items()):
         path_item = _string_object_dict(raw_path, context=route)
@@ -1214,7 +1223,12 @@ def build_rpc_namespace_contract_meta(
             operation = _string_object_dict(path_item[method], context=f"{route}.{method}")
             tags = _string_list(operation.get("tags", []), context=f"{route}.{method}.tags")
             if config["tag"] in tags:
-                selected.append((route, method, path_item, operation))
+                tagged_routes.add(route)
+                if operation_routes is None or route in operation_routes:
+                    selected.append((route, method, path_item, operation))
+    missing_routes = set(operation_routes or ()) - tagged_routes
+    if missing_routes:
+        raise ValueError(f"tagged RPC {config['tag']} is missing configured routes: {sorted(missing_routes)!r}")
     if not selected:
         return None
 
@@ -1368,6 +1382,8 @@ def build_rpc_namespace_contract_meta(
         all_of = request_root_schema.get("allOf")
         if (
             not isinstance(all_of, list)
+            and not isinstance(request_root_schema.get("anyOf"), list)
+            and not isinstance(request_root_schema.get("oneOf"), list)
             and not properties
             and (additional is None or additional is True or isinstance(additional, Mapping))
         ):
@@ -4693,6 +4709,9 @@ class _TaggedRpcTypeAdapter(Protocol):
 def _validate_tagged_rpc_pattern(value: object, pattern: str) -> object:
     if not isinstance(value, str) or re.search(pattern, value) is None:
         raise ValueError("value does not match the OpenAPI pattern")
+    return value
+
+
 def _validate_tagged_rpc_read_union_branch(
     value: object,
     *,

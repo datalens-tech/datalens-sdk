@@ -72,6 +72,25 @@ def _contract(spec: dict[str, object]) -> codegen.RpcNamespaceContractMeta:
     return contract
 
 
+def test_tagged_rpc_contract_does_not_validate_routes_outside_configured_sdk_surface() -> None:
+    spec = _spec(
+        {
+            "/rpc/getWidget": {"post": _operation()},
+            "/rpc/createWidget": {
+                "post": _operation(request={"type": "object", "additionalProperties": {"type": "string"}})
+            },
+        }
+    )
+
+    contract = codegen.build_rpc_namespace_contract_meta(
+        spec,
+        config={"tag": "Widgets", "namespace": "widgets", "operation_routes": ("/rpc/getWidget",)},
+    )
+
+    assert contract is not None
+    assert list(contract["operations"]) == ["get_widget"]
+
+
 def _models(contract: codegen.RpcNamespaceContractMeta, *, real_json: bool = False) -> dict[str, object]:
     source = codegen._emit_rpc_namespace_dto(
         cast(codegen.Metadata, {"installations": {}, "rpc_namespaces": {"widgets": contract}})
@@ -179,7 +198,7 @@ def test_tagged_read_union_does_not_discard_known_sibling_fields() -> None:
             },
         ]
     }
-    scope = _widget_models(request={"type": "object"}, result=result)
+    scope = _widget_models(request={"type": "object", "additionalProperties": False}, result=result)
     adapter: TypeAdapter[object] = TypeAdapter(scope["WidgetResultReadDTO"])
 
     with pytest.raises(ValidationError):
@@ -192,7 +211,7 @@ def test_tagged_read_union_does_not_discard_known_sibling_fields() -> None:
 
 def test_tagged_read_union_does_not_discard_sibling_python_alias() -> None:
     scope = _widget_models(
-        request={"type": "object"},
+        request={"type": "object", "additionalProperties": False},
         result={
             "anyOf": [
                 {
@@ -307,7 +326,7 @@ def test_tagged_rpc_union_request_root_supports_referenced_model_branch() -> Non
 
 def test_tagged_read_union_reference_guard_is_local_to_each_union() -> None:
     schemas: dict[str, object] = {
-        "WidgetArgs": {"type": "object", "properties": {}},
+        "WidgetArgs": {"type": "object", "properties": {}, "additionalProperties": False},
         "Alpha": {
             "type": "object",
             "additionalProperties": False,
