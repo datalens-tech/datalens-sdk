@@ -72,25 +72,6 @@ def _contract(spec: dict[str, object]) -> codegen.RpcNamespaceContractMeta:
     return contract
 
 
-def test_tagged_rpc_contract_does_not_validate_routes_outside_configured_sdk_surface() -> None:
-    spec = _spec(
-        {
-            "/rpc/getWidget": {"post": _operation()},
-            "/rpc/createWidget": {
-                "post": _operation(request={"type": "object", "additionalProperties": {"type": "string"}})
-            },
-        }
-    )
-
-    contract = codegen.build_rpc_namespace_contract_meta(
-        spec,
-        config={"tag": "Widgets", "namespace": "widgets", "operation_routes": ("/rpc/getWidget",)},
-    )
-
-    assert contract is not None
-    assert list(contract["operations"]) == ["get_widget"]
-
-
 def _models(contract: codegen.RpcNamespaceContractMeta, *, real_json: bool = False) -> dict[str, object]:
     source = codegen._emit_rpc_namespace_dto(
         cast(codegen.Metadata, {"installations": {}, "rpc_namespaces": {"widgets": contract}})

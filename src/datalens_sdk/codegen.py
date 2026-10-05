@@ -280,7 +280,6 @@ class RpcNamespaceConfig(TypedDict):
     tag: str
     namespace: str
     operation_name_overrides: NotRequired[dict[str, str]]
-    operation_routes: NotRequired[tuple[str, ...]]
     installations: NotRequired[tuple[str, ...]]
     alias_only_read: NotRequired[bool]
 
@@ -322,7 +321,6 @@ RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (
         namespace="spark_jobs",
         installations=("yacloud",),
         alias_only_read=True,
-        operation_routes=("/rpc/getSparkJob", "/rpc/listSparkJobs"),
     ),
 )
 
@@ -1214,8 +1212,6 @@ def build_rpc_namespace_contract_meta(
 
     paths = _string_object_dict(spec.get("paths"), context="paths")
     selected: list[tuple[str, str, dict[str, object], dict[str, object]]] = []
-    tagged_routes: set[str] = set()
-    operation_routes = config.get("operation_routes")
     http_methods = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
     for route, raw_path in sorted(paths.items()):
         path_item = _string_object_dict(raw_path, context=route)
@@ -1223,12 +1219,7 @@ def build_rpc_namespace_contract_meta(
             operation = _string_object_dict(path_item[method], context=f"{route}.{method}")
             tags = _string_list(operation.get("tags", []), context=f"{route}.{method}.tags")
             if config["tag"] in tags:
-                tagged_routes.add(route)
-                if operation_routes is None or route in operation_routes:
-                    selected.append((route, method, path_item, operation))
-    missing_routes = set(operation_routes or ()) - tagged_routes
-    if missing_routes:
-        raise ValueError(f"tagged RPC {config['tag']} is missing configured routes: {sorted(missing_routes)!r}")
+                selected.append((route, method, path_item, operation))
     if not selected:
         return None
 
