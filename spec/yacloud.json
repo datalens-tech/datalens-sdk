@@ -158,6 +158,40 @@
         "title": "APPMETRICA_API",
         "type": "object"
       },
+      "AccessBinding": {
+        "properties": {
+          "inheritedFrom": {
+            "description": "Resource from which the access binding is inherited.",
+            "properties": {
+              "id": {
+                "description": "Unique identifier of the resource.",
+                "type": "string"
+              },
+              "type": {
+                "description": "Type of the resource.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "type"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "roleId": {
+            "description": "ID of the role assigned to the subject.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "roleId",
+          "inheritedFrom"
+        ],
+        "type": "object"
+      },
       "AccessExtBatchListMembersArgs": {
         "properties": {
           "filter": {
@@ -3050,17 +3084,17 @@
         "properties": {},
         "type": "object"
       },
-      "CancelSparkJobArgs": {
+      "CancelSparkApplicationArgs": {
         "additionalProperties": false,
         "properties": {
-          "clusterId": {
-            "description": "ID of the Spark cluster.",
+          "applicationId": {
+            "description": "ID of the Spark application to cancel.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
           },
-          "jobId": {
-            "description": "ID of the Spark job to cancel.",
+          "clusterId": {
+            "description": "ID of the Spark cluster.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -3068,7 +3102,7 @@
         },
         "required": [
           "clusterId",
-          "jobId"
+          "applicationId"
         ],
         "type": "object"
       },
@@ -3956,6 +3990,85 @@
         },
         "type": "object"
       },
+      "CreateBucketDownloadUrlArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "cloudEnvironmentId": {
+            "description": "ID of the cloud environment that owns the storage bucket.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "path": {
+            "description": "Path of the object in the storage bucket. Must not exceed 1024 UTF-8 bytes or contain control characters.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "cloudEnvironmentId",
+          "path"
+        ],
+        "type": "object"
+      },
+      "CreateBucketDownloadUrlResult": {
+        "properties": {
+          "url": {
+            "description": "Temporary signed URL for accessing the object.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
+      "CreateBucketUploadUrlArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "cloudEnvironmentId": {
+            "description": "ID of the cloud environment that owns the storage bucket.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "contentMd5": {
+            "description": "Base64-encoded 16-byte MD5 digest of the object content.",
+            "maxLength": 24,
+            "minLength": 24,
+            "type": "string"
+          },
+          "path": {
+            "description": "Path of the object in the storage bucket. Must not exceed 1024 UTF-8 bytes or contain control characters.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "size": {
+            "description": "Size of the object in bytes.",
+            "pattern": "^(?:0|[1-9]\\d*)$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cloudEnvironmentId",
+          "path",
+          "size",
+          "contentMd5"
+        ],
+        "type": "object"
+      },
+      "CreateBucketUploadUrlResult": {
+        "properties": {
+          "url": {
+            "description": "Temporary signed URL for accessing the object.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
       "CreateCloudEnvironmentArgs": {
         "additionalProperties": false,
         "properties": {
@@ -4100,17 +4213,6 @@
           "updatedBy",
           "updatedAt",
           "meta"
-        ],
-        "type": "object"
-      },
-      "CreateConnectionResult": {
-        "properties": {
-          "id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id"
         ],
         "type": "object"
       },
@@ -5244,6 +5346,461 @@
         ],
         "type": "object"
       },
+      "CreateRestCatalogArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "bucketSettings": {
+            "additionalProperties": false,
+            "description": "Settings of the REST catalog bucket.",
+            "properties": {
+              "alias": {
+                "description": "Human-readable alias of the REST catalog bucket.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "description": {
+                "description": "Description of the REST catalog bucket.",
+                "maxLength": 1024,
+                "type": "string"
+              },
+              "maxSize": {
+                "description": "Maximum size of the REST catalog bucket in bytes.",
+                "pattern": "^\\d+$",
+                "type": "string"
+              },
+              "storageClass": {
+                "description": "Storage class of the REST catalog bucket.",
+                "enum": [
+                  "STANDARD",
+                  "COLD",
+                  "STANDARD_IA",
+                  "NEARLINE",
+                  "ICE",
+                  "GLACIER"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "storageClass",
+              "maxSize",
+              "alias"
+            ],
+            "type": "object"
+          },
+          "cloudEnvironmentId": {
+            "description": "ID of the cloud environment in which to create the REST catalog.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "description": {
+            "description": "Description of the REST catalog.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": {
+              "maxLength": 63,
+              "pattern": "^[-_0-9a-z]*$",
+              "type": "string"
+            },
+            "description": "REST catalog labels.",
+            "type": "object"
+          },
+          "name": {
+            "description": "Name of the REST catalog.",
+            "maxLength": 63,
+            "pattern": "^[a-z](?:[a-z0-9_-]*[a-z0-9])?$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cloudEnvironmentId",
+          "name",
+          "bucketSettings"
+        ],
+        "type": "object"
+      },
+      "CreateSparkApplicationArgs": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "catalogs": {
+                "description": "REST catalogs to attach to the Spark application.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark application.",
+                "maxLength": 255,
+                "pattern": "^(?:|[a-z][-a-z0-9]{1,61}[a-z0-9])$",
+                "type": "string"
+              },
+              "sparkApplication": {
+                "additionalProperties": false,
+                "properties": {
+                  "archiveUris": {
+                    "description": "Archives extracted in the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "args": {
+                    "description": "Arguments passed to the Spark driver.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "excludePackages": {
+                    "description": "Maven packages excluded during dependency resolution.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "fileUris": {
+                    "description": "Files copied to the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "jarFileUris": {
+                    "description": "JAR files added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "mainClass": {
+                    "description": "Name of the driver main class.",
+                    "maxLength": 255,
+                    "type": "string"
+                  },
+                  "mainJarFileUri": {
+                    "description": "URI of the JAR file that contains the main class.",
+                    "maxLength": 2047,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "packages": {
+                    "description": "Maven packages added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "properties": {
+                    "additionalProperties": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "description": "Spark configuration properties.",
+                    "type": "object"
+                  },
+                  "repositories": {
+                    "description": "Additional Maven repositories.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "mainJarFileUri"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "clusterId",
+              "sparkApplication"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "catalogs": {
+                "description": "REST catalogs to attach to the Spark application.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark application.",
+                "maxLength": 255,
+                "pattern": "^(?:|[a-z][-a-z0-9]{1,61}[a-z0-9])$",
+                "type": "string"
+              },
+              "pysparkApplication": {
+                "additionalProperties": false,
+                "properties": {
+                  "archiveUris": {
+                    "description": "Archives extracted in the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "args": {
+                    "description": "Arguments passed to the PySpark driver.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "excludePackages": {
+                    "description": "Maven packages excluded during dependency resolution.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "fileUris": {
+                    "description": "Files copied to the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "jarFileUris": {
+                    "description": "JAR files added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "mainPythonFileUri": {
+                    "description": "URI of the main Python file.",
+                    "maxLength": 2047,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "packages": {
+                    "description": "Maven packages added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "properties": {
+                    "additionalProperties": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "description": "Spark configuration properties.",
+                    "type": "object"
+                  },
+                  "pythonFileUris": {
+                    "description": "Additional Python files passed to PySpark.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "repositories": {
+                    "description": "Additional Maven repositories.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "mainPythonFileUri"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "clusterId",
+              "pysparkApplication"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "catalogs": {
+                "description": "REST catalogs to attach to the Spark application.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark application.",
+                "maxLength": 255,
+                "pattern": "^(?:|[a-z][-a-z0-9]{1,61}[a-z0-9])$",
+                "type": "string"
+              },
+              "sparkConnectApplication": {
+                "additionalProperties": false,
+                "properties": {
+                  "archiveUris": {
+                    "description": "Archives extracted in the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "excludePackages": {
+                    "description": "Maven packages excluded during dependency resolution.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "fileUris": {
+                    "description": "Files copied to the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "jarFileUris": {
+                    "description": "JAR files added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "packages": {
+                    "description": "Maven packages added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "properties": {
+                    "additionalProperties": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "description": "Spark configuration properties.",
+                    "type": "object"
+                  },
+                  "repositories": {
+                    "description": "Additional Maven repositories.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "required": [
+              "clusterId",
+              "sparkConnectApplication"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "CreateSparkClusterArgs": {
         "additionalProperties": false,
         "properties": {
@@ -5500,384 +6057,6 @@
           "config"
         ],
         "type": "object"
-      },
-      "CreateSparkJobArgs": {
-        "anyOf": [
-          {
-            "additionalProperties": false,
-            "properties": {
-              "catalogs": {
-                "description": "REST catalogs to attach to the Spark job.",
-                "items": {
-                  "properties": {
-                    "catalogId": {
-                      "description": "ID of the REST catalog.",
-                      "maxLength": 50,
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "catalogId"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "clusterId": {
-                "description": "ID of the Spark cluster.",
-                "maxLength": 50,
-                "minLength": 1,
-                "type": "string"
-              },
-              "name": {
-                "description": "Name of the Spark job.",
-                "maxLength": 255,
-                "pattern": "^(?:|[a-z][-a-z0-9]{1,61}[a-z0-9])$",
-                "type": "string"
-              },
-              "sparkJob": {
-                "additionalProperties": false,
-                "properties": {
-                  "archiveUris": {
-                    "description": "Archives extracted in the Spark working directory.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "args": {
-                    "description": "Arguments passed to the Spark driver.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "excludePackages": {
-                    "description": "Maven packages excluded during dependency resolution.",
-                    "items": {
-                      "maxLength": 255,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "fileUris": {
-                    "description": "Files copied to the Spark working directory.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "jarFileUris": {
-                    "description": "JAR files added to the Spark classpaths.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "mainClass": {
-                    "description": "Name of the driver main class.",
-                    "maxLength": 255,
-                    "type": "string"
-                  },
-                  "mainJarFileUri": {
-                    "description": "URI of the JAR file that contains the main class.",
-                    "maxLength": 2047,
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "packages": {
-                    "description": "Maven packages added to the Spark classpaths.",
-                    "items": {
-                      "maxLength": 255,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "properties": {
-                    "additionalProperties": {
-                      "maxLength": 256,
-                      "type": "string"
-                    },
-                    "description": "Spark configuration properties.",
-                    "type": "object"
-                  },
-                  "repositories": {
-                    "description": "Additional Maven repositories.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 10,
-                    "type": "array"
-                  }
-                },
-                "required": [
-                  "mainJarFileUri"
-                ],
-                "type": "object"
-              }
-            },
-            "required": [
-              "clusterId",
-              "sparkJob"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "catalogs": {
-                "description": "REST catalogs to attach to the Spark job.",
-                "items": {
-                  "properties": {
-                    "catalogId": {
-                      "description": "ID of the REST catalog.",
-                      "maxLength": 50,
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "catalogId"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "clusterId": {
-                "description": "ID of the Spark cluster.",
-                "maxLength": 50,
-                "minLength": 1,
-                "type": "string"
-              },
-              "name": {
-                "description": "Name of the Spark job.",
-                "maxLength": 255,
-                "pattern": "^(?:|[a-z][-a-z0-9]{1,61}[a-z0-9])$",
-                "type": "string"
-              },
-              "pysparkJob": {
-                "additionalProperties": false,
-                "properties": {
-                  "archiveUris": {
-                    "description": "Archives extracted in the Spark working directory.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "args": {
-                    "description": "Arguments passed to the PySpark driver.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "excludePackages": {
-                    "description": "Maven packages excluded during dependency resolution.",
-                    "items": {
-                      "maxLength": 255,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "fileUris": {
-                    "description": "Files copied to the Spark working directory.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "jarFileUris": {
-                    "description": "JAR files added to the Spark classpaths.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "mainPythonFileUri": {
-                    "description": "URI of the main Python file.",
-                    "maxLength": 2047,
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "packages": {
-                    "description": "Maven packages added to the Spark classpaths.",
-                    "items": {
-                      "maxLength": 255,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "properties": {
-                    "additionalProperties": {
-                      "maxLength": 256,
-                      "type": "string"
-                    },
-                    "description": "Spark configuration properties.",
-                    "type": "object"
-                  },
-                  "pythonFileUris": {
-                    "description": "Additional Python files passed to PySpark.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "repositories": {
-                    "description": "Additional Maven repositories.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 10,
-                    "type": "array"
-                  }
-                },
-                "required": [
-                  "mainPythonFileUri"
-                ],
-                "type": "object"
-              }
-            },
-            "required": [
-              "clusterId",
-              "pysparkJob"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "catalogs": {
-                "description": "REST catalogs to attach to the Spark job.",
-                "items": {
-                  "properties": {
-                    "catalogId": {
-                      "description": "ID of the REST catalog.",
-                      "maxLength": 50,
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "catalogId"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "clusterId": {
-                "description": "ID of the Spark cluster.",
-                "maxLength": 50,
-                "minLength": 1,
-                "type": "string"
-              },
-              "name": {
-                "description": "Name of the Spark job.",
-                "maxLength": 255,
-                "pattern": "^(?:|[a-z][-a-z0-9]{1,61}[a-z0-9])$",
-                "type": "string"
-              },
-              "sparkConnectJob": {
-                "additionalProperties": false,
-                "properties": {
-                  "archiveUris": {
-                    "description": "Archives extracted in the Spark working directory.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "excludePackages": {
-                    "description": "Maven packages excluded during dependency resolution.",
-                    "items": {
-                      "maxLength": 255,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "fileUris": {
-                    "description": "Files copied to the Spark working directory.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "jarFileUris": {
-                    "description": "JAR files added to the Spark classpaths.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "packages": {
-                    "description": "Maven packages added to the Spark classpaths.",
-                    "items": {
-                      "maxLength": 255,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "properties": {
-                    "additionalProperties": {
-                      "maxLength": 256,
-                      "type": "string"
-                    },
-                    "description": "Spark configuration properties.",
-                    "type": "object"
-                  },
-                  "repositories": {
-                    "description": "Additional Maven repositories.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 10,
-                    "type": "array"
-                  }
-                },
-                "type": "object"
-              }
-            },
-            "required": [
-              "clusterId",
-              "sparkConnectJob"
-            ],
-            "type": "object"
-          }
-        ]
       },
       "CreateSqlQueryArgs": {
         "properties": {
@@ -6298,42 +6477,84 @@
             "type": "string"
           },
           "trigger": {
-            "additionalProperties": false,
-            "properties": {
-              "entryId": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "options": {
+            "oneOf": [
+              {
                 "additionalProperties": false,
                 "properties": {
-                  "expression": {
-                    "minLength": 1,
-                    "type": "string"
+                  "entryId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   },
-                  "timezone": {
+                  "options": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "expression": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "timezone": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "expression"
+                    ],
+                    "type": "object"
+                  },
+                  "type": {
+                    "enum": [
+                      "cron"
+                    ],
                     "type": "string"
                   }
                 },
                 "required": [
-                  "expression"
+                  "type",
+                  "options"
                 ],
                 "type": "object"
               },
-              "type": {
-                "enum": [
-                  "cron"
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "entryId": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "options": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "query": {
+                        "maxLength": 100000,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "timezone": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "query"
+                    ],
+                    "type": "object"
+                  },
+                  "type": {
+                    "enum": [
+                      "sql"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "entryId",
+                  "options"
                 ],
-                "type": "string"
+                "type": "object"
               }
-            },
-            "required": [
-              "type",
-              "options"
-            ],
-            "type": "object"
+            ]
           },
           "workbookId": {
             "type": "string"
@@ -6615,6 +6836,104 @@
           "updatedBy",
           "updatedAt",
           "operation"
+        ],
+        "type": "object"
+      },
+      "CurrentTenantDetails": {
+        "properties": {
+          "dlpEnabled": {
+            "description": "Whether DataLens Platform mode is enabled for the tenant.",
+            "type": "boolean"
+          },
+          "foldersEnabled": {
+            "description": "Whether legacy folder navigation is enabled for the tenant.",
+            "type": "boolean"
+          },
+          "orgId": {
+            "description": "ID of the organization. Null when the tenant has no organization.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "settings": {
+            "additionalProperties": {},
+            "description": "Public tenant settings. Additional public settings may be returned.",
+            "properties": {
+              "aiAssistantProhibited": {
+                "description": "Whether the Neuroanalyst is prohibited for the tenant.",
+                "type": "boolean"
+              },
+              "aiChatHistoryProhibited": {
+                "description": "Whether storing Neuroanalyst chat history is prohibited for the tenant.",
+                "type": "boolean"
+              },
+              "autoAssignLicenses": {
+                "description": "Whether seats are assigned automatically.",
+                "type": "boolean"
+              },
+              "autoBuyLicenses": {
+                "description": "Whether additional seats are purchased automatically.",
+                "type": "boolean"
+              },
+              "autoBuyLicensesLimit": {
+                "description": "Maximum number of seats that can be purchased automatically.",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "dataExportProhibited": {
+                "description": "Whether exporting data is prohibited for the tenant.",
+                "type": "boolean"
+              },
+              "defaultColorPaletteId": {
+                "description": "ID of the default color palette.",
+                "type": "string"
+              },
+              "defaultSidebarMode": {
+                "description": "Default sidebar display mode.",
+                "enum": [
+                  "simplified",
+                  "full"
+                ],
+                "type": "string"
+              },
+              "newObjectCreatorRole": {
+                "description": "Default role assigned to the creator of a new object.",
+                "enum": [
+                  "admin",
+                  "editor",
+                  "none"
+                ],
+                "type": "string"
+              },
+              "prohibitionPublication": {
+                "description": "Whether entries publication is prohibited for the tenant.",
+                "type": "boolean"
+              },
+              "sharingProhibited": {
+                "description": "Whether creating temporary public links is prohibited for the tenant.",
+                "type": "boolean"
+              },
+              "workbookFileExportProhibited": {
+                "description": "Whether workbooks export is prohibited for the tenant.",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "tenantId": {
+            "description": "ID of the current DataLens tenant.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId",
+          "orgId",
+          "settings",
+          "dlpEnabled",
+          "foldersEnabled"
         ],
         "type": "object"
       },
@@ -7669,7 +7988,7 @@
                 "additionalProperties": {
                   "$ref": "#/components/schemas/DashStringDefaultValueV2"
                 },
-                "description": "Default control values.",
+                "description": "Selected values keyed by source.datasetFieldId for dataset controls or source.fieldName for manual controls. For a date or date range control with no selected value, keep the field key with an empty string value (e.g. {\"fieldId\": \"\"}); do not omit the key or use an empty defaults object. Prefix nonempty values with __<lowercase operation>_ when source.operation is set; leave empty values unprefixed.",
                 "type": "object"
               },
               "id": {
@@ -7748,7 +8067,7 @@
                 "additionalProperties": {
                   "$ref": "#/components/schemas/DashStringDefaultValueV2"
                 },
-                "description": "Default control values.",
+                "description": "Selected values keyed by source.datasetFieldId for dataset controls or source.fieldName for manual controls. For a date or date range control with no selected value, keep the field key with an empty string value (e.g. {\"fieldId\": \"\"}); do not omit the key or use an empty defaults object. Prefix nonempty values with __<lowercase operation>_ when source.operation is set; leave empty values unprefixed.",
                 "type": "object"
               },
               "id": {
@@ -7987,7 +8306,7 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/DashStringDefaultValueV2"
             },
-            "description": "Default control values.",
+            "description": "Selected values keyed by source.datasetFieldId for dataset controls or source.fieldName for manual controls. For a date or date range control with no selected value, keep the field key with an empty string value (e.g. {\"fieldId\": \"\"}); do not omit the key or use an empty defaults object. Prefix nonempty values with __<lowercase operation>_ when source.operation is set; leave empty values unprefixed.",
             "type": "object"
           },
           "id": {
@@ -10185,6 +10504,7 @@
         "additionalProperties": false,
         "properties": {
           "subscriptionId": {
+            "example": "7lieexzx4kxs0",
             "minLength": 1,
             "pattern": "^[a-zA-Z0-9._:-]+$",
             "type": "string"
@@ -13030,7 +13350,110 @@
         },
         "type": "object"
       },
+      "GetBucketObjectMetadataArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "cloudEnvironmentId": {
+            "description": "ID of the cloud environment that owns the storage bucket.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "path": {
+            "description": "Path of the object in the storage bucket. Must not exceed 1024 UTF-8 bytes or contain control characters.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "cloudEnvironmentId",
+          "path"
+        ],
+        "type": "object"
+      },
+      "GetBucketObjectMetadataResult": {
+        "properties": {
+          "lastModified": {
+            "description": "Time when the object was last modified.",
+            "properties": {
+              "nanos": {
+                "description": "Fractional seconds in nanoseconds.",
+                "type": "number"
+              },
+              "seconds": {
+                "description": "Number of seconds since the Unix epoch.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "seconds"
+            ],
+            "type": "object"
+          },
+          "size": {
+            "description": "Size of the object in bytes.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "size"
+        ],
+        "type": "object"
+      },
+      "GetChartDataArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "chartId": {
+            "description": "Saved chart ID.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "description": "Chart parameters, including table pagination. Saved chart settings apply.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "chartId"
+        ],
+        "type": "object"
+      },
+      "GetChartDataResult": {
+        "discriminator": {
+          "mapping": {
+            "editor": "#/components/schemas/GetEditorChartDataResult",
+            "ql": "#/components/schemas/GetQLChartDataResult",
+            "wizard": "#/components/schemas/GetWizardChartDataResult"
+          },
+          "propertyName": "chartType"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/GetWizardChartDataResult"
+          },
+          {
+            "$ref": "#/components/schemas/GetQLChartDataResult"
+          },
+          {
+            "$ref": "#/components/schemas/GetEditorChartDataResult"
+          }
+        ]
+      },
       "GetChartScreenshotArgs": {
+        "additionalProperties": false,
         "properties": {
           "base64": {
             "description": "Whether to return the file as a base64 string.",
@@ -13038,48 +13461,6 @@
           },
           "chartId": {
             "description": "ID of the chart to capture.",
-            "type": "string"
-          },
-          "clip": {
-            "description": "Area of the page to capture.",
-            "properties": {
-              "height": {
-                "description": "Height of the clip area in pixels.",
-                "exclusiveMinimum": 0,
-                "type": "number"
-              },
-              "width": {
-                "description": "Width of the clip area in pixels.",
-                "exclusiveMinimum": 0,
-                "type": "number"
-              },
-              "x": {
-                "description": "X coordinate of the clip area.",
-                "type": "number"
-              },
-              "y": {
-                "description": "Y coordinate of the clip area.",
-                "type": "number"
-              }
-            },
-            "required": [
-              "x",
-              "y",
-              "width",
-              "height"
-            ],
-            "type": "object"
-          },
-          "debug": {
-            "description": "Whether to include debug information.",
-            "type": "boolean"
-          },
-          "filename": {
-            "description": "Output file name.",
-            "type": "string"
-          },
-          "format": {
-            "description": "Page format of the PDF file, for example a4.",
             "type": "string"
           },
           "fullPage": {
@@ -13092,97 +13473,21 @@
             "maximum": 6000,
             "type": "number"
           },
-          "landscape": {
-            "description": "Whether to use landscape orientation for PDF.",
-            "type": "boolean"
-          },
-          "margin": {
-            "description": "Margins of the PDF file.",
-            "properties": {
-              "bottom": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  }
-                ],
-                "description": "Bottom margin."
-              },
-              "left": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  }
-                ],
-                "description": "Left margin."
-              },
-              "right": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  }
-                ],
-                "description": "Right margin."
-              },
-              "top": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  }
-                ],
-                "description": "Top margin."
-              }
-            },
-            "type": "object"
-          },
-          "noExtension": {
-            "description": "Whether to omit the file extension from the file name.",
-            "type": "boolean"
-          },
-          "quality": {
-            "description": "Quality of the JPEG screenshot.",
-            "maximum": 100,
-            "minimum": 0,
-            "type": "number"
-          },
           "queryParams": {
             "additionalProperties": {},
             "description": "Additional query parameters of the captured page, for example chart or dashboard parameters.",
             "type": "object"
           },
-          "retina": {
-            "description": "Whether to use retina (2x) resolution. Not supported with base64 delivery.",
-            "type": "boolean"
-          },
           "s3": {
-            "description": "Whether to upload the file to S3. Defaults to true.",
+            "description": "Whether to upload the file to S3. Defaults to true unless base64 is enabled.",
             "type": "boolean"
-          },
-          "timeout": {
-            "description": "Rendering timeout in milliseconds.",
-            "exclusiveMinimum": 0,
-            "maximum": 120000,
-            "type": "number"
           },
           "type": {
             "description": "Output file format. Defaults to png.",
             "enum": [
               "png",
               "jpeg",
-              "jpg",
-              "pdf",
-              "html"
+              "jpg"
             ],
             "type": "string"
           },
@@ -13534,55 +13839,14 @@
         "type": "object"
       },
       "GetDashScreenshotArgs": {
+        "additionalProperties": false,
         "properties": {
           "base64": {
             "description": "Whether to return the file as a base64 string.",
             "type": "boolean"
           },
-          "clip": {
-            "description": "Area of the page to capture.",
-            "properties": {
-              "height": {
-                "description": "Height of the clip area in pixels.",
-                "exclusiveMinimum": 0,
-                "type": "number"
-              },
-              "width": {
-                "description": "Width of the clip area in pixels.",
-                "exclusiveMinimum": 0,
-                "type": "number"
-              },
-              "x": {
-                "description": "X coordinate of the clip area.",
-                "type": "number"
-              },
-              "y": {
-                "description": "Y coordinate of the clip area.",
-                "type": "number"
-              }
-            },
-            "required": [
-              "x",
-              "y",
-              "width",
-              "height"
-            ],
-            "type": "object"
-          },
           "dashId": {
             "description": "ID of the dashboard to capture.",
-            "type": "string"
-          },
-          "debug": {
-            "description": "Whether to include debug information.",
-            "type": "boolean"
-          },
-          "filename": {
-            "description": "Output file name.",
-            "type": "string"
-          },
-          "format": {
-            "description": "Page format of the PDF file, for example a4.",
             "type": "string"
           },
           "fullPage": {
@@ -13595,97 +13859,21 @@
             "maximum": 6000,
             "type": "number"
           },
-          "landscape": {
-            "description": "Whether to use landscape orientation for PDF.",
-            "type": "boolean"
-          },
-          "margin": {
-            "description": "Margins of the PDF file.",
-            "properties": {
-              "bottom": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  }
-                ],
-                "description": "Bottom margin."
-              },
-              "left": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  }
-                ],
-                "description": "Left margin."
-              },
-              "right": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  }
-                ],
-                "description": "Right margin."
-              },
-              "top": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  }
-                ],
-                "description": "Top margin."
-              }
-            },
-            "type": "object"
-          },
-          "noExtension": {
-            "description": "Whether to omit the file extension from the file name.",
-            "type": "boolean"
-          },
-          "quality": {
-            "description": "Quality of the JPEG screenshot.",
-            "maximum": 100,
-            "minimum": 0,
-            "type": "number"
-          },
           "queryParams": {
             "additionalProperties": {},
             "description": "Additional query parameters of the captured page, for example chart or dashboard parameters.",
             "type": "object"
           },
-          "retina": {
-            "description": "Whether to use retina (2x) resolution. Not supported with base64 delivery.",
-            "type": "boolean"
-          },
           "s3": {
-            "description": "Whether to upload the file to S3. Defaults to true.",
+            "description": "Whether to upload the file to S3. Defaults to true unless base64 is enabled.",
             "type": "boolean"
-          },
-          "timeout": {
-            "description": "Rendering timeout in milliseconds.",
-            "exclusiveMinimum": 0,
-            "maximum": 120000,
-            "type": "number"
           },
           "type": {
             "description": "Output file format. Defaults to png.",
             "enum": [
               "png",
               "jpeg",
-              "jpg",
-              "pdf",
-              "html"
+              "jpg"
             ],
             "type": "string"
           },
@@ -13782,6 +13970,60 @@
         },
         "required": [
           "chartId"
+        ],
+        "type": "object"
+      },
+      "GetEditorChartDataResult": {
+        "additionalProperties": false,
+        "properties": {
+          "chartType": {
+            "enum": [
+              "editor"
+            ],
+            "type": "string"
+          },
+          "results": {
+            "description": "Tables in query and block order. Results with different schemas are returned separately.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "rows": {
+                  "description": "Values ordered according to schema.",
+                  "items": {
+                    "items": {},
+                    "type": "array"
+                  },
+                  "type": "array"
+                },
+                "schema": {
+                  "description": "Columns in row value order.",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "schema",
+                "rows"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "chartType",
+          "results"
         ],
         "type": "object"
       },
@@ -15014,62 +15256,49 @@
                 {
                   "properties": {
                     "fullPermissions": {
-                      "description": "Full permissions for the entry.",
-                      "properties": {
-                        "copy": {
-                          "description": "Permission to copy.",
-                          "type": "boolean"
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/SharedEntryPermissions"
                         },
-                        "createEntryBinding": {
-                          "description": "Permission to create entry binding.",
-                          "type": "boolean"
-                        },
-                        "createLimitedEntryBinding": {
-                          "description": "Permission to create limited entry binding.",
-                          "type": "boolean"
-                        },
-                        "delete": {
-                          "description": "Permission to delete.",
-                          "type": "boolean"
-                        },
-                        "limitedView": {
-                          "description": "Permission for limited viewing.",
-                          "type": "boolean"
-                        },
-                        "listAccessBindings": {
-                          "description": "Permission to list access bindings.",
-                          "type": "boolean"
-                        },
-                        "move": {
-                          "description": "Permission to move.",
-                          "type": "boolean"
-                        },
-                        "update": {
-                          "description": "Permission to update.",
-                          "type": "boolean"
-                        },
-                        "updateAccessBindings": {
-                          "description": "Permission to update access bindings.",
-                          "type": "boolean"
-                        },
-                        "view": {
-                          "description": "Permission to view.",
-                          "type": "boolean"
+                        {
+                          "properties": {
+                            "delete": {
+                              "description": "Permission to delete the compute resource.",
+                              "type": "boolean"
+                            },
+                            "get": {
+                              "description": "Permission to read compute entry metadata.",
+                              "type": "boolean"
+                            },
+                            "listAccessBindings": {
+                              "description": "Permission to list access bindings.",
+                              "type": "boolean"
+                            },
+                            "update": {
+                              "description": "Permission to update the compute resource.",
+                              "type": "boolean"
+                            },
+                            "updateAccessBindings": {
+                              "description": "Permission to update access bindings.",
+                              "type": "boolean"
+                            },
+                            "use": {
+                              "description": "Permission to use the compute resource.",
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "get",
+                            "use",
+                            "update",
+                            "delete",
+                            "listAccessBindings",
+                            "updateAccessBindings"
+                          ],
+                          "type": "object"
                         }
-                      },
-                      "required": [
-                        "listAccessBindings",
-                        "updateAccessBindings",
-                        "limitedView",
-                        "view",
-                        "update",
-                        "copy",
-                        "move",
-                        "delete",
-                        "createEntryBinding",
-                        "createLimitedEntryBinding"
                       ],
-                      "type": "object"
+                      "description": "Full permissions for the entry."
                     },
                     "permissions": {
                       "description": "Basic permissions for the entry.",
@@ -15337,6 +15566,65 @@
         ],
         "type": "object"
       },
+      "GetQLChartDataResult": {
+        "additionalProperties": false,
+        "properties": {
+          "chartType": {
+            "enum": [
+              "ql"
+            ],
+            "type": "string"
+          },
+          "results": {
+            "description": "Tables in query and block order. Results with different schemas are returned separately.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "rows": {
+                  "description": "Values ordered according to schema.",
+                  "items": {
+                    "items": {},
+                    "type": "array"
+                  },
+                  "type": "array"
+                },
+                "schema": {
+                  "description": "Columns in row value order.",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "description": "QL value type, for example \"number\" or \"string\". Numeric values may be returned as strings.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "type"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "schema",
+                "rows"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "chartType",
+          "results"
+        ],
+        "type": "object"
+      },
       "GetReportV2Args": {
         "properties": {
           "entryId": {
@@ -15483,6 +15771,28 @@
         ],
         "type": "object"
       },
+      "GetSparkApplicationArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "applicationId": {
+            "description": "ID of the Spark application to return.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "clusterId": {
+            "description": "ID of the Spark cluster.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "clusterId",
+          "applicationId"
+        ],
+        "type": "object"
+      },
       "GetSparkClusterArgs": {
         "additionalProperties": false,
         "properties": {
@@ -15495,28 +15805,6 @@
         },
         "required": [
           "id"
-        ],
-        "type": "object"
-      },
-      "GetSparkJobArgs": {
-        "additionalProperties": false,
-        "properties": {
-          "clusterId": {
-            "description": "ID of the Spark cluster.",
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "jobId": {
-            "description": "ID of the Spark job to return.",
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "clusterId",
-          "jobId"
         ],
         "type": "object"
       },
@@ -15997,6 +16285,7 @@
         "additionalProperties": false,
         "properties": {
           "subscriptionId": {
+            "example": "7lieexzx4kxs0",
             "minLength": 1,
             "pattern": "^[a-zA-Z0-9._:-]+$",
             "type": "string"
@@ -16118,6 +16407,90 @@
         "required": [
           "resourcePresetId",
           "cloudEnvironmentId"
+        ],
+        "type": "object"
+      },
+      "GetWizardChartDataResult": {
+        "additionalProperties": false,
+        "properties": {
+          "chartType": {
+            "enum": [
+              "wizard"
+            ],
+            "type": "string"
+          },
+          "results": {
+            "description": "Tables in query and block order. Results with different schemas are returned separately.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "rows": {
+                  "description": "Values ordered according to schema.",
+                  "items": {
+                    "items": {},
+                    "type": "array"
+                  },
+                  "type": "array"
+                },
+                "schema": {
+                  "description": "Columns in row value order.",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "guid": {
+                        "description": "Field GUID, when provided by the source.",
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "enum": [
+                          "date",
+                          "genericdatetime",
+                          "datetimetz",
+                          "integer",
+                          "uinteger",
+                          "string",
+                          "float",
+                          "boolean",
+                          "geopoint",
+                          "geopolygon",
+                          "markup",
+                          "heatmap",
+                          "array_int",
+                          "array_float",
+                          "array_str",
+                          "unsupported",
+                          "hierarchy",
+                          "tree_str",
+                          "tree_int",
+                          "tree_float"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "type"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "schema",
+                "rows"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "chartType",
+          "results"
         ],
         "type": "object"
       },
@@ -17002,98 +17375,6 @@
         ],
         "type": "object"
       },
-      "IamAccessBinding": {
-        "additionalProperties": false,
-        "properties": {
-          "inheritedFrom": {
-            "additionalProperties": false,
-            "description": "Resource from which the access binding is inherited.",
-            "properties": {
-              "id": {
-                "description": "Unique identifier of the resource.",
-                "type": "string"
-              },
-              "type": {
-                "description": "Type of the resource.",
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "type"
-            ],
-            "type": [
-              "object",
-              "null"
-            ]
-          },
-          "roleId": {
-            "description": "ID of the role assigned to the subject.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "roleId",
-          "inheritedFrom"
-        ],
-        "type": "object"
-      },
-      "IamSubjectWithBindings": {
-        "additionalProperties": false,
-        "properties": {
-          "accessBindings": {
-            "description": "Access bindings assigned directly to the subject.",
-            "items": {
-              "$ref": "#/components/schemas/IamAccessBinding"
-            },
-            "type": "array"
-          },
-          "inheritedAccessBindings": {
-            "description": "Access bindings inherited by the subject.",
-            "items": {
-              "$ref": "#/components/schemas/IamAccessBinding"
-            },
-            "type": "array"
-          },
-          "subjectClaims": {
-            "additionalProperties": false,
-            "description": "Subject details.",
-            "properties": {
-              "email": {
-                "description": "Email address of the subject.",
-                "type": "string"
-              },
-              "sub": {
-                "description": "Unique identifier of the subject.",
-                "type": "string"
-              },
-              "subType": {
-                "description": "Type of the subject.",
-                "enum": [
-                  "SUBJECT_TYPE_UNSPECIFIED",
-                  "USER_ACCOUNT",
-                  "SERVICE_ACCOUNT",
-                  "GROUP",
-                  "INVITEE"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "sub",
-              "subType",
-              "email"
-            ],
-            "type": "object"
-          }
-        },
-        "required": [
-          "subjectClaims",
-          "accessBindings",
-          "inheritedAccessBindings"
-        ],
-        "type": "object"
-      },
       "IndexInfo": {
         "properties": {
           "columns": {
@@ -17797,6 +18078,75 @@
         ],
         "type": "object"
       },
+      "ListAccessBindingsResult": {
+        "properties": {
+          "nextPageToken": {
+            "description": "Token for retrieving the next page of results.",
+            "type": "string"
+          },
+          "subjectsWithBindings": {
+            "description": "Subjects and their access bindings.",
+            "items": {
+              "$ref": "#/components/schemas/SubjectWithBindings"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "subjectsWithBindings",
+          "nextPageToken"
+        ],
+        "type": "object"
+      },
+      "ListBucketObjectsArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "cloudEnvironmentId": {
+            "description": "ID of the cloud environment that owns the storage bucket.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "Maximum number of objects to return. The default is 1000.",
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "Token for the next page of objects.",
+            "type": "string"
+          },
+          "prefix": {
+            "description": "Prefix used to filter object paths. Must not exceed 1024 UTF-8 bytes or contain control characters. Lists all objects when omitted.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cloudEnvironmentId"
+        ],
+        "type": "object"
+      },
+      "ListBucketObjectsResult": {
+        "properties": {
+          "keys": {
+            "description": "Paths of objects matching the request.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "nextPageToken": {
+            "description": "Token for the next page of objects.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "keys",
+          "nextPageToken"
+        ],
+        "type": "object"
+      },
       "ListCatalogsArgs": {
         "additionalProperties": false,
         "properties": {
@@ -18425,32 +18775,11 @@
         ],
         "type": "object"
       },
-      "ListIamAccessBindingsResult": {
-        "additionalProperties": false,
-        "properties": {
-          "nextPageToken": {
-            "description": "Token for retrieving the next page of results.",
-            "type": "string"
-          },
-          "subjectsWithBindings": {
-            "description": "Subjects and their access bindings.",
-            "items": {
-              "$ref": "#/components/schemas/IamSubjectWithBindings"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "subjectsWithBindings",
-          "nextPageToken"
-        ],
-        "type": "object"
-      },
       "ListSharedEntryAccessBindingsArgs": {
         "additionalProperties": false,
         "properties": {
           "entryId": {
-            "description": "ID of the entry whose access bindings are requested.",
+            "description": "ID of the common object whose access bindings to retrieve.",
             "type": "string"
           },
           "getInheritedBindings": {
@@ -18458,16 +18787,124 @@
             "type": "boolean"
           },
           "pageSize": {
-            "description": "Maximum number of access bindings to return.",
+            "description": "Maximum number of subjects to return.",
             "type": "number"
           },
           "pageToken": {
-            "description": "Token for the next page of access bindings.",
+            "description": "Token for retrieving the next page of results.",
             "type": "string"
           }
         },
         "required": [
           "entryId"
+        ],
+        "type": "object"
+      },
+      "ListSparkApplicationLogArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "applicationId": {
+            "description": "ID of the Spark application.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "clusterId": {
+            "description": "ID of the Spark cluster.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "Maximum length of the returned log fragment.",
+            "maximum": 1048576,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "Token for the next fragment of the Spark application log.",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "clusterId",
+          "applicationId"
+        ],
+        "type": "object"
+      },
+      "ListSparkApplicationLogResult": {
+        "properties": {
+          "content": {
+            "description": "Requested fragment of the Spark application log.",
+            "type": "string"
+          },
+          "nextPageToken": {
+            "description": "Token for the next fragment of the Spark application log.",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "nextPageToken"
+        ],
+        "type": "object"
+      },
+      "ListSparkApplicationsArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "clusterId": {
+            "description": "ID of the Spark cluster.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "filter": {
+            "description": "Filter conditions applied to the Spark application list, combined with AND. Each condition has the form `field=\"value\"`, where field is one of `name`, `created_by`, `application_type` or `catalog_id`.",
+            "items": {
+              "maxLength": 200,
+              "pattern": "^(?:name|created_by|application_type|catalog_id)=\"[^\"]*\"$",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "pageSize": {
+            "description": "Maximum number of Spark applications to return. The default is 100.",
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "Token for the next page of Spark applications.",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "clusterId"
+        ],
+        "type": "object"
+      },
+      "ListSparkApplicationsResult": {
+        "properties": {
+          "applications": {
+            "description": "Spark applications matching the request.",
+            "items": {
+              "$ref": "#/components/schemas/SparkApplication"
+            },
+            "type": "array"
+          },
+          "nextPageToken": {
+            "description": "Token for the next page of Spark applications.",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "applications",
+          "nextPageToken"
         ],
         "type": "object"
       },
@@ -18515,114 +18952,6 @@
         },
         "required": [
           "sparkClusters",
-          "nextPageToken"
-        ],
-        "type": "object"
-      },
-      "ListSparkJobLogArgs": {
-        "additionalProperties": false,
-        "properties": {
-          "clusterId": {
-            "description": "ID of the Spark cluster.",
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "jobId": {
-            "description": "ID of the Spark job.",
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "pageSize": {
-            "description": "Maximum length of the returned log fragment.",
-            "maximum": 1048576,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "pageToken": {
-            "description": "Token for the next fragment of the Spark job log.",
-            "maxLength": 200,
-            "type": "string"
-          }
-        },
-        "required": [
-          "clusterId",
-          "jobId"
-        ],
-        "type": "object"
-      },
-      "ListSparkJobLogResult": {
-        "properties": {
-          "content": {
-            "description": "Requested fragment of the Spark job log.",
-            "type": "string"
-          },
-          "nextPageToken": {
-            "description": "Token for the next fragment of the Spark job log.",
-            "maxLength": 200,
-            "type": "string"
-          }
-        },
-        "required": [
-          "content",
-          "nextPageToken"
-        ],
-        "type": "object"
-      },
-      "ListSparkJobsArgs": {
-        "additionalProperties": false,
-        "properties": {
-          "clusterId": {
-            "description": "ID of the Spark cluster.",
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "filter": {
-            "description": "Filter conditions applied to the Spark job list, combined with AND. Each condition has the form `field=\"value\"`, where field is one of `name`, `created_by`, `job_type` or `catalog_id`.",
-            "items": {
-              "maxLength": 200,
-              "pattern": "^(?:name|created_by|job_type|catalog_id)=\"[^\"]*\"$",
-              "type": "string"
-            },
-            "maxItems": 100,
-            "type": "array"
-          },
-          "pageSize": {
-            "description": "Maximum number of Spark jobs to return. The default is 100.",
-            "maximum": 1000,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "pageToken": {
-            "description": "Token for the next page of Spark jobs.",
-            "maxLength": 200,
-            "type": "string"
-          }
-        },
-        "required": [
-          "clusterId"
-        ],
-        "type": "object"
-      },
-      "ListSparkJobsResult": {
-        "properties": {
-          "jobs": {
-            "description": "Spark jobs matching the request.",
-            "items": {
-              "$ref": "#/components/schemas/SparkJob"
-            },
-            "type": "array"
-          },
-          "nextPageToken": {
-            "description": "Token for the next page of Spark jobs.",
-            "maxLength": 200,
-            "type": "string"
-          }
-        },
-        "required": [
-          "jobs",
           "nextPageToken"
         ],
         "type": "object"
@@ -22364,7 +22693,7 @@
                               "additionalProperties": {
                                 "$ref": "#/components/schemas/DashStringDefaultValueV2"
                               },
-                              "description": "Default control values.",
+                              "description": "Selected values keyed by source.datasetFieldId for dataset controls or source.fieldName for manual controls. For a date or date range control with no selected value, keep the field key with an empty string value (e.g. {\"fieldId\": \"\"}); do not omit the key or use an empty defaults object. Prefix nonempty values with __<lowercase operation>_ when source.operation is set; leave empty values unprefixed.",
                               "type": "object"
                             },
                             "id": {
@@ -22423,7 +22752,7 @@
                               "additionalProperties": {
                                 "$ref": "#/components/schemas/DashStringDefaultValueV2"
                               },
-                              "description": "Default control values.",
+                              "description": "Selected values keyed by source.datasetFieldId for dataset controls or source.fieldName for manual controls. For a date or date range control with no selected value, keep the field key with an empty string value (e.g. {\"fieldId\": \"\"}); do not omit the key or use an empty defaults object. Prefix nonempty values with __<lowercase operation>_ when source.operation is set; leave empty values unprefixed.",
                               "type": "object"
                             },
                             "id": {
@@ -23440,6 +23769,63 @@
         ],
         "type": "object"
       },
+      "SharedEntryPermissions": {
+        "properties": {
+          "copy": {
+            "description": "Permission to copy.",
+            "type": "boolean"
+          },
+          "createEntryBinding": {
+            "description": "Permission to create entry binding.",
+            "type": "boolean"
+          },
+          "createLimitedEntryBinding": {
+            "description": "Permission to create limited entry binding.",
+            "type": "boolean"
+          },
+          "delete": {
+            "description": "Permission to delete.",
+            "type": "boolean"
+          },
+          "limitedView": {
+            "description": "Permission for limited viewing.",
+            "type": "boolean"
+          },
+          "listAccessBindings": {
+            "description": "Permission to list access bindings.",
+            "type": "boolean"
+          },
+          "move": {
+            "description": "Permission to move.",
+            "type": "boolean"
+          },
+          "update": {
+            "description": "Permission to update.",
+            "type": "boolean"
+          },
+          "updateAccessBindings": {
+            "description": "Permission to update access bindings.",
+            "type": "boolean"
+          },
+          "view": {
+            "description": "Permission to view.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "listAccessBindings",
+          "updateAccessBindings",
+          "limitedView",
+          "view",
+          "update",
+          "copy",
+          "move",
+          "delete",
+          "createEntryBinding",
+          "createLimitedEntryBinding"
+        ],
+        "type": "object"
+      },
       "SimpleParameters": {
         "properties": {
           "manual": {
@@ -23622,6 +24008,840 @@
           }
         },
         "type": "object"
+      },
+      "SparkApplication": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "applicationSpec": {
+                "enum": [
+                  "sparkApplication"
+                ],
+                "type": "string"
+              },
+              "catalogs": {
+                "description": "REST catalogs attached to the Spark application.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "connectUrl": {
+                "description": "Spark Connect URL.",
+                "type": "string"
+              },
+              "createdAt": {
+                "description": "Time when the Spark application was created.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": "object"
+              },
+              "createdBy": {
+                "description": "ID of the user who created the Spark application.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "finishedAt": {
+                "description": "Time when the Spark application was finished.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "id": {
+                "description": "ID of the Spark application.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark application.",
+                "type": "string"
+              },
+              "sparkApplication": {
+                "properties": {
+                  "archiveUris": {
+                    "description": "Archives extracted in the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "args": {
+                    "description": "Arguments passed to the Spark driver.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "excludePackages": {
+                    "description": "Maven packages excluded during dependency resolution.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "fileUris": {
+                    "description": "Files copied to the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "jarFileUris": {
+                    "description": "JAR files added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "mainClass": {
+                    "description": "Name of the driver main class.",
+                    "maxLength": 255,
+                    "type": "string"
+                  },
+                  "mainJarFileUri": {
+                    "description": "URI of the JAR file that contains the main class.",
+                    "maxLength": 2047,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "packages": {
+                    "description": "Maven packages added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "properties": {
+                    "additionalProperties": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "description": "Spark configuration properties.",
+                    "type": "object"
+                  },
+                  "repositories": {
+                    "description": "Additional Maven repositories.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "args",
+                  "jarFileUris",
+                  "fileUris",
+                  "archiveUris",
+                  "properties",
+                  "mainJarFileUri",
+                  "mainClass",
+                  "packages",
+                  "repositories",
+                  "excludePackages"
+                ],
+                "type": "object"
+              },
+              "startedAt": {
+                "description": "Time when the Spark application was started.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "status": {
+                "description": "Current status of the Spark application.",
+                "enum": [
+                  "STATUS_UNSPECIFIED",
+                  "PROVISIONING",
+                  "PENDING",
+                  "RUNNING",
+                  "ERROR",
+                  "DONE",
+                  "CANCELLED",
+                  "CANCELLING"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "clusterId",
+              "createdAt",
+              "startedAt",
+              "finishedAt",
+              "name",
+              "createdBy",
+              "status",
+              "connectUrl",
+              "catalogs",
+              "sparkApplication",
+              "applicationSpec"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "applicationSpec": {
+                "enum": [
+                  "pysparkApplication"
+                ],
+                "type": "string"
+              },
+              "catalogs": {
+                "description": "REST catalogs attached to the Spark application.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "connectUrl": {
+                "description": "Spark Connect URL.",
+                "type": "string"
+              },
+              "createdAt": {
+                "description": "Time when the Spark application was created.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": "object"
+              },
+              "createdBy": {
+                "description": "ID of the user who created the Spark application.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "finishedAt": {
+                "description": "Time when the Spark application was finished.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "id": {
+                "description": "ID of the Spark application.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark application.",
+                "type": "string"
+              },
+              "pysparkApplication": {
+                "properties": {
+                  "archiveUris": {
+                    "description": "Archives extracted in the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "args": {
+                    "description": "Arguments passed to the PySpark driver.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "excludePackages": {
+                    "description": "Maven packages excluded during dependency resolution.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "fileUris": {
+                    "description": "Files copied to the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "jarFileUris": {
+                    "description": "JAR files added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "mainPythonFileUri": {
+                    "description": "URI of the main Python file.",
+                    "maxLength": 2047,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "packages": {
+                    "description": "Maven packages added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "properties": {
+                    "additionalProperties": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "description": "Spark configuration properties.",
+                    "type": "object"
+                  },
+                  "pythonFileUris": {
+                    "description": "Additional Python files passed to PySpark.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "repositories": {
+                    "description": "Additional Maven repositories.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "args",
+                  "jarFileUris",
+                  "fileUris",
+                  "archiveUris",
+                  "properties",
+                  "mainPythonFileUri",
+                  "pythonFileUris",
+                  "packages",
+                  "repositories",
+                  "excludePackages"
+                ],
+                "type": "object"
+              },
+              "startedAt": {
+                "description": "Time when the Spark application was started.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "status": {
+                "description": "Current status of the Spark application.",
+                "enum": [
+                  "STATUS_UNSPECIFIED",
+                  "PROVISIONING",
+                  "PENDING",
+                  "RUNNING",
+                  "ERROR",
+                  "DONE",
+                  "CANCELLED",
+                  "CANCELLING"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "clusterId",
+              "createdAt",
+              "startedAt",
+              "finishedAt",
+              "name",
+              "createdBy",
+              "status",
+              "connectUrl",
+              "catalogs",
+              "pysparkApplication",
+              "applicationSpec"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "applicationSpec": {
+                "enum": [
+                  "sparkConnectApplication"
+                ],
+                "type": "string"
+              },
+              "catalogs": {
+                "description": "REST catalogs attached to the Spark application.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "connectUrl": {
+                "description": "Spark Connect URL.",
+                "type": "string"
+              },
+              "createdAt": {
+                "description": "Time when the Spark application was created.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": "object"
+              },
+              "createdBy": {
+                "description": "ID of the user who created the Spark application.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "finishedAt": {
+                "description": "Time when the Spark application was finished.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "id": {
+                "description": "ID of the Spark application.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark application.",
+                "type": "string"
+              },
+              "sparkConnectApplication": {
+                "properties": {
+                  "archiveUris": {
+                    "description": "Archives extracted in the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "excludePackages": {
+                    "description": "Maven packages excluded during dependency resolution.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "fileUris": {
+                    "description": "Files copied to the Spark working directory.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "jarFileUris": {
+                    "description": "JAR files added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "packages": {
+                    "description": "Maven packages added to the Spark classpaths.",
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  },
+                  "properties": {
+                    "additionalProperties": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "description": "Spark configuration properties.",
+                    "type": "object"
+                  },
+                  "repositories": {
+                    "description": "Additional Maven repositories.",
+                    "items": {
+                      "maxLength": 2047,
+                      "type": "string"
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "jarFileUris",
+                  "fileUris",
+                  "archiveUris",
+                  "properties",
+                  "packages",
+                  "repositories",
+                  "excludePackages"
+                ],
+                "type": "object"
+              },
+              "startedAt": {
+                "description": "Time when the Spark application was started.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "status": {
+                "description": "Current status of the Spark application.",
+                "enum": [
+                  "STATUS_UNSPECIFIED",
+                  "PROVISIONING",
+                  "PENDING",
+                  "RUNNING",
+                  "ERROR",
+                  "DONE",
+                  "CANCELLED",
+                  "CANCELLING"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "clusterId",
+              "createdAt",
+              "startedAt",
+              "finishedAt",
+              "name",
+              "createdBy",
+              "status",
+              "connectUrl",
+              "catalogs",
+              "sparkConnectApplication",
+              "applicationSpec"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "catalogs": {
+                "description": "REST catalogs attached to the Spark application.",
+                "items": {
+                  "properties": {
+                    "catalogId": {
+                      "description": "ID of the REST catalog.",
+                      "maxLength": 50,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "catalogId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "clusterId": {
+                "description": "ID of the Spark cluster.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "connectUrl": {
+                "description": "Spark Connect URL.",
+                "type": "string"
+              },
+              "createdAt": {
+                "description": "Time when the Spark application was created.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": "object"
+              },
+              "createdBy": {
+                "description": "ID of the user who created the Spark application.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "finishedAt": {
+                "description": "Time when the Spark application was finished.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "id": {
+                "description": "ID of the Spark application.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the Spark application.",
+                "type": "string"
+              },
+              "startedAt": {
+                "description": "Time when the Spark application was started.",
+                "properties": {
+                  "nanos": {
+                    "description": "Fractional seconds in nanoseconds.",
+                    "type": "number"
+                  },
+                  "seconds": {
+                    "description": "Number of seconds since the Unix epoch.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "status": {
+                "description": "Current status of the Spark application.",
+                "enum": [
+                  "STATUS_UNSPECIFIED",
+                  "PROVISIONING",
+                  "PENDING",
+                  "RUNNING",
+                  "ERROR",
+                  "DONE",
+                  "CANCELLED",
+                  "CANCELLING"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "clusterId",
+              "createdAt",
+              "startedAt",
+              "finishedAt",
+              "name",
+              "createdBy",
+              "status",
+              "connectUrl",
+              "catalogs"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "SparkCluster": {
         "properties": {
@@ -23948,840 +25168,6 @@
           "entryId"
         ],
         "type": "object"
-      },
-      "SparkJob": {
-        "anyOf": [
-          {
-            "additionalProperties": false,
-            "properties": {
-              "catalogs": {
-                "description": "REST catalogs attached to the Spark job.",
-                "items": {
-                  "properties": {
-                    "catalogId": {
-                      "description": "ID of the REST catalog.",
-                      "maxLength": 50,
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "catalogId"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "clusterId": {
-                "description": "ID of the Spark cluster.",
-                "maxLength": 50,
-                "minLength": 1,
-                "type": "string"
-              },
-              "connectUrl": {
-                "description": "Spark Connect URL.",
-                "type": "string"
-              },
-              "createdAt": {
-                "description": "Time when the Spark job was created.",
-                "properties": {
-                  "nanos": {
-                    "description": "Fractional seconds in nanoseconds.",
-                    "type": "number"
-                  },
-                  "seconds": {
-                    "description": "Number of seconds since the Unix epoch.",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "seconds"
-                ],
-                "type": "object"
-              },
-              "createdBy": {
-                "description": "ID of the user who created the Spark job.",
-                "minLength": 1,
-                "type": "string"
-              },
-              "finishedAt": {
-                "description": "Time when the Spark job was finished.",
-                "properties": {
-                  "nanos": {
-                    "description": "Fractional seconds in nanoseconds.",
-                    "type": "number"
-                  },
-                  "seconds": {
-                    "description": "Number of seconds since the Unix epoch.",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "seconds"
-                ],
-                "type": [
-                  "object",
-                  "null"
-                ]
-              },
-              "id": {
-                "description": "ID of the Spark job.",
-                "maxLength": 50,
-                "minLength": 1,
-                "type": "string"
-              },
-              "jobSpec": {
-                "enum": [
-                  "sparkJob"
-                ],
-                "type": "string"
-              },
-              "name": {
-                "description": "Name of the Spark job.",
-                "type": "string"
-              },
-              "sparkJob": {
-                "properties": {
-                  "archiveUris": {
-                    "description": "Archives extracted in the Spark working directory.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "args": {
-                    "description": "Arguments passed to the Spark driver.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "excludePackages": {
-                    "description": "Maven packages excluded during dependency resolution.",
-                    "items": {
-                      "maxLength": 255,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "fileUris": {
-                    "description": "Files copied to the Spark working directory.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "jarFileUris": {
-                    "description": "JAR files added to the Spark classpaths.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "mainClass": {
-                    "description": "Name of the driver main class.",
-                    "maxLength": 255,
-                    "type": "string"
-                  },
-                  "mainJarFileUri": {
-                    "description": "URI of the JAR file that contains the main class.",
-                    "maxLength": 2047,
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "packages": {
-                    "description": "Maven packages added to the Spark classpaths.",
-                    "items": {
-                      "maxLength": 255,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "properties": {
-                    "additionalProperties": {
-                      "maxLength": 256,
-                      "type": "string"
-                    },
-                    "description": "Spark configuration properties.",
-                    "type": "object"
-                  },
-                  "repositories": {
-                    "description": "Additional Maven repositories.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 10,
-                    "type": "array"
-                  }
-                },
-                "required": [
-                  "args",
-                  "jarFileUris",
-                  "fileUris",
-                  "archiveUris",
-                  "properties",
-                  "mainJarFileUri",
-                  "mainClass",
-                  "packages",
-                  "repositories",
-                  "excludePackages"
-                ],
-                "type": "object"
-              },
-              "startedAt": {
-                "description": "Time when the Spark job was started.",
-                "properties": {
-                  "nanos": {
-                    "description": "Fractional seconds in nanoseconds.",
-                    "type": "number"
-                  },
-                  "seconds": {
-                    "description": "Number of seconds since the Unix epoch.",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "seconds"
-                ],
-                "type": [
-                  "object",
-                  "null"
-                ]
-              },
-              "status": {
-                "description": "Current status of the Spark job.",
-                "enum": [
-                  "STATUS_UNSPECIFIED",
-                  "PROVISIONING",
-                  "PENDING",
-                  "RUNNING",
-                  "ERROR",
-                  "DONE",
-                  "CANCELLED",
-                  "CANCELLING"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "clusterId",
-              "createdAt",
-              "startedAt",
-              "finishedAt",
-              "name",
-              "createdBy",
-              "status",
-              "connectUrl",
-              "catalogs",
-              "sparkJob",
-              "jobSpec"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "catalogs": {
-                "description": "REST catalogs attached to the Spark job.",
-                "items": {
-                  "properties": {
-                    "catalogId": {
-                      "description": "ID of the REST catalog.",
-                      "maxLength": 50,
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "catalogId"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "clusterId": {
-                "description": "ID of the Spark cluster.",
-                "maxLength": 50,
-                "minLength": 1,
-                "type": "string"
-              },
-              "connectUrl": {
-                "description": "Spark Connect URL.",
-                "type": "string"
-              },
-              "createdAt": {
-                "description": "Time when the Spark job was created.",
-                "properties": {
-                  "nanos": {
-                    "description": "Fractional seconds in nanoseconds.",
-                    "type": "number"
-                  },
-                  "seconds": {
-                    "description": "Number of seconds since the Unix epoch.",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "seconds"
-                ],
-                "type": "object"
-              },
-              "createdBy": {
-                "description": "ID of the user who created the Spark job.",
-                "minLength": 1,
-                "type": "string"
-              },
-              "finishedAt": {
-                "description": "Time when the Spark job was finished.",
-                "properties": {
-                  "nanos": {
-                    "description": "Fractional seconds in nanoseconds.",
-                    "type": "number"
-                  },
-                  "seconds": {
-                    "description": "Number of seconds since the Unix epoch.",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "seconds"
-                ],
-                "type": [
-                  "object",
-                  "null"
-                ]
-              },
-              "id": {
-                "description": "ID of the Spark job.",
-                "maxLength": 50,
-                "minLength": 1,
-                "type": "string"
-              },
-              "jobSpec": {
-                "enum": [
-                  "pysparkJob"
-                ],
-                "type": "string"
-              },
-              "name": {
-                "description": "Name of the Spark job.",
-                "type": "string"
-              },
-              "pysparkJob": {
-                "properties": {
-                  "archiveUris": {
-                    "description": "Archives extracted in the Spark working directory.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "args": {
-                    "description": "Arguments passed to the PySpark driver.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "excludePackages": {
-                    "description": "Maven packages excluded during dependency resolution.",
-                    "items": {
-                      "maxLength": 255,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "fileUris": {
-                    "description": "Files copied to the Spark working directory.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "jarFileUris": {
-                    "description": "JAR files added to the Spark classpaths.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "mainPythonFileUri": {
-                    "description": "URI of the main Python file.",
-                    "maxLength": 2047,
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "packages": {
-                    "description": "Maven packages added to the Spark classpaths.",
-                    "items": {
-                      "maxLength": 255,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "properties": {
-                    "additionalProperties": {
-                      "maxLength": 256,
-                      "type": "string"
-                    },
-                    "description": "Spark configuration properties.",
-                    "type": "object"
-                  },
-                  "pythonFileUris": {
-                    "description": "Additional Python files passed to PySpark.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "repositories": {
-                    "description": "Additional Maven repositories.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 10,
-                    "type": "array"
-                  }
-                },
-                "required": [
-                  "args",
-                  "jarFileUris",
-                  "fileUris",
-                  "archiveUris",
-                  "properties",
-                  "mainPythonFileUri",
-                  "pythonFileUris",
-                  "packages",
-                  "repositories",
-                  "excludePackages"
-                ],
-                "type": "object"
-              },
-              "startedAt": {
-                "description": "Time when the Spark job was started.",
-                "properties": {
-                  "nanos": {
-                    "description": "Fractional seconds in nanoseconds.",
-                    "type": "number"
-                  },
-                  "seconds": {
-                    "description": "Number of seconds since the Unix epoch.",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "seconds"
-                ],
-                "type": [
-                  "object",
-                  "null"
-                ]
-              },
-              "status": {
-                "description": "Current status of the Spark job.",
-                "enum": [
-                  "STATUS_UNSPECIFIED",
-                  "PROVISIONING",
-                  "PENDING",
-                  "RUNNING",
-                  "ERROR",
-                  "DONE",
-                  "CANCELLED",
-                  "CANCELLING"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "clusterId",
-              "createdAt",
-              "startedAt",
-              "finishedAt",
-              "name",
-              "createdBy",
-              "status",
-              "connectUrl",
-              "catalogs",
-              "pysparkJob",
-              "jobSpec"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "catalogs": {
-                "description": "REST catalogs attached to the Spark job.",
-                "items": {
-                  "properties": {
-                    "catalogId": {
-                      "description": "ID of the REST catalog.",
-                      "maxLength": 50,
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "catalogId"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "clusterId": {
-                "description": "ID of the Spark cluster.",
-                "maxLength": 50,
-                "minLength": 1,
-                "type": "string"
-              },
-              "connectUrl": {
-                "description": "Spark Connect URL.",
-                "type": "string"
-              },
-              "createdAt": {
-                "description": "Time when the Spark job was created.",
-                "properties": {
-                  "nanos": {
-                    "description": "Fractional seconds in nanoseconds.",
-                    "type": "number"
-                  },
-                  "seconds": {
-                    "description": "Number of seconds since the Unix epoch.",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "seconds"
-                ],
-                "type": "object"
-              },
-              "createdBy": {
-                "description": "ID of the user who created the Spark job.",
-                "minLength": 1,
-                "type": "string"
-              },
-              "finishedAt": {
-                "description": "Time when the Spark job was finished.",
-                "properties": {
-                  "nanos": {
-                    "description": "Fractional seconds in nanoseconds.",
-                    "type": "number"
-                  },
-                  "seconds": {
-                    "description": "Number of seconds since the Unix epoch.",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "seconds"
-                ],
-                "type": [
-                  "object",
-                  "null"
-                ]
-              },
-              "id": {
-                "description": "ID of the Spark job.",
-                "maxLength": 50,
-                "minLength": 1,
-                "type": "string"
-              },
-              "jobSpec": {
-                "enum": [
-                  "sparkConnectJob"
-                ],
-                "type": "string"
-              },
-              "name": {
-                "description": "Name of the Spark job.",
-                "type": "string"
-              },
-              "sparkConnectJob": {
-                "properties": {
-                  "archiveUris": {
-                    "description": "Archives extracted in the Spark working directory.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "excludePackages": {
-                    "description": "Maven packages excluded during dependency resolution.",
-                    "items": {
-                      "maxLength": 255,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "fileUris": {
-                    "description": "Files copied to the Spark working directory.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "jarFileUris": {
-                    "description": "JAR files added to the Spark classpaths.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "packages": {
-                    "description": "Maven packages added to the Spark classpaths.",
-                    "items": {
-                      "maxLength": 255,
-                      "type": "string"
-                    },
-                    "maxItems": 100,
-                    "type": "array"
-                  },
-                  "properties": {
-                    "additionalProperties": {
-                      "maxLength": 256,
-                      "type": "string"
-                    },
-                    "description": "Spark configuration properties.",
-                    "type": "object"
-                  },
-                  "repositories": {
-                    "description": "Additional Maven repositories.",
-                    "items": {
-                      "maxLength": 2047,
-                      "type": "string"
-                    },
-                    "maxItems": 10,
-                    "type": "array"
-                  }
-                },
-                "required": [
-                  "jarFileUris",
-                  "fileUris",
-                  "archiveUris",
-                  "properties",
-                  "packages",
-                  "repositories",
-                  "excludePackages"
-                ],
-                "type": "object"
-              },
-              "startedAt": {
-                "description": "Time when the Spark job was started.",
-                "properties": {
-                  "nanos": {
-                    "description": "Fractional seconds in nanoseconds.",
-                    "type": "number"
-                  },
-                  "seconds": {
-                    "description": "Number of seconds since the Unix epoch.",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "seconds"
-                ],
-                "type": [
-                  "object",
-                  "null"
-                ]
-              },
-              "status": {
-                "description": "Current status of the Spark job.",
-                "enum": [
-                  "STATUS_UNSPECIFIED",
-                  "PROVISIONING",
-                  "PENDING",
-                  "RUNNING",
-                  "ERROR",
-                  "DONE",
-                  "CANCELLED",
-                  "CANCELLING"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "clusterId",
-              "createdAt",
-              "startedAt",
-              "finishedAt",
-              "name",
-              "createdBy",
-              "status",
-              "connectUrl",
-              "catalogs",
-              "sparkConnectJob",
-              "jobSpec"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "catalogs": {
-                "description": "REST catalogs attached to the Spark job.",
-                "items": {
-                  "properties": {
-                    "catalogId": {
-                      "description": "ID of the REST catalog.",
-                      "maxLength": 50,
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "catalogId"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "clusterId": {
-                "description": "ID of the Spark cluster.",
-                "maxLength": 50,
-                "minLength": 1,
-                "type": "string"
-              },
-              "connectUrl": {
-                "description": "Spark Connect URL.",
-                "type": "string"
-              },
-              "createdAt": {
-                "description": "Time when the Spark job was created.",
-                "properties": {
-                  "nanos": {
-                    "description": "Fractional seconds in nanoseconds.",
-                    "type": "number"
-                  },
-                  "seconds": {
-                    "description": "Number of seconds since the Unix epoch.",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "seconds"
-                ],
-                "type": "object"
-              },
-              "createdBy": {
-                "description": "ID of the user who created the Spark job.",
-                "minLength": 1,
-                "type": "string"
-              },
-              "finishedAt": {
-                "description": "Time when the Spark job was finished.",
-                "properties": {
-                  "nanos": {
-                    "description": "Fractional seconds in nanoseconds.",
-                    "type": "number"
-                  },
-                  "seconds": {
-                    "description": "Number of seconds since the Unix epoch.",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "seconds"
-                ],
-                "type": [
-                  "object",
-                  "null"
-                ]
-              },
-              "id": {
-                "description": "ID of the Spark job.",
-                "maxLength": 50,
-                "minLength": 1,
-                "type": "string"
-              },
-              "name": {
-                "description": "Name of the Spark job.",
-                "type": "string"
-              },
-              "startedAt": {
-                "description": "Time when the Spark job was started.",
-                "properties": {
-                  "nanos": {
-                    "description": "Fractional seconds in nanoseconds.",
-                    "type": "number"
-                  },
-                  "seconds": {
-                    "description": "Number of seconds since the Unix epoch.",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "seconds"
-                ],
-                "type": [
-                  "object",
-                  "null"
-                ]
-              },
-              "status": {
-                "description": "Current status of the Spark job.",
-                "enum": [
-                  "STATUS_UNSPECIFIED",
-                  "PROVISIONING",
-                  "PENDING",
-                  "RUNNING",
-                  "ERROR",
-                  "DONE",
-                  "CANCELLED",
-                  "CANCELLING"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "clusterId",
-              "createdAt",
-              "startedAt",
-              "finishedAt",
-              "name",
-              "createdBy",
-              "status",
-              "connectUrl",
-              "catalogs"
-            ],
-            "type": "object"
-          }
-        ]
       },
       "SparkResourcePreset": {
         "properties": {
@@ -25387,6 +25773,61 @@
           "createdBy",
           "createdAt",
           "title"
+        ],
+        "type": "object"
+      },
+      "SubjectWithBindings": {
+        "properties": {
+          "accessBindings": {
+            "description": "Access bindings assigned directly to the subject.",
+            "items": {
+              "$ref": "#/components/schemas/AccessBinding"
+            },
+            "type": "array"
+          },
+          "inheritedAccessBindings": {
+            "description": "Access bindings inherited by the subject.",
+            "items": {
+              "$ref": "#/components/schemas/AccessBinding"
+            },
+            "type": "array"
+          },
+          "subjectClaims": {
+            "description": "Subject details.",
+            "properties": {
+              "email": {
+                "description": "Subject email address.",
+                "type": "string"
+              },
+              "sub": {
+                "description": "Subject identifier.",
+                "type": "string"
+              },
+              "subType": {
+                "description": "Subject type.",
+                "enum": [
+                  "SUBJECT_TYPE_UNSPECIFIED",
+                  "USER_ACCOUNT",
+                  "GROUP",
+                  "INVITEE",
+                  "SERVICE_ACCOUNT",
+                  "_system"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "sub",
+              "subType",
+              "email"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "subjectClaims",
+          "accessBindings",
+          "inheritedAccessBindings"
         ],
         "type": "object"
       },
@@ -26131,6 +26572,55 @@
         "required": [
           "action",
           "accessBinding"
+        ],
+        "type": "object"
+      },
+      "UpdateCloudEnvironmentArgs": {
+        "additionalProperties": false,
+        "description": "Only the fields passed in the request are updated; at least one of them is required. The network and the cloud cannot be changed.",
+        "properties": {
+          "description": {
+            "description": "New description of the cloud environment. An empty string clears it.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "id": {
+            "description": "ID of the cloud environment to update.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "description": "New name of the cloud environment.",
+            "maxLength": 63,
+            "pattern": "^[a-zA-Z0-9ЁёА-я]\\S{1,61}[a-zA-Z0-9ЁёА-я]$",
+            "type": "string"
+          },
+          "securityGroupIds": {
+            "description": "New IDs of the security groups used by the cloud environment.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "storage": {
+            "additionalProperties": false,
+            "description": "New storage settings of the cloud environment. Fails for an environment created without storage.",
+            "properties": {
+              "maxSize": {
+                "description": "Maximum size of the storage bucket in bytes. Zero means unlimited.",
+                "pattern": "^\\d+$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "maxSize"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "id"
         ],
         "type": "object"
       },
@@ -27255,6 +27745,26 @@
         ],
         "type": "object"
       },
+      "UpdateSharedEntryAccessBindingsArgs": {
+        "properties": {
+          "deltas": {
+            "description": "Access binding changes to apply.",
+            "items": {
+              "$ref": "#/components/schemas/USAccessBindingDelta"
+            },
+            "type": "array"
+          },
+          "entryId": {
+            "description": "ID of the common object whose access bindings to update.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entryId",
+          "deltas"
+        ],
+        "type": "object"
+      },
       "UpdateSqlQueryArgs": {
         "properties": {
           "connectionId": {
@@ -27664,6 +28174,7 @@
             "type": "string"
           },
           "subscriptionId": {
+            "example": "7lieexzx4kxs0",
             "minLength": 1,
             "pattern": "^[a-zA-Z0-9._:-]+$",
             "type": "string"
@@ -27675,42 +28186,84 @@
             "type": "string"
           },
           "trigger": {
-            "additionalProperties": false,
-            "properties": {
-              "entryId": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "options": {
+            "oneOf": [
+              {
                 "additionalProperties": false,
                 "properties": {
-                  "expression": {
-                    "minLength": 1,
-                    "type": "string"
+                  "entryId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   },
-                  "timezone": {
+                  "options": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "expression": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "timezone": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "expression"
+                    ],
+                    "type": "object"
+                  },
+                  "type": {
+                    "enum": [
+                      "cron"
+                    ],
                     "type": "string"
                   }
                 },
                 "required": [
-                  "expression"
+                  "type",
+                  "options"
                 ],
                 "type": "object"
               },
-              "type": {
-                "enum": [
-                  "cron"
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "entryId": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "options": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "query": {
+                        "maxLength": 100000,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "timezone": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "query"
+                    ],
+                    "type": "object"
+                  },
+                  "type": {
+                    "enum": [
+                      "sql"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "entryId",
+                  "options"
                 ],
-                "type": "string"
+                "type": "object"
               }
-            },
-            "required": [
-              "type",
-              "options"
-            ],
-            "type": "object"
+            ]
           },
           "workbookId": {
             "type": "string"
@@ -32595,7 +33148,7 @@
                 "description": "Primary Y-axis configuration.",
                 "properties": {
                   "items": {
-                    "description": "Fields placed on the primary Y-axis.",
+                    "description": "Fields placed on the primary Y-axis. Measures only: a dimension placed here needs an aggregation.",
                     "items": {
                       "$ref": "#/components/schemas/WizardFieldSchema"
                     },
@@ -32788,7 +33341,7 @@
                 "description": "Secondary Y-axis configuration.",
                 "properties": {
                   "items": {
-                    "description": "Fields placed on the secondary Y-axis.",
+                    "description": "Fields placed on the secondary Y-axis. Measures only: a dimension placed here needs an aggregation.",
                     "items": {
                       "$ref": "#/components/schemas/WizardFieldSchema"
                     },
@@ -33332,7 +33885,7 @@
                 "description": "Y-axis configuration.",
                 "properties": {
                   "items": {
-                    "description": "Fields placed on the Y-axis.",
+                    "description": "Fields placed on the Y-axis. Measures only: a dimension placed here needs an aggregation.",
                     "items": {
                       "$ref": "#/components/schemas/WizardFieldSchema"
                     },
@@ -33868,7 +34421,7 @@
                 "description": "Y-axis configuration.",
                 "properties": {
                   "items": {
-                    "description": "Fields placed on the Y-axis.",
+                    "description": "Fields placed on the Y-axis. Measures only: a dimension placed here needs an aggregation.",
                     "items": {
                       "$ref": "#/components/schemas/WizardFieldSchema"
                     },
@@ -34960,7 +35513,7 @@
                     "description": "Primary Y-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the primary Y-axis.",
+                        "description": "Fields placed on the primary Y-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -35153,7 +35706,7 @@
                     "description": "Secondary Y-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the secondary Y-axis.",
+                        "description": "Fields placed on the secondary Y-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -35825,7 +36378,7 @@
                     "description": "Y-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the Y-axis.",
+                        "description": "Fields placed on the Y-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -36489,7 +37042,7 @@
                     "description": "Y-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the Y-axis.",
+                        "description": "Fields placed on the Y-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -37161,7 +37714,7 @@
                     "description": "Y-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the Y-axis.",
+                        "description": "Fields placed on the Y-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -37825,7 +38378,7 @@
                     "description": "Y-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the Y-axis.",
+                        "description": "Fields placed on the Y-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -38226,7 +38779,7 @@
                     "description": "X-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the X-axis.",
+                        "description": "Fields placed on the X-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -38789,7 +39342,7 @@
                     "description": "X-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the X-axis.",
+                        "description": "Fields placed on the X-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -39404,7 +39957,7 @@
                     "description": "Measure configuration.",
                     "properties": {
                       "items": {
-                        "description": "Measures used to size funnel stages.",
+                        "description": "Measures used to size funnel stages. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -39629,7 +40182,7 @@
                     "description": "Point size configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields used to determine point sizes.",
+                        "description": "Fields used to determine point sizes. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -40243,7 +40796,7 @@
                     "description": "Measure configuration.",
                     "properties": {
                       "items": {
-                        "description": "Measures used to determine slice sizes.",
+                        "description": "Measures used to determine slice sizes. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -40457,7 +41010,7 @@
                     "description": "Measure configuration.",
                     "properties": {
                       "items": {
-                        "description": "Measures used to determine slice sizes.",
+                        "description": "Measures used to determine slice sizes. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -40638,7 +41191,7 @@
                     "description": "Measure configuration.",
                     "properties": {
                       "items": {
-                        "description": "Measures displayed by the metric.",
+                        "description": "Measures displayed by the metric. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -40813,7 +41366,7 @@
                     "description": "Measure configuration.",
                     "properties": {
                       "items": {
-                        "description": "Measures used to size treemap nodes.",
+                        "description": "Measures used to size treemap nodes. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -41236,7 +41789,7 @@
                     "description": "Measure configuration.",
                     "properties": {
                       "items": {
-                        "description": "Measures displayed in pivot cells.",
+                        "description": "Measures displayed in pivot cells. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -54958,9 +55511,9 @@
         "x-mcp-scope": "read"
       }
     },
-    "/rpc/cancelSparkJob": {
+    "/rpc/cancelSparkApplication": {
       "post": {
-        "description": "Cancels a Spark job and returns an asynchronous operation.",
+        "description": "Cancels a Spark application and returns an asynchronous operation.",
         "parameters": [
           {
             "$ref": "#/components/parameters/ApiVersionHeader"
@@ -54970,7 +55523,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CancelSparkJobArgs"
+                "$ref": "#/components/schemas/CancelSparkApplicationArgs"
               }
             }
           }
@@ -54995,9 +55548,9 @@
             "Organization ID": []
           }
         ],
-        "summary": "🚧 [Experimental] Cancel Spark job",
+        "summary": "🚧 [Experimental] Cancel Spark application",
         "tags": [
-          "SparkJobs"
+          "SparkApplications"
         ],
         "x-mcp-scope": "privileged"
       }
@@ -55044,6 +55597,94 @@
           "WorkbookExport"
         ],
         "x-mcp-scope": "privileged"
+      }
+    },
+    "/rpc/createBucketDownloadUrl": {
+      "post": {
+        "description": "Creates a temporary signed URL for downloading an object from the cloud environment storage bucket.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBucketDownloadUrlArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateBucketDownloadUrlResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Create bucket object download URL",
+        "tags": [
+          "CloudEnvironmentStorage"
+        ],
+        "x-mcp-disabled": true
+      }
+    },
+    "/rpc/createBucketUploadUrl": {
+      "post": {
+        "description": "Creates a temporary signed URL for uploading an object to the cloud environment storage bucket.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBucketUploadUrlArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateBucketUploadUrlResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Create bucket object upload URL",
+        "tags": [
+          "CloudEnvironmentStorage"
+        ],
+        "x-mcp-disabled": true
       }
     },
     "/rpc/createCloudEnvironment": {
@@ -55156,7 +55797,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreateConnectionResult"
+                  "$ref": "#/components/schemas/ConnectionCreateResponse"
                 }
               }
             },
@@ -55628,6 +56269,94 @@
         "x-mcp-scope": "write"
       }
     },
+    "/rpc/createRestCatalog": {
+      "post": {
+        "description": "Creates a REST catalog and returns an asynchronous operation. Use `getLakehouseOperation` in LakehouseOperations with the returned operation ID until `done` is true, then inspect `error` or `response`.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRestCatalogArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LakehouseOperation"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Create REST catalog",
+        "tags": [
+          "RestCatalogs"
+        ],
+        "x-mcp-scope": "privileged"
+      }
+    },
+    "/rpc/createSparkApplication": {
+      "post": {
+        "description": "Creates a Spark application and returns an asynchronous operation.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSparkApplicationArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LakehouseOperation"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Create Spark application",
+        "tags": [
+          "SparkApplications"
+        ],
+        "x-mcp-scope": "privileged"
+      }
+    },
     "/rpc/createSparkCluster": {
       "post": {
         "description": "Creates a Spark cluster and returns an asynchronous operation.",
@@ -55668,50 +56397,6 @@
         "summary": "🚧 [Experimental] Create Spark cluster",
         "tags": [
           "SparkClusters"
-        ],
-        "x-mcp-scope": "privileged"
-      }
-    },
-    "/rpc/createSparkJob": {
-      "post": {
-        "description": "Creates a Spark job and returns an asynchronous operation.",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/ApiVersionHeader"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateSparkJobArgs"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LakehouseOperation"
-                }
-              }
-            },
-            "description": "Response"
-          }
-        },
-        "security": [
-          {
-            "IAM token": []
-          },
-          {
-            "Organization ID": []
-          }
-        ],
-        "summary": "🚧 [Experimental] Create Spark job",
-        "tags": [
-          "SparkJobs"
         ],
         "x-mcp-scope": "privileged"
       }
@@ -57110,6 +57795,94 @@
           "Audit"
         ],
         "x-mcp-scope": "privileged"
+      }
+    },
+    "/rpc/getBucketObjectMetadata": {
+      "post": {
+        "description": "Returns the size and last modification time of an object in the cloud environment storage bucket.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetBucketObjectMetadataArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetBucketObjectMetadataResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Get bucket object metadata",
+        "tags": [
+          "CloudEnvironmentStorage"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/getChartData": {
+      "post": {
+        "description": "Runs a saved Wizard, QL, or Editor chart with the supplied parameters and returns flat tables. Pivot tables are not supported. Editor charts require Editor.setRawData(). Large integers in Wizard results may lose precision. Limits across all results: 100000 rows, 100000 cells, 1000 tables and 100000 schema columns; up to 800 columns per table. Exceeding a limit returns HTTP 422; results are not truncated.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetChartDataArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetChartDataResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Get chart data",
+        "tags": [
+          "Data"
+        ],
+        "x-mcp-disabled": true
       }
     },
     "/rpc/getChartScreenshot": {
@@ -58678,6 +59451,50 @@
         "x-mcp-scope": "read"
       }
     },
+    "/rpc/getSparkApplication": {
+      "post": {
+        "description": "Returns the specified Spark application.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetSparkApplicationArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparkApplication"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Get Spark application",
+        "tags": [
+          "SparkApplications"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
     "/rpc/getSparkCluster": {
       "post": {
         "description": "Returns the specified Spark cluster.",
@@ -58718,50 +59535,6 @@
         "summary": "🚧 [Experimental] Get Spark cluster",
         "tags": [
           "SparkClusters"
-        ],
-        "x-mcp-scope": "read"
-      }
-    },
-    "/rpc/getSparkJob": {
-      "post": {
-        "description": "Returns the specified Spark job.",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/ApiVersionHeader"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GetSparkJobArgs"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SparkJob"
-                }
-              }
-            },
-            "description": "Response"
-          }
-        },
-        "security": [
-          {
-            "IAM token": []
-          },
-          {
-            "Organization ID": []
-          }
-        ],
-        "summary": "🚧 [Experimental] Get Spark job",
-        "tags": [
-          "SparkJobs"
         ],
         "x-mcp-scope": "read"
       }
@@ -58938,6 +59711,41 @@
         "tags": [
           "Subscriptions"
         ]
+      }
+    },
+    "/rpc/getTenantDetails": {
+      "post": {
+        "description": "Returns the current tenant state and public settings.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentTenantDetails"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "Get tenant details",
+        "tags": [
+          "Tenants"
+        ],
+        "x-mcp-scope": "read"
       }
     },
     "/rpc/getTrinoCluster": {
@@ -59416,6 +60224,50 @@
         "x-mcp-scope": "read"
       }
     },
+    "/rpc/listBucketObjects": {
+      "post": {
+        "description": "Returns object paths from the cloud environment storage bucket, optionally filtered by prefix.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListBucketObjectsArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListBucketObjectsResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] List bucket objects",
+        "tags": [
+          "CloudEnvironmentStorage"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
     "/rpc/listCatalogs": {
       "post": {
         "description": "Returns a list of REST catalogs available to the current DataLens tenant.",
@@ -59526,7 +60378,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ListIamAccessBindingsResult"
+                  "$ref": "#/components/schemas/ListAccessBindingsResult"
                 }
               }
             },
@@ -59689,7 +60541,7 @@
     },
     "/rpc/listSharedEntryAccessBindings": {
       "post": {
-        "description": "Lists access bindings for the specified shared entry.",
+        "description": "Lists access bindings for the specified common object.",
         "parameters": [
           {
             "$ref": "#/components/parameters/ApiVersionHeader"
@@ -59709,7 +60561,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ListIamAccessBindingsResult"
+                  "$ref": "#/components/schemas/ListAccessBindingsResult"
                 }
               }
             },
@@ -59724,9 +60576,97 @@
             "Organization ID": []
           }
         ],
-        "summary": "List shared entry access bindings",
+        "summary": "List common object access bindings",
         "tags": [
           "SharedEntry"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/listSparkApplicationLog": {
+      "post": {
+        "description": "Returns a fragment of the specified Spark application log.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListSparkApplicationLogArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSparkApplicationLogResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] List Spark application log",
+        "tags": [
+          "SparkApplications"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/listSparkApplications": {
+      "post": {
+        "description": "Returns a list of applications for the specified Spark cluster.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListSparkApplicationsArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSparkApplicationsResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] List Spark applications",
+        "tags": [
+          "SparkApplications"
         ],
         "x-mcp-scope": "read"
       }
@@ -59771,94 +60711,6 @@
         "summary": "🚧 [Experimental] List Spark clusters",
         "tags": [
           "SparkClusters"
-        ],
-        "x-mcp-scope": "read"
-      }
-    },
-    "/rpc/listSparkJobLog": {
-      "post": {
-        "description": "Returns a fragment of the specified Spark job log.",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/ApiVersionHeader"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ListSparkJobLogArgs"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListSparkJobLogResult"
-                }
-              }
-            },
-            "description": "Response"
-          }
-        },
-        "security": [
-          {
-            "IAM token": []
-          },
-          {
-            "Organization ID": []
-          }
-        ],
-        "summary": "🚧 [Experimental] List Spark job log",
-        "tags": [
-          "SparkJobs"
-        ],
-        "x-mcp-scope": "read"
-      }
-    },
-    "/rpc/listSparkJobs": {
-      "post": {
-        "description": "Returns a list of jobs for the specified Spark cluster.",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/ApiVersionHeader"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ListSparkJobsArgs"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListSparkJobsResult"
-                }
-              }
-            },
-            "description": "Response"
-          }
-        },
-        "security": [
-          {
-            "IAM token": []
-          },
-          {
-            "Organization ID": []
-          }
-        ],
-        "summary": "🚧 [Experimental] List Spark jobs",
-        "tags": [
-          "SparkJobs"
         ],
         "x-mcp-scope": "read"
       }
@@ -60017,7 +60869,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ListIamAccessBindingsResult"
+                  "$ref": "#/components/schemas/ListAccessBindingsResult"
                 }
               }
             },
@@ -60723,6 +61575,50 @@
         "x-mcp-scope": "privileged"
       }
     },
+    "/rpc/updateCloudEnvironment": {
+      "post": {
+        "description": "Updates the passed fields of a cloud environment, including the maximum size of its storage bucket, and returns an asynchronous operation.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCloudEnvironmentArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LakehouseOperation"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Update cloud environment",
+        "tags": [
+          "CloudEnvironments"
+        ],
+        "x-mcp-scope": "privileged"
+      }
+    },
     "/rpc/updateCollection": {
       "post": {
         "description": "Updates the specified collection.",
@@ -61223,6 +62119,50 @@
           "Reports"
         ],
         "x-mcp-scope": "write"
+      }
+    },
+    "/rpc/updateSharedEntryAccessBindings": {
+      "post": {
+        "description": "Updates access bindings for the specified common object.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSharedEntryAccessBindingsArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatalensOperation"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "Update common objects access bindings",
+        "tags": [
+          "SharedEntry"
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/updateSqlQuery": {
