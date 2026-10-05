@@ -136,6 +136,14 @@ from datalens_sdk.domain.rest_catalog import (
     RestCatalogSortField,
 )
 from datalens_sdk.domain.revisions import EntryRevision
+from datalens_sdk.domain.spark_application import (
+    SparkApplication,
+    SparkApplicationCatalogRef,
+    SparkApplicationConnectSpec,
+    SparkApplicationPySparkSpec,
+    SparkApplicationSparkSpec,
+    SparkApplicationStatus,
+)
 from datalens_sdk.domain.spark_cluster import (
     SparkAutoScalePolicy,
     SparkCluster,
@@ -150,14 +158,6 @@ from datalens_sdk.domain.spark_cluster import (
     SparkResourcePoolsConfig,
     SparkResourcePreset,
     SparkScalePolicy,
-)
-from datalens_sdk.domain.spark_job import (
-    SparkJob,
-    SparkJobCatalogRef,
-    SparkJobConnectSpec,
-    SparkJobPySparkSpec,
-    SparkJobSparkSpec,
-    SparkJobStatus,
 )
 from datalens_sdk.domain.sql_query import (
     SqlQuery,
@@ -326,6 +326,12 @@ __all__ = [
     "SortDirection",
     "Source",
     "SourceCreate",
+    "SparkApplication",
+    "SparkApplicationCatalogRef",
+    "SparkApplicationConnectSpec",
+    "SparkApplicationPySparkSpec",
+    "SparkApplicationSparkSpec",
+    "SparkApplicationStatus",
     "SparkAutoScalePolicy",
     "SparkCluster",
     "SparkClusterConfig",
@@ -334,12 +340,6 @@ __all__ = [
     "SparkClusterHealth",
     "SparkClusterStatus",
     "SparkFixedScalePolicy",
-    "SparkJob",
-    "SparkJobCatalogRef",
-    "SparkJobConnectSpec",
-    "SparkJobPySparkSpec",
-    "SparkJobSparkSpec",
-    "SparkJobStatus",
     "SparkLoggingConfig",
     "SparkResourcePoolConfig",
     "SparkResourcePoolsConfig",

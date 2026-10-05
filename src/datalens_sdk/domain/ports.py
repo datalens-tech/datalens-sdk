@@ -49,6 +49,7 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate
     from datalens_sdk.domain.rest_catalog import RestCatalog, RestCatalogCreate, RestCatalogListOptions
     from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
+    from datalens_sdk.domain.spark_application import SparkApplication, SparkApplicationListOptions
     from datalens_sdk.domain.spark_cluster import (
         SparkCluster,
         SparkClusterCreate,
@@ -56,7 +57,6 @@ if TYPE_CHECKING:
         SparkResourcePreset,
         SparkResourcePresetListOptions,
     )
-    from datalens_sdk.domain.spark_job import SparkJob, SparkJobListOptions
     from datalens_sdk.domain.specs.raw_resource import (
         RawCreateSpec,
         RawReplaceSpec,
@@ -137,10 +137,10 @@ class SparkClusterOperations(Protocol):
 
 
 @runtime_checkable
-class SparkJobOperations(Protocol):
-    def get_spark_job(self, cluster_id: str, job_id: str) -> SparkJob: ...
+class SparkApplicationOperations(Protocol):
+    def get_spark_application(self, cluster_id: str, application_id: str) -> SparkApplication: ...
 
-    def list_spark_jobs(self, options: SparkJobListOptions) -> Pager[SparkJob]: ...
+    def list_spark_applications(self, options: SparkApplicationListOptions) -> Pager[SparkApplication]: ...
 
 
 @runtime_checkable

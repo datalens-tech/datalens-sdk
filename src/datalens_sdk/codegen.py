@@ -317,8 +317,8 @@ RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (
         tag="SparkClusters", namespace="spark_clusters", installations=("yacloud",), alias_only_read=True
     ),
     RpcNamespaceConfig(
-        tag="SparkJobs",
-        namespace="spark_jobs",
+        tag="SparkApplications",
+        namespace="spark_applications",
         installations=("yacloud",),
         alias_only_read=True,
     ),
