@@ -5006,6 +5006,27 @@ class CancelSparkApplicationArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class CreateCloudEnvironmentArgsStorageDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    max_size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[0-9]+$'))] = Field(alias='maxSize')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateCloudEnvironmentArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cloud_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudId')]
+    description: Annotated[str, Field(max_length=200)] = _UNVALIDATED_NONE_DEFAULT
+    name: Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[a-zA-Z0-9ЁёА-я][^\\u0009-\\u000d\\u0020\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]{1,61}[a-zA-Z0-9ЁёА-я]$'))]
+    security_group_ids: list[str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='securityGroupIds')
+    storage: CreateCloudEnvironmentArgsStorageDTO = _UNVALIDATED_NONE_DEFAULT
+    subnet_id: Annotated[str, Field(min_length=1, max_length=50, alias='subnetId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class CreateRestCatalogArgsBucketSettingsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5316,6 +5337,14 @@ class CreateTrinoClusterArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class DeleteCloudEnvironmentArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    id: Annotated[str, Field(min_length=1, max_length=50)]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class DeleteSparkClusterArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5345,6 +5374,15 @@ class DeleteTrinoClusterCatalogArgsDTO(BaseModel):
 
     catalog_id: Annotated[str, Field(min_length=1, max_length=50, alias='catalogId')]
     cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class GetCloudEnvironmentArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    id: Annotated[str, Field(min_length=1, max_length=50)]
+    include_permissions: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includePermissions')
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
@@ -5421,6 +5459,17 @@ class ListCatalogsArgsDTO(BaseModel):
     page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
     reverse_order: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='reverseOrder')
     sort_by: Literal['createdAt', 'name', 'updatedAt'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='sortBy')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class ListCloudEnvironmentsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    filter: Annotated[list[Annotated[str, Field(max_length=200), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:name|cloud_id|status|created_by_id)="[^"]*"$'))]], Field(max_length=100)] = _UNVALIDATED_NONE_DEFAULT
+    include_permissions: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includePermissions')
+    page_size: Annotated[int, Field(ge=0, alias='pageSize')] = _UNVALIDATED_NONE_DEFAULT
+    page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
@@ -5531,6 +5580,18 @@ class StopTrinoClusterArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class UpdateCloudEnvironmentArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    description: Annotated[str, Field(max_length=200)] = _UNVALIDATED_NONE_DEFAULT
+    id: Annotated[str, Field(min_length=1, max_length=50)]
+    name: Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[a-zA-Z0-9ЁёА-я][^\\u0009-\\u000d\\u0020\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]{1,61}[a-zA-Z0-9ЁёА-я]$'))] = _UNVALIDATED_NONE_DEFAULT
+    security_group_ids: list[str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='securityGroupIds')
+    storage: CreateCloudEnvironmentArgsStorageDTO = _UNVALIDATED_NONE_DEFAULT
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class UpdateSqlQueryArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5542,6 +5603,36 @@ class UpdateSqlQueryArgsDTO(BaseModel):
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CloudEnvironmentCreatedAtReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    nanos: int | float = _UNVALIDATED_NONE_DEFAULT
+    seconds: str
+
+class CloudEnvironmentStorageObjectReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    max_size: str = Field(alias='maxSize')
+
+class CloudEnvironmentReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    cloud_id: str = Field(alias='cloudId')
+    created_at: CloudEnvironmentCreatedAtReadDTO = Field(alias='createdAt')
+    created_by_id: str = Field(alias='createdById')
+    description: str = _UNVALIDATED_NONE_DEFAULT
+    id: Annotated[str, Field(min_length=1)]
+    name: Annotated[str, Field(min_length=1)]
+    permissions: dict[str, bool] = _UNVALIDATED_NONE_DEFAULT
+    security_group_ids: list[str] = Field(alias='securityGroupIds')
+    status: Literal['BROKEN', 'CREATING', 'DELETING', 'ERROR', 'READY', 'STATUS_UNSPECIFIED']
+    status_details: str = Field(alias='statusDetails')
+    storage: None | CloudEnvironmentStorageObjectReadDTO = _UNVALIDATED_NONE_DEFAULT
+    subnet_id: str = Field(alias='subnetId')
+    tenant_id: str = Field(alias='tenantId')
+    updated_at: CloudEnvironmentCreatedAtReadDTO = Field(alias='updatedAt')
+    updated_by_id: str = Field(alias='updatedById')
 
 class SqlQueryAnnotationObjectReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
@@ -5633,12 +5724,6 @@ class GetSqlQueryResultReadDTO(BaseModel):
     is_favorite: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='isFavorite')
     permissions: GetSqlQueryResultPermissionsReadDTO = _UNVALIDATED_NONE_DEFAULT
 
-class LakehouseOperationCreatedAtReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
-
-    nanos: int | float = _UNVALIDATED_NONE_DEFAULT
-    seconds: str
-
 class LakehouseOperationErrorReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
 
@@ -5649,14 +5734,14 @@ class LakehouseOperationErrorReadDTO(BaseModel):
 class LakehouseOperationReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
 
-    created_at: LakehouseOperationCreatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='createdAt')
+    created_at: CloudEnvironmentCreatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='createdAt')
     created_by: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='createdBy')
     description: str = _UNVALIDATED_NONE_DEFAULT
     done: bool
     error: LakehouseOperationErrorReadDTO = _UNVALIDATED_NONE_DEFAULT
     id: str
     metadata: dict[str, JsonValue]
-    modified_at: LakehouseOperationCreatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='modifiedAt')
+    modified_at: CloudEnvironmentCreatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='modifiedAt')
     response: dict[str, JsonValue] = _UNVALIDATED_NONE_DEFAULT
 
 class ListCatalogsResultRestCatalogsItemBucketDetailsUpdatedAtReadDTO(BaseModel):
@@ -5708,6 +5793,12 @@ class ListCatalogsResultReadDTO(BaseModel):
     next_page_token: str = Field(alias='nextPageToken')
     rest_catalogs: list[ListCatalogsResultRestCatalogsItemReadDTO] = Field(alias='restCatalogs')
 
+class ListCloudEnvironmentsResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    cloud_environments: list[CloudEnvironmentReadDTO] = Field(alias='cloudEnvironments')
+    next_page_token: str = Field(alias='nextPageToken')
+
 class ListSparkApplicationLogResultReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
 
@@ -5740,13 +5831,13 @@ class SparkApplicationAnyOf0ReadDTO(BaseModel):
     catalogs: list[SparkApplicationAnyOf0CatalogsItemReadDTO]
     cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
     connect_url: str = Field(alias='connectUrl')
-    created_at: LakehouseOperationCreatedAtReadDTO = Field(alias='createdAt')
+    created_at: CloudEnvironmentCreatedAtReadDTO = Field(alias='createdAt')
     created_by: Annotated[str, Field(min_length=1, alias='createdBy')]
-    finished_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='finishedAt')
+    finished_at: None | CloudEnvironmentCreatedAtReadDTO = Field(alias='finishedAt')
     id: Annotated[str, Field(min_length=1, max_length=50)]
     name: str
     pyspark_application: SparkApplicationAnyOf0PysparkApplicationReadDTO = Field(alias='pysparkApplication')
-    started_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='startedAt')
+    started_at: None | CloudEnvironmentCreatedAtReadDTO = Field(alias='startedAt')
     status: Literal['CANCELLED', 'CANCELLING', 'DONE', 'ERROR', 'PENDING', 'PROVISIONING', 'RUNNING', 'STATUS_UNSPECIFIED']
 
 class SparkApplicationAnyOf1SparkApplicationReadDTO(BaseModel):
@@ -5770,13 +5861,13 @@ class SparkApplicationAnyOf1ReadDTO(BaseModel):
     catalogs: list[SparkApplicationAnyOf0CatalogsItemReadDTO]
     cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
     connect_url: str = Field(alias='connectUrl')
-    created_at: LakehouseOperationCreatedAtReadDTO = Field(alias='createdAt')
+    created_at: CloudEnvironmentCreatedAtReadDTO = Field(alias='createdAt')
     created_by: Annotated[str, Field(min_length=1, alias='createdBy')]
-    finished_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='finishedAt')
+    finished_at: None | CloudEnvironmentCreatedAtReadDTO = Field(alias='finishedAt')
     id: Annotated[str, Field(min_length=1, max_length=50)]
     name: str
     spark_application: SparkApplicationAnyOf1SparkApplicationReadDTO = Field(alias='sparkApplication')
-    started_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='startedAt')
+    started_at: None | CloudEnvironmentCreatedAtReadDTO = Field(alias='startedAt')
     status: Literal['CANCELLED', 'CANCELLING', 'DONE', 'ERROR', 'PENDING', 'PROVISIONING', 'RUNNING', 'STATUS_UNSPECIFIED']
 
 class SparkApplicationAnyOf2SparkConnectApplicationReadDTO(BaseModel):
@@ -5797,13 +5888,13 @@ class SparkApplicationAnyOf2ReadDTO(BaseModel):
     catalogs: list[SparkApplicationAnyOf0CatalogsItemReadDTO]
     cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
     connect_url: str = Field(alias='connectUrl')
-    created_at: LakehouseOperationCreatedAtReadDTO = Field(alias='createdAt')
+    created_at: CloudEnvironmentCreatedAtReadDTO = Field(alias='createdAt')
     created_by: Annotated[str, Field(min_length=1, alias='createdBy')]
-    finished_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='finishedAt')
+    finished_at: None | CloudEnvironmentCreatedAtReadDTO = Field(alias='finishedAt')
     id: Annotated[str, Field(min_length=1, max_length=50)]
     name: str
     spark_connect_application: SparkApplicationAnyOf2SparkConnectApplicationReadDTO = Field(alias='sparkConnectApplication')
-    started_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='startedAt')
+    started_at: None | CloudEnvironmentCreatedAtReadDTO = Field(alias='startedAt')
     status: Literal['CANCELLED', 'CANCELLING', 'DONE', 'ERROR', 'PENDING', 'PROVISIONING', 'RUNNING', 'STATUS_UNSPECIFIED']
 
 class SparkApplicationAnyOf3ReadDTO(BaseModel):
@@ -5812,12 +5903,12 @@ class SparkApplicationAnyOf3ReadDTO(BaseModel):
     catalogs: list[SparkApplicationAnyOf0CatalogsItemReadDTO]
     cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
     connect_url: str = Field(alias='connectUrl')
-    created_at: LakehouseOperationCreatedAtReadDTO = Field(alias='createdAt')
+    created_at: CloudEnvironmentCreatedAtReadDTO = Field(alias='createdAt')
     created_by: Annotated[str, Field(min_length=1, alias='createdBy')]
-    finished_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='finishedAt')
+    finished_at: None | CloudEnvironmentCreatedAtReadDTO = Field(alias='finishedAt')
     id: Annotated[str, Field(min_length=1, max_length=50)]
     name: str
-    started_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='startedAt')
+    started_at: None | CloudEnvironmentCreatedAtReadDTO = Field(alias='startedAt')
     status: Literal['CANCELLED', 'CANCELLING', 'DONE', 'ERROR', 'PENDING', 'PROVISIONING', 'RUNNING', 'STATUS_UNSPECIFIED']
 
 SparkApplicationReadDTO = Annotated[SparkApplicationAnyOf0ReadDTO, BeforeValidator(partial(_validate_tagged_rpc_read_union_branch, known_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'pysparkApplication', 'pyspark_application', 'sparkApplication', 'sparkConnectApplication', 'spark_application', 'spark_connect_application', 'startedAt', 'started_at', 'status']), branch_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'pysparkApplication', 'pyspark_application', 'startedAt', 'started_at', 'status'])))] | Annotated[SparkApplicationAnyOf1ReadDTO, BeforeValidator(partial(_validate_tagged_rpc_read_union_branch, known_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'pysparkApplication', 'pyspark_application', 'sparkApplication', 'sparkConnectApplication', 'spark_application', 'spark_connect_application', 'startedAt', 'started_at', 'status']), branch_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'sparkApplication', 'spark_application', 'startedAt', 'started_at', 'status'])))] | Annotated[SparkApplicationAnyOf2ReadDTO, BeforeValidator(partial(_validate_tagged_rpc_read_union_branch, known_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'pysparkApplication', 'pyspark_application', 'sparkApplication', 'sparkConnectApplication', 'spark_application', 'spark_connect_application', 'startedAt', 'started_at', 'status']), branch_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'sparkConnectApplication', 'spark_connect_application', 'startedAt', 'started_at', 'status'])))] | Annotated[SparkApplicationAnyOf3ReadDTO, BeforeValidator(partial(_validate_tagged_rpc_read_union_branch, known_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'pysparkApplication', 'pyspark_application', 'sparkApplication', 'sparkConnectApplication', 'spark_application', 'spark_connect_application', 'startedAt', 'started_at', 'status']), branch_properties=frozenset(['catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'startedAt', 'started_at', 'status'])))]

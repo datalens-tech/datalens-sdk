@@ -1,5 +1,13 @@
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.chart_types import GeoLayerFilter, QLCast, QLParamType
+from datalens_sdk.domain.cloud_environment import (
+    CloudEnvironment,
+    CloudEnvironmentCreate,
+    CloudEnvironmentListOptions,
+    CloudEnvironmentStatus,
+    CloudEnvironmentStorageSettings,
+    CloudEnvironmentUpdate,
+)
 from datalens_sdk.domain.collection import Collection, CollectionCreate, CollectionUpdate
 from datalens_sdk.domain.common_types import SortDirection, UILanguage, UITheme
 from datalens_sdk.domain.connection import Connection, ConnectionUpdate
@@ -213,6 +221,12 @@ __all__ = [
     "CacheInvalidationMode",
     "CacheInvalidationSource",
     "Chart",
+    "CloudEnvironment",
+    "CloudEnvironmentCreate",
+    "CloudEnvironmentListOptions",
+    "CloudEnvironmentStatus",
+    "CloudEnvironmentStorageSettings",
+    "CloudEnvironmentUpdate",
     "Collection",
     "CollectionContentMode",
     "CollectionCreate",

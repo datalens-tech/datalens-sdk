@@ -12,6 +12,12 @@ if TYPE_CHECKING:
         _BaseWizardChartCreate,
     )
     from datalens_sdk.domain.chart import Chart
+    from datalens_sdk.domain.cloud_environment import (
+        CloudEnvironment,
+        CloudEnvironmentCreate,
+        CloudEnvironmentListOptions,
+        CloudEnvironmentUpdate,
+    )
     from datalens_sdk.domain.collection import Collection, CollectionCreate, CollectionUpdate
     from datalens_sdk.domain.common_types import UILanguage, UITheme
     from datalens_sdk.domain.connection import Connection, ConnectionUpdate
@@ -119,6 +125,21 @@ class RestCatalogOperations(Protocol):
     def create_rest_catalog(self, builder: RestCatalogCreate) -> LakehouseOperation: ...
 
     def list_rest_catalogs(self, options: RestCatalogListOptions) -> Pager[RestCatalog]: ...
+
+
+@runtime_checkable
+class CloudEnvironmentOperations(Protocol):
+    def create_cloud_environment(self, builder: CloudEnvironmentCreate) -> LakehouseOperation: ...
+
+    def get_cloud_environment(
+        self, cloud_environment_id: str, *, include_permissions: bool | None = None
+    ) -> CloudEnvironment: ...
+
+    def update_cloud_environment(self, builder: CloudEnvironmentUpdate) -> LakehouseOperation: ...
+
+    def delete_cloud_environment(self, cloud_environment_id: str) -> LakehouseOperation: ...
+
+    def list_cloud_environments(self, options: CloudEnvironmentListOptions) -> Pager[CloudEnvironment]: ...
 
 
 @runtime_checkable
