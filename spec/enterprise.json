@@ -4881,6 +4881,83 @@
         ],
         "type": "object"
       },
+      "CreateRestCatalogArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "bucketSettings": {
+            "additionalProperties": false,
+            "description": "Settings of the REST catalog bucket.",
+            "properties": {
+              "alias": {
+                "description": "Human-readable alias of the REST catalog bucket.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "description": {
+                "description": "Description of the REST catalog bucket.",
+                "maxLength": 1024,
+                "type": "string"
+              },
+              "maxSize": {
+                "description": "Maximum size of the REST catalog bucket in bytes.",
+                "pattern": "^\\d+$",
+                "type": "string"
+              },
+              "storageClass": {
+                "description": "Storage class of the REST catalog bucket.",
+                "enum": [
+                  "STANDARD",
+                  "COLD",
+                  "STANDARD_IA",
+                  "NEARLINE",
+                  "ICE",
+                  "GLACIER"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "storageClass",
+              "maxSize",
+              "alias"
+            ],
+            "type": "object"
+          },
+          "cloudEnvironmentId": {
+            "description": "ID of the cloud environment in which to create the REST catalog.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "description": {
+            "description": "Description of the REST catalog.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": {
+              "maxLength": 63,
+              "pattern": "^[-_0-9a-z]*$",
+              "type": "string"
+            },
+            "description": "REST catalog labels.",
+            "type": "object"
+          },
+          "name": {
+            "description": "Name of the REST catalog.",
+            "maxLength": 63,
+            "pattern": "^[a-z](?:[a-z0-9_-]*[a-z0-9])?$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cloudEnvironmentId",
+          "name",
+          "bucketSettings"
+        ],
+        "type": "object"
+      },
       "CreateSparkClusterArgs": {
         "additionalProperties": false,
         "properties": {
@@ -52170,6 +52247,50 @@
           "Reports"
         ],
         "x-mcp-scope": "write"
+      }
+    },
+    "/rpc/createRestCatalog": {
+      "post": {
+        "description": "Creates a REST catalog and returns an asynchronous operation. Use `getLakehouseOperation` in LakehouseOperations with the returned operation ID until `done` is true, then inspect `error` or `response`.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRestCatalogArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LakehouseOperation"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Create REST catalog",
+        "tags": [
+          "RestCatalogs"
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/createSparkCluster": {

@@ -235,7 +235,7 @@ class EnterpriseSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-YACLOUD_SOURCE_TYPES = {'APPMETRICA_API': {'schema': 'APPMETRICA_API', 'method': 'appmetrica_api', 'connection_type': 'appmetrica_api', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'BIGQUERY_SUBSELECT': {'schema': 'BIGQUERY_SUBSELECT', 'method': 'bigquery_subselect', 'connection_type': 'bigquery', 'parameters': {'subsql': 'str'}}, 'BIGQUERY_TABLE': {'schema': 'BIGQUERY_TABLE', 'method': 'bigquery_table', 'connection_type': 'bigquery', 'parameters': {'dataset_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'BITRIX_GDS': {'schema': 'BITRIX_GDS', 'method': 'bitrix_gds', 'connection_type': 'bitrix', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'CHYT_YTSAURUS_SUBSELECT': {'schema': 'CHYT_YTSAURUS_SUBSELECT', 'method': 'chyt_ytsaurus_subselect', 'connection_type': 'chyt', 'parameters': {'subsql': 'str'}}, 'CHYT_YTSAURUS_TABLE': {'schema': 'CHYT_YTSAURUS_TABLE', 'method': 'chyt_ytsaurus_table', 'connection_type': 'chyt', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'CHYT_YTSAURUS_TABLE_LIST': {'schema': 'CHYT_YTSAURUS_TABLE_LIST', 'method': 'chyt_ytsaurus_table_list', 'connection_type': 'chyt', 'parameters': {'table_names': 'str'}}, 'CHYT_YTSAURUS_TABLE_RANGE': {'schema': 'CHYT_YTSAURUS_TABLE_RANGE', 'method': 'chyt_ytsaurus_table_range', 'connection_type': 'chyt', 'parameters': {'directory_path': 'str', 'range_from': 'str', 'range_to': 'str'}}, 'CH_BILLING_ANALYTICS_TABLE': {'schema': 'CH_BILLING_ANALYTICS_TABLE', 'method': 'ch_billing_analytics_table', 'connection_type': 'ch_billing_analytics', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'CH_SMB_HEATMAPS_TABLE': {'schema': 'CH_SMB_HEATMAPS_TABLE', 'method': 'ch_smb_heatmaps_table', 'connection_type': 'smb_heatmaps', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'CH_SUBSELECT': {'schema': 'CH_SUBSELECT', 'method': 'ch_subselect', 'connection_type': 'clickhouse', 'parameters': {'subsql': 'str'}}, 'CH_TABLE': {'schema': 'CH_TABLE', 'method': 'ch_table', 'connection_type': 'clickhouse', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'CH_USAGE_TRACKING_AGG_TABLE': {'schema': 'CH_USAGE_TRACKING_AGG_TABLE', 'method': 'ch_usage_tracking_agg_table', 'connection_type': 'clickhouse', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'CH_USAGE_TRACKING_TABLE': {'schema': 'CH_USAGE_TRACKING_TABLE', 'method': 'ch_usage_tracking_table', 'connection_type': 'clickhouse', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'CH_YA_MUSIC_PODCAST_STATS_TABLE': {'schema': 'CH_YA_MUSIC_PODCAST_STATS_TABLE', 'method': 'ch_ya_music_podcast_stats_table', 'connection_type': 'ch_ya_music_podcast_stats', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'EQUEO_CH_TABLE': {'schema': 'EQUEO_CH_TABLE', 'method': 'equeo_ch_table', 'connection_type': 'equeo', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'EXTRACTOR_1C_CH_TABLE': {'schema': 'EXTRACTOR_1C_CH_TABLE', 'method': 'extractor_1c_ch_table', 'connection_type': 'extractor1c', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'GP_SUBSELECT': {'schema': 'GP_SUBSELECT', 'method': 'gp_subselect', 'connection_type': 'greenplum', 'parameters': {'subsql': 'str'}}, 'GP_TABLE': {'schema': 'GP_TABLE', 'method': 'gp_table', 'connection_type': 'greenplum', 'parameters': {'db_name': 'str', 'db_version': 'str', 'schema_name': 'str', 'table_name': 'str'}}, 'GSHEETS': {'schema': 'GSHEETS', 'method': 'gsheets', 'connection_type': 'gsheets', 'parameters': {}}, 'JSON_API': {'schema': 'JSON_API', 'method': 'json_api', 'connection_type': 'json_api', 'parameters': {}}, 'KONTUR_MARKET_CH_TABLE': {'schema': 'KONTUR_MARKET_CH_TABLE', 'method': 'kontur_market_ch_table', 'connection_type': 'kontur_market', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'METRIKA_API': {'schema': 'METRIKA_API', 'method': 'metrika_api', 'connection_type': 'metrika_api', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'MONITORING': {'schema': 'MONITORING', 'method': 'monitoring', 'connection_type': 'monitoring', 'parameters': {}}, 'MOYSKLAD_CH_TABLE': {'schema': 'MOYSKLAD_CH_TABLE', 'method': 'moysklad_ch_table', 'connection_type': 'moysklad', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'MSSQL_SUBSELECT': {'schema': 'MSSQL_SUBSELECT', 'method': 'mssql_subselect', 'connection_type': 'mssql', 'parameters': {'subsql': 'str'}}, 'MSSQL_TABLE': {'schema': 'MSSQL_TABLE', 'method': 'mssql_table', 'connection_type': 'mssql', 'parameters': {'db_name': 'str', 'db_version': 'str', 'schema_name': 'str', 'table_name': 'str'}}, 'MYSQL_SUBSELECT': {'schema': 'MYSQL_SUBSELECT', 'method': 'mysql_subselect', 'connection_type': 'mysql', 'parameters': {'subsql': 'str'}}, 'MYSQL_TABLE': {'schema': 'MYSQL_TABLE', 'method': 'mysql_table', 'connection_type': 'mysql', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'ORACLE_SUBSELECT': {'schema': 'ORACLE_SUBSELECT', 'method': 'oracle_subselect', 'connection_type': 'oracle', 'parameters': {'subsql': 'str'}}, 'ORACLE_TABLE': {'schema': 'ORACLE_TABLE', 'method': 'oracle_table', 'connection_type': 'oracle', 'parameters': {'db_name': 'str', 'db_version': 'str', 'schema_name': 'str', 'table_name': 'str'}}, 'PG_SUBSELECT': {'schema': 'PG_SUBSELECT', 'method': 'pg_subselect', 'connection_type': 'postgres', 'parameters': {'subsql': 'str'}}, 'PG_TABLE': {'schema': 'PG_TABLE', 'method': 'pg_table', 'connection_type': 'postgres', 'parameters': {'db_name': 'str', 'db_version': 'str', 'schema_name': 'str', 'table_name': 'str'}}, 'PROMQL': {'schema': 'PROMQL', 'method': 'promql', 'connection_type': 'promql', 'parameters': {}}, 'SNOWFLAKE_TABLE': {'schema': 'SNOWFLAKE_TABLE', 'method': 'snowflake_table', 'connection_type': 'snowflake', 'parameters': {'db_name': 'str', 'schema': 'str', 'table_name': 'str'}}, 'SPEECHSENSE_TABLE': {'schema': 'SPEECHSENSE_TABLE', 'method': 'speechsense_table', 'connection_type': 'speechsense', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'TRINO_SUBSELECT': {'schema': 'TRINO_SUBSELECT', 'method': 'trino_subselect', 'connection_type': 'trino', 'parameters': {'subsql': 'str'}}, 'TRINO_TABLE': {'schema': 'TRINO_TABLE', 'method': 'trino_table', 'connection_type': 'trino', 'parameters': {'db_name': 'str', 'db_version': 'str', 'schema_name': 'str', 'table_name': 'str'}}, 'YDB_SUBSELECT': {'schema': 'YDB_SUBSELECT', 'method': 'ydb_subselect', 'connection_type': 'ydb', 'parameters': {'subsql': 'str'}}, 'YDB_TABLE': {'schema': 'YDB_TABLE', 'method': 'ydb_table', 'connection_type': 'ydb', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}, 'YQ_SUBSELECT': {'schema': 'YQ_SUBSELECT', 'method': 'yq_subselect', 'connection_type': 'yq', 'parameters': {'subsql': 'str'}}, 'YQ_TABLE': {'schema': 'YQ_TABLE', 'method': 'yq_table', 'connection_type': 'yq', 'parameters': {'db_name': 'str', 'db_version': 'str', 'table_name': 'str'}}}
+YACLOUD_SOURCE_TYPES = {'APPMETRICA_API': {'schema': 'APPMETRICA_API', 'method': 'appmetrica_api', 'connection_type': 'appmetrica_api', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'BIGQUERY_SUBSELECT': {'schema': 'BIGQUERY_SUBSELECT', 'method': 'bigquery_subselect', 'connection_type': 'bigquery', 'parameters': {'manual': 'bool', 'subsql': 'str'}}, 'BIGQUERY_TABLE': {'schema': 'BIGQUERY_TABLE', 'method': 'bigquery_table', 'connection_type': 'bigquery', 'parameters': {'dataset_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'BITRIX_GDS': {'schema': 'BITRIX_GDS', 'method': 'bitrix_gds', 'connection_type': 'bitrix', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'CHYT_YTSAURUS_SUBSELECT': {'schema': 'CHYT_YTSAURUS_SUBSELECT', 'method': 'chyt_ytsaurus_subselect', 'connection_type': 'chyt', 'parameters': {'manual': 'bool', 'subsql': 'str'}}, 'CHYT_YTSAURUS_TABLE': {'schema': 'CHYT_YTSAURUS_TABLE', 'method': 'chyt_ytsaurus_table', 'connection_type': 'chyt', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'CHYT_YTSAURUS_TABLE_LIST': {'schema': 'CHYT_YTSAURUS_TABLE_LIST', 'method': 'chyt_ytsaurus_table_list', 'connection_type': 'chyt', 'parameters': {'manual': 'bool', 'table_names': 'str'}}, 'CHYT_YTSAURUS_TABLE_RANGE': {'schema': 'CHYT_YTSAURUS_TABLE_RANGE', 'method': 'chyt_ytsaurus_table_range', 'connection_type': 'chyt', 'parameters': {'directory_path': 'str', 'manual': 'bool', 'range_from': 'str', 'range_to': 'str'}}, 'CH_BILLING_ANALYTICS_TABLE': {'schema': 'CH_BILLING_ANALYTICS_TABLE', 'method': 'ch_billing_analytics_table', 'connection_type': 'ch_billing_analytics', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'CH_SMB_HEATMAPS_TABLE': {'schema': 'CH_SMB_HEATMAPS_TABLE', 'method': 'ch_smb_heatmaps_table', 'connection_type': 'smb_heatmaps', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'CH_SUBSELECT': {'schema': 'CH_SUBSELECT', 'method': 'ch_subselect', 'connection_type': 'clickhouse', 'parameters': {'manual': 'bool', 'subsql': 'str'}}, 'CH_TABLE': {'schema': 'CH_TABLE', 'method': 'ch_table', 'connection_type': 'clickhouse', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'CH_USAGE_TRACKING_AGG_TABLE': {'schema': 'CH_USAGE_TRACKING_AGG_TABLE', 'method': 'ch_usage_tracking_agg_table', 'connection_type': 'clickhouse', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'CH_USAGE_TRACKING_TABLE': {'schema': 'CH_USAGE_TRACKING_TABLE', 'method': 'ch_usage_tracking_table', 'connection_type': 'clickhouse', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'CH_YA_MUSIC_PODCAST_STATS_TABLE': {'schema': 'CH_YA_MUSIC_PODCAST_STATS_TABLE', 'method': 'ch_ya_music_podcast_stats_table', 'connection_type': 'ch_ya_music_podcast_stats', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'EQUEO_CH_TABLE': {'schema': 'EQUEO_CH_TABLE', 'method': 'equeo_ch_table', 'connection_type': 'equeo', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'EXTRACTOR_1C_CH_TABLE': {'schema': 'EXTRACTOR_1C_CH_TABLE', 'method': 'extractor_1c_ch_table', 'connection_type': 'extractor1c', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'GP_SUBSELECT': {'schema': 'GP_SUBSELECT', 'method': 'gp_subselect', 'connection_type': 'greenplum', 'parameters': {'manual': 'bool', 'subsql': 'str'}}, 'GP_TABLE': {'schema': 'GP_TABLE', 'method': 'gp_table', 'connection_type': 'greenplum', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'schema_name': 'str', 'table_name': 'str'}}, 'GSHEETS': {'schema': 'GSHEETS', 'method': 'gsheets', 'connection_type': 'gsheets', 'parameters': {'manual': 'bool'}}, 'JSON_API': {'schema': 'JSON_API', 'method': 'json_api', 'connection_type': 'json_api', 'parameters': {'manual': 'bool'}}, 'KONTUR_MARKET_CH_TABLE': {'schema': 'KONTUR_MARKET_CH_TABLE', 'method': 'kontur_market_ch_table', 'connection_type': 'kontur_market', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'METRIKA_API': {'schema': 'METRIKA_API', 'method': 'metrika_api', 'connection_type': 'metrika_api', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'MONITORING': {'schema': 'MONITORING', 'method': 'monitoring', 'connection_type': 'monitoring', 'parameters': {'manual': 'bool'}}, 'MOYSKLAD_CH_TABLE': {'schema': 'MOYSKLAD_CH_TABLE', 'method': 'moysklad_ch_table', 'connection_type': 'moysklad', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'MSSQL_SUBSELECT': {'schema': 'MSSQL_SUBSELECT', 'method': 'mssql_subselect', 'connection_type': 'mssql', 'parameters': {'manual': 'bool', 'subsql': 'str'}}, 'MSSQL_TABLE': {'schema': 'MSSQL_TABLE', 'method': 'mssql_table', 'connection_type': 'mssql', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'schema_name': 'str', 'table_name': 'str'}}, 'MYSQL_SUBSELECT': {'schema': 'MYSQL_SUBSELECT', 'method': 'mysql_subselect', 'connection_type': 'mysql', 'parameters': {'manual': 'bool', 'subsql': 'str'}}, 'MYSQL_TABLE': {'schema': 'MYSQL_TABLE', 'method': 'mysql_table', 'connection_type': 'mysql', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'ORACLE_SUBSELECT': {'schema': 'ORACLE_SUBSELECT', 'method': 'oracle_subselect', 'connection_type': 'oracle', 'parameters': {'manual': 'bool', 'subsql': 'str'}}, 'ORACLE_TABLE': {'schema': 'ORACLE_TABLE', 'method': 'oracle_table', 'connection_type': 'oracle', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'schema_name': 'str', 'table_name': 'str'}}, 'PG_SUBSELECT': {'schema': 'PG_SUBSELECT', 'method': 'pg_subselect', 'connection_type': 'postgres', 'parameters': {'manual': 'bool', 'subsql': 'str'}}, 'PG_TABLE': {'schema': 'PG_TABLE', 'method': 'pg_table', 'connection_type': 'postgres', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'schema_name': 'str', 'table_name': 'str'}}, 'PROMQL': {'schema': 'PROMQL', 'method': 'promql', 'connection_type': 'promql', 'parameters': {'manual': 'bool'}}, 'SNOWFLAKE_TABLE': {'schema': 'SNOWFLAKE_TABLE', 'method': 'snowflake_table', 'connection_type': 'snowflake', 'parameters': {'db_name': 'str', 'manual': 'bool', 'schema': 'str', 'table_name': 'str'}}, 'SPEECHSENSE_TABLE': {'schema': 'SPEECHSENSE_TABLE', 'method': 'speechsense_table', 'connection_type': 'speechsense', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'TRINO_SUBSELECT': {'schema': 'TRINO_SUBSELECT', 'method': 'trino_subselect', 'connection_type': 'trino', 'parameters': {'manual': 'bool', 'subsql': 'str'}}, 'TRINO_TABLE': {'schema': 'TRINO_TABLE', 'method': 'trino_table', 'connection_type': 'trino', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'schema_name': 'str', 'table_name': 'str'}}, 'YDB_SUBSELECT': {'schema': 'YDB_SUBSELECT', 'method': 'ydb_subselect', 'connection_type': 'ydb', 'parameters': {'manual': 'bool', 'subsql': 'str'}}, 'YDB_TABLE': {'schema': 'YDB_TABLE', 'method': 'ydb_table', 'connection_type': 'ydb', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}, 'YQ_SUBSELECT': {'schema': 'YQ_SUBSELECT', 'method': 'yq_subselect', 'connection_type': 'yq', 'parameters': {'manual': 'bool', 'subsql': 'str'}}, 'YQ_TABLE': {'schema': 'YQ_TABLE', 'method': 'yq_table', 'connection_type': 'yq', 'parameters': {'db_name': 'str', 'db_version': 'str', 'manual': 'bool', 'table_name': 'str'}}}
 
 class YacloudSourceCreateFactory(SourceBuilder):
     def __init__(self, *, connection: Connection, operations: DatasetOperations | None = None) -> None:
@@ -246,8 +246,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
             operations=operations,
         )
 
-    def appmetrica_api(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def appmetrica_api(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='APPMETRICA_API',
@@ -255,8 +255,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def bigquery_subselect(self, *, alias: str, subsql: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'subsql': subsql}
+    def bigquery_subselect(self, *, alias: str, manual: bool | None = None, subsql: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual, 'subsql': subsql}
         source = self.raw(
             alias=alias,
             source_type='BIGQUERY_SUBSELECT',
@@ -264,8 +264,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def bigquery_table(self, *, alias: str, dataset_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'dataset_name': dataset_name, 'db_version': db_version, 'table_name': table_name}
+    def bigquery_table(self, *, alias: str, dataset_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'dataset_name': dataset_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='BIGQUERY_TABLE',
@@ -273,8 +273,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def bitrix_gds(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def bitrix_gds(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='BITRIX_GDS',
@@ -282,8 +282,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def chyt_ytsaurus_subselect(self, *, alias: str, subsql: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'subsql': subsql}
+    def chyt_ytsaurus_subselect(self, *, alias: str, manual: bool | None = None, subsql: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual, 'subsql': subsql}
         source = self.raw(
             alias=alias,
             source_type='CHYT_YTSAURUS_SUBSELECT',
@@ -291,8 +291,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def chyt_ytsaurus_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def chyt_ytsaurus_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='CHYT_YTSAURUS_TABLE',
@@ -300,8 +300,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def chyt_ytsaurus_table_list(self, *, alias: str, table_names: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'table_names': table_names}
+    def chyt_ytsaurus_table_list(self, *, alias: str, manual: bool | None = None, table_names: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual, 'table_names': table_names}
         source = self.raw(
             alias=alias,
             source_type='CHYT_YTSAURUS_TABLE_LIST',
@@ -309,8 +309,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def chyt_ytsaurus_table_range(self, *, alias: str, directory_path: str | None = None, range_from: str | None = None, range_to: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'directory_path': directory_path, 'range_from': range_from, 'range_to': range_to}
+    def chyt_ytsaurus_table_range(self, *, alias: str, directory_path: str | None = None, manual: bool | None = None, range_from: str | None = None, range_to: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'directory_path': directory_path, 'manual': manual, 'range_from': range_from, 'range_to': range_to}
         source = self.raw(
             alias=alias,
             source_type='CHYT_YTSAURUS_TABLE_RANGE',
@@ -318,8 +318,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def ch_billing_analytics_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def ch_billing_analytics_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='CH_BILLING_ANALYTICS_TABLE',
@@ -327,8 +327,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def ch_smb_heatmaps_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def ch_smb_heatmaps_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='CH_SMB_HEATMAPS_TABLE',
@@ -336,8 +336,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def ch_subselect(self, *, alias: str, subsql: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'subsql': subsql}
+    def ch_subselect(self, *, alias: str, manual: bool | None = None, subsql: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual, 'subsql': subsql}
         source = self.raw(
             alias=alias,
             source_type='CH_SUBSELECT',
@@ -345,8 +345,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def ch_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def ch_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='CH_TABLE',
@@ -354,8 +354,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def ch_usage_tracking_agg_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def ch_usage_tracking_agg_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='CH_USAGE_TRACKING_AGG_TABLE',
@@ -363,8 +363,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def ch_usage_tracking_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def ch_usage_tracking_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='CH_USAGE_TRACKING_TABLE',
@@ -372,8 +372,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def ch_ya_music_podcast_stats_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def ch_ya_music_podcast_stats_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='CH_YA_MUSIC_PODCAST_STATS_TABLE',
@@ -381,8 +381,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def equeo_ch_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def equeo_ch_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='EQUEO_CH_TABLE',
@@ -390,8 +390,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def extractor_1c_ch_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def extractor_1c_ch_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='EXTRACTOR_1C_CH_TABLE',
@@ -399,8 +399,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def gp_subselect(self, *, alias: str, subsql: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'subsql': subsql}
+    def gp_subselect(self, *, alias: str, manual: bool | None = None, subsql: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual, 'subsql': subsql}
         source = self.raw(
             alias=alias,
             source_type='GP_SUBSELECT',
@@ -408,8 +408,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def gp_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, schema_name: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'schema_name': schema_name, 'table_name': table_name}
+    def gp_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, schema_name: str | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'schema_name': schema_name, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='GP_TABLE',
@@ -417,8 +417,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def gsheets(self, *, alias: str) -> SourceCreate:
-        raw_params: dict[str, object | None] = {}
+    def gsheets(self, *, alias: str, manual: bool | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual}
         source = self.raw(
             alias=alias,
             source_type='GSHEETS',
@@ -426,8 +426,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def json_api(self, *, alias: str) -> SourceCreate:
-        raw_params: dict[str, object | None] = {}
+    def json_api(self, *, alias: str, manual: bool | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual}
         source = self.raw(
             alias=alias,
             source_type='JSON_API',
@@ -435,8 +435,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def kontur_market_ch_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def kontur_market_ch_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='KONTUR_MARKET_CH_TABLE',
@@ -444,8 +444,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def metrika_api(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def metrika_api(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='METRIKA_API',
@@ -453,8 +453,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def monitoring(self, *, alias: str) -> SourceCreate:
-        raw_params: dict[str, object | None] = {}
+    def monitoring(self, *, alias: str, manual: bool | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual}
         source = self.raw(
             alias=alias,
             source_type='MONITORING',
@@ -462,8 +462,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def moysklad_ch_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def moysklad_ch_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='MOYSKLAD_CH_TABLE',
@@ -471,8 +471,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def mssql_subselect(self, *, alias: str, subsql: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'subsql': subsql}
+    def mssql_subselect(self, *, alias: str, manual: bool | None = None, subsql: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual, 'subsql': subsql}
         source = self.raw(
             alias=alias,
             source_type='MSSQL_SUBSELECT',
@@ -480,8 +480,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def mssql_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, schema_name: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'schema_name': schema_name, 'table_name': table_name}
+    def mssql_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, schema_name: str | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'schema_name': schema_name, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='MSSQL_TABLE',
@@ -489,8 +489,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def mysql_subselect(self, *, alias: str, subsql: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'subsql': subsql}
+    def mysql_subselect(self, *, alias: str, manual: bool | None = None, subsql: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual, 'subsql': subsql}
         source = self.raw(
             alias=alias,
             source_type='MYSQL_SUBSELECT',
@@ -498,8 +498,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def mysql_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def mysql_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='MYSQL_TABLE',
@@ -507,8 +507,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def oracle_subselect(self, *, alias: str, subsql: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'subsql': subsql}
+    def oracle_subselect(self, *, alias: str, manual: bool | None = None, subsql: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual, 'subsql': subsql}
         source = self.raw(
             alias=alias,
             source_type='ORACLE_SUBSELECT',
@@ -516,8 +516,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def oracle_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, schema_name: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'schema_name': schema_name, 'table_name': table_name}
+    def oracle_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, schema_name: str | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'schema_name': schema_name, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='ORACLE_TABLE',
@@ -525,8 +525,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def pg_subselect(self, *, alias: str, subsql: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'subsql': subsql}
+    def pg_subselect(self, *, alias: str, manual: bool | None = None, subsql: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual, 'subsql': subsql}
         source = self.raw(
             alias=alias,
             source_type='PG_SUBSELECT',
@@ -534,8 +534,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def pg_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, schema_name: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'schema_name': schema_name, 'table_name': table_name}
+    def pg_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, schema_name: str | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'schema_name': schema_name, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='PG_TABLE',
@@ -543,8 +543,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def promql(self, *, alias: str) -> SourceCreate:
-        raw_params: dict[str, object | None] = {}
+    def promql(self, *, alias: str, manual: bool | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual}
         source = self.raw(
             alias=alias,
             source_type='PROMQL',
@@ -552,8 +552,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def snowflake_table(self, *, alias: str, db_name: str | None = None, schema: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'schema': schema, 'table_name': table_name}
+    def snowflake_table(self, *, alias: str, db_name: str | None = None, manual: bool | None = None, schema: str | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'manual': manual, 'schema': schema, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='SNOWFLAKE_TABLE',
@@ -561,8 +561,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def speechsense_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def speechsense_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='SPEECHSENSE_TABLE',
@@ -570,8 +570,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def trino_subselect(self, *, alias: str, subsql: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'subsql': subsql}
+    def trino_subselect(self, *, alias: str, manual: bool | None = None, subsql: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual, 'subsql': subsql}
         source = self.raw(
             alias=alias,
             source_type='TRINO_SUBSELECT',
@@ -579,8 +579,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def trino_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, schema_name: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'schema_name': schema_name, 'table_name': table_name}
+    def trino_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, schema_name: str | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'schema_name': schema_name, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='TRINO_TABLE',
@@ -588,8 +588,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def ydb_subselect(self, *, alias: str, subsql: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'subsql': subsql}
+    def ydb_subselect(self, *, alias: str, manual: bool | None = None, subsql: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual, 'subsql': subsql}
         source = self.raw(
             alias=alias,
             source_type='YDB_SUBSELECT',
@@ -597,8 +597,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def ydb_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def ydb_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='YDB_TABLE',
@@ -606,8 +606,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def yq_subselect(self, *, alias: str, subsql: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'subsql': subsql}
+    def yq_subselect(self, *, alias: str, manual: bool | None = None, subsql: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'manual': manual, 'subsql': subsql}
         source = self.raw(
             alias=alias,
             source_type='YQ_SUBSELECT',
@@ -615,8 +615,8 @@ class YacloudSourceCreateFactory(SourceBuilder):
         )
         return SourceCreate(source=source, operations=self._operations)
 
-    def yq_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, table_name: str | None = None) -> SourceCreate:
-        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'table_name': table_name}
+    def yq_table(self, *, alias: str, db_name: str | None = None, db_version: str | None = None, manual: bool | None = None, table_name: str | None = None) -> SourceCreate:
+        raw_params: dict[str, object | None] = {'db_name': db_name, 'db_version': db_version, 'manual': manual, 'table_name': table_name}
         source = self.raw(
             alias=alias,
             source_type='YQ_TABLE',

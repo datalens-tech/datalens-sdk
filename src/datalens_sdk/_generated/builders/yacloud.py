@@ -15,206 +15,208 @@ INSTALLATION = 'yacloud'
 METADATA: dict[str, ConnectorMetadata] = {
     'appmetrica_api': ConnectorMetadata(
         connector='appmetrica_api',
-        required=frozenset(['counter_id', 'token']),
-        available_fields=frozenset(['accuracy', 'collection_id', 'counter_id', 'data_export_forbidden', 'description', 'dir_path', 'name', 'token', 'type', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': ''},
-        enum_restrictions={},
+        required=frozenset(['counter_id', 'token', 'type']),
+        available_fields=frozenset(['accuracy', 'ai_access_level', 'collection_id', 'counter_id', 'data_export_forbidden', 'description', 'dir_path', 'name', 'token', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'data_export_forbidden': ['on', 'off']},
     ),
     'bigquery': ConnectorMetadata(
         connector='bigquery',
-        required=frozenset(['credentials', 'project_id']),
-        available_fields=frozenset(['cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'credentials', 'description', 'dir_path', 'name', 'project_id', 'raw_sql_level', 'type', 'workbook_id']),
-        defaults={'description': '', 'raw_sql_level': 'off'},
-        enum_restrictions={'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
+        required=frozenset(['credentials', 'project_id', 'type']),
+        available_fields=frozenset(['ai_access_level', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'credentials', 'description', 'dir_path', 'name', 'project_id', 'raw_sql_level', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'description': '', 'dir_path': 'Connection', 'raw_sql_level': 'off'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql', 'readwrite']},
     ),
     'bitrix24': ConnectorMetadata(
         connector='bitrix24',
-        required=frozenset(['portal', 'token']),
-        available_fields=frozenset(['cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'description', 'dir_path', 'name', 'portal', 'token', 'type', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': ''},
-        enum_restrictions={},
+        required=frozenset(['portal', 'token', 'type']),
+        available_fields=frozenset(['ai_access_level', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'description', 'dir_path', 'name', 'portal', 'token', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'data_export_forbidden': ['on', 'off']},
     ),
     'ch_billing_analytics': ConnectorMetadata(
         connector='ch_billing_analytics',
-        required=frozenset([]),
-        available_fields=frozenset(['collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
-        defaults={'description': ''},
-        enum_restrictions={},
+        required=frozenset(['type']),
+        available_fields=frozenset(['ai_access_level', 'collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny']},
     ),
     'ch_ya_music_podcast_stats': ConnectorMetadata(
         connector='ch_ya_music_podcast_stats',
-        required=frozenset(['token']),
-        available_fields=frozenset(['collection_id', 'description', 'dir_path', 'name', 'token', 'type', 'workbook_id']),
-        defaults={'description': ''},
-        enum_restrictions={},
+        required=frozenset(['token', 'type']),
+        available_fields=frozenset(['ai_access_level', 'collection_id', 'description', 'dir_path', 'name', 'token', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny']},
     ),
     'chyt': ConnectorMetadata(
         connector='chyt',
-        required=frozenset(['alias', 'host', 'port', 'token']),
-        available_fields=frozenset(['alias', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'description', 'dir_path', 'host', 'name', 'port', 'raw_sql_level', 'secure', 'token', 'type', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': '', 'raw_sql_level': 'off'},
-        enum_restrictions={'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
+        required=frozenset(['alias', 'host', 'port', 'token', 'type']),
+        available_fields=frozenset(['ai_access_level', 'alias', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'description', 'dir_path', 'host', 'name', 'port', 'raw_sql_level', 'secure', 'token', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection', 'raw_sql_level': 'off'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'data_export_forbidden': ['on', 'off'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql', 'readwrite']},
     ),
     'clickhouse': ConnectorMetadata(
         connector='clickhouse',
-        required=frozenset(['host', 'port']),
-        available_fields=frozenset(['cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'connection_manager_cloud_id', 'connection_manager_connection_id', 'connection_manager_delegation_is_set', 'connection_manager_folder_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'experimental_features', 'host', 'mdb_cluster_id', 'mdb_folder_id', 'name', 'password', 'port', 'raw_sql_level', 'readonly', 'secure', 'ssl_ca', 'ssl_ca_verify', 'type', 'username', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': '', 'experimental_features': 'off', 'raw_sql_level': 'off', 'readonly': 2, 'ssl_ca_verify': 'on'},
-        enum_restrictions={'raw_sql_level': ['off', 'subselect', 'template', 'dashsql'], 'secure': ['on', 'off']},
+        required=frozenset(['host', 'port', 'type']),
+        available_fields=frozenset(['ai_access_level', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'connection_manager_cloud_id', 'connection_manager_connection_id', 'connection_manager_delegation_is_set', 'connection_manager_folder_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'dlp_managed_cloud_id', 'dlp_managed_cluster_id', 'dlp_managed_connection_manager_connection_id', 'dlp_managed_connection_manager_delegation_is_set', 'dlp_managed_folder_id', 'experimental_features', 'host', 'mdb_cluster_id', 'mdb_folder_id', 'mode', 'name', 'password', 'port', 'raw_sql_level', 'readonly', 'secure', 'ssl_ca', 'ssl_ca_verify', 'type', 'username', 'variant', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection', 'experimental_features': 'off', 'raw_sql_level': 'off', 'readonly': 2, 'ssl_ca_verify': 'on', 'variant': 'default'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'data_export_forbidden': ['on', 'off'], 'experimental_features': ['on', 'off'], 'mode': ['onpremise', 'managed', None], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql', 'readwrite'], 'secure': ['on', 'off'], 'ssl_ca_verify': ['on', 'off'], 'variant': ['default', 'dlp']},
     ),
     'equeo': ConnectorMetadata(
         connector='equeo',
-        required=frozenset(['access_token']),
-        available_fields=frozenset(['access_token', 'collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
-        defaults={'description': ''},
-        enum_restrictions={},
+        required=frozenset(['access_token', 'type']),
+        available_fields=frozenset(['access_token', 'ai_access_level', 'collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny']},
     ),
     'extractor1c': ConnectorMetadata(
         connector='extractor1c',
-        required=frozenset(['access_token']),
-        available_fields=frozenset(['access_token', 'collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
-        defaults={'description': ''},
-        enum_restrictions={},
+        required=frozenset(['access_token', 'type']),
+        available_fields=frozenset(['access_token', 'ai_access_level', 'collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny']},
     ),
     'greenplum': ConnectorMetadata(
         connector='greenplum',
-        required=frozenset(['host', 'password', 'port', 'username']),
-        available_fields=frozenset(['cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'enforce_collate', 'host', 'mdb_cluster_id', 'mdb_folder_id', 'name', 'password', 'port', 'raw_sql_level', 'ssl_ca', 'ssl_enable', 'type', 'username', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': '', 'enforce_collate': 'auto', 'raw_sql_level': 'off', 'ssl_enable': 'off'},
-        enum_restrictions={'enforce_collate': ['auto', 'on', 'off'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
+        required=frozenset(['host', 'password', 'port', 'type', 'username']),
+        available_fields=frozenset(['ai_access_level', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'enforce_collate', 'host', 'mdb_cluster_id', 'mdb_folder_id', 'name', 'password', 'port', 'raw_sql_level', 'ssl_ca', 'ssl_enable', 'type', 'username', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection', 'enforce_collate': 'auto', 'raw_sql_level': 'off', 'ssl_enable': 'off'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'data_export_forbidden': ['on', 'off'], 'enforce_collate': ['auto', 'on', 'off'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql', 'readwrite'], 'ssl_enable': ['on', 'off']},
     ),
     'gsheets': ConnectorMetadata(
         connector='gsheets',
-        required=frozenset(['url']),
-        available_fields=frozenset(['cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'description', 'dir_path', 'name', 'type', 'url', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': ''},
-        enum_restrictions={},
+        required=frozenset(['type', 'url']),
+        available_fields=frozenset(['ai_access_level', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'description', 'dir_path', 'name', 'type', 'url', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'data_export_forbidden': ['on', 'off']},
     ),
     'json_api': ConnectorMetadata(
         connector='json_api',
-        required=frozenset(['allowed_methods', 'host', 'port']),
-        available_fields=frozenset(['allowed_methods', 'collection_id', 'description', 'dir_path', 'host', 'name', 'path', 'plain_headers', 'port', 'secret_headers', 'secure', 'type', 'workbook_id']),
-        defaults={'description': ''},
-        enum_restrictions={},
+        required=frozenset(['allowed_methods', 'host', 'port', 'type']),
+        available_fields=frozenset(['ai_access_level', 'allowed_methods', 'collection_id', 'description', 'dir_path', 'host', 'name', 'path', 'plain_headers', 'port', 'secret_headers', 'secure', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny']},
+        mapping_value_types={'plain_headers': (True, ('string', 'null')), 'secret_headers': (True, ('string', 'null'))},
     ),
     'kontur_market': ConnectorMetadata(
         connector='kontur_market',
-        required=frozenset(['access_token']),
-        available_fields=frozenset(['access_token', 'collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
-        defaults={'description': ''},
-        enum_restrictions={},
+        required=frozenset(['access_token', 'type']),
+        available_fields=frozenset(['access_token', 'ai_access_level', 'collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny']},
     ),
     'metrika_api': ConnectorMetadata(
         connector='metrika_api',
-        required=frozenset(['counter_id', 'token']),
-        available_fields=frozenset(['accuracy', 'collection_id', 'counter_id', 'data_export_forbidden', 'description', 'dir_path', 'name', 'token', 'type', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': ''},
-        enum_restrictions={},
+        required=frozenset(['counter_id', 'token', 'type']),
+        available_fields=frozenset(['accuracy', 'ai_access_level', 'collection_id', 'counter_id', 'data_export_forbidden', 'description', 'dir_path', 'name', 'token', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'data_export_forbidden': ['on', 'off']},
     ),
     'monitoring': ConnectorMetadata(
         connector='monitoring',
-        required=frozenset(['cloud_id', 'folder_id', 'service_account_id']),
-        available_fields=frozenset(['cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'cloud_id', 'collection_id', 'delegation_is_set', 'description', 'dir_path', 'folder_id', 'name', 'service_account_id', 'type', 'workbook_id']),
-        defaults={'description': ''},
-        enum_restrictions={},
+        required=frozenset(['cloud_id', 'folder_id', 'service_account_id', 'type']),
+        available_fields=frozenset(['ai_access_level', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'cloud_id', 'collection_id', 'delegation_is_set', 'description', 'dir_path', 'folder_id', 'name', 'service_account_id', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny']},
     ),
     'moysklad': ConnectorMetadata(
         connector='moysklad',
-        required=frozenset(['access_token']),
-        available_fields=frozenset(['access_token', 'collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
-        defaults={'description': ''},
-        enum_restrictions={},
+        required=frozenset(['access_token', 'type']),
+        available_fields=frozenset(['access_token', 'ai_access_level', 'collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny']},
     ),
     'mssql': ConnectorMetadata(
         connector='mssql',
-        required=frozenset(['host', 'password', 'port', 'username']),
-        available_fields=frozenset(['cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'host', 'name', 'password', 'port', 'raw_sql_level', 'type', 'username', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': '', 'raw_sql_level': 'off'},
-        enum_restrictions={'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
+        required=frozenset(['host', 'password', 'port', 'type', 'username']),
+        available_fields=frozenset(['ai_access_level', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'host', 'name', 'password', 'port', 'raw_sql_level', 'type', 'username', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection', 'raw_sql_level': 'off'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'data_export_forbidden': ['on', 'off'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql', 'readwrite']},
     ),
     'mysql': ConnectorMetadata(
         connector='mysql',
-        required=frozenset(['host', 'port']),
-        available_fields=frozenset(['cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'connection_manager_cloud_id', 'connection_manager_connection_id', 'connection_manager_delegation_is_set', 'connection_manager_folder_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'enforce_collate', 'host', 'mdb_cluster_id', 'mdb_folder_id', 'name', 'password', 'port', 'raw_sql_level', 'ssl_ca', 'ssl_enable', 'type', 'username', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': '', 'enforce_collate': 'off', 'raw_sql_level': 'off', 'ssl_enable': 'off'},
-        enum_restrictions={'enforce_collate': ['auto', 'on', 'off'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
+        required=frozenset(['host', 'port', 'type']),
+        available_fields=frozenset(['ai_access_level', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'connection_manager_cloud_id', 'connection_manager_connection_id', 'connection_manager_delegation_is_set', 'connection_manager_folder_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'dlp_managed_cloud_id', 'dlp_managed_cluster_id', 'dlp_managed_connection_manager_connection_id', 'dlp_managed_connection_manager_delegation_is_set', 'dlp_managed_folder_id', 'enforce_collate', 'host', 'mdb_cluster_id', 'mdb_folder_id', 'mode', 'name', 'password', 'port', 'raw_sql_level', 'ssl_ca', 'ssl_enable', 'type', 'username', 'variant', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection', 'enforce_collate': 'off', 'raw_sql_level': 'off', 'ssl_enable': 'off', 'variant': 'default'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'data_export_forbidden': ['on', 'off'], 'enforce_collate': ['auto', 'on', 'off'], 'mode': ['onpremise', 'managed', None], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql', 'readwrite'], 'ssl_enable': ['on', 'off'], 'variant': ['default', 'dlp']},
     ),
     'oracle': ConnectorMetadata(
         connector='oracle',
-        required=frozenset(['db_connect_method', 'host', 'password', 'port', 'username']),
-        available_fields=frozenset(['cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'db_connect_method', 'db_name', 'description', 'dir_path', 'host', 'name', 'password', 'port', 'raw_sql_level', 'ssl_ca', 'ssl_enable', 'type', 'username', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': '', 'raw_sql_level': 'off', 'ssl_enable': 'off'},
-        enum_restrictions={'db_connect_method': ['sid', 'service_name'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
+        required=frozenset(['db_connect_method', 'host', 'password', 'port', 'type', 'username']),
+        available_fields=frozenset(['ai_access_level', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'db_connect_method', 'db_name', 'description', 'dir_path', 'host', 'name', 'password', 'port', 'raw_sql_level', 'ssl_ca', 'ssl_enable', 'type', 'username', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection', 'raw_sql_level': 'off', 'ssl_enable': 'off'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'data_export_forbidden': ['on', 'off'], 'db_connect_method': ['sid', 'service_name'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql', 'readwrite'], 'ssl_enable': ['on', 'off']},
     ),
     'postgres': ConnectorMetadata(
         connector='postgres',
-        required=frozenset(['host', 'port']),
-        available_fields=frozenset(['cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'connection_manager_cloud_id', 'connection_manager_connection_id', 'connection_manager_delegation_is_set', 'connection_manager_folder_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'enforce_collate', 'host', 'mdb_cluster_id', 'mdb_folder_id', 'name', 'password', 'port', 'raw_sql_level', 'ssl_ca', 'ssl_enable', 'type', 'username', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': '', 'enforce_collate': 'auto', 'raw_sql_level': 'off', 'ssl_enable': 'off'},
-        enum_restrictions={'enforce_collate': ['auto', 'on', 'off'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
+        required=frozenset(['host', 'port', 'type']),
+        available_fields=frozenset(['ai_access_level', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'connection_manager_cloud_id', 'connection_manager_connection_id', 'connection_manager_delegation_is_set', 'connection_manager_folder_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'dlp_managed_cloud_id', 'dlp_managed_cluster_id', 'dlp_managed_connection_manager_connection_id', 'dlp_managed_connection_manager_delegation_is_set', 'dlp_managed_folder_id', 'enforce_collate', 'host', 'mdb_cluster_id', 'mdb_folder_id', 'mode', 'name', 'password', 'port', 'raw_sql_level', 'ssl_ca', 'ssl_enable', 'type', 'username', 'variant', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection', 'enforce_collate': 'auto', 'raw_sql_level': 'off', 'ssl_enable': 'off', 'variant': 'default'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'data_export_forbidden': ['on', 'off'], 'enforce_collate': ['auto', 'on', 'off'], 'mode': ['onpremise', 'managed', None], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql', 'readwrite'], 'ssl_enable': ['on', 'off'], 'variant': ['default', 'dlp']},
     ),
     'promql': ConnectorMetadata(
         connector='promql',
-        required=frozenset(['host', 'port']),
-        available_fields=frozenset(['auth_header', 'auth_type', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'host', 'name', 'password', 'path', 'port', 'secure', 'type', 'username', 'workbook_id']),
-        defaults={'auth_type': 'password', 'data_export_forbidden': 'off', 'description': ''},
-        enum_restrictions={},
+        required=frozenset(['host', 'port', 'type']),
+        available_fields=frozenset(['ai_access_level', 'auth_header', 'auth_type', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'collection_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'host', 'name', 'password', 'path', 'port', 'secure', 'type', 'username', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'auth_type': 'password', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'auth_type': ['header', 'password'], 'data_export_forbidden': ['on', 'off']},
     ),
     'smb_heatmaps': ConnectorMetadata(
         connector='smb_heatmaps',
-        required=frozenset(['token']),
-        available_fields=frozenset(['collection_id', 'description', 'dir_path', 'name', 'token', 'type', 'workbook_id']),
-        defaults={'description': ''},
-        enum_restrictions={},
+        required=frozenset(['token', 'type']),
+        available_fields=frozenset(['ai_access_level', 'collection_id', 'description', 'dir_path', 'name', 'token', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny']},
     ),
     'snowflake': ConnectorMetadata(
         connector='snowflake',
-        required=frozenset(['account_name', 'client_id', 'client_secret', 'db_name', 'schema', 'user_name', 'warehouse']),
-        available_fields=frozenset(['account_name', 'client_id', 'client_secret', 'collection_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'name', 'raw_sql_level', 'refresh_token', 'refresh_token_expire_time', 'schema', 'type', 'user_name', 'user_role', 'warehouse', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': '', 'raw_sql_level': 'off'},
-        enum_restrictions={'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
+        required=frozenset(['account_name', 'client_id', 'client_secret', 'db_name', 'schema', 'type', 'user_name', 'warehouse']),
+        available_fields=frozenset(['account_name', 'ai_access_level', 'client_id', 'client_secret', 'collection_id', 'data_export_forbidden', 'db_name', 'description', 'dir_path', 'name', 'raw_sql_level', 'refresh_token', 'refresh_token_expire_time', 'schema', 'type', 'user_name', 'user_role', 'warehouse', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection', 'raw_sql_level': 'off'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'data_export_forbidden': ['on', 'off'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql', 'readwrite']},
     ),
     'speechsense': ConnectorMetadata(
         connector='speechsense',
-        required=frozenset(['project_id']),
-        available_fields=frozenset(['auth_type', 'cloud_id', 'collection_id', 'data_export_forbidden', 'delegation_is_set', 'description', 'dir_path', 'folder_id', 'name', 'project_id', 'service_account_id', 'type', 'workbook_id']),
-        defaults={'auth_type': 'user_credentials', 'data_export_forbidden': 'off', 'description': ''},
-        enum_restrictions={},
+        required=frozenset(['project_id', 'type']),
+        available_fields=frozenset(['ai_access_level', 'auth_type', 'cloud_id', 'collection_id', 'data_export_forbidden', 'delegation_is_set', 'description', 'dir_path', 'folder_id', 'name', 'project_id', 'service_account_id', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'auth_type': 'user_credentials', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'auth_type': ['service_account', 'user_credentials'], 'data_export_forbidden': ['on', 'off']},
     ),
     'trino': ConnectorMetadata(
         connector='trino',
-        required=frozenset(['host', 'listing_sources']),
-        available_fields=frozenset(['auth_type', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'cloud_id', 'collection_id', 'data_export_forbidden', 'db_name', 'delegation_is_set', 'description', 'dir_path', 'folder_id', 'host', 'jwt', 'listing_sources', 'mdb_cluster_id', 'name', 'password', 'port', 'raw_sql_level', 'service_account_id', 'ssl_ca', 'ssl_enable', 'type', 'username', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': '', 'raw_sql_level': 'off', 'ssl_enable': 'off'},
-        enum_restrictions={'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
+        required=frozenset(['listing_sources', 'type']),
+        available_fields=frozenset(['ai_access_level', 'auth_type', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'cloud_id', 'cluster_entry_id', 'collection_id', 'data_export_forbidden', 'db_name', 'delegation_is_set', 'description', 'dir_path', 'extra_credentials', 'folder_id', 'form_fill_mode', 'host', 'jwt', 'listing_sources', 'mdb_cluster_id', 'name', 'password', 'port', 'raw_sql_level', 'service_account_id', 'ssl_ca', 'ssl_enable', 'type', 'username', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection', 'raw_sql_level': 'off', 'ssl_enable': 'off'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'auth_type': ['certificate', 'header', 'jwt', 'kerberos', 'none', 'oauth2', 'password', None], 'data_export_forbidden': ['on', 'off'], 'form_fill_mode': ['cloud', 'manually', 'platform'], 'listing_sources': ['off', 'on'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql', 'readwrite'], 'ssl_enable': ['on', 'off']},
+        mapping_value_types={'extra_credentials': (True, ('string', 'null'))},
     ),
     'usage_analytics_detailed': ConnectorMetadata(
         connector='usage_analytics_detailed',
-        required=frozenset([]),
-        available_fields=frozenset(['collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
-        defaults={'description': ''},
-        enum_restrictions={},
+        required=frozenset(['type']),
+        available_fields=frozenset(['ai_access_level', 'collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny']},
     ),
     'usage_analytics_light': ConnectorMetadata(
         connector='usage_analytics_light',
-        required=frozenset([]),
-        available_fields=frozenset(['collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
-        defaults={'description': ''},
-        enum_restrictions={},
+        required=frozenset(['type']),
+        available_fields=frozenset(['ai_access_level', 'collection_id', 'description', 'dir_path', 'name', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'description': '', 'dir_path': 'Connection'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny']},
     ),
     'ydb': ConnectorMetadata(
         connector='ydb',
-        required=frozenset(['cloud_id', 'db_name', 'folder_id', 'host', 'port', 'service_account_id']),
-        available_fields=frozenset(['auth_type', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'cloud_id', 'collection_id', 'data_export_forbidden', 'db_name', 'delegation_is_set', 'description', 'dir_path', 'folder_id', 'host', 'mdb_cluster_id', 'mdb_folder_id', 'name', 'port', 'raw_sql_level', 'service_account_id', 'ssl_ca', 'ssl_enable', 'token', 'type', 'username', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': '', 'raw_sql_level': 'off', 'ssl_enable': 'on'},
-        enum_restrictions={'auth_type': ['anonymous', 'password', 'oauth'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
+        required=frozenset(['cloud_id', 'db_name', 'folder_id', 'host', 'port', 'service_account_id', 'type']),
+        available_fields=frozenset(['ai_access_level', 'auth_type', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'cloud_id', 'collection_id', 'data_export_forbidden', 'db_name', 'delegation_is_set', 'description', 'dir_path', 'folder_id', 'host', 'mdb_cluster_id', 'mdb_folder_id', 'name', 'port', 'raw_sql_level', 'service_account_id', 'ssl_ca', 'ssl_enable', 'token', 'type', 'username', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection', 'raw_sql_level': 'off', 'ssl_enable': 'on'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'auth_type': ['anonymous', 'password', 'oauth', None], 'data_export_forbidden': ['on', 'off'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql', 'readwrite'], 'ssl_enable': ['on', 'off']},
     ),
     'yq': ConnectorMetadata(
         connector='yq',
-        required=frozenset(['cloud_id', 'folder_id', 'service_account_id']),
-        available_fields=frozenset(['cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'cloud_id', 'collection_id', 'data_export_forbidden', 'delegation_is_set', 'description', 'dir_path', 'folder_id', 'name', 'raw_sql_level', 'service_account_id', 'type', 'workbook_id']),
-        defaults={'data_export_forbidden': 'off', 'description': '', 'raw_sql_level': 'off'},
-        enum_restrictions={'raw_sql_level': ['off', 'subselect', 'template', 'dashsql']},
+        required=frozenset(['cloud_id', 'folder_id', 'service_account_id', 'type']),
+        available_fields=frozenset(['ai_access_level', 'cache_invalidation_throttling_interval_sec', 'cache_ttl_sec', 'cloud_id', 'collection_id', 'data_export_forbidden', 'delegation_is_set', 'description', 'dir_path', 'folder_id', 'name', 'raw_sql_level', 'service_account_id', 'type', 'workbook_id']),
+        defaults={'ai_access_level': 'allow', 'data_export_forbidden': 'off', 'description': '', 'dir_path': 'Connection', 'raw_sql_level': 'off'},
+        enum_restrictions={'ai_access_level': ['allow', 'allow_trusted', 'deny'], 'data_export_forbidden': ['on', 'off'], 'raw_sql_level': ['off', 'subselect', 'template', 'dashsql', 'readwrite']},
     ),
 }
 
@@ -229,13 +231,16 @@ class AppmetricaApiConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def accuracy(self, value: float) -> Self:
+    def accuracy(self, value: float | None) -> Self:
         return self._set('accuracy', value)
+
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
 
     def counter_id(self, value: str) -> Self:
         return self._set('counter_id', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
     def token(self, value: str) -> Self:
@@ -252,10 +257,13 @@ class BigqueryConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
     def credentials(self, value: str) -> Self:
@@ -264,7 +272,7 @@ class BigqueryConnectionCreate(BaseConnectionCreate):
     def project_id(self, value: str) -> Self:
         return self._set('project_id', value)
 
-    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql']) -> Self:
+    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql', 'readwrite']) -> Self:
         return self._set('raw_sql_level', value)
 
 class Bitrix24ConnectionCreate(BaseConnectionCreate):
@@ -278,13 +286,16 @@ class Bitrix24ConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
     def portal(self, value: str) -> Self:
@@ -304,6 +315,9 @@ class ChBillingAnalyticsConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
 class ChYaMusicPodcastStatsConnectionCreate(BaseConnectionCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ConnectionOperations | None = None) -> None:
         super().__init__(
@@ -314,6 +328,9 @@ class ChYaMusicPodcastStatsConnectionCreate(BaseConnectionCreate):
             metadata=METADATA['ch_ya_music_podcast_stats'],
             operations=operations,
         )
+
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
 
     def token(self, value: str) -> Self:
         return self._set('token', value)
@@ -329,16 +346,19 @@ class ChytConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
     def alias(self, value: str) -> Self:
         return self._set('alias', value)
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
     def host(self, value: str) -> Self:
@@ -347,7 +367,7 @@ class ChytConnectionCreate(BaseConnectionCreate):
     def port(self, value: int) -> Self:
         return self._set('port', value)
 
-    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql']) -> Self:
+    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql', 'readwrite']) -> Self:
         return self._set('raw_sql_level', value)
 
     def secure(self, value: bool) -> Self:
@@ -367,49 +387,70 @@ class ClickhouseConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def connection_manager_cloud_id(self, value: str) -> Self:
+    def connection_manager_cloud_id(self, value: str | None) -> Self:
         return self._set('connection_manager_cloud_id', value)
 
-    def connection_manager_connection_id(self, value: str) -> Self:
+    def connection_manager_connection_id(self, value: str | None) -> Self:
         return self._set('connection_manager_connection_id', value)
 
-    def connection_manager_delegation_is_set(self, value: bool) -> Self:
+    def connection_manager_delegation_is_set(self, value: bool | None) -> Self:
         return self._set('connection_manager_delegation_is_set', value)
 
-    def connection_manager_folder_id(self, value: str) -> Self:
+    def connection_manager_folder_id(self, value: str | None) -> Self:
         return self._set('connection_manager_folder_id', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
-    def experimental_features(self, value: str) -> Self:
+    def dlp_managed_cloud_id(self, value: str | None) -> Self:
+        return self._set('dlp_managed_cloud_id', value)
+
+    def dlp_managed_cluster_id(self, value: str | None) -> Self:
+        return self._set('dlp_managed_cluster_id', value)
+
+    def dlp_managed_connection_manager_connection_id(self, value: str | None) -> Self:
+        return self._set('dlp_managed_connection_manager_connection_id', value)
+
+    def dlp_managed_connection_manager_delegation_is_set(self, value: bool | None) -> Self:
+        return self._set('dlp_managed_connection_manager_delegation_is_set', value)
+
+    def dlp_managed_folder_id(self, value: str | None) -> Self:
+        return self._set('dlp_managed_folder_id', value)
+
+    def experimental_features(self, value: Literal['on', 'off']) -> Self:
         return self._set('experimental_features', value)
 
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def mdb_cluster_id(self, value: str) -> Self:
+    def mdb_cluster_id(self, value: str | None) -> Self:
         return self._set('mdb_cluster_id', value)
 
-    def mdb_folder_id(self, value: str) -> Self:
+    def mdb_folder_id(self, value: str | None) -> Self:
         return self._set('mdb_folder_id', value)
 
-    def password(self, value: str) -> Self:
+    def mode(self, value: Literal['onpremise', 'managed'] | None) -> Self:
+        return self._set('mode', value)
+
+    def password(self, value: str | None) -> Self:
         return self._set('password', value)
 
     def port(self, value: int) -> Self:
         return self._set('port', value)
 
-    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql']) -> Self:
+    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql', 'readwrite']) -> Self:
         return self._set('raw_sql_level', value)
 
     def readonly(self, value: int) -> Self:
@@ -418,14 +459,17 @@ class ClickhouseConnectionCreate(BaseConnectionCreate):
     def secure(self, value: Literal['on', 'off']) -> Self:
         return self._set('secure', value)
 
-    def ssl_ca(self, value: Mapping[str, object]) -> Self:
+    def ssl_ca(self, value: str | None) -> Self:
         return self._set('ssl_ca', value)
 
-    def ssl_ca_verify(self, value: str) -> Self:
+    def ssl_ca_verify(self, value: Literal['on', 'off']) -> Self:
         return self._set('ssl_ca_verify', value)
 
-    def username(self, value: str) -> Self:
+    def username(self, value: str | None) -> Self:
         return self._set('username', value)
+
+    def variant(self, value: Literal['default', 'dlp']) -> Self:
+        return self._set('variant', value)
 
 class EqueoConnectionCreate(BaseConnectionCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ConnectionOperations | None = None) -> None:
@@ -441,6 +485,9 @@ class EqueoConnectionCreate(BaseConnectionCreate):
     def access_token(self, value: str) -> Self:
         return self._set('access_token', value)
 
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
 class Extractor1cConnectionCreate(BaseConnectionCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ConnectionOperations | None = None) -> None:
         super().__init__(
@@ -455,6 +502,9 @@ class Extractor1cConnectionCreate(BaseConnectionCreate):
     def access_token(self, value: str) -> Self:
         return self._set('access_token', value)
 
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
 class GreenplumConnectionCreate(BaseConnectionCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ConnectionOperations | None = None) -> None:
         super().__init__(
@@ -466,16 +516,19 @@ class GreenplumConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
     def enforce_collate(self, value: Literal['auto', 'on', 'off']) -> Self:
@@ -484,10 +537,10 @@ class GreenplumConnectionCreate(BaseConnectionCreate):
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def mdb_cluster_id(self, value: str) -> Self:
+    def mdb_cluster_id(self, value: str | None) -> Self:
         return self._set('mdb_cluster_id', value)
 
-    def mdb_folder_id(self, value: str) -> Self:
+    def mdb_folder_id(self, value: str | None) -> Self:
         return self._set('mdb_folder_id', value)
 
     def password(self, value: str) -> Self:
@@ -496,13 +549,13 @@ class GreenplumConnectionCreate(BaseConnectionCreate):
     def port(self, value: int) -> Self:
         return self._set('port', value)
 
-    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql']) -> Self:
+    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql', 'readwrite']) -> Self:
         return self._set('raw_sql_level', value)
 
-    def ssl_ca(self, value: Mapping[str, object]) -> Self:
+    def ssl_ca(self, value: str | None) -> Self:
         return self._set('ssl_ca', value)
 
-    def ssl_enable(self, value: str) -> Self:
+    def ssl_enable(self, value: Literal['on', 'off']) -> Self:
         return self._set('ssl_enable', value)
 
     def username(self, value: str) -> Self:
@@ -519,13 +572,16 @@ class GsheetsConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
     def url(self, value: str) -> Self:
@@ -542,22 +598,25 @@ class JsonApiConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
     def allowed_methods(self, value: Sequence[object]) -> Self:
         return self._set('allowed_methods', value)
 
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def path(self, value: str) -> Self:
+    def path(self, value: str | None) -> Self:
         return self._set('path', value)
 
-    def plain_headers(self, value: Mapping[str, object]) -> Self:
+    def plain_headers(self, value: Mapping[str, str | None] | None) -> Self:
         return self._set('plain_headers', value)
 
     def port(self, value: int) -> Self:
         return self._set('port', value)
 
-    def secret_headers(self, value: Mapping[str, object]) -> Self:
+    def secret_headers(self, value: Mapping[str, str | None] | None) -> Self:
         return self._set('secret_headers', value)
 
     def secure(self, value: bool) -> Self:
@@ -577,6 +636,9 @@ class KonturMarketConnectionCreate(BaseConnectionCreate):
     def access_token(self, value: str) -> Self:
         return self._set('access_token', value)
 
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
 class MetrikaApiConnectionCreate(BaseConnectionCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ConnectionOperations | None = None) -> None:
         super().__init__(
@@ -588,13 +650,16 @@ class MetrikaApiConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def accuracy(self, value: float) -> Self:
+    def accuracy(self, value: float | None) -> Self:
         return self._set('accuracy', value)
+
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
 
     def counter_id(self, value: str) -> Self:
         return self._set('counter_id', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
     def token(self, value: str) -> Self:
@@ -611,16 +676,19 @@ class MonitoringConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def cloud_id(self, value: str) -> Self:
+    def cloud_id(self, value: str | None) -> Self:
         return self._set('cloud_id', value)
 
-    def delegation_is_set(self, value: bool) -> Self:
+    def delegation_is_set(self, value: bool | None) -> Self:
         return self._set('delegation_is_set', value)
 
     def folder_id(self, value: str) -> Self:
@@ -643,6 +711,9 @@ class MoyskladConnectionCreate(BaseConnectionCreate):
     def access_token(self, value: str) -> Self:
         return self._set('access_token', value)
 
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
 class MssqlConnectionCreate(BaseConnectionCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ConnectionOperations | None = None) -> None:
         super().__init__(
@@ -654,16 +725,19 @@ class MssqlConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
     def host(self, value: str) -> Self:
@@ -675,7 +749,7 @@ class MssqlConnectionCreate(BaseConnectionCreate):
     def port(self, value: int) -> Self:
         return self._set('port', value)
 
-    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql']) -> Self:
+    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql', 'readwrite']) -> Self:
         return self._set('raw_sql_level', value)
 
     def username(self, value: str) -> Self:
@@ -692,29 +766,47 @@ class MysqlConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def connection_manager_cloud_id(self, value: str) -> Self:
+    def connection_manager_cloud_id(self, value: str | None) -> Self:
         return self._set('connection_manager_cloud_id', value)
 
-    def connection_manager_connection_id(self, value: str) -> Self:
+    def connection_manager_connection_id(self, value: str | None) -> Self:
         return self._set('connection_manager_connection_id', value)
 
-    def connection_manager_delegation_is_set(self, value: bool) -> Self:
+    def connection_manager_delegation_is_set(self, value: bool | None) -> Self:
         return self._set('connection_manager_delegation_is_set', value)
 
-    def connection_manager_folder_id(self, value: str) -> Self:
+    def connection_manager_folder_id(self, value: str | None) -> Self:
         return self._set('connection_manager_folder_id', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
+
+    def dlp_managed_cloud_id(self, value: str | None) -> Self:
+        return self._set('dlp_managed_cloud_id', value)
+
+    def dlp_managed_cluster_id(self, value: str | None) -> Self:
+        return self._set('dlp_managed_cluster_id', value)
+
+    def dlp_managed_connection_manager_connection_id(self, value: str | None) -> Self:
+        return self._set('dlp_managed_connection_manager_connection_id', value)
+
+    def dlp_managed_connection_manager_delegation_is_set(self, value: bool | None) -> Self:
+        return self._set('dlp_managed_connection_manager_delegation_is_set', value)
+
+    def dlp_managed_folder_id(self, value: str | None) -> Self:
+        return self._set('dlp_managed_folder_id', value)
 
     def enforce_collate(self, value: Literal['auto', 'on', 'off']) -> Self:
         return self._set('enforce_collate', value)
@@ -722,29 +814,35 @@ class MysqlConnectionCreate(BaseConnectionCreate):
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def mdb_cluster_id(self, value: str) -> Self:
+    def mdb_cluster_id(self, value: str | None) -> Self:
         return self._set('mdb_cluster_id', value)
 
-    def mdb_folder_id(self, value: str) -> Self:
+    def mdb_folder_id(self, value: str | None) -> Self:
         return self._set('mdb_folder_id', value)
 
-    def password(self, value: str) -> Self:
+    def mode(self, value: Literal['onpremise', 'managed'] | None) -> Self:
+        return self._set('mode', value)
+
+    def password(self, value: str | None) -> Self:
         return self._set('password', value)
 
     def port(self, value: int) -> Self:
         return self._set('port', value)
 
-    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql']) -> Self:
+    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql', 'readwrite']) -> Self:
         return self._set('raw_sql_level', value)
 
-    def ssl_ca(self, value: Mapping[str, object]) -> Self:
+    def ssl_ca(self, value: str | None) -> Self:
         return self._set('ssl_ca', value)
 
-    def ssl_enable(self, value: str) -> Self:
+    def ssl_enable(self, value: Literal['on', 'off']) -> Self:
         return self._set('ssl_enable', value)
 
-    def username(self, value: str) -> Self:
+    def username(self, value: str | None) -> Self:
         return self._set('username', value)
+
+    def variant(self, value: Literal['default', 'dlp']) -> Self:
+        return self._set('variant', value)
 
 class OracleConnectionCreate(BaseConnectionCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ConnectionOperations | None = None) -> None:
@@ -757,19 +855,22 @@ class OracleConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
     def db_connect_method(self, value: Literal['sid', 'service_name']) -> Self:
         return self._set('db_connect_method', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
     def host(self, value: str) -> Self:
@@ -781,13 +882,13 @@ class OracleConnectionCreate(BaseConnectionCreate):
     def port(self, value: int) -> Self:
         return self._set('port', value)
 
-    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql']) -> Self:
+    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql', 'readwrite']) -> Self:
         return self._set('raw_sql_level', value)
 
-    def ssl_ca(self, value: Mapping[str, object]) -> Self:
+    def ssl_ca(self, value: str | None) -> Self:
         return self._set('ssl_ca', value)
 
-    def ssl_enable(self, value: str) -> Self:
+    def ssl_enable(self, value: Literal['on', 'off']) -> Self:
         return self._set('ssl_enable', value)
 
     def username(self, value: str) -> Self:
@@ -804,29 +905,47 @@ class PostgresConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def connection_manager_cloud_id(self, value: str) -> Self:
+    def connection_manager_cloud_id(self, value: str | None) -> Self:
         return self._set('connection_manager_cloud_id', value)
 
-    def connection_manager_connection_id(self, value: str) -> Self:
+    def connection_manager_connection_id(self, value: str | None) -> Self:
         return self._set('connection_manager_connection_id', value)
 
-    def connection_manager_delegation_is_set(self, value: bool) -> Self:
+    def connection_manager_delegation_is_set(self, value: bool | None) -> Self:
         return self._set('connection_manager_delegation_is_set', value)
 
-    def connection_manager_folder_id(self, value: str) -> Self:
+    def connection_manager_folder_id(self, value: str | None) -> Self:
         return self._set('connection_manager_folder_id', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
+
+    def dlp_managed_cloud_id(self, value: str | None) -> Self:
+        return self._set('dlp_managed_cloud_id', value)
+
+    def dlp_managed_cluster_id(self, value: str | None) -> Self:
+        return self._set('dlp_managed_cluster_id', value)
+
+    def dlp_managed_connection_manager_connection_id(self, value: str | None) -> Self:
+        return self._set('dlp_managed_connection_manager_connection_id', value)
+
+    def dlp_managed_connection_manager_delegation_is_set(self, value: bool | None) -> Self:
+        return self._set('dlp_managed_connection_manager_delegation_is_set', value)
+
+    def dlp_managed_folder_id(self, value: str | None) -> Self:
+        return self._set('dlp_managed_folder_id', value)
 
     def enforce_collate(self, value: Literal['auto', 'on', 'off']) -> Self:
         return self._set('enforce_collate', value)
@@ -834,29 +953,35 @@ class PostgresConnectionCreate(BaseConnectionCreate):
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def mdb_cluster_id(self, value: str) -> Self:
+    def mdb_cluster_id(self, value: str | None) -> Self:
         return self._set('mdb_cluster_id', value)
 
-    def mdb_folder_id(self, value: str) -> Self:
+    def mdb_folder_id(self, value: str | None) -> Self:
         return self._set('mdb_folder_id', value)
 
-    def password(self, value: str) -> Self:
+    def mode(self, value: Literal['onpremise', 'managed'] | None) -> Self:
+        return self._set('mode', value)
+
+    def password(self, value: str | None) -> Self:
         return self._set('password', value)
 
     def port(self, value: int) -> Self:
         return self._set('port', value)
 
-    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql']) -> Self:
+    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql', 'readwrite']) -> Self:
         return self._set('raw_sql_level', value)
 
-    def ssl_ca(self, value: Mapping[str, object]) -> Self:
+    def ssl_ca(self, value: str | None) -> Self:
         return self._set('ssl_ca', value)
 
-    def ssl_enable(self, value: str) -> Self:
+    def ssl_enable(self, value: Literal['on', 'off']) -> Self:
         return self._set('ssl_enable', value)
 
-    def username(self, value: str) -> Self:
+    def username(self, value: str | None) -> Self:
         return self._set('username', value)
+
+    def variant(self, value: Literal['default', 'dlp']) -> Self:
+        return self._set('variant', value)
 
 class PromqlConnectionCreate(BaseConnectionCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ConnectionOperations | None = None) -> None:
@@ -869,31 +994,34 @@ class PromqlConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def auth_header(self, value: str) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def auth_header(self, value: str | None) -> Self:
         return self._set('auth_header', value)
 
-    def auth_type(self, value: str) -> Self:
+    def auth_type(self, value: Literal['header', 'password']) -> Self:
         return self._set('auth_type', value)
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def password(self, value: str) -> Self:
+    def password(self, value: str | None) -> Self:
         return self._set('password', value)
 
-    def path(self, value: str) -> Self:
+    def path(self, value: str | None) -> Self:
         return self._set('path', value)
 
     def port(self, value: int) -> Self:
@@ -902,7 +1030,7 @@ class PromqlConnectionCreate(BaseConnectionCreate):
     def secure(self, value: bool) -> Self:
         return self._set('secure', value)
 
-    def username(self, value: str) -> Self:
+    def username(self, value: str | None) -> Self:
         return self._set('username', value)
 
 class SmbHeatmapsConnectionCreate(BaseConnectionCreate):
@@ -915,6 +1043,9 @@ class SmbHeatmapsConnectionCreate(BaseConnectionCreate):
             metadata=METADATA['smb_heatmaps'],
             operations=operations,
         )
+
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
 
     def token(self, value: str) -> Self:
         return self._set('token', value)
@@ -933,25 +1064,28 @@ class SnowflakeConnectionCreate(BaseConnectionCreate):
     def account_name(self, value: str) -> Self:
         return self._set('account_name', value)
 
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
     def client_id(self, value: str) -> Self:
         return self._set('client_id', value)
 
     def client_secret(self, value: str) -> Self:
         return self._set('client_secret', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
     def db_name(self, value: str) -> Self:
         return self._set('db_name', value)
 
-    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql']) -> Self:
+    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql', 'readwrite']) -> Self:
         return self._set('raw_sql_level', value)
 
     def refresh_token(self, value: str) -> Self:
         return self._set('refresh_token', value)
 
-    def refresh_token_expire_time(self, value: str) -> Self:
+    def refresh_token_expire_time(self, value: str | None) -> Self:
         return self._set('refresh_token_expire_time', value)
 
     def schema(self, value: str) -> Self:
@@ -960,7 +1094,7 @@ class SnowflakeConnectionCreate(BaseConnectionCreate):
     def user_name(self, value: str) -> Self:
         return self._set('user_name', value)
 
-    def user_role(self, value: str) -> Self:
+    def user_role(self, value: str | None) -> Self:
         return self._set('user_role', value)
 
     def warehouse(self, value: str) -> Self:
@@ -977,25 +1111,28 @@ class SpeechsenseConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def auth_type(self, value: str) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def auth_type(self, value: Literal['service_account', 'user_credentials']) -> Self:
         return self._set('auth_type', value)
 
-    def cloud_id(self, value: str) -> Self:
+    def cloud_id(self, value: str | None) -> Self:
         return self._set('cloud_id', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def delegation_is_set(self, value: bool) -> Self:
+    def delegation_is_set(self, value: bool | None) -> Self:
         return self._set('delegation_is_set', value)
 
-    def folder_id(self, value: str) -> Self:
+    def folder_id(self, value: str | None) -> Self:
         return self._set('folder_id', value)
 
     def project_id(self, value: str) -> Self:
         return self._set('project_id', value)
 
-    def service_account_id(self, value: str) -> Self:
+    def service_account_id(self, value: str | None) -> Self:
         return self._set('service_account_id', value)
 
 class TrinoConnectionCreate(BaseConnectionCreate):
@@ -1009,61 +1146,73 @@ class TrinoConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def auth_type(self, value: Mapping[str, object]) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def auth_type(self, value: Literal['certificate', 'header', 'jwt', 'kerberos', 'none', 'oauth2', 'password'] | None) -> Self:
         return self._set('auth_type', value)
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def cloud_id(self, value: str) -> Self:
+    def cloud_id(self, value: str | None) -> Self:
         return self._set('cloud_id', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def cluster_entry_id(self, value: str | None) -> Self:
+        return self._set('cluster_entry_id', value)
+
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def db_name(self, value: str) -> Self:
+    def db_name(self, value: str | None) -> Self:
         return self._set('db_name', value)
 
-    def delegation_is_set(self, value: bool) -> Self:
+    def delegation_is_set(self, value: bool | None) -> Self:
         return self._set('delegation_is_set', value)
 
-    def folder_id(self, value: str) -> Self:
+    def extra_credentials(self, value: Mapping[str, str | None] | None) -> Self:
+        return self._set('extra_credentials', value)
+
+    def folder_id(self, value: str | None) -> Self:
         return self._set('folder_id', value)
 
-    def host(self, value: str) -> Self:
+    def form_fill_mode(self, value: Literal['cloud', 'manually', 'platform']) -> Self:
+        return self._set('form_fill_mode', value)
+
+    def host(self, value: str | None) -> Self:
         return self._set('host', value)
 
-    def jwt(self, value: str) -> Self:
+    def jwt(self, value: str | None) -> Self:
         return self._set('jwt', value)
 
-    def listing_sources(self, value: Mapping[str, object]) -> Self:
+    def listing_sources(self, value: Literal['off', 'on']) -> Self:
         return self._set('listing_sources', value)
 
-    def mdb_cluster_id(self, value: str) -> Self:
+    def mdb_cluster_id(self, value: str | None) -> Self:
         return self._set('mdb_cluster_id', value)
 
-    def password(self, value: str) -> Self:
+    def password(self, value: str | None) -> Self:
         return self._set('password', value)
 
-    def port(self, value: int) -> Self:
+    def port(self, value: int | None) -> Self:
         return self._set('port', value)
 
-    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql']) -> Self:
+    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql', 'readwrite']) -> Self:
         return self._set('raw_sql_level', value)
 
-    def service_account_id(self, value: str) -> Self:
+    def service_account_id(self, value: str | None) -> Self:
         return self._set('service_account_id', value)
 
-    def ssl_ca(self, value: Mapping[str, object]) -> Self:
+    def ssl_ca(self, value: str | None) -> Self:
         return self._set('ssl_ca', value)
 
-    def ssl_enable(self, value: str) -> Self:
+    def ssl_enable(self, value: Literal['on', 'off']) -> Self:
         return self._set('ssl_enable', value)
 
-    def username(self, value: str) -> Self:
+    def username(self, value: str | None) -> Self:
         return self._set('username', value)
 
 class UsageAnalyticsDetailedConnectionCreate(BaseConnectionCreate):
@@ -1077,6 +1226,9 @@ class UsageAnalyticsDetailedConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
 class UsageAnalyticsLightConnectionCreate(BaseConnectionCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ConnectionOperations | None = None) -> None:
         super().__init__(
@@ -1087,6 +1239,9 @@ class UsageAnalyticsLightConnectionCreate(BaseConnectionCreate):
             metadata=METADATA['usage_analytics_light'],
             operations=operations,
         )
+
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
 
 class YdbConnectionCreate(BaseConnectionCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ConnectionOperations | None = None) -> None:
@@ -1099,25 +1254,28 @@ class YdbConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def auth_type(self, value: Literal['anonymous', 'password', 'oauth']) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def auth_type(self, value: Literal['anonymous', 'password', 'oauth'] | None) -> Self:
         return self._set('auth_type', value)
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def cloud_id(self, value: str) -> Self:
+    def cloud_id(self, value: str | None) -> Self:
         return self._set('cloud_id', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
     def db_name(self, value: str) -> Self:
         return self._set('db_name', value)
 
-    def delegation_is_set(self, value: bool) -> Self:
+    def delegation_is_set(self, value: bool | None) -> Self:
         return self._set('delegation_is_set', value)
 
     def folder_id(self, value: str) -> Self:
@@ -1126,31 +1284,31 @@ class YdbConnectionCreate(BaseConnectionCreate):
     def host(self, value: str) -> Self:
         return self._set('host', value)
 
-    def mdb_cluster_id(self, value: str) -> Self:
+    def mdb_cluster_id(self, value: str | None) -> Self:
         return self._set('mdb_cluster_id', value)
 
-    def mdb_folder_id(self, value: str) -> Self:
+    def mdb_folder_id(self, value: str | None) -> Self:
         return self._set('mdb_folder_id', value)
 
     def port(self, value: int) -> Self:
         return self._set('port', value)
 
-    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql']) -> Self:
+    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql', 'readwrite']) -> Self:
         return self._set('raw_sql_level', value)
 
     def service_account_id(self, value: str) -> Self:
         return self._set('service_account_id', value)
 
-    def ssl_ca(self, value: Mapping[str, object]) -> Self:
+    def ssl_ca(self, value: str | None) -> Self:
         return self._set('ssl_ca', value)
 
-    def ssl_enable(self, value: str) -> Self:
+    def ssl_enable(self, value: Literal['on', 'off']) -> Self:
         return self._set('ssl_enable', value)
 
-    def token(self, value: str) -> Self:
+    def token(self, value: str | None) -> Self:
         return self._set('token', value)
 
-    def username(self, value: str) -> Self:
+    def username(self, value: str | None) -> Self:
         return self._set('username', value)
 
 class YqConnectionCreate(BaseConnectionCreate):
@@ -1164,25 +1322,28 @@ class YqConnectionCreate(BaseConnectionCreate):
             operations=operations,
         )
 
-    def cache_invalidation_throttling_interval_sec(self, value: int) -> Self:
+    def ai_access_level(self, value: Literal['allow', 'allow_trusted', 'deny']) -> Self:
+        return self._set('ai_access_level', value)
+
+    def cache_invalidation_throttling_interval_sec(self, value: int | None) -> Self:
         return self._set('cache_invalidation_throttling_interval_sec', value)
 
-    def cache_ttl_sec(self, value: int) -> Self:
+    def cache_ttl_sec(self, value: int | None) -> Self:
         return self._set('cache_ttl_sec', value)
 
-    def cloud_id(self, value: str) -> Self:
+    def cloud_id(self, value: str | None) -> Self:
         return self._set('cloud_id', value)
 
-    def data_export_forbidden(self, value: str) -> Self:
+    def data_export_forbidden(self, value: Literal['on', 'off']) -> Self:
         return self._set('data_export_forbidden', value)
 
-    def delegation_is_set(self, value: bool) -> Self:
+    def delegation_is_set(self, value: bool | None) -> Self:
         return self._set('delegation_is_set', value)
 
     def folder_id(self, value: str) -> Self:
         return self._set('folder_id', value)
 
-    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql']) -> Self:
+    def raw_sql_level(self, value: Literal['off', 'subselect', 'template', 'dashsql', 'readwrite']) -> Self:
         return self._set('raw_sql_level', value)
 
     def service_account_id(self, value: str) -> Self:

@@ -85,6 +85,66 @@ def test_source_build_fires_validate_and_returns_enriched_source() -> None:
     assert [u["action"] for u in updates] == ["add_source", "add_source_avatar", "refresh_source"]
 
 
+@pytest.mark.parametrize(
+    ("manual", "expected_parameters"),
+    [
+        (False, {"manual": False, "schema_name": "public", "table_name": "orders"}),
+        (True, {"manual": True, "schema_name": "public", "table_name": "orders"}),
+        (None, {"schema_name": "public", "table_name": "orders"}),
+    ],
+)
+def test_pg_table_manual_reaches_validate_and_create_payloads(
+    manual: bool | None, expected_parameters: dict[str, object]
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/rpc/validateDataset":
+            body: dict[str, object] = json.loads(request.content.decode())
+            updates = cast(list[dict[str, object]], cast(dict[str, object], body["data"])["updates"])
+            source_payload = cast(dict[str, object], updates[0]["source"])
+            return httpx.Response(
+                200,
+                json={
+                    "dataset": {
+                        "sources": [
+                            {
+                                **source_payload,
+                                "source_type": "PG_TABLE",
+                                "valid": True,
+                                "raw_schema": [{"name": "order_date", "title": "Order Date", "user_type": "date"}],
+                            }
+                        ]
+                    }
+                },
+            )
+        if request.url.path == "/rpc/createDataset":
+            return httpx.Response(200, json={"id": "ds-new", "dataset": {"sources": [], "result_schema": []}})
+        return httpx.Response(404, json={"code": "NOT_FOUND"})
+
+    recorder = RecordedTransport()
+    recorder.set_handler(handler)
+    client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+    connection = client.domain_connection(id="conn-1", type="postgres", name="PG")
+    factory = client.create.source(using=connection)
+    if manual is None:
+        source = factory.pg_table(alias="orders", schema_name="public", table_name="orders").build()
+    else:
+        source = factory.pg_table(alias="orders", schema_name="public", table_name="orders", manual=manual).build()
+    client.create.dataset(name="Orders", location=dl.EntryLocation.path("/sdk")).add_source(source).build()
+
+    assert [request.url.path for request in recorder.requests] == [
+        "/rpc/validateDataset",
+        "/rpc/validateDataset",
+        "/rpc/createDataset",
+    ]
+    for index in (0, 1):
+        body = recorder.request_json(index)
+        updates = cast(list[dict[str, object]], cast(dict[str, object], body["data"])["updates"])
+        assert cast(dict[str, object], updates[0]["source"])["parameters"] == expected_parameters
+    create_body = recorder.request_json(2)
+    created_sources = cast(list[dict[str, object]], cast(dict[str, object], create_body["dataset"])["sources"])
+    assert created_sources[0]["parameters"] == expected_parameters
+
+
 def test_built_source_raw_schema_is_reused_in_graph_validate_without_refresh() -> None:
     source_id_holder: dict[str, str | None] = {"id": None}
 

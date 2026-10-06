@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import fields
+from enum import Enum
 import json
 import logging
 from pathlib import Path
+from types import MappingProxyType
 from typing import cast
 from uuid import uuid4
 
@@ -41,6 +43,10 @@ class RecordedTransport:
         data: object = json.loads(self.requests[index].content.decode())
         assert isinstance(data, dict)
         return cast(dict[str, object], data)
+
+
+class HeaderValue(str, Enum):
+    TOKEN = "secret-token"
 
 
 def _empty_dataset_response(*, dataset_id: str = "ds-1") -> dict[str, object]:
@@ -584,6 +590,7 @@ def test_connection_create_update_delete_flow_uses_foreign_rpc_shape() -> None:
         "/rpc/deleteConnection",
     ]
     assert recorder.request_json(0) == {
+        "ai_access_level": "allow",
         "data_export_forbidden": "off",
         "db_name": "analytics",
         "description": "A test connection",
@@ -596,6 +603,7 @@ def test_connection_create_update_delete_flow_uses_foreign_rpc_shape() -> None:
         "ssl_enable": "off",
         "type": "postgres",
         "username": "robot",
+        "variant": "default",
     }
     assert "db_type" not in recorder.request_json(0)
     assert recorder.request_json(2) == {"connectionId": "conn-1", "workbookId": "wb-1"}
@@ -612,6 +620,52 @@ def test_connection_get_sends_rev_id_as_snake_case() -> None:
     client.get.connection(by_id="c1", rev_id="r5")
 
     assert recorder.request_json(0) == {"connectionId": "c1", "rev_id": "r5"}
+
+
+@pytest.mark.parametrize(
+    ("connector", "defaults"),
+    [
+        (
+            "trino",
+            {
+                "ai_access_level": "allow",
+                "data_export_forbidden": "off",
+                "description": "",
+                "raw_sql_level": "off",
+                "ssl_enable": "off",
+            },
+        ),
+        (
+            "ydb",
+            {
+                "ai_access_level": "allow",
+                "data_export_forbidden": "off",
+                "description": "",
+                "raw_sql_level": "off",
+                "ssl_enable": "on",
+            },
+        ),
+    ],
+)
+def test_nullable_connection_enum_can_be_set_to_none(connector: str, defaults: dict[str, object]) -> None:
+    client = dl.DataLensClientYC(
+        auth=None,
+        base_url="http://test",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200)),
+    )
+
+    builder = getattr(client.create.connection, connector)(
+        name="Nullable enum",
+        location=dl.EntryLocation.path("/Users/me"),
+    ).auth_type(None)
+
+    assert builder.to_spec() == ConnectionCreateSpec(
+        installation="yacloud",
+        connector=connector,
+        name="Nullable enum",
+        params={**defaults, "auth_type": None, "type": connector},
+        location=dl.EntryLocation.path("/Users/me"),
+    )
 
 
 def test_dataset_get_sends_rev_id_as_snake_case() -> None:
@@ -772,7 +826,7 @@ def test_generated_builders_validate_fields_before_transport() -> None:
     assert not (builder._metadata.required & {"name", "dir_path", "workbook_id", "collection_id"})
     assert builder.required_fields() == ["host", "port"]
     assert builder.missing_required() == ["host", "port"]
-    assert builder.allowed_values("raw_sql_level") == ["off", "subselect", "template", "dashsql"]
+    assert builder.allowed_values("raw_sql_level") == ["off", "subselect", "template", "dashsql", "readwrite"]
     assert "username" in builder.optional_fields()
     assert "dir_path" not in builder.optional_fields()
     assert "workbook_id" not in builder.optional_fields()
@@ -785,6 +839,133 @@ def test_generated_builders_validate_fields_before_transport() -> None:
         builder._set("unknown", "value")
 
     assert seen == []
+
+
+@pytest.mark.parametrize("installation", ["yacloud", "enterprise"])
+def test_connection_builder_hides_sdk_managed_type_from_introspection(installation: str) -> None:
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json={}))
+    client: dl.DataLensClientYC | dl.DataLensClientEnterprise
+    if installation == "yacloud":
+        client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=transport)
+    else:
+        client = dl.DataLensClientEnterprise(auth=None, base_url="http://test", transport=transport)
+
+    builder = client.create.connection.postgres(name="PG", location=dl.EntryLocation.path("/sdk"))
+
+    assert builder.connector == "postgres"
+    assert "type" not in builder.required_fields()
+    assert "type" not in builder.optional_fields()
+    assert "type" not in builder.fields_help()
+
+
+@pytest.mark.parametrize("credentials", [{"token": "secret", "role": None}, None])
+def test_trino_extra_credentials_preserve_nullable_values_on_create(
+    credentials: dict[str, str | None] | None,
+) -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/createConnection": httpx.Response(200, json={"id": "trino-1"}),
+            "/rpc/getConnection": httpx.Response(200, json={"id": "trino-1", "type": "trino", "name": "Trino"}),
+        }
+    )
+    client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+
+    created = (
+        client.create.connection.trino(name="Trino", location=dl.EntryLocation.path("/sdk"))
+        .listing_sources("on")
+        .extra_credentials(credentials)
+        .build()
+    )
+
+    assert created.id == "trino-1"
+    assert [request.url.path for request in recorder.requests] == ["/rpc/createConnection", "/rpc/getConnection"]
+    assert recorder.request_json(0)["extra_credentials"] == credentials
+
+
+def test_trino_extra_credentials_snapshot_read_only_mapping_before_create() -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/createConnection": httpx.Response(200, json={"id": "trino-1"}),
+            "/rpc/getConnection": httpx.Response(200, json={"id": "trino-1", "type": "trino", "name": "Trino"}),
+        }
+    )
+    client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+    values: dict[str, str | None] = {"token": "secret", "role": None}
+    builder = (
+        client.create.connection.trino(name="Trino", location=dl.EntryLocation.path("/sdk"))
+        .listing_sources("on")
+        .extra_credentials(MappingProxyType(values))
+    )
+    values["token"] = "changed after setter"
+
+    created = builder.build()
+
+    assert created.id == "trino-1"
+    assert [request.url.path for request in recorder.requests] == ["/rpc/createConnection", "/rpc/getConnection"]
+    assert recorder.request_json(0)["extra_credentials"] == {"token": "secret", "role": None}
+
+
+@pytest.mark.parametrize(
+    ("connector", "mapping_field"),
+    [
+        ("json_api", "plain_headers"),
+        ("json_api", "secret_headers"),
+        ("trino", "extra_credentials"),
+    ],
+)
+def test_connection_create_serializes_string_enum_mapping_values(connector: str, mapping_field: str) -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/createConnection": httpx.Response(200, json={"id": "connection-1"}),
+            "/rpc/getConnection": httpx.Response(
+                200, json={"id": "connection-1", "type": connector, "name": "Mapped connection"}
+            ),
+        }
+    )
+    client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+    builder = getattr(client.create.connection, connector)(
+        name="Mapped connection", location=dl.EntryLocation.path("/sdk")
+    )
+    if connector == "json_api":
+        builder = builder.allowed_methods(["GET"]).host("api.example.test").port(443)
+    else:
+        builder = builder.listing_sources("on")
+
+    getattr(builder, mapping_field)({"X-Token": HeaderValue.TOKEN}).build()
+
+    assert recorder.request_json(0)[mapping_field] == {"X-Token": "secret-token"}
+
+
+@pytest.mark.parametrize(
+    "credentials",
+    [{"token": 7}, {"token": True}, {"token": {"nested": "value"}}, {7: "token"}, 7],
+)
+def test_trino_extra_credentials_reject_invalid_nested_values_before_http(credentials: object) -> None:
+    recorder = RecordedTransport({"/rpc/createConnection": httpx.Response(200, json={"id": "trino-1"})})
+    client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+    builder = client.create.connection.trino(name="Trino", location=dl.EntryLocation.path("/sdk"))
+
+    with pytest.raises(dl.DataLensValidationError, match="extra_credentials"):
+        builder.extra_credentials(cast(dict[str, str | None], credentials))
+
+    assert recorder.requests == []
+
+
+@pytest.mark.parametrize("installation", ["yacloud", "enterprise"])
+def test_json_api_header_maps_reject_non_string_values_before_http(installation: str) -> None:
+    recorder = RecordedTransport({"/rpc/createConnection": httpx.Response(200, json={"id": "json-1"})})
+    transport = httpx.MockTransport(recorder.handler)
+    client: dl.DataLensClientYC | dl.DataLensClientEnterprise
+    if installation == "yacloud":
+        client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=transport)
+    else:
+        client = dl.DataLensClientEnterprise(auth=None, base_url="http://test", transport=transport)
+    builder = client.create.connection.json_api(name="JSON", location=dl.EntryLocation.path("/sdk"))
+
+    with pytest.raises(dl.DataLensValidationError, match="plain_headers"):
+        builder.plain_headers(cast(dict[str, str | None], {"X-Test": 7}))
+
+    assert recorder.requests == []
 
 
 @pytest.mark.parametrize("installation", ["yacloud", "enterprise"])

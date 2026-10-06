@@ -162,6 +162,9 @@ _WIZARD_SCHEMA_FEATURE_POLICY: dict[str, _WizardSchemaFeatureState] = {
 
 class FieldMeta(TypedDict):
     type: str
+    mapping_value_types: NotRequired[list[str]]
+    mapping_nullable: NotRequired[bool]
+    nullable: NotRequired[bool]
 
 
 class ConnectorMeta(TypedDict):
@@ -988,15 +991,19 @@ def validate_dataset_update_mode_contract(spec: Mapping[str, object]) -> None:
         data_properties = _string_object_dict(referenced.get("properties"), context=f"{context}.data.properties")
     else:
         data_properties = _string_object_dict(data.get("properties"), context=f"{context}.data.properties")
-    mode = _string_object_dict(data_properties.get("mode", data.get("mode")), context=f"{context}.data.mode")
-    values = mode.get("enum")
-    if values is None and mode.get("type") == "optional":
-        definition = _string_object_dict(mode.get("def"), context=f"{context}.data.mode.def")
-        inner = _string_object_dict(definition.get("innerType"), context=f"{context}.data.mode.innerType")
-        values = inner.get("options")
-    modes = sorted(_string_list(values, context=f"{context}.data.mode.enum"))
-    if modes != ["publish", "save"]:
-        raise ValueError(f"updateDataset data.mode must support save and publish, got {modes!r}")
+    mode_schemas = [mode for mode in (data_properties.get("mode"), data.get("mode")) if mode is not None]
+    if not mode_schemas:
+        mode_schemas = [None]
+    for mode_schema in mode_schemas:
+        mode = _string_object_dict(mode_schema, context=f"{context}.data.mode")
+        values = mode.get("enum")
+        if values is None and mode.get("type") == "optional":
+            definition = _string_object_dict(mode.get("def"), context=f"{context}.data.mode.def")
+            inner = _string_object_dict(definition.get("innerType"), context=f"{context}.data.mode.innerType")
+            values = inner.get("options")
+        modes = sorted(_string_list(values, context=f"{context}.data.mode.enum"))
+        if modes != ["publish", "save"]:
+            raise ValueError(f"updateDataset data.mode must support save and publish, got {modes!r}")
 
 
 def _allow_nullable_html_page_version(schema: JsonValue, *, context: str, wrapper: bool) -> JsonValue:
@@ -1698,11 +1705,22 @@ def _annotation_for_schema_type(field_type: str) -> str:
 
 def _annotation_for_field(field: str, meta: ConnectorMeta) -> str:
     enum_values = meta["enum_restrictions"].get(field)
-    if enum_values and all(isinstance(value, str) for value in enum_values):
-        return f"Literal[{', '.join(repr(value) for value in enum_values)}]"
+    if enum_values and all(isinstance(value, str) or value is None for value in enum_values):
+        values = [value for value in enum_values if isinstance(value, str)]
+        if not values:
+            return "None"
+        annotation = f"Literal[{', '.join(repr(value) for value in values)}]"
+        return f"{annotation} | None" if None in enum_values else annotation
     field_meta = meta["fields"].get(field)
+    if field_meta is not None and (value_types := field_meta.get("mapping_value_types")):
+        value_annotation = " | ".join(
+            "None" if value_type == "null" else _annotation_for_schema_type(value_type) for value_type in value_types
+        )
+        annotation = f"Mapping[str, {value_annotation}]"
+        return f"{annotation} | None" if field_meta.get("mapping_nullable") else annotation
     field_type = field_meta["type"] if field_meta is not None else "object"
-    return _annotation_for_schema_type(field_type)
+    annotation = _annotation_for_schema_type(field_type)
+    return f"{annotation} | None" if field_meta is not None and field_meta.get("nullable") else annotation
 
 
 def _connector_meta(
@@ -1720,12 +1738,33 @@ def _connector_meta(
     for field, field_schema in sorted(properties.items()):
         if field in READ_ONLY_FIELDS or field_schema.get("readOnly"):
             continue
-        fields[field] = {"type": _field_type(field_schema)}
+        field_type = _field_type(field_schema)
+        field_meta: FieldMeta = {"type": field_type}
+        raw_type = field_schema.get("type")
+        if isinstance(raw_type, list) and "null" in raw_type:
+            field_meta["nullable"] = True
+        additional_properties = field_schema.get("additionalProperties")
+        if field_type == "object" and isinstance(additional_properties, dict):
+            raw_value_types = additional_properties.get("type")
+            if isinstance(raw_value_types, str):
+                value_types = [raw_value_types]
+            elif isinstance(raw_value_types, list) and all(
+                isinstance(value_type, str) for value_type in raw_value_types
+            ):
+                value_types = raw_value_types
+            else:
+                value_types = []
+            if value_types and set(value_types) <= {"string", "integer", "number", "boolean", "null"}:
+                field_meta["mapping_value_types"] = value_types
+                raw_field_type = field_schema.get("type")
+                field_meta["mapping_nullable"] = isinstance(raw_field_type, list) and "null" in raw_field_type
+        fields[field] = field_meta
         if "default" in field_schema and field_schema["default"] is not None:
             defaults[field] = field_schema["default"]
         enum_values = field_schema.get("enum")
         if isinstance(enum_values, list):
-            enums[field] = [item for item in enum_values if item is not None]
+            nullable = isinstance(raw_type, list) and "null" in raw_type
+            enums[field] = [item for item in enum_values if item is not None or nullable]
     for field, default in _CONNECTOR_DEFAULT_OVERRIDES.get((installation, connector), {}).items():
         if field not in fields:
             raise ValueError(f"Default override targets unknown field {installation}.{connector}.{field}")
@@ -4157,6 +4196,14 @@ def emit_builder_module(installation: str, info: InstallationMetadata) -> str:
     connectors = info["connectors"]
     metadata_lines: list[str] = []
     for connector, meta in sorted(connectors.items()):
+        mapping_value_types = {
+            field: (field_meta.get("mapping_nullable", False), tuple(field_meta["mapping_value_types"]))
+            for field, field_meta in meta["fields"].items()
+            if "mapping_value_types" in field_meta
+        }
+        mapping_types_line = (
+            f"        mapping_value_types={_emit_literal(mapping_value_types)},\n" if mapping_value_types else ""
+        )
         metadata_lines.append(
             f"    {connector!r}: ConnectorMetadata(\n"
             f"        connector={connector!r},\n"
@@ -4164,6 +4211,7 @@ def emit_builder_module(installation: str, info: InstallationMetadata) -> str:
             f"        available_fields=frozenset({meta['available_fields']!r}),\n"
             f"        defaults={_emit_literal(meta['defaults'])},\n"
             f"        enum_restrictions={_emit_literal(meta['enum_restrictions'])},\n"
+            f"{mapping_types_line}"
             f"    ),"
         )
     lines = [

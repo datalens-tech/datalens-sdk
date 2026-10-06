@@ -91,7 +91,11 @@ from datalens_sdk._generated.builders.yacloud import (
 from datalens_sdk._generated.builders.yacloud import (
     ConnectionCreateFactory as YacloudConnectionCreateFactory,
 )
-from datalens_sdk._generated.builders.yacloud import PostgresConnectionCreate
+from datalens_sdk._generated.builders.yacloud import (
+    PostgresConnectionCreate,
+    TrinoConnectionCreate,
+    YdbConnectionCreate,
+)
 from datalens_sdk.client import (
     CreateNamespace,
     DashboardCreateFactory,
@@ -766,6 +770,16 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
     assert_type(builder.raw_sql_level("off"), PostgresConnectionCreate)
     clickhouse_builder = client.create.connection.clickhouse(name="CH", location=EntryLocation.path("/sdk"))
     assert_type(clickhouse_builder.secure("on"), YacloudClickhouseConnectionCreate)
+    if TYPE_CHECKING:
+        postgres_builder = client.create.connection.postgres(name="PG", location=EntryLocation.path("/sdk"))
+        assert_type(postgres_builder.mode(None), PostgresConnectionCreate)
+        assert_type(postgres_builder.password(None), PostgresConnectionCreate)
+        trino_builder = client.create.connection.trino(name="Trino", location=EntryLocation.path("/sdk"))
+        assert_type(trino_builder.extra_credentials({"token": "secret", "role": None}), TrinoConnectionCreate)
+        assert_type(trino_builder.extra_credentials(None), TrinoConnectionCreate)
+        assert_type(trino_builder.auth_type(None), TrinoConnectionCreate)
+        ydb_builder = client.create.connection.ydb(name="YDB", location=EntryLocation.path("/sdk"))
+        assert_type(ydb_builder.auth_type(None), YdbConnectionCreate)
     assert_type(
         client.create.dataset(name="DS", location=EntryLocation.path("/sdk")),
         DatasetCreate,

@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Regenerate Yandex Cloud connection builders from the refreshed contract:
+  `data_export_forbidden`, `ssl_enable`, ClickHouse `experimental_features` and
+  `ssl_ca_verify`, PromQL and SpeechSense `auth_type`, and Trino `auth_type` and
+  `listing_sources` become enums; `ssl_ca` becomes a string. Applicable Yandex
+  Cloud connectors default `ai_access_level` to `"allow"`; ClickHouse, MySQL,
+  and PostgreSQL also default `variant` to `"default"`. Replace custom values
+  and mappings with generated literals and scalars.
+- Hide the SDK-managed `type` discriminator from `required_fields()`,
+  `optional_fields()`, and `fields_help()` for both public installations.
+  Use `builder.connector` for connector identity.
+- Update bundled Yandex Cloud lakehouse and permission contracts:
+  `ListSparkJobsArgs.filter` becomes an array;
+  `ListSparkClustersArgs.pageSize` and `ListTrinoClustersArgs.pageSize` reject
+  negative values; `SparkCluster.entryId` is required; and
+  `DlsPermissionParticipant.approver`, `description`, `extras`, and `requester`
+  become optional.
+
+### Changed
+
+- Refresh the Yandex Cloud OpenAPI document from the current preprod Public API
+  contract and BI backend schemas, including SQL Editor, cloud environments,
+  Spark and Trino lifecycle/resource-preset/catalog RPCs, and HTML preview URLs.
+- Add optional `manual` to generated Yandex Cloud dataset source builders;
+  explicit `False` is preserved in validation and creation requests.
+
 ## 3.1.0 - 2026-10-01
 
 ### Breaking changes
