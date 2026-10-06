@@ -164,14 +164,14 @@ fixed by retrying immediately.
 Explain the missing Spark authorization to the user and direct them to the
 affected cluster page:
 `https://datalens.ru/compute/spark/<entry_id>`. Use a known DataLens cluster
-entry ID (`SparkCluster.id`), not the managed `cluster_id`. If the entry ID is
-not already known, ask the user for it or for the cluster page link; do not
-make another SDK read just to construct the link. Tell the user to click
-**«Получить токен»**, then wait for them to confirm that they completed the
-flow before continuing the original task. Do not ask them to paste a token in
-chat, decode or repeat the binary `Buffer` payload, or retry the failed call
-before the flow is complete. For a retried mutation, continue to follow the
-normal fresh-confirmation requirement.
+entry ID (`SparkCluster.entry_id`), not `SparkCluster.id` or the managed
+`cluster_id`. If the entry ID is not already known, ask the user for it or for
+the cluster page link; do not make another SDK read just to construct the link.
+Tell the user to click **«Получить токен»**, then wait for them to confirm that
+they completed the flow before continuing the original task. Do not ask them
+to paste a token in chat, decode or repeat the binary `Buffer` payload, or
+retry the failed call before the flow is complete. For a retried mutation,
+continue to follow the normal fresh-confirmation requirement.
 
 When the user is Russian-speaking, explain it plainly, for example:
 “Для работы Spark нужно получить токен. Откройте
