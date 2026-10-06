@@ -5006,6 +5006,26 @@ class CancelSparkApplicationArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class CreateBucketDownloadUrlArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
+    path: Annotated[str, Field(min_length=1)]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateBucketUploadUrlArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
+    content_md5: Annotated[str, Field(min_length=24, max_length=24, alias='contentMd5')]
+    path: Annotated[str, Field(min_length=1)]
+    size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:0|[1-9][0-9]*)$'))]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class CreateCloudEnvironmentArgsStorageDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5378,6 +5398,15 @@ class DeleteTrinoClusterCatalogArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class GetBucketObjectMetadataArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
+    path: Annotated[str, Field(min_length=1)]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class GetCloudEnvironmentArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5445,6 +5474,17 @@ class GetTrinoResourcePresetArgsDTO(BaseModel):
 
     cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
     resource_preset_id: Annotated[str, Field(min_length=1, max_length=50, alias='resourcePresetId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class ListBucketObjectsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
+    page_size: Annotated[int, Field(ge=0, le=1000, alias='pageSize')] = _UNVALIDATED_NONE_DEFAULT
+    page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
+    prefix: str = _UNVALIDATED_NONE_DEFAULT
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
@@ -5634,6 +5674,16 @@ class CloudEnvironmentReadDTO(BaseModel):
     updated_at: CloudEnvironmentCreatedAtReadDTO = Field(alias='updatedAt')
     updated_by_id: str = Field(alias='updatedById')
 
+class CreateBucketDownloadUrlResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    url: str
+
+class CreateBucketUploadUrlResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    url: str
+
 class SqlQueryAnnotationObjectReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
@@ -5709,6 +5759,12 @@ class DeleteSqlQueryResultReadDTO(BaseModel):
 
     pass
 
+class GetBucketObjectMetadataResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    last_modified: CloudEnvironmentCreatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lastModified')
+    size: str
+
 class GetSqlQueryResultPermissionsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
@@ -5743,6 +5799,12 @@ class LakehouseOperationReadDTO(BaseModel):
     metadata: dict[str, JsonValue]
     modified_at: CloudEnvironmentCreatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='modifiedAt')
     response: dict[str, JsonValue] = _UNVALIDATED_NONE_DEFAULT
+
+class ListBucketObjectsResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    keys: list[str]
+    next_page_token: str = Field(alias='nextPageToken')
 
 class ListCatalogsResultRestCatalogsItemBucketDetailsUpdatedAtReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)

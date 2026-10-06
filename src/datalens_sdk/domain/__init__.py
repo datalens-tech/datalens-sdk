@@ -8,6 +8,10 @@ from datalens_sdk.domain.cloud_environment import (
     CloudEnvironmentStorageSettings,
     CloudEnvironmentUpdate,
 )
+from datalens_sdk.domain.cloud_environment_storage import (
+    CloudEnvironmentStorageObjectMetadata,
+    CloudEnvironmentStorageSignedUrl,
+)
 from datalens_sdk.domain.collection import Collection, CollectionCreate, CollectionUpdate
 from datalens_sdk.domain.common_types import SortDirection, UILanguage, UITheme
 from datalens_sdk.domain.connection import Connection, ConnectionUpdate
@@ -225,7 +229,9 @@ __all__ = [
     "CloudEnvironmentCreate",
     "CloudEnvironmentListOptions",
     "CloudEnvironmentStatus",
+    "CloudEnvironmentStorageObjectMetadata",
     "CloudEnvironmentStorageSettings",
+    "CloudEnvironmentStorageSignedUrl",
     "CloudEnvironmentUpdate",
     "Collection",
     "CollectionContentMode",

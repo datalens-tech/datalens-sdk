@@ -31,6 +31,8 @@
 
 ### Added
 
+- Add Yandex Cloud bucket upload/download signed URLs, typed object metadata,
+  and resumable object listing for cloud environment storage.
 - Add Yandex Cloud cloud environment create, get, list, refresh, update, and
   delete support.
 - Add Yandex Cloud Trino catalog selection, filtering, attachment, and detachment support.
