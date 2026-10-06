@@ -115,16 +115,19 @@ class CloudEnvironmentService(CloudEnvironmentOperations):
     def list_cloud_environments(self, options: CloudEnvironmentListOptions) -> Pager[CloudEnvironment]:
         def load() -> Iterator[Page[CloudEnvironment]]:
             page_token = options.page_token
-            seen_tokens = {page_token} if page_token else set()
+            seen_tokens: set[str] = set()
             while True:
                 try:
-                    payload = CloudEnvironmentConverter.list_payload(
+                    dto = CloudEnvironmentConverter.list_payload(
                         options,
                         page_token=page_token,
                         dto_module=self._dto_module,
                     )
+                    payload = dto.to_payload()
+                    if page_token:
+                        seen_tokens.add(page_token)
                     page = CloudEnvironmentConverter.to_page(
-                        self._api.list(payload.to_payload()),
+                        self._api.list(payload),
                         installation=self._installation,
                         operations=self,
                         dto_module=self._dto_module,

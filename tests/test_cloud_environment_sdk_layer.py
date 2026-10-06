@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import cast
 from unittest.mock import Mock
 
 import httpx
@@ -11,6 +12,8 @@ from datalens_sdk import (
     CloudEnvironmentStorageSettings,
     DataLensClientYC,
     DataLensValidationError,
+    DTOValidationError,
+    InvalidResponseError,
     LakehouseOperation,
     LakehouseTimestamp,
 )
@@ -171,6 +174,7 @@ def test_cloud_environment_refresh_update_and_delete_keep_resource_identity_and_
         "tenantId": "tenant-1",
         "subnetId": "subnet-1",
         "securityGroupIds": ["sg-old"],
+        "storage": {"maxSize": "1073741824"},
     }
     snapshots = [initial_raw, ready_raw]
     operations = [
@@ -189,7 +193,14 @@ def test_cloud_environment_refresh_update_and_delete_keep_resource_identity_and_
     with client:
         initial = client.get.cloud_environment(by_id="environment-1", include_permissions=False)
         refreshed = initial.refresh(include_permissions=True)
-        update_operation = refreshed.update().description("").security_group_ids([]).execute()
+        update_operation = (
+            refreshed.update()
+            .name("analytics-v2")
+            .description("")
+            .security_group_ids([])
+            .storage(max_size="2147483648")
+            .execute()
+        )
         delete_operation = refreshed.delete()
 
     assert initial.status == "CREATING"
@@ -209,7 +220,7 @@ def test_cloud_environment_refresh_update_and_delete_keep_resource_identity_and_
         installation="yacloud",
         description=None,
         permissions=None,
-        storage=None,
+        storage=CloudEnvironmentStorageSettings(max_size="1073741824"),
         raw=ready_raw,
     )
     assert update_operation == LakehouseOperation(
@@ -221,7 +232,16 @@ def test_cloud_environment_refresh_update_and_delete_keep_resource_identity_and_
     assert [(request.url.path, json.loads(request.content)) for request in requests] == [
         ("/rpc/getCloudEnvironment", {"id": "environment-1", "includePermissions": False}),
         ("/rpc/getCloudEnvironment", {"id": "environment-1", "includePermissions": True}),
-        ("/rpc/updateCloudEnvironment", {"id": "environment-1", "description": "", "securityGroupIds": []}),
+        (
+            "/rpc/updateCloudEnvironment",
+            {
+                "id": "environment-1",
+                "name": "analytics-v2",
+                "description": "",
+                "securityGroupIds": [],
+                "storage": {"maxSize": "2147483648"},
+            },
+        ),
         ("/rpc/deleteCloudEnvironment", {"id": "environment-1"}),
     ]
 
@@ -234,3 +254,71 @@ def test_cloud_environment_update_rejects_empty_patch_before_sending_request() -
         builder.execute()
 
     operations.update_cloud_environment.assert_not_called()
+
+
+def test_cloud_environment_update_rejects_none_name_before_dispatch() -> None:
+    operations = Mock(spec=CloudEnvironmentOperations)
+    builder = CloudEnvironmentUpdate(cloud_environment_id="environment-1", operations=operations)
+
+    with pytest.raises(DataLensValidationError, match="name"):
+        builder.name(cast(str, None))
+
+    operations.update_cloud_environment.assert_not_called()
+
+
+def test_cloud_environment_update_rejects_none_description_before_dispatch() -> None:
+    operations = Mock(spec=CloudEnvironmentOperations)
+    builder = CloudEnvironmentUpdate(cloud_environment_id="environment-1", operations=operations)
+
+    with pytest.raises(DataLensValidationError, match="description"):
+        builder.description(cast(str, None))
+
+    operations.update_cloud_environment.assert_not_called()
+
+
+def test_cloud_environment_list_rejects_unhashable_initial_page_token_before_http() -> None:
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(500)
+
+    client = DataLensClientYC(
+        auth=None,
+        transport=httpx.MockTransport(handle),
+    )
+
+    with client, pytest.raises(DTOValidationError, match="listCloudEnvironments"):
+        list(client.list.cloud_environments(page_token=cast(str, ["resume"])).pages())
+
+    assert requests == []
+
+
+@pytest.mark.parametrize(
+    ("next_tokens", "expected_page_tokens"),
+    [
+        ({"page-1": "page-1"}, ["page-1"]),
+        ({"page-1": "page-2", "page-2": "page-1"}, ["page-1", "page-2"]),
+    ],
+)
+def test_cloud_environment_list_rejects_repeated_page_token_cycles(
+    next_tokens: dict[str, str], expected_page_tokens: list[str]
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        page_token = json.loads(request.content)["pageToken"]
+        return httpx.Response(
+            200,
+            json={"cloudEnvironments": [], "nextPageToken": next_tokens[page_token]},
+        )
+
+    client = DataLensClientYC(auth=None, transport=httpx.MockTransport(handle))
+
+    with client, pytest.raises(InvalidResponseError, match=r"listCloudEnvironments.*repeated nextPageToken"):
+        list(client.list.cloud_environments(page_token="page-1").pages())
+
+    assert [json.loads(request.content) for request in requests] == [
+        {"pageSize": 100, "pageToken": page_token} for page_token in expected_page_tokens
+    ]

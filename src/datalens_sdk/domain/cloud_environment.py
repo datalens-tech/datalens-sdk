@@ -121,11 +121,15 @@ class CloudEnvironmentUpdate:
         self._configured = False
 
     def name(self, value: str) -> Self:
+        if not isinstance(value, str):
+            raise DataLensValidationError("name must be a string")
         self._name = value
         self._configured = True
         return self
 
     def description(self, value: str) -> Self:
+        if not isinstance(value, str):
+            raise DataLensValidationError("description must be a string")
         self._description = value
         self._configured = True
         return self
