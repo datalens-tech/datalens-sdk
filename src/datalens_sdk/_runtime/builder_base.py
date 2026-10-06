@@ -19,7 +19,7 @@ def _matches_scalar_type(value: object, schema_type: str) -> bool:
     if schema_type == "null":
         return value is None
     if schema_type == "string":
-        return type(value) is str
+        return isinstance(value, str)
     if schema_type == "boolean":
         return type(value) is bool
     if schema_type == "integer":

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import fields
+from enum import Enum
 import json
 import logging
 from pathlib import Path
@@ -42,6 +43,10 @@ class RecordedTransport:
         data: object = json.loads(self.requests[index].content.decode())
         assert isinstance(data, dict)
         return cast(dict[str, object], data)
+
+
+class HeaderValue(str, Enum):
+    TOKEN = "secret-token"
 
 
 def _empty_dataset_response(*, dataset_id: str = "ds-1") -> dict[str, object]:
@@ -898,6 +903,37 @@ def test_trino_extra_credentials_snapshot_read_only_mapping_before_create() -> N
     assert created.id == "trino-1"
     assert [request.url.path for request in recorder.requests] == ["/rpc/createConnection", "/rpc/getConnection"]
     assert recorder.request_json(0)["extra_credentials"] == {"token": "secret", "role": None}
+
+
+@pytest.mark.parametrize(
+    ("connector", "mapping_field"),
+    [
+        ("json_api", "plain_headers"),
+        ("json_api", "secret_headers"),
+        ("trino", "extra_credentials"),
+    ],
+)
+def test_connection_create_serializes_string_enum_mapping_values(connector: str, mapping_field: str) -> None:
+    recorder = RecordedTransport(
+        {
+            "/rpc/createConnection": httpx.Response(200, json={"id": "connection-1"}),
+            "/rpc/getConnection": httpx.Response(
+                200, json={"id": "connection-1", "type": connector, "name": "Mapped connection"}
+            ),
+        }
+    )
+    client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+    builder = getattr(client.create.connection, connector)(
+        name="Mapped connection", location=dl.EntryLocation.path("/sdk")
+    )
+    if connector == "json_api":
+        builder = builder.allowed_methods(["GET"]).host("api.example.test").port(443)
+    else:
+        builder = builder.listing_sources("on")
+
+    getattr(builder, mapping_field)({"X-Token": HeaderValue.TOKEN}).build()
+
+    assert recorder.request_json(0)[mapping_field] == {"X-Token": "secret-token"}
 
 
 @pytest.mark.parametrize(
