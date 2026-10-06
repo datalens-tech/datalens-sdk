@@ -175,6 +175,37 @@ def _catalog_from_dto(raw: Mapping[str, object], dto: RestCatalogItemDTOProtocol
     )
 
 
+def _normalize_null_bucket_details_for_read_dto(raw: Mapping[str, object]) -> Mapping[str, object]:
+    raw_items = raw.get("restCatalogs")
+    if not isinstance(raw_items, list):
+        return raw
+
+    normalized_items = list(raw_items)
+    changed = False
+    for index, raw_item in enumerate(raw_items):
+        if not isinstance(raw_item, Mapping):
+            continue
+        raw_bucket = raw_item.get("bucket")
+        if not isinstance(raw_bucket, Mapping) or "details" not in raw_bucket or raw_bucket["details"] is not None:
+            continue
+
+        normalized_item = dict(raw_item)
+        normalized_bucket = dict(raw_bucket)
+        normalized_bucket.pop("details")
+        normalized_item["bucket"] = normalized_bucket
+        normalized_items[index] = normalized_item
+        changed = True
+
+    if not changed:
+        return raw
+
+    # The backend returns null here, while the generated read DTO accepts omission only.
+    # Normalize a validation-only copy so the original response remains available to callers.
+    normalized = dict(raw)
+    normalized["restCatalogs"] = normalized_items
+    return normalized
+
+
 class RestCatalogConverter:
     @staticmethod
     def create_payload(
@@ -234,7 +265,9 @@ class RestCatalogConverter:
         installation: str,
         dto_module: RestCatalogDtoModule | None = None,
     ) -> Page[RestCatalog]:
-        result = _dto_module(dto_module).ListCatalogsResultReadDTO.model_validate(raw)
+        result = _dto_module(dto_module).ListCatalogsResultReadDTO.model_validate(
+            _normalize_null_bucket_details_for_read_dto(raw)
+        )
         try:
             raw_items = raw["restCatalogs"]
             if not isinstance(raw_items, list):

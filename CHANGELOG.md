@@ -40,6 +40,10 @@
 - Add Yandex Cloud SQL query create, get, update, delete, and run support,
   including typed saved parameters and per-statement results.
 
+### Fixed
+
+- Allow REST catalog listing responses with null bucket details.
+
 ## 3.1.0 - 2026-10-01
 
 ### Breaking changes

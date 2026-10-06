@@ -413,6 +413,44 @@ def test_rest_catalog_list_converts_complete_nested_catalog(
     assert catalog.raw is not item
 
 
+def test_rest_catalog_list_accepts_null_bucket_details() -> None:
+    item = _catalog_item()
+    bucket = cast(dict[str, object], item["bucket"])
+    bucket["details"] = None
+    recorder = RecordedCatalogTransport({"restCatalogs": [item], "nextPageToken": ""})
+    service, http_client = _catalog_service(recorder)
+
+    with http_client:
+        catalog = next(service.list_rest_catalogs(RestCatalogListOptions.create()).pages()).items[0]
+
+    assert catalog == RestCatalog(
+        id="catalog-1",
+        installation="yacloud",
+        organization_id="organization-1",
+        tenant_id="tenant-1",
+        cloud_environment_id="environment-1",
+        name="analytics",
+        description="catalog description",
+        created_by_id="user-1",
+        bucket=RestCatalogBucket(
+            settings=RestCatalogBucketSettings(
+                storage_class="STANDARD",
+                max_size="9007199254740993",
+                alias="bucket-alias",
+                description="bucket description",
+            ),
+            details=None,
+        ),
+        labels={"team": "data"},
+        permissions={"read": True, "write": False},
+        created_at=LakehouseTimestamp(seconds="1710000000", nanos=0),
+        updated_at=LakehouseTimestamp(seconds="1710000001", nanos=0),
+        raw=item,
+    )
+    assert bucket["details"] is None
+    assert cast(dict[str, object], catalog.raw["bucket"])["details"] is None
+
+
 def test_rest_catalog_list_normalizes_omitted_and_empty_values() -> None:
     omitted = _catalog_item()
     omitted.pop("labels")
