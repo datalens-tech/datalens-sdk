@@ -5054,8 +5054,8 @@ class CreateTrinoClusterArgsWorkerConfigResourcesDTO(BaseModel):
 class CreateTrinoClusterArgsWorkerConfigScalePolicyAutoScaleDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
-    max_count: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:[1-9]|[1-5][0-9]|6[0-4])$'))] = Field(alias='maxCount')
-    min_count: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:0|[1-5]?[0-9]|6[0-4])$'))] = Field(alias='minCount')
+    max_count: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:[1-9]|[1-5][0-9]|6[0-4])\\Z'))] = Field(alias='maxCount')
+    min_count: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:0|[1-5]?[0-9]|6[0-4])\\Z'))] = Field(alias='minCount')
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
@@ -5084,8 +5084,8 @@ class CreateTrinoClusterArgsDTO(BaseModel):
     cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
     collection_id: Annotated[str, Field(min_length=1, max_length=50, alias='collectionId')]
     description: Annotated[str, Field(max_length=256)] = _UNVALIDATED_NONE_DEFAULT
-    labels: dict[str, Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[-_0-9a-z]*$'))]] = _UNVALIDATED_NONE_DEFAULT
-    name: Annotated[str, Field(min_length=1, max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[a-zA-Z0-9_-]+$'))]
+    labels: dict[str, Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[-_0-9a-z]*\\Z'))]] = _UNVALIDATED_NONE_DEFAULT
+    name: Annotated[str, Field(min_length=1, max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[a-zA-Z0-9_-]+\\Z'))]
     trino_version: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='trinoVersion')
     worker_config: CreateTrinoClusterArgsWorkerConfigDTO = Field(alias='workerConfig')
 
@@ -5346,8 +5346,8 @@ class TrinoClusterConfigCoordinatorConfigReadDTO(BaseModel):
 class TrinoClusterConfigWorkerConfigScalePolicyAutoScaleReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
 
-    max_count: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:[1-9]|[1-5][0-9]|6[0-4])$'))] = Field(alias='maxCount')
-    min_count: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:0|[1-5]?[0-9]|6[0-4])$'))] = Field(alias='minCount')
+    max_count: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:[1-9]|[1-5][0-9]|6[0-4])\\Z'))] = Field(alias='maxCount')
+    min_count: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:0|[1-5]?[0-9]|6[0-4])\\Z'))] = Field(alias='minCount')
 
 class TrinoClusterConfigWorkerConfigScalePolicyReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
