@@ -316,6 +316,12 @@ RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (
     RpcNamespaceConfig(
         tag="SparkClusters", namespace="spark_clusters", installations=("yacloud",), alias_only_read=True
     ),
+    RpcNamespaceConfig(
+        tag="SparkApplications",
+        namespace="spark_applications",
+        installations=("yacloud",),
+        alias_only_read=True,
+    ),
 )
 
 
@@ -1304,6 +1310,48 @@ def build_rpc_namespace_contract_meta(
     for root in sorted(root_contexts):
         reject_recursive_schema(root)
 
+    def union_request_branch_emits_model(branch: object, *, pointer: str) -> bool:
+        if not isinstance(branch, Mapping):
+            return False
+        seen_refs: set[str] = set()
+        while isinstance(branch.get("$ref"), str):
+            name = _ref_name(cast(str, branch["$ref"]))
+            if name in seen_refs:
+                return False
+            seen_refs.add(name)
+            pointer = f"/schemas/{_json_pointer_token(name)}"
+            branch = normalized_schemas[name]
+            if not isinstance(branch, Mapping):
+                return False
+        all_of = branch.get("allOf")
+        if isinstance(all_of, list):
+            variants = _all_of_property_variants(
+                branch,
+                schemas=schemas,
+                pointer=pointer,
+                contract=f"tagged RPC {config['tag']}",
+            )
+            if len(variants) != 1:
+                return False
+            branch = variants[0]
+        properties = branch.get("properties")
+        additional = branch.get("additionalProperties")
+        if not properties and (additional is True or isinstance(additional, Mapping)):
+            raise ValueError(
+                f"Unsupported behavior-bearing tagged RPC {config['tag']} schema feature at "
+                f"{pointer}/additionalProperties: "
+                "map request union branches do not emit DTOs with validation and payload methods"
+            )
+        raw_type = branch.get("type")
+        return (
+            (raw_type == "object" or raw_type == ["object"] or (raw_type is None and isinstance(properties, Mapping)))
+            and "enum" not in branch
+            and "oneOf" not in branch
+            and "anyOf" not in branch
+            and "items" not in branch
+            and "prefixItems" not in branch
+        )
+
     for rpc_operation in operations.values():
         request_root_name = rpc_operation["request_schema"]
         request_root_schema = normalized_schemas[request_root_name]
@@ -1325,6 +1373,8 @@ def build_rpc_namespace_contract_meta(
         all_of = request_root_schema.get("allOf")
         if (
             not isinstance(all_of, list)
+            and not isinstance(request_root_schema.get("anyOf"), list)
+            and not isinstance(request_root_schema.get("oneOf"), list)
             and not properties
             and (additional is None or additional is True or isinstance(additional, Mapping))
         ):
@@ -1352,7 +1402,16 @@ def build_rpc_namespace_contract_meta(
                     )
             emits_model = len(variants) == 1
         else:
-            emits_model = (
+            union_branches = request_root_schema.get("anyOf")
+            object_union = (
+                isinstance(union_branches, list)
+                and bool(union_branches)
+                and all(
+                    union_request_branch_emits_model(branch, pointer=f"{root_pointer}/anyOf/{index}")
+                    for index, branch in enumerate(union_branches)
+                )
+            )
+            emits_model = object_union or (
                 (
                     raw_type == "object"
                     or raw_type == ["object"]
@@ -3041,13 +3100,38 @@ class _PydanticSchemaEmitter:
         self._emitting.add(name)
         annotation = self._annotation(schema, path=path, preferred_name=name)
         if annotation != name:
-            self._lines.append(f"{name} = {annotation}")
+            if (
+                not self._read
+                and not nested_reference
+                and self._contract == "tagged RPC"
+                and self._payload_methods == "recursive"
+                and isinstance(schema.get("anyOf"), list)
+            ):
+                self._lines.extend(
+                    (
+                        f"class {name}(RootModel[{annotation}]):",
+                        "    def to_payload(self) -> dict[str, object]:",
+                        '        return self.root.model_dump(mode="json", by_alias=True, exclude_unset=True)',
+                    )
+                )
+            else:
+                self._lines.append(f"{name} = {annotation}")
             self._lines.append("")
             self._emitted.add(name)
             self._emitted_components[name] = schema_name
             self._emitted_paths[name] = path
         self._emitting.remove(name)
         return name
+
+    @staticmethod
+    def _read_union_branch_annotation(
+        annotation: str, *, known_properties: frozenset[str], branch_properties: frozenset[str]
+    ) -> str:
+        return (
+            f"Annotated[{annotation}, BeforeValidator(partial(_validate_tagged_rpc_read_union_branch, "
+            f"known_properties=frozenset({sorted(known_properties)!r}), "
+            f"branch_properties=frozenset({sorted(branch_properties)!r})))]"
+        )
 
     def _annotation(
         self,
@@ -3087,6 +3171,34 @@ class _PydanticSchemaEmitter:
                     self._schema_object(branch, context=f"{'.'.join(path)}.{union_key}[{index}]")
                     for index, branch in enumerate(branches)
                 ]
+                branch_properties: list[frozenset[str]] | None = None
+                if self._read and self._contract == "tagged RPC" and union_key == "anyOf":
+                    resolved: list[dict[str, JsonValue]] = []
+                    for index, branch_schema in enumerate(branch_schemas):
+                        if branch_schema.get("type") == "null":
+                            break
+                        try:
+                            variants = self._object_variants(
+                                branch_schema, context=f"{'.'.join(path)}.anyOf[{index}]", seen=frozenset()
+                            )
+                        except ValueError:
+                            break
+                        if (
+                            len(variants) != 1
+                            or variants[0].get("additionalProperties") is not False
+                            or not isinstance(variants[0].get("properties"), dict)
+                        ):
+                            break
+                        resolved.append(variants[0])
+                    if len(resolved) == len(branch_schemas) and resolved:
+                        branch_properties = [
+                            frozenset(
+                                key
+                                for wire_name in cast(dict[str, JsonValue], item["properties"])
+                                for key in (wire_name, _wizard_python_field_name(wire_name))
+                            )
+                            for item in resolved
+                        ]
                 constrained_nullable_index: int | None = None
                 if union_key == "anyOf":
                     non_null_indices = [
@@ -3118,12 +3230,14 @@ class _PydanticSchemaEmitter:
                             for key, value in branch_schema.items()
                             if key not in {"maxItems", "minItems", "minLength", "minimum"}
                         }
-                    annotations.append(
-                        self._annotation(
-                            emitted_schema,
-                            path=(*path, f"{union_key}{index}"),
+                    branch_annotation = self._annotation(emitted_schema, path=(*path, f"{union_key}{index}"))
+                    if branch_properties is not None:
+                        branch_annotation = self._read_union_branch_annotation(
+                            branch_annotation,
+                            known_properties=frozenset().union(*branch_properties),
+                            branch_properties=branch_properties[index],
                         )
-                    )
+                    annotations.append(branch_annotation)
                 annotation = " | ".join(dict.fromkeys(annotations))
                 if constrained_nullable_schema is not None:
                     constrained_type = constrained_nullable_schema.get("type")
@@ -4572,9 +4686,10 @@ def _emit_rpc_namespace_dto(
             f"tagged RPC generated model name {name!r} collides with existing DTO class {name!r} "
             f"from #/components/schemas/{_json_pointer_token(component)}"
         )
-    prefix_items_helper = """import re
+    prefix_items_helper = """from collections.abc import Mapping
+import re
 from functools import partial
-from pydantic import AfterValidator, TypeAdapter
+from pydantic import AfterValidator, RootModel, TypeAdapter
 from typing import Protocol
 
 
@@ -4585,6 +4700,19 @@ class _TaggedRpcTypeAdapter(Protocol):
 def _validate_tagged_rpc_pattern(value: object, pattern: str) -> object:
     if not isinstance(value, str) or re.search(pattern, value) is None:
         raise ValueError("value does not match the OpenAPI pattern")
+    return value
+
+
+def _validate_tagged_rpc_read_union_branch(
+    value: object,
+    *,
+    known_properties: frozenset[str],
+    branch_properties: frozenset[str],
+) -> object:
+    if isinstance(value, Mapping) and any(
+        isinstance(key, str) and key in known_properties and key not in branch_properties for key in value
+    ):
+        raise ValueError("tagged RPC read union contains a field from another variant")
     return value
 
 

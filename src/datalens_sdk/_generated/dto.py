@@ -4935,9 +4935,10 @@ class UpdateHtmlPageResultReadDTO(BaseModel):
     entry: CreateHtmlPageResultEntryReadDTO
     warnings: list[str]
 
+from collections.abc import Mapping
 import re
 from functools import partial
-from pydantic import AfterValidator, TypeAdapter
+from pydantic import AfterValidator, RootModel, TypeAdapter
 from typing import Protocol
 
 
@@ -4948,6 +4949,19 @@ class _TaggedRpcTypeAdapter(Protocol):
 def _validate_tagged_rpc_pattern(value: object, pattern: str) -> object:
     if not isinstance(value, str) or re.search(pattern, value) is None:
         raise ValueError("value does not match the OpenAPI pattern")
+    return value
+
+
+def _validate_tagged_rpc_read_union_branch(
+    value: object,
+    *,
+    known_properties: frozenset[str],
+    branch_properties: frozenset[str],
+) -> object:
+    if isinstance(value, Mapping) and any(
+        isinstance(key, str) and key in known_properties and key not in branch_properties for key in value
+    ):
+        raise ValueError("tagged RPC read union contains a field from another variant")
     return value
 
 
@@ -4983,6 +4997,15 @@ class AddTrinoClusterCatalogArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class CancelSparkApplicationArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    application_id: Annotated[str, Field(min_length=1, max_length=50, alias='applicationId')]
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class CreateRestCatalogArgsBucketSettingsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5005,6 +5028,99 @@ class CreateRestCatalogArgsDTO(BaseModel):
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkApplicationArgsAnyOf0CatalogsItemDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    catalog_id: Annotated[str, Field(min_length=1, max_length=50, alias='catalogId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkApplicationArgsAnyOf0PysparkApplicationDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    archive_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='archiveUris')] = _UNVALIDATED_NONE_DEFAULT
+    args: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100)] = _UNVALIDATED_NONE_DEFAULT
+    exclude_packages: Annotated[list[Annotated[str, Field(max_length=255)]], Field(max_length=100, alias='excludePackages')] = _UNVALIDATED_NONE_DEFAULT
+    file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='fileUris')] = _UNVALIDATED_NONE_DEFAULT
+    jar_file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='jarFileUris')] = _UNVALIDATED_NONE_DEFAULT
+    main_python_file_uri: Annotated[str, Field(min_length=1, max_length=2047, alias='mainPythonFileUri')]
+    packages: Annotated[list[Annotated[str, Field(max_length=255)]], Field(max_length=100)] = _UNVALIDATED_NONE_DEFAULT
+    properties: dict[str, Annotated[str, Field(max_length=256)]] = _UNVALIDATED_NONE_DEFAULT
+    python_file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='pythonFileUris')] = _UNVALIDATED_NONE_DEFAULT
+    repositories: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=10)] = _UNVALIDATED_NONE_DEFAULT
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkApplicationArgsAnyOf0DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    catalogs: list[CreateSparkApplicationArgsAnyOf0CatalogsItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+    name: Annotated[str, Field(max_length=255), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:|[a-z][-a-z0-9]{1,61}[a-z0-9])\\Z'))] = _UNVALIDATED_NONE_DEFAULT
+    pyspark_application: CreateSparkApplicationArgsAnyOf0PysparkApplicationDTO = Field(alias='pysparkApplication')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkApplicationArgsAnyOf1SparkApplicationDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    archive_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='archiveUris')] = _UNVALIDATED_NONE_DEFAULT
+    args: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100)] = _UNVALIDATED_NONE_DEFAULT
+    exclude_packages: Annotated[list[Annotated[str, Field(max_length=255)]], Field(max_length=100, alias='excludePackages')] = _UNVALIDATED_NONE_DEFAULT
+    file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='fileUris')] = _UNVALIDATED_NONE_DEFAULT
+    jar_file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='jarFileUris')] = _UNVALIDATED_NONE_DEFAULT
+    main_class: Annotated[str, Field(max_length=255, alias='mainClass')] = _UNVALIDATED_NONE_DEFAULT
+    main_jar_file_uri: Annotated[str, Field(min_length=1, max_length=2047, alias='mainJarFileUri')]
+    packages: Annotated[list[Annotated[str, Field(max_length=255)]], Field(max_length=100)] = _UNVALIDATED_NONE_DEFAULT
+    properties: dict[str, Annotated[str, Field(max_length=256)]] = _UNVALIDATED_NONE_DEFAULT
+    repositories: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=10)] = _UNVALIDATED_NONE_DEFAULT
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkApplicationArgsAnyOf1DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    catalogs: list[CreateSparkApplicationArgsAnyOf0CatalogsItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+    name: Annotated[str, Field(max_length=255), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:|[a-z][-a-z0-9]{1,61}[a-z0-9])\\Z'))] = _UNVALIDATED_NONE_DEFAULT
+    spark_application: CreateSparkApplicationArgsAnyOf1SparkApplicationDTO = Field(alias='sparkApplication')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkApplicationArgsAnyOf2SparkConnectApplicationDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    archive_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='archiveUris')] = _UNVALIDATED_NONE_DEFAULT
+    exclude_packages: Annotated[list[Annotated[str, Field(max_length=255)]], Field(max_length=100, alias='excludePackages')] = _UNVALIDATED_NONE_DEFAULT
+    file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='fileUris')] = _UNVALIDATED_NONE_DEFAULT
+    jar_file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='jarFileUris')] = _UNVALIDATED_NONE_DEFAULT
+    packages: Annotated[list[Annotated[str, Field(max_length=255)]], Field(max_length=100)] = _UNVALIDATED_NONE_DEFAULT
+    properties: dict[str, Annotated[str, Field(max_length=256)]] = _UNVALIDATED_NONE_DEFAULT
+    repositories: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=10)] = _UNVALIDATED_NONE_DEFAULT
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkApplicationArgsAnyOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    catalogs: list[CreateSparkApplicationArgsAnyOf0CatalogsItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+    name: Annotated[str, Field(max_length=255), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:|[a-z][-a-z0-9]{1,61}[a-z0-9])\\Z'))] = _UNVALIDATED_NONE_DEFAULT
+    spark_connect_application: CreateSparkApplicationArgsAnyOf2SparkConnectApplicationDTO = Field(alias='sparkConnectApplication')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateSparkApplicationArgsDTO(RootModel[CreateSparkApplicationArgsAnyOf0DTO | CreateSparkApplicationArgsAnyOf1DTO | CreateSparkApplicationArgsAnyOf2DTO]):
+    def to_payload(self) -> dict[str, object]:
+        return self.root.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
 class CreateSparkClusterArgsConfigDependenciesDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
@@ -5151,14 +5267,6 @@ class CreateSqlQueryArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
-class CreateTrinoClusterArgsCatalogsConfigItemDTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    catalog_id: Annotated[str, Field(min_length=1, max_length=50, alias='catalogId')]
-
-    def to_payload(self) -> dict[str, object]:
-        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
-
 class CreateTrinoClusterArgsWorkerConfigResourcesDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5196,7 +5304,7 @@ class CreateTrinoClusterArgsWorkerConfigDTO(BaseModel):
 class CreateTrinoClusterArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
-    catalogs_config: list[CreateTrinoClusterArgsCatalogsConfigItemDTO] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='catalogsConfig')
+    catalogs_config: list[CreateSparkApplicationArgsAnyOf0CatalogsItemDTO] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='catalogsConfig')
     cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
     collection_id: Annotated[str, Field(min_length=1, max_length=50, alias='collectionId')]
     description: Annotated[str, Field(max_length=256)] = _UNVALIDATED_NONE_DEFAULT
@@ -5245,6 +5353,15 @@ class GetLakehouseOperationArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     operation_id: Annotated[str, Field(min_length=1, max_length=50, alias='operationId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class GetSparkApplicationArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    application_id: Annotated[str, Field(min_length=1, max_length=50, alias='applicationId')]
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
@@ -5304,6 +5421,28 @@ class ListCatalogsArgsDTO(BaseModel):
     page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
     reverse_order: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='reverseOrder')
     sort_by: Literal['createdAt', 'name', 'updatedAt'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='sortBy')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class ListSparkApplicationLogArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    application_id: Annotated[str, Field(min_length=1, max_length=50, alias='applicationId')]
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+    page_size: Annotated[int, Field(ge=0, le=1048576, alias='pageSize')] = _UNVALIDATED_NONE_DEFAULT
+    page_token: Annotated[str, Field(max_length=200, alias='pageToken')] = _UNVALIDATED_NONE_DEFAULT
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class ListSparkApplicationsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+    filter: Annotated[list[Annotated[str, Field(max_length=200), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:name|created_by|application_type|catalog_id)="[^"]*"\\Z'))]], Field(max_length=100)] = _UNVALIDATED_NONE_DEFAULT
+    page_size: Annotated[int, Field(ge=0, le=1000, alias='pageSize')] = _UNVALIDATED_NONE_DEFAULT
+    page_token: Annotated[str, Field(max_length=200, alias='pageToken')] = _UNVALIDATED_NONE_DEFAULT
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
@@ -5569,6 +5708,126 @@ class ListCatalogsResultReadDTO(BaseModel):
     next_page_token: str = Field(alias='nextPageToken')
     rest_catalogs: list[ListCatalogsResultRestCatalogsItemReadDTO] = Field(alias='restCatalogs')
 
+class ListSparkApplicationLogResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    content: str
+    next_page_token: Annotated[str, Field(max_length=200, alias='nextPageToken')]
+
+class SparkApplicationAnyOf0CatalogsItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    catalog_id: Annotated[str, Field(min_length=1, max_length=50, alias='catalogId')]
+
+class SparkApplicationAnyOf0PysparkApplicationReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    archive_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='archiveUris')]
+    args: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100)]
+    exclude_packages: Annotated[list[Annotated[str, Field(max_length=255)]], Field(max_length=100, alias='excludePackages')]
+    file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='fileUris')]
+    jar_file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='jarFileUris')]
+    main_python_file_uri: Annotated[str, Field(min_length=1, max_length=2047, alias='mainPythonFileUri')]
+    packages: Annotated[list[Annotated[str, Field(max_length=255)]], Field(max_length=100)]
+    properties: dict[str, Annotated[str, Field(max_length=256)]]
+    python_file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='pythonFileUris')]
+    repositories: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=10)]
+
+class SparkApplicationAnyOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    application_spec: Literal['pysparkApplication'] = Field(alias='applicationSpec')
+    catalogs: list[SparkApplicationAnyOf0CatalogsItemReadDTO]
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+    connect_url: str = Field(alias='connectUrl')
+    created_at: LakehouseOperationCreatedAtReadDTO = Field(alias='createdAt')
+    created_by: Annotated[str, Field(min_length=1, alias='createdBy')]
+    finished_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='finishedAt')
+    id: Annotated[str, Field(min_length=1, max_length=50)]
+    name: str
+    pyspark_application: SparkApplicationAnyOf0PysparkApplicationReadDTO = Field(alias='pysparkApplication')
+    started_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='startedAt')
+    status: Literal['CANCELLED', 'CANCELLING', 'DONE', 'ERROR', 'PENDING', 'PROVISIONING', 'RUNNING', 'STATUS_UNSPECIFIED']
+
+class SparkApplicationAnyOf1SparkApplicationReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    archive_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='archiveUris')]
+    args: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100)]
+    exclude_packages: Annotated[list[Annotated[str, Field(max_length=255)]], Field(max_length=100, alias='excludePackages')]
+    file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='fileUris')]
+    jar_file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='jarFileUris')]
+    main_class: Annotated[str, Field(max_length=255, alias='mainClass')]
+    main_jar_file_uri: Annotated[str, Field(min_length=1, max_length=2047, alias='mainJarFileUri')]
+    packages: Annotated[list[Annotated[str, Field(max_length=255)]], Field(max_length=100)]
+    properties: dict[str, Annotated[str, Field(max_length=256)]]
+    repositories: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=10)]
+
+class SparkApplicationAnyOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    application_spec: Literal['sparkApplication'] = Field(alias='applicationSpec')
+    catalogs: list[SparkApplicationAnyOf0CatalogsItemReadDTO]
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+    connect_url: str = Field(alias='connectUrl')
+    created_at: LakehouseOperationCreatedAtReadDTO = Field(alias='createdAt')
+    created_by: Annotated[str, Field(min_length=1, alias='createdBy')]
+    finished_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='finishedAt')
+    id: Annotated[str, Field(min_length=1, max_length=50)]
+    name: str
+    spark_application: SparkApplicationAnyOf1SparkApplicationReadDTO = Field(alias='sparkApplication')
+    started_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='startedAt')
+    status: Literal['CANCELLED', 'CANCELLING', 'DONE', 'ERROR', 'PENDING', 'PROVISIONING', 'RUNNING', 'STATUS_UNSPECIFIED']
+
+class SparkApplicationAnyOf2SparkConnectApplicationReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    archive_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='archiveUris')]
+    exclude_packages: Annotated[list[Annotated[str, Field(max_length=255)]], Field(max_length=100, alias='excludePackages')]
+    file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='fileUris')]
+    jar_file_uris: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=100, alias='jarFileUris')]
+    packages: Annotated[list[Annotated[str, Field(max_length=255)]], Field(max_length=100)]
+    properties: dict[str, Annotated[str, Field(max_length=256)]]
+    repositories: Annotated[list[Annotated[str, Field(max_length=2047)]], Field(max_length=10)]
+
+class SparkApplicationAnyOf2ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    application_spec: Literal['sparkConnectApplication'] = Field(alias='applicationSpec')
+    catalogs: list[SparkApplicationAnyOf0CatalogsItemReadDTO]
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+    connect_url: str = Field(alias='connectUrl')
+    created_at: LakehouseOperationCreatedAtReadDTO = Field(alias='createdAt')
+    created_by: Annotated[str, Field(min_length=1, alias='createdBy')]
+    finished_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='finishedAt')
+    id: Annotated[str, Field(min_length=1, max_length=50)]
+    name: str
+    spark_connect_application: SparkApplicationAnyOf2SparkConnectApplicationReadDTO = Field(alias='sparkConnectApplication')
+    started_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='startedAt')
+    status: Literal['CANCELLED', 'CANCELLING', 'DONE', 'ERROR', 'PENDING', 'PROVISIONING', 'RUNNING', 'STATUS_UNSPECIFIED']
+
+class SparkApplicationAnyOf3ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    catalogs: list[SparkApplicationAnyOf0CatalogsItemReadDTO]
+    cluster_id: Annotated[str, Field(min_length=1, max_length=50, alias='clusterId')]
+    connect_url: str = Field(alias='connectUrl')
+    created_at: LakehouseOperationCreatedAtReadDTO = Field(alias='createdAt')
+    created_by: Annotated[str, Field(min_length=1, alias='createdBy')]
+    finished_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='finishedAt')
+    id: Annotated[str, Field(min_length=1, max_length=50)]
+    name: str
+    started_at: None | LakehouseOperationCreatedAtReadDTO = Field(alias='startedAt')
+    status: Literal['CANCELLED', 'CANCELLING', 'DONE', 'ERROR', 'PENDING', 'PROVISIONING', 'RUNNING', 'STATUS_UNSPECIFIED']
+
+SparkApplicationReadDTO = Annotated[SparkApplicationAnyOf0ReadDTO, BeforeValidator(partial(_validate_tagged_rpc_read_union_branch, known_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'pysparkApplication', 'pyspark_application', 'sparkApplication', 'sparkConnectApplication', 'spark_application', 'spark_connect_application', 'startedAt', 'started_at', 'status']), branch_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'pysparkApplication', 'pyspark_application', 'startedAt', 'started_at', 'status'])))] | Annotated[SparkApplicationAnyOf1ReadDTO, BeforeValidator(partial(_validate_tagged_rpc_read_union_branch, known_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'pysparkApplication', 'pyspark_application', 'sparkApplication', 'sparkConnectApplication', 'spark_application', 'spark_connect_application', 'startedAt', 'started_at', 'status']), branch_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'sparkApplication', 'spark_application', 'startedAt', 'started_at', 'status'])))] | Annotated[SparkApplicationAnyOf2ReadDTO, BeforeValidator(partial(_validate_tagged_rpc_read_union_branch, known_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'pysparkApplication', 'pyspark_application', 'sparkApplication', 'sparkConnectApplication', 'spark_application', 'spark_connect_application', 'startedAt', 'started_at', 'status']), branch_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'sparkConnectApplication', 'spark_connect_application', 'startedAt', 'started_at', 'status'])))] | Annotated[SparkApplicationAnyOf3ReadDTO, BeforeValidator(partial(_validate_tagged_rpc_read_union_branch, known_properties=frozenset(['applicationSpec', 'application_spec', 'catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'pysparkApplication', 'pyspark_application', 'sparkApplication', 'sparkConnectApplication', 'spark_application', 'spark_connect_application', 'startedAt', 'started_at', 'status']), branch_properties=frozenset(['catalogs', 'clusterId', 'cluster_id', 'connectUrl', 'connect_url', 'createdAt', 'createdBy', 'created_at', 'created_by', 'finishedAt', 'finished_at', 'id', 'name', 'startedAt', 'started_at', 'status'])))]
+
+class ListSparkApplicationsResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    applications: list[SparkApplicationReadDTO]
+    next_page_token: Annotated[str, Field(max_length=200, alias='nextPageToken')]
+
 class SparkClusterConfigDependenciesObjectReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
 
@@ -5658,11 +5917,6 @@ class ListSparkResourcePresetsResultReadDTO(BaseModel):
     next_page_token: str = Field(alias='nextPageToken')
     resource_presets: list[SparkResourcePresetReadDTO] = Field(alias='resourcePresets')
 
-class TrinoClusterConfigCatalogsConfigItemReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
-
-    catalog_id: Annotated[str, Field(min_length=1, max_length=50, alias='catalogId')]
-
 class TrinoClusterConfigCoordinatorConfigResourcesReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
 
@@ -5694,7 +5948,7 @@ class TrinoClusterConfigWorkerConfigReadDTO(BaseModel):
 class TrinoClusterConfigReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
 
-    catalogs_config: list[TrinoClusterConfigCatalogsConfigItemReadDTO] = Field(alias='catalogsConfig')
+    catalogs_config: list[SparkApplicationAnyOf0CatalogsItemReadDTO] = Field(alias='catalogsConfig')
     coordinator_config: TrinoClusterConfigCoordinatorConfigReadDTO = Field(alias='coordinatorConfig')
     trino_version: str = Field(alias='trinoVersion')
     worker_config: TrinoClusterConfigWorkerConfigReadDTO = Field(alias='workerConfig')

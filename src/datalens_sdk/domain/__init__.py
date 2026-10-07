@@ -136,6 +136,14 @@ from datalens_sdk.domain.rest_catalog import (
     RestCatalogSortField,
 )
 from datalens_sdk.domain.revisions import EntryRevision
+from datalens_sdk.domain.spark_application import (
+    SparkApplication,
+    SparkApplicationCatalogRef,
+    SparkApplicationConnectSpec,
+    SparkApplicationPySparkSpec,
+    SparkApplicationSparkSpec,
+    SparkApplicationStatus,
+)
 from datalens_sdk.domain.spark_cluster import (
     SparkAutoScalePolicy,
     SparkCluster,
@@ -318,6 +326,12 @@ __all__ = [
     "SortDirection",
     "Source",
     "SourceCreate",
+    "SparkApplication",
+    "SparkApplicationCatalogRef",
+    "SparkApplicationConnectSpec",
+    "SparkApplicationPySparkSpec",
+    "SparkApplicationSparkSpec",
+    "SparkApplicationStatus",
     "SparkAutoScalePolicy",
     "SparkCluster",
     "SparkClusterConfig",

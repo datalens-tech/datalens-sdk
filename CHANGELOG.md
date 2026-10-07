@@ -15,7 +15,7 @@
   `optional_fields()`, and `fields_help()` for both public installations.
   Use `builder.connector` for connector identity.
 - Update bundled Yandex Cloud lakehouse and permission contracts:
-  `ListSparkJobsArgs.filter` becomes an array;
+  `ListSparkApplicationsArgs.filter` becomes an array;
   `ListSparkClustersArgs.pageSize` and `ListTrinoClustersArgs.pageSize` reject
   negative values; `SparkCluster.entryId` is required; and
   `DlsPermissionParticipant.approver`, `description`, `extras`, and `requester`
@@ -33,6 +33,7 @@
 
 - Add Yandex Cloud Trino catalog selection, filtering, attachment, and detachment support.
 - Add Yandex Cloud Trino cluster create, start, stop, and delete support.
+- Add Yandex Cloud Spark application get, list, and refresh support.
 - Add Yandex Cloud Spark cluster create, start, stop, and delete support.
 - Add Yandex Cloud Spark cluster and resource preset get, list, and refresh support.
 - Add Yandex Cloud Trino cluster and resource preset get, list, and refresh support.

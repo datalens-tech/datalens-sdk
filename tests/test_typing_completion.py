@@ -60,6 +60,12 @@ from datalens_sdk import (
     RawWizardChartCreate,
     RawWizardChartReplace,
     RestCatalogCreate,
+    SparkApplication,
+    SparkApplicationCatalogRef,
+    SparkApplicationConnectSpec,
+    SparkApplicationPySparkSpec,
+    SparkApplicationSparkSpec,
+    SparkApplicationStatus,
     SparkAutoScalePolicy,
     SparkCluster,
     SparkClusterConfig,
@@ -1054,6 +1060,26 @@ def test_spark_read_surface_is_visible_to_static_tools() -> None:
         assert_type(cluster.config.resource_pools.driver.scale_policy, SparkScalePolicy)
         assert_type(SparkFixedScalePolicy(size=1), SparkFixedScalePolicy)
         assert_type(SparkAutoScalePolicy(min_size=0, max_size=10, initial_size=1), SparkAutoScalePolicy)
+
+
+def test_spark_application_read_types_preserve_variant_narrowing() -> None:
+    client = DataLensClientYC(auth=None, transport=_transport())
+    if TYPE_CHECKING:
+        application = client.get.spark_application(cluster="managed-1", by_id="application-1")
+        pager = client.list.spark_applications(cluster="managed-1", filters=['name="analytics"'])
+        assert_type(application, SparkApplication)
+        assert_type(application.refresh(), SparkApplication)
+        assert_type(application.status, SparkApplicationStatus)
+        assert_type(application.catalogs, tuple[SparkApplicationCatalogRef, ...])
+        assert_type(application.started_at, LakehouseTimestamp | None)
+        assert_type(pager, Pager[SparkApplication])
+        assert_type(next(pager.pages()), Page[SparkApplication])
+        if isinstance(application.spec, SparkApplicationSparkSpec):
+            assert_type(application.spec.main_jar_file_uri, str)
+        elif isinstance(application.spec, SparkApplicationPySparkSpec):
+            assert_type(application.spec.main_python_file_uri, str)
+        elif isinstance(application.spec, SparkApplicationConnectSpec):
+            assert_type(application.spec.properties, Mapping[str, str])
 
 
 def test_rest_catalog_list_is_typed_only_on_yandex_cloud() -> None:
