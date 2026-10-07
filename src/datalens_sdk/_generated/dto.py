@@ -4983,6 +4983,29 @@ class AddTrinoClusterCatalogArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class CreateRestCatalogArgsBucketSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    alias: Annotated[str, Field(min_length=1, max_length=50)]
+    description: Annotated[str, Field(max_length=1024)] = _UNVALIDATED_NONE_DEFAULT
+    max_size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[0-9]+\\Z'))] = Field(alias='maxSize')
+    storage_class: Literal['COLD', 'GLACIER', 'ICE', 'NEARLINE', 'STANDARD', 'STANDARD_IA'] = Field(alias='storageClass')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateRestCatalogArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    bucket_settings: CreateRestCatalogArgsBucketSettingsDTO = Field(alias='bucketSettings')
+    cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
+    description: Annotated[str, Field(max_length=200)] = _UNVALIDATED_NONE_DEFAULT
+    labels: dict[str, Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[-_0-9a-z]*\\Z'))]] = _UNVALIDATED_NONE_DEFAULT
+    name: Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[a-z](?:[a-z0-9_-]*[a-z0-9])?\\Z'))]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class CreateSqlQueryArgsParamsItemAllOf0DTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5149,6 +5172,20 @@ class GetTrinoResourcePresetArgsDTO(BaseModel):
 
     cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
     resource_preset_id: Annotated[str, Field(min_length=1, max_length=50, alias='resourcePresetId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class ListCatalogsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    cloud_environment_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='cloudEnvironmentId')
+    filter: list[str] = _UNVALIDATED_NONE_DEFAULT
+    include_permissions: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includePermissions')
+    page_size: Annotated[int, Field(ge=0, alias='pageSize')] = _UNVALIDATED_NONE_DEFAULT
+    page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
+    reverse_order: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='reverseOrder')
+    sort_by: Literal['createdAt', 'name', 'updatedAt'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='sortBy')
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
@@ -5327,6 +5364,55 @@ class LakehouseOperationReadDTO(BaseModel):
     metadata: dict[str, JsonValue]
     modified_at: LakehouseOperationCreatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='modifiedAt')
     response: dict[str, JsonValue] = _UNVALIDATED_NONE_DEFAULT
+
+class ListCatalogsResultRestCatalogsItemBucketDetailsUpdatedAtReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    nanos: int | float = _UNVALIDATED_NONE_DEFAULT
+    seconds: str
+
+class ListCatalogsResultRestCatalogsItemBucketDetailsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    max_size: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='maxSize')
+    updated_at: ListCatalogsResultRestCatalogsItemBucketDetailsUpdatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='updatedAt')
+    used_size: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='usedSize')
+
+class ListCatalogsResultRestCatalogsItemBucketSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    alias: str
+    description: str = _UNVALIDATED_NONE_DEFAULT
+    max_size: str = Field(alias='maxSize')
+    storage_class: str = Field(alias='storageClass')
+
+class ListCatalogsResultRestCatalogsItemBucketReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    details: ListCatalogsResultRestCatalogsItemBucketDetailsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    settings: ListCatalogsResultRestCatalogsItemBucketSettingsReadDTO
+
+class ListCatalogsResultRestCatalogsItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    bucket: ListCatalogsResultRestCatalogsItemBucketReadDTO
+    cloud_environment_id: str = Field(alias='cloudEnvironmentId')
+    created_at: ListCatalogsResultRestCatalogsItemBucketDetailsUpdatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='createdAt')
+    created_by_id: str = Field(alias='createdById')
+    description: str
+    id: str
+    labels: dict[str, str] = _UNVALIDATED_NONE_DEFAULT
+    name: str
+    organization_id: str = Field(alias='organizationId')
+    permissions: dict[str, bool] = _UNVALIDATED_NONE_DEFAULT
+    tenant_id: str = Field(alias='tenantId')
+    updated_at: ListCatalogsResultRestCatalogsItemBucketDetailsUpdatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='updatedAt')
+
+class ListCatalogsResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    next_page_token: str = Field(alias='nextPageToken')
+    rest_catalogs: list[ListCatalogsResultRestCatalogsItemReadDTO] = Field(alias='restCatalogs')
 
 class TrinoClusterConfigCatalogsConfigItemReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)

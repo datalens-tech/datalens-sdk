@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, cast, get_args, get_type_hints
 import httpx
 from typing_extensions import assert_type
 
+import datalens_sdk as sdk
 from datalens_sdk import (
     CacheInvalidationSource,
     Collection,
@@ -58,6 +59,7 @@ from datalens_sdk import (
     RawQLChartReplace,
     RawWizardChartCreate,
     RawWizardChartReplace,
+    RestCatalogCreate,
     SqlQuery,
     SqlQueryCell,
     SqlQueryCreate,
@@ -145,6 +147,14 @@ from datalens_sdk.domain import (
     SourceCreate,
 )
 from datalens_sdk.domain.fields import FieldRef
+from datalens_sdk.domain.rest_catalog import (
+    RestCatalog,
+    RestCatalogBucket,
+    RestCatalogBucketDetails,
+    RestCatalogBucketSettings,
+    RestCatalogListOptions,
+    RestCatalogSortField,
+)
 from datalens_sdk.raw import (
     RawConnectionCreateFactory,
     RawConnectionReplaceFactory,
@@ -752,6 +762,18 @@ def test_yacloud_client_namespaces_are_visible_to_static_tools() -> None:
         RawDashboardCreate,
     )
     assert_type(client.create.dataset, DatasetCreateFactory)
+    if TYPE_CHECKING:
+        rest_catalog_create = client.create.rest_catalog(
+            name="analytics",
+            cloud_environment_id="environment-1",
+            bucket_settings=RestCatalogBucketSettings(
+                storage_class="STANDARD",
+                max_size="1073741824",
+                alias="analytics-bucket",
+            ),
+        )
+        assert_type(rest_catalog_create, RestCatalogCreate)
+        assert_type(rest_catalog_create.build(), LakehouseOperation)
     assert_type(client.get, YCGetNamespace)
     assert_type(client.list, YCListNamespace)
     assert_type(client.data, DataNamespace)
@@ -948,6 +970,61 @@ def test_lakehouse_operation_surface_is_visible_to_static_tools() -> None:
         assert_type(LakehouseOperationError(code=0, message="error").details, tuple[object, ...])
         timeout_error = DataLensOperationTimeoutError(operation_id="operation-1", timeout=1.0, last_operation=operation)
         assert_type(timeout_error.last_operation, LakehouseOperation)
+
+
+def test_rest_catalog_list_is_typed_only_on_yandex_cloud() -> None:
+    client = DataLensClientYC(auth=None, transport=_transport())
+    enterprise = DataLensClientEnterprise(auth=None, base_url="https://enterprise.example.test", transport=_transport())
+    sort_by: RestCatalogSortField = "updated_at"
+
+    assert sdk.RestCatalog is RestCatalog
+    assert sdk.RestCatalogBucket is RestCatalogBucket
+    assert sdk.RestCatalogBucketSettings is RestCatalogBucketSettings
+    assert sdk.RestCatalogBucketDetails is RestCatalogBucketDetails
+    assert sdk.RestCatalogListOptions is RestCatalogListOptions
+    assert sdk.RestCatalogSortField is RestCatalogSortField
+    assert_type(sort_by, RestCatalogSortField)
+    assert_type(client.list, YCListNamespace)
+    assert_type(enterprise.list, ListNamespace)
+
+    if TYPE_CHECKING:
+        pager = client.list.rest_catalogs(
+            cloud_environment_id="environment-1",
+            filters=["name='analytics'"],
+            include_permissions=False,
+            sort_by=sort_by,
+            order="desc",
+            page_size=10,
+            page_token="resume",
+        )
+        assert_type(pager, Pager[RestCatalog])
+        page = next(pager.pages())
+        assert_type(page, Page[RestCatalog])
+        catalog = page.items[0]
+        assert_type(catalog.id, str)
+        assert_type(catalog.installation, str)
+        assert_type(catalog.organization_id, str)
+        assert_type(catalog.tenant_id, str)
+        assert_type(catalog.cloud_environment_id, str)
+        assert_type(catalog.name, str)
+        assert_type(catalog.description, str)
+        assert_type(catalog.created_by_id, str)
+        assert_type(catalog.bucket, RestCatalogBucket)
+        assert_type(catalog.bucket.settings, RestCatalogBucketSettings)
+        assert_type(catalog.bucket.settings.storage_class, str)
+        assert_type(catalog.bucket.settings.max_size, str)
+        assert_type(catalog.bucket.settings.alias, str)
+        assert_type(catalog.bucket.settings.description, str | None)
+        assert_type(catalog.bucket.details, RestCatalogBucketDetails | None)
+        assert_type(catalog.labels, Mapping[str, str])
+        assert_type(catalog.permissions, Mapping[str, bool] | None)
+        assert_type(catalog.created_at, LakehouseTimestamp | None)
+        assert_type(catalog.updated_at, LakehouseTimestamp | None)
+        assert_type(catalog.raw, Mapping[str, object])
+        if catalog.bucket.details is not None:
+            assert_type(catalog.bucket.details.max_size, str | None)
+            assert_type(catalog.bucket.details.used_size, str | None)
+            assert_type(catalog.bucket.details.updated_at, LakehouseTimestamp | None)
 
 
 def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> None:
