@@ -529,7 +529,7 @@ def test_trino_list_catalog_filter_rejects_invalid_references_before_http(refere
 def test_trino_attach_and_detach_use_distinct_payloads_and_bind_operations() -> None:
     pending = {"id": "operation-1", "done": False, "metadata": {}}
     recorder = RecordedTrinoTransport(
-        httpx.Response(200, json=_cluster_response()),
+        httpx.Response(200, json={**_cluster_response(), "entryId": "entry-3"}),
         httpx.Response(200, json=pending),
         httpx.Response(200, json=pending),
         httpx.Response(200, json={**pending, "done": True}),
@@ -551,8 +551,8 @@ def test_trino_attach_and_detach_use_distinct_payloads_and_bind_operations() -> 
     ]
     assert recorder.bodies() == [
         {"id": "trino-1"},
-        {"clusterId": "managed-2", "catalog": {"catalogId": "catalog-1"}},
-        {"clusterId": "managed-2", "catalogId": "catalog-2"},
+        {"clusterId": "trino-1", "catalog": {"catalogId": "catalog-1"}},
+        {"clusterId": "trino-1", "catalogId": "catalog-2"},
         {"operationId": "operation-1"},
     ]
 
@@ -589,7 +589,7 @@ def test_trino_catalog_mutations_reject_invalid_references_before_http(
 
 
 @pytest.mark.parametrize("method", ["attach_catalog", "detach_catalog"])
-def test_trino_catalog_mutations_reject_missing_cluster_id_and_unbound_cluster(method: str) -> None:
+def test_trino_catalog_mutations_reject_missing_lakehouse_id_and_unbound_cluster(method: str) -> None:
     recorder = RecordedTrinoTransport()
     with DataLensHTTPClient(
         installation="yacloud",
@@ -602,7 +602,7 @@ def test_trino_catalog_mutations_reject_missing_cluster_id_and_unbound_cluster(m
             _cluster_response(), installation="yacloud", operations=service, operation="getTrinoCluster"
         )
         with pytest.raises(DataLensValidationError):
-            getattr(replace(cluster, cluster_id=""), method)("catalog-1")
+            getattr(replace(cluster, id=""), method)("catalog-1")
         with pytest.raises(DataLensConfigurationError):
             getattr(replace(cluster, _operations=None), method)("catalog-1")
     assert recorder.requests == []

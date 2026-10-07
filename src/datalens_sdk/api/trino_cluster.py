@@ -117,9 +117,7 @@ class TrinoClusterService(TrinoClusterOperations):
             catalog, installation=cluster.installation, cloud_environment_id=cluster.cloud_environment_id
         )
         try:
-            dto = TrinoClusterConverter.attach_catalog_payload(
-                cluster.cluster_id, catalog_id, dto_module=self._dto_module
-            )
+            dto = TrinoClusterConverter.attach_catalog_payload(cluster.id, catalog_id, dto_module=self._dto_module)
             return self._to_operation(self._api.attach_catalog(dto.to_payload()), operation="addTrinoClusterCatalog")
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="addTrinoClusterCatalog", reason=str(exc)) from exc
@@ -129,9 +127,7 @@ class TrinoClusterService(TrinoClusterOperations):
             catalog, installation=cluster.installation, cloud_environment_id=cluster.cloud_environment_id
         )
         try:
-            dto = TrinoClusterConverter.detach_catalog_payload(
-                cluster.cluster_id, catalog_id, dto_module=self._dto_module
-            )
+            dto = TrinoClusterConverter.detach_catalog_payload(cluster.id, catalog_id, dto_module=self._dto_module)
             return self._to_operation(self._api.detach_catalog(dto.to_payload()), operation="deleteTrinoClusterCatalog")
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="deleteTrinoClusterCatalog", reason=str(exc)) from exc
