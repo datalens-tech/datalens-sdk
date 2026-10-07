@@ -10,6 +10,11 @@ from typing_extensions import assert_type
 import datalens_sdk as sdk
 from datalens_sdk import (
     CacheInvalidationSource,
+    CloudEnvironment,
+    CloudEnvironmentCreate,
+    CloudEnvironmentStatus,
+    CloudEnvironmentStorageSettings,
+    CloudEnvironmentUpdate,
     Collection,
     CollectionCreate,
     CollectionSummary,
@@ -1031,6 +1036,25 @@ def test_lakehouse_operation_surface_is_visible_to_static_tools() -> None:
         assert_type(LakehouseOperationError(code=0, message="error").details, tuple[object, ...])
         timeout_error = DataLensOperationTimeoutError(operation_id="operation-1", timeout=1.0, last_operation=operation)
         assert_type(timeout_error.last_operation, LakehouseOperation)
+
+
+def test_cloud_environment_surface_is_typed_for_yandex_cloud() -> None:
+    client = DataLensClientYC(auth=None, transport=_transport())
+
+    if TYPE_CHECKING:
+        builder = client.create.cloud_environment(name="analytics", cloud_id="cloud-1", subnet_id="subnet-1")
+        assert_type(builder, CloudEnvironmentCreate)
+        assert_type(builder.description("").security_group_ids([]).storage(max_size="0"), CloudEnvironmentCreate)
+        assert_type(builder.build(), LakehouseOperation)
+        environment = client.get.cloud_environment(by_id="environment-1", include_permissions=False)
+        assert_type(environment, CloudEnvironment)
+        assert_type(environment.status, CloudEnvironmentStatus)
+        assert_type(environment.storage, CloudEnvironmentStorageSettings | None)
+        assert_type(environment.refresh(), CloudEnvironment)
+        assert_type(environment.update(), CloudEnvironmentUpdate)
+        assert_type(environment.update().description("").execute(), LakehouseOperation)
+        assert_type(environment.delete(), LakehouseOperation)
+        assert_type(client.list.cloud_environments(), Pager[CloudEnvironment])
 
 
 def test_spark_read_surface_is_visible_to_static_tools() -> None:

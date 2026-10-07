@@ -12,6 +12,7 @@ import warnings
 import httpx
 
 from datalens_sdk.api.chart import ChartAPI, ChartService
+from datalens_sdk.api.cloud_environment import CloudEnvironmentAPI, CloudEnvironmentService
 from datalens_sdk.api.collection import CollectionAPI, CollectionService
 from datalens_sdk.api.connection import ConnectionAPI, ConnectionService
 from datalens_sdk.api.dashboard import DashboardAPI, DashboardService
@@ -36,6 +37,7 @@ from datalens_sdk.auth import (
     YCIAMAuthProvider,
     _AuthProviderHTTPXAuth,
 )
+from datalens_sdk.converter.cloud_environment import CloudEnvironmentDtoModule
 from datalens_sdk.converter.collection import CollectionDtoModule
 from datalens_sdk.converter.connection import ConnectionDtoModule
 from datalens_sdk.converter.dashboard import DashboardDtoModule
@@ -53,6 +55,11 @@ from datalens_sdk.converter.sql_query import SqlQueryDtoModule
 from datalens_sdk.converter.trino_cluster import TrinoClusterDtoModule
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
 from datalens_sdk.converter.workbook import WorkbookDtoModule
+from datalens_sdk.domain.cloud_environment import (
+    CloudEnvironment,
+    CloudEnvironmentCreate,
+    CloudEnvironmentListOptions,
+)
 from datalens_sdk.domain.collection import Collection, CollectionCreate
 from datalens_sdk.domain.common_types import SortDirection, UILanguage, UITheme
 from datalens_sdk.domain.connection import Connection
@@ -92,6 +99,7 @@ from datalens_sdk.domain.navigation import (
 )
 from datalens_sdk.domain.ports import (
     ChartOperations,
+    CloudEnvironmentOperations,
     CollectionOperations,
     ConnectionOperations,
     DashboardOperations,
@@ -418,6 +426,7 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
         trino_cluster_operations: TrinoClusterOperations,
         spark_cluster_operations: SparkClusterOperations,
         spark_application_operations: SparkApplicationOperations,
+        cloud_environment_operations: CloudEnvironmentOperations,
         installation: str,
         connection_operations: ConnectionOperations,
         dashboard_operations: DashboardOperations,
@@ -454,6 +463,21 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
         self._trino_cluster_operations = trino_cluster_operations
         self._spark_cluster_operations = spark_cluster_operations
         self._spark_application_operations = spark_application_operations
+        self._cloud_environment_operations = cloud_environment_operations
+
+    def cloud_environment(
+        self,
+        *,
+        name: str,
+        cloud_id: str,
+        subnet_id: str,
+    ) -> CloudEnvironmentCreate:
+        return CloudEnvironmentCreate(
+            name=name,
+            cloud_id=cloud_id,
+            subnet_id=subnet_id,
+            operations=self._cloud_environment_operations,
+        )
 
     def spark_application(self, *, cluster: SparkCluster | str, name: str | None = None) -> SparkApplicationCreate:
         return SparkApplicationCreate(
@@ -734,6 +758,7 @@ class YCGetNamespace(GetNamespace):
         spark_cluster_operations: SparkClusterOperations,
         spark_application_operations: SparkApplicationOperations,
         trino_cluster_operations: TrinoClusterOperations,
+        cloud_environment_operations: CloudEnvironmentOperations,
         chart_operations: ChartOperations,
         collection_operations: CollectionOperations,
         connection_operations: ConnectionOperations,
@@ -758,6 +783,10 @@ class YCGetNamespace(GetNamespace):
         self._spark_cluster_operations = spark_cluster_operations
         self._spark_application_operations = spark_application_operations
         self._trino_cluster_operations = trino_cluster_operations
+        self._cloud_environment_operations = cloud_environment_operations
+
+    def cloud_environment(self, *, by_id: str, include_permissions: bool | None = None) -> CloudEnvironment:
+        return self._cloud_environment_operations.get_cloud_environment(by_id, include_permissions=include_permissions)
 
     def spark_cluster(self, *, by_id: str) -> SparkCluster:
         if not isinstance(by_id, str) or not by_id:
@@ -828,11 +857,30 @@ class YCListNamespace(ListNamespace):
         spark_application_operations: SparkApplicationOperations,
         trino_cluster_operations: TrinoClusterOperations,
         rest_catalog_operations: RestCatalogOperations,
+        cloud_environment_operations: CloudEnvironmentOperations,
     ) -> None:
         self._spark_cluster_operations = spark_cluster_operations
         self._spark_application_operations = spark_application_operations
         self._trino_cluster_operations = trino_cluster_operations
         self._rest_catalog_operations = rest_catalog_operations
+        self._cloud_environment_operations = cloud_environment_operations
+
+    def cloud_environments(
+        self,
+        *,
+        filters: Sequence[str] = (),
+        include_permissions: bool | None = None,
+        page_size: int = 100,
+        page_token: str | None = None,
+    ) -> Pager[CloudEnvironment]:
+        return self._cloud_environment_operations.list_cloud_environments(
+            CloudEnvironmentListOptions.create(
+                filters=filters,
+                include_permissions=include_permissions,
+                page_size=page_size,
+                page_token=page_token,
+            )
+        )
 
     def spark_clusters(
         self,
@@ -1394,6 +1442,12 @@ class DataLensClientYC(DataLensClientBase):
             lakehouse_operations=lakehouse_operation_service,
             dto_module=cast(RestCatalogDtoModule, dto_module),
         )
+        cloud_environment_service = CloudEnvironmentService(
+            installation=self.INSTALLATION,
+            api=CloudEnvironmentAPI(self._http),
+            lakehouse_operations=lakehouse_operation_service,
+            dto_module=cast(CloudEnvironmentDtoModule, dto_module),
+        )
         return (
             YCCreateNamespace(
                 rest_catalog_operations=rest_catalog_service,
@@ -1401,6 +1455,7 @@ class DataLensClientYC(DataLensClientBase):
                 trino_cluster_operations=trino_cluster_service,
                 spark_cluster_operations=spark_cluster_service,
                 spark_application_operations=spark_application_service,
+                cloud_environment_operations=cloud_environment_service,
                 installation=deps.installation,
                 chart_operations=deps.chart_operations,
                 collection_operations=deps.collection_operations,
@@ -1422,6 +1477,7 @@ class DataLensClientYC(DataLensClientBase):
                 spark_cluster_operations=spark_cluster_service,
                 spark_application_operations=spark_application_service,
                 trino_cluster_operations=trino_cluster_service,
+                cloud_environment_operations=cloud_environment_service,
                 chart_operations=deps.chart_operations,
                 collection_operations=deps.collection_operations,
                 connection_operations=deps.connection_operations,
@@ -1436,6 +1492,7 @@ class DataLensClientYC(DataLensClientBase):
                 spark_application_operations=spark_application_service,
                 trino_cluster_operations=trino_cluster_service,
                 rest_catalog_operations=rest_catalog_service,
+                cloud_environment_operations=cloud_environment_service,
             ),
         )
 
