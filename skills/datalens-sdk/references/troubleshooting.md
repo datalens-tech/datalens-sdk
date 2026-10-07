@@ -151,6 +151,33 @@ Both are `DataLensAPIError` subclasses with a **synthetic 502** context (`e.cont
 
 **What NOT to do:** do not parse the raw body yourself and continue, and do not change the SDK version to "match the server" — package installation and upgrades belong to the calling bootstrap.
 
+## Spark `UserRefreshTokenRequired` — complete the cluster auth flow
+
+Some Yandex Cloud Spark requests fail because the user has not obtained a
+Spark refresh token. Recognize this backend response by a `details` item whose
+`type_url` is
+`type.googleapis.com/yandex.cloud.priv.lakehouse.platform.v1.UserRefreshTokenRequired`,
+or by the response description `refresh token is not found for user` together
+with `grpcCode: 9`. This is not an expired Yandex Cloud IAM token and is not
+fixed by retrying immediately.
+
+Explain the missing Spark authorization to the user and direct them to the
+affected cluster page:
+`https://datalens.ru/compute/spark/<entry_id>`. Use a known DataLens cluster
+entry ID (`SparkCluster.entry_id`), not `SparkCluster.id` or the managed
+`cluster_id`. If the entry ID is not already known, ask the user for it or for
+the cluster page link; do not make another SDK read just to construct the link.
+Tell the user to click **«Получить токен»**, then wait for them to confirm that
+they completed the flow before continuing the original task. Do not ask them
+to paste a token in chat, decode or repeat the binary `Buffer` payload, or
+retry the failed call before the flow is complete. For a retried mutation,
+continue to follow the normal fresh-confirmation requirement.
+
+When the user is Russian-speaking, explain it plainly, for example:
+“Для работы Spark нужно получить токен. Откройте
+[страницу кластера](https://datalens.ru/compute/spark/{entry_id}), нажмите
+«Получить токен» и сообщите мне, когда завершите — после этого я продолжу.”
+
 ## Decision-tree cheat sheet
 
 ```
@@ -161,6 +188,7 @@ exception raised
 ├─ DataLensTransportError     → network; no request_id → verify url/VPN, re-run;
 │                                write re-run conflicts? → first attempt landed → adopt (sec. 4)
 └─ DataLensAPIError           → report e.context.request_id, then branch on type:
+   ├─ Spark UserRefreshTokenRequired (grpcCode 9) → complete the Spark cluster auth flow above
    ├─ 400 BadRequestError     → server rejected payload → fix code; never retry
    ├─ ConflictError           → entry exists; status may be legacy 400 or 409 → adopt (sec. 4)
    ├─ 401 UnauthorizedError   → token invalid/expired → setup.md

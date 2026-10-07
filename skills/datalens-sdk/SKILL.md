@@ -10,11 +10,14 @@ description: >-
   REST-каталоги DataLens, Trino catalog membership, managed DataLens Trino
   cluster, Trino resource preset, кластер Trino, ресурсный пресет Trino,
   managed Spark cluster, Spark resource preset, кластер Spark,
-  ресурсный пресет Spark,
+  ресурсный пресет Spark, Spark application, Spark applications, PySpark
+  application, Spark Connect application, Spark application logs,
+  SparkApplications,
   wizard chart, QL chart, editor chart, BI automation, автоматизация DataLens,
   "create a dashboard", "построй дашборд", "создай чарт", "export dataset",
-  or "clone dashboard"; entity IDs: dataset_id, chart_id, dashboard_id, or
-  workbook_id; and requests to create, update, inspect, import, export, copy,
+  or "clone dashboard"; entity IDs: dataset_id, chart_id, dashboard_id,
+  workbook_id, or application_id; and requests to create, update, inspect,
+  import, export, copy,
   or diagnose DataLens objects with code. NOT for: business questions about
   metric values; viewing or screenshotting the DataLens web UI; embedding or
   iframes; raw SQL/YQL analysis that does not manage DataLens entities; raw
@@ -144,8 +147,11 @@ cluster memberships. The user supplies the cloud environment. This is not
 an ordinary Trino database connection or raw SQL analysis.
 Managed Yandex Cloud Spark follows `collection + cloud environment -> Spark
 cluster -> asynchronous Lakehouse operation`. A Spark cluster is distinct
-from Spark job submission and ordinary Apache Spark programming. The user
-supplies the cloud environment.
+from a Spark application submission and ordinary Apache Spark programming.
+The user supplies the cloud environment. Spark applications run on an existing
+managed Spark cluster. Create and cancel return a Lakehouse operation;
+operation completion does not establish application status. Application
+snapshots and log fragments have separate read actions.
 
 Dataset, chart, Dashboard, and HTML content updates use
 `.mode("save" | "publish")`. Save is the default except for Dashboard, which
@@ -317,6 +323,7 @@ Editor index replaces the public Editor subtree for that installation.
 | Creating, getting, listing, starting, stopping, deleting, or changing catalog membership on a managed Trino cluster; Trino resource presets (Yandex Cloud only) | [references/trino-clusters.md](references/trino-clusters.md) |
 | Refreshing, waiting for, or interpreting a Trino/Spark/REST catalog operation (Yandex Cloud only) | [references/lakehouse-operations.md](references/lakehouse-operations.md) |
 | Creating, getting, listing, starting, stopping, refreshing, or deleting a managed Spark cluster; Spark resource presets (Yandex Cloud only) | [references/spark-clusters.md](references/spark-clusters.md) |
+| Submitting, getting, listing, or canceling a managed DataLens Spark application; reading Spark application log fragments (Yandex Cloud only) | [references/spark-applications.md](references/spark-applications.md) |
 | Export, import, clone, copy across workbooks                               | [references/serialization.md](references/serialization.md)               |
 | Any `DataLensAPIError` or unexpected SDK exception                         | [references/troubleshooting.md](references/troubleshooting.md)           |
 | "Make it look good" — visual design, palettes, dashboard composition       | [references/design-guide.md](references/design-guide.md)                 |
@@ -436,6 +443,7 @@ Use the non-executing allowlisted reader from [references/setup.md](references/s
 | `references/rest-catalogs.md`                   | Yandex Cloud REST catalog listing and Trino catalog membership references                                           |
 | `references/trino-clusters.md`                  | Yandex Cloud managed Trino clusters, resource presets, lifecycle, and catalog membership                           |
 | `references/spark-clusters.md`                  | Yandex Cloud managed Spark clusters, resource presets, driver/executor pools, and lifecycle                        |
+| `references/spark-applications.md`               | Yandex Cloud Spark application reads, logs, submission, and cancellation                                           |
 | `references/lakehouse-operations.md`            | Yandex Cloud Trino, Spark, and REST-catalog operation snapshots, explicit refresh/wait, errors, and timeouts     |
 | `references/serialization.md`                   | export/import/clone via `to_file` and `client.raw`                                                 |
 | `references/troubleshooting.md`                 | any API error; before retrying anything                                                            |

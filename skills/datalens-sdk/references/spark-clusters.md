@@ -2,7 +2,7 @@
 
 This reference covers DataLens-managed Spark clusters and resource presets,
 not generic Apache Spark programming, an ordinary database connection, or
-Spark job submission. It is available only through `DataLensClientYC`.
+Spark application submission. It is available only through `DataLensClientYC`.
 Enterprise and YaTeam do not expose these create/get/list actions; accessing
 one raises ordinary `AttributeError`. Stop at the public SDK boundary: do not
 substitute raw HTTP, generated DTOs, or a private package. Configure the
@@ -17,8 +17,8 @@ Resource presets configure the driver and executor pools. Each pool needs a
 `SparkAutoScalePolicy(min_size=..., max_size=..., initial_size=...)`.
 Creating, starting, stopping, or deleting a cluster returns an asynchronous
 [Lakehouse operation](lakehouse-operations.md) immediately, without waiting.
-There is no cluster update, rename, move, catalog configuration, or SparkJobs
-method in this reference.
+There is no cluster update, rename, move, catalog configuration, or Spark
+application submission method in this reference.
 
 ## Cluster identifiers
 
