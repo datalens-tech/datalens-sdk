@@ -5,6 +5,8 @@ description: >-
   package `datalens-sdk`. Trigger on: DataLens, datalens, даталенс, chart,
   чарт, график, dashboard, дашборд, dataset, датасет, connection, подключение,
   workbook, воркбук, collection, коллекция, HTML page, HTML-страница,
+  saved SQL query, сохранённый SQL-запрос, managing or executing a saved
+  DataLens SQL query,
   wizard chart, QL chart, editor
   chart, BI automation, автоматизация DataLens, "create a dashboard",
   "построй дашборд", "создай чарт", "export dataset", or "clone dashboard";
@@ -129,6 +131,9 @@ connection -> source -> dataset -> chart -> dashboard
 ```
 
 Standalone HTML pages are independent artifacts with their own revisions.
+Saved SQL queries follow `connection -> saved SQL query -> run result` on
+Yandex Cloud. Create/get are action-first; update/run/delete are bound to a
+saved `SqlQuery` returned by `.build()` or `client.get.sql_query(...)`.
 
 Dataset, chart, Dashboard, and HTML content updates use
 `.mode("save" | "publish")`. Save is the default except for Dashboard, which
@@ -285,6 +290,7 @@ Editor index replaces the public Editor subtree for that installation.
 | Object model unclear; lifecycle, errors, retries, pagination               | [references/core-concepts.md](references/core-concepts.md)               |
 | Creating/updating a connection or data source                              | [references/connections.md](references/connections.md)                   |
 | Creating, reading, previewing, updating, or deleting a standalone HTML page | [references/html-pages.md](references/html-pages.md)                     |
+| Creating, getting, updating, running, or deleting a saved SQL query         | [references/sql-queries.md](references/sql-queries.md)                   |
 | Datasets: fields, calculations, parameters, joins, RLS                     | [references/datasets.md](references/datasets.md)                         |
 | Reading rows from a dataset                                                 | [references/dataset-data.md](references/dataset-data.md)                 |
 | Writing, fixing, or reviewing a calculated field or formula                | [references/formulas/_index.md](references/formulas/_index.md)           |
@@ -394,6 +400,7 @@ Use the non-executing allowlisted reader from [references/setup.md](references/s
 | `references/core-concepts.md`                   | you need the object model: namespaces, lifecycle, field references, retries, pagination, sentinels |
 | `references/connections.md`                     | creating or editing connections to the databases                                                   |
 | `references/html-pages.md`                      | standalone HTML-page CRUD, revision modes, metadata reads, preview URLs, and authoring-skill link            |
+| `references/sql-queries.md`                     | Yandex Cloud saved SQL-query lifecycle, parameters, run results, and authorization                  |
 | `references/datasets.md`                        | dataset creation, the fields update DSL, joins, parameters, RLS, formulas                          |
 | `references/formulas/_index.md`                 | official formula documentation routing plus SDK ownership, persistence, and validation boundaries  |
 | `references/wizard-charts/_index.md`            | routing to one of the wizard chart types; read before any wizard work                              |
