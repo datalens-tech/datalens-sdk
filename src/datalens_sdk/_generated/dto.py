@@ -5021,7 +5021,7 @@ class CreateBucketUploadUrlArgsDTO(BaseModel):
     cloud_environment_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudEnvironmentId')]
     content_md5: Annotated[str, Field(min_length=24, max_length=24, alias='contentMd5')]
     path: Annotated[str, Field(min_length=1)]
-    size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:0|[1-9][0-9]*)$'))]
+    size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:0|[1-9][0-9]*)\\Z'))]
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
