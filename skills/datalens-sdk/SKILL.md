@@ -9,6 +9,9 @@ description: >-
   сохранённый SQL-запрос, DataLens REST catalog, REST-каталог DataLens,
   REST-каталоги DataLens, Trino catalog membership, managed DataLens Trino
   cluster, Trino resource preset, кластер Trino, ресурсный пресет Trino,
+  Yandex Cloud environment, cloud environment, облачное окружение,
+  CloudEnvironment storage, bucket objects, signed upload URL,
+  signed download URL, bucket metadata, CloudEnvironmentStorage,
   managed Spark cluster, Spark resource preset, кластер Spark,
   ресурсный пресет Spark, Spark application, Spark applications, PySpark
   application, Spark Connect application, Spark application logs,
@@ -152,6 +155,12 @@ The user supplies the cloud environment. Spark applications run on an existing
 managed Spark cluster. Create and cancel return a Lakehouse operation;
 operation completion does not establish application status. Application
 snapshots and log fragments have separate read actions.
+Cloud environments are YC resources: create/get/list use
+`client.create.cloud_environment(...)`, `client.get.cloud_environment(...)`,
+and `client.list.cloud_environments(...)`. Bucket upload/download URLs,
+object metadata, and object listing are separate actions documented in
+[cloud environments](references/cloud-environments.md) and
+[cloud environment storage](references/cloud-environment-storage.md).
 
 Dataset, chart, Dashboard, and HTML content updates use
 `.mode("save" | "publish")`. Save is the default except for Dashboard, which
@@ -320,6 +329,8 @@ Editor index replaces the public Editor subtree for that installation.
 | Dashboards: tabs, widgets, selectors, layout, read model                   | [references/dashboards.md](references/dashboards.md)                     |
 | Finding, listing, moving, renaming entities; revision history; containers | [references/navigation.md](references/navigation.md)                     |
 | Listing DataLens REST catalogs or selecting one for a Trino cluster (Yandex Cloud only) | [references/rest-catalogs.md](references/rest-catalogs.md)                |
+| Creating, getting, listing, updating, or deleting a Yandex Cloud environment | [references/cloud-environments.md](references/cloud-environments.md) |
+| Creating bucket upload/download URLs, reading object metadata, or listing bucket keys (Yandex Cloud only) | [references/cloud-environment-storage.md](references/cloud-environment-storage.md) |
 | Creating, getting, listing, starting, stopping, deleting, or changing catalog membership on a managed Trino cluster; Trino resource presets (Yandex Cloud only) | [references/trino-clusters.md](references/trino-clusters.md) |
 | Refreshing, waiting for, or interpreting a Trino/Spark/REST catalog operation (Yandex Cloud only) | [references/lakehouse-operations.md](references/lakehouse-operations.md) |
 | Creating, getting, listing, starting, stopping, refreshing, or deleting a managed Spark cluster; Spark resource presets (Yandex Cloud only) | [references/spark-clusters.md](references/spark-clusters.md) |
