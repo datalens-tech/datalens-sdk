@@ -20,6 +20,7 @@ from datalens_sdk.api.dataset import DatasetAPI, DatasetService
 from datalens_sdk.api.entries import EntriesAPI, EntriesDtoModule, EntriesService
 from datalens_sdk.api.folder import FolderAPI, FolderService
 from datalens_sdk.api.html_page import HtmlPageAPI, HtmlPageService
+from datalens_sdk.api.lakehouse_operation import LakehouseOperationAPI, LakehouseOperationService
 from datalens_sdk.api.license import LicenseAPI, LicenseService
 from datalens_sdk.api.navigation import NavigationService
 from datalens_sdk.api.sql_query import SqlQueryAPI, SqlQueryService
@@ -39,6 +40,7 @@ from datalens_sdk.converter.dataset import DatasetDtoModule
 from datalens_sdk.converter.editor_chart import EditorChartDtoModule, editor_read_wire_types
 from datalens_sdk.converter.folder import FolderDtoModule
 from datalens_sdk.converter.html_page import HtmlPageDtoModule
+from datalens_sdk.converter.lakehouse_operation import LakehouseOperationDtoModule
 from datalens_sdk.converter.license import LicenseDtoModule
 from datalens_sdk.converter.sql_query import SqlQueryDtoModule
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
@@ -65,6 +67,7 @@ from datalens_sdk.domain.html_page import (
     HtmlPage,
     HtmlPageCreate,
 )
+from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
 from datalens_sdk.domain.license import (
     License,
     LicenseLimits,
@@ -87,6 +90,7 @@ from datalens_sdk.domain.ports import (
     DatasetOperations,
     FolderOperations,
     HtmlPageOperations,
+    LakehouseOperationOperations,
     LicenseOperations,
     NavigationOperations,
     SqlQueryOperations,
@@ -624,6 +628,7 @@ class YCGetNamespace(GetNamespace):
         self,
         *,
         sql_query_operations: SqlQueryOperations,
+        lakehouse_operation_operations: LakehouseOperationOperations,
         chart_operations: ChartOperations,
         collection_operations: CollectionOperations,
         connection_operations: ConnectionOperations,
@@ -644,6 +649,12 @@ class YCGetNamespace(GetNamespace):
             workbook_operations=workbook_operations,
         )
         self._sql_query_operations = sql_query_operations
+        self._lakehouse_operation_operations = lakehouse_operation_operations
+
+    def lakehouse_operation(self, *, by_id: str) -> LakehouseOperation:
+        if not isinstance(by_id, str) or not by_id:
+            raise DataLensValidationError("by_id must be a non-empty string")
+        return self._lakehouse_operation_operations.get_lakehouse_operation(by_id)
 
     def sql_query(
         self,
@@ -661,6 +672,14 @@ class YCGetNamespace(GetNamespace):
             include_favorite=include_favorite,
             include_permissions=include_permissions,
         )
+
+
+class ListNamespace:
+    pass
+
+
+class YCListNamespace(ListNamespace):
+    pass
 
 
 class NavigationNamespace:
@@ -770,6 +789,7 @@ class DataLensClientBase:
     create: CreateNamespace[object, SourceBuilder, object]
     data: DataNamespace
     get: GetNamespace
+    list: ListNamespace
     navigation: NavigationNamespace
     raw: RawNamespace
 
@@ -936,7 +956,7 @@ class DataLensClientBase:
             editor_chart_factory=editor_chart_factory,
             ql_chart_factory=ql_chart_factory,
         )
-        self.create, self.get = self._build_action_namespaces(deps, dto_module)
+        self.create, self.get, self.list = self._build_action_namespaces(deps, dto_module)
         self.raw = RawNamespace(
             installation=self.INSTALLATION,
             connection_operations=self._connection_service,
@@ -957,7 +977,7 @@ class DataLensClientBase:
         self,
         deps: _ActionNamespaceDependencies,
         dto_module: ModuleType,
-    ) -> tuple[CreateNamespace[object, SourceBuilder, object], GetNamespace]:
+    ) -> tuple[CreateNamespace[object, SourceBuilder, object], GetNamespace, ListNamespace]:
         return (
             CreateNamespace(
                 installation=deps.installation,
@@ -985,6 +1005,7 @@ class DataLensClientBase:
                 html_page_operations=deps.html_page_operations,
                 workbook_operations=deps.workbook_operations,
             ),
+            ListNamespace(),
         )
 
     @property
@@ -1060,12 +1081,16 @@ class DataLensClientYC(DataLensClientBase):
         self,
         deps: _ActionNamespaceDependencies,
         dto_module: ModuleType,
-    ) -> tuple[YCCreateNamespace[object, SourceBuilder, object], YCGetNamespace]:
+    ) -> tuple[YCCreateNamespace[object, SourceBuilder, object], YCGetNamespace, YCListNamespace]:
         sql_query_service = SqlQueryService(
             installation=self.INSTALLATION,
             api=SqlQueryAPI(self._http),
             navigation_operations=self._navigation_service,
             dto_module=cast(SqlQueryDtoModule, dto_module),
+        )
+        lakehouse_operation_service = LakehouseOperationService(
+            api=LakehouseOperationAPI(self._http),
+            dto_module=cast(LakehouseOperationDtoModule, dto_module),
         )
         return (
             YCCreateNamespace(
@@ -1087,6 +1112,7 @@ class DataLensClientYC(DataLensClientBase):
             ),
             YCGetNamespace(
                 sql_query_operations=sql_query_service,
+                lakehouse_operation_operations=lakehouse_operation_service,
                 chart_operations=deps.chart_operations,
                 collection_operations=deps.collection_operations,
                 connection_operations=deps.connection_operations,
@@ -1096,6 +1122,7 @@ class DataLensClientYC(DataLensClientBase):
                 html_page_operations=deps.html_page_operations,
                 workbook_operations=deps.workbook_operations,
             ),
+            YCListNamespace(),
         )
 
     if TYPE_CHECKING:
@@ -1103,6 +1130,7 @@ class DataLensClientYC(DataLensClientBase):
             YacloudConnectionCreateFactory, YacloudSourceCreateFactory, YacloudEditorChartCreateFactory
         ]
         get: YCGetNamespace
+        list: YCListNamespace
         licenses: LicensesNamespace
 
 

@@ -31,6 +31,8 @@
 
 ### Added
 
+- Add Yandex Cloud Lakehouse operation retrieval and explicit refresh/wait
+  polling for asynchronous Trino and Spark workflows.
 - Add Yandex Cloud SQL query create, get, update, delete, and run support,
   including typed saved parameters and per-statement results.
 

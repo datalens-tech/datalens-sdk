@@ -31,6 +31,7 @@ if TYPE_CHECKING:
         HtmlPageCreate,
         HtmlPageUpdate,
     )
+    from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
     from datalens_sdk.domain.license import License, LicenseLimits, LicenseListOptions
     from datalens_sdk.domain.navigation import (
         CollectionListOptions,
@@ -56,6 +57,11 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.workbook import Workbook, WorkbookCreate, WorkbookUpdate
     from datalens_sdk.serialization.artifacts import ArtifactPath
     from datalens_sdk.serialization.json_types import JsonObject
+
+
+@runtime_checkable
+class LakehouseOperationOperations(Protocol):
+    def get_lakehouse_operation(self, operation_id: str) -> LakehouseOperation: ...
 
 
 @runtime_checkable

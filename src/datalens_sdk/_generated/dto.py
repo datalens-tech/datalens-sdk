@@ -5026,6 +5026,14 @@ class DeleteSqlQueryArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class GetLakehouseOperationArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    operation_id: Annotated[str, Field(min_length=1, max_length=50, alias='operationId')]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class GetSqlQueryArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5147,6 +5155,32 @@ class GetSqlQueryResultReadDTO(BaseModel):
     entry: SqlQueryReadDTO
     is_favorite: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='isFavorite')
     permissions: GetSqlQueryResultPermissionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class LakehouseOperationCreatedAtReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    nanos: int | float = _UNVALIDATED_NONE_DEFAULT
+    seconds: str
+
+class LakehouseOperationErrorReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    code: int | float
+    details: list[JsonValue] = _UNVALIDATED_NONE_DEFAULT
+    message: str
+
+class LakehouseOperationReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    created_at: LakehouseOperationCreatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='createdAt')
+    created_by: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='createdBy')
+    description: str = _UNVALIDATED_NONE_DEFAULT
+    done: bool
+    error: LakehouseOperationErrorReadDTO = _UNVALIDATED_NONE_DEFAULT
+    id: str
+    metadata: dict[str, JsonValue]
+    modified_at: LakehouseOperationCreatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='modifiedAt')
+    response: dict[str, JsonValue] = _UNVALIDATED_NONE_DEFAULT
 
 class RunSqlQueryResultResultsItemAnyOf0ColumnsItemReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)

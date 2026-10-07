@@ -84,6 +84,7 @@ from datalens_sdk.domain.html_page import (
     HtmlPagePermissions,
     HtmlPageUpdate,
 )
+from datalens_sdk.domain.lakehouse_operation import LakehouseOperation, LakehouseOperationError, LakehouseTimestamp
 from datalens_sdk.domain.license import (
     License,
     LicenseLimit,
@@ -225,6 +226,9 @@ __all__ = [
     "JoinCondition",
     "JoinOperator",
     "JoinType",
+    "LakehouseOperation",
+    "LakehouseOperationError",
+    "LakehouseTimestamp",
     "Layout",
     "License",
     "LicenseLimit",
