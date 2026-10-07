@@ -129,18 +129,18 @@ class SparkCluster:
         return self._operations.get_spark_cluster(self.id)
 
     def start(self) -> LakehouseOperation:
-        if not isinstance(self.cluster_id, str) or not self.cluster_id:
-            raise DataLensValidationError("spark managed cluster id must be a non-empty string")
+        if not isinstance(self.id, str) or not self.id:
+            raise DataLensValidationError("spark cluster id must be a non-empty string")
         if self._operations is None:
             raise DataLensConfigurationError("Spark cluster is not bound to client operations")
-        return self._operations.start_spark_cluster(self.cluster_id)
+        return self._operations.start_spark_cluster(self.id)
 
     def stop(self) -> LakehouseOperation:
-        if not isinstance(self.cluster_id, str) or not self.cluster_id:
-            raise DataLensValidationError("spark managed cluster id must be a non-empty string")
+        if not isinstance(self.id, str) or not self.id:
+            raise DataLensValidationError("spark cluster id must be a non-empty string")
         if self._operations is None:
             raise DataLensConfigurationError("Spark cluster is not bound to client operations")
-        return self._operations.stop_spark_cluster(self.cluster_id)
+        return self._operations.stop_spark_cluster(self.id)
 
     def delete(self) -> LakehouseOperation:
         if not isinstance(self.id, str) or not self.id:

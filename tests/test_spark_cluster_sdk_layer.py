@@ -289,16 +289,14 @@ def test_spark_bound_lifecycle_requires_operations_and_its_exact_identifier() ->
             method()
     operations = FakeOperations()
     bound = replace(source, _operations=cast(SparkClusterOperations, operations))
-    with pytest.raises(DataLensValidationError):
-        replace(bound, id="").delete()
-    empty_managed = replace(bound, cluster_id="")
-    for method in (empty_managed.start, empty_managed.stop):
+    empty_lakehouse_id = replace(bound, id="")
+    for method in (empty_lakehouse_id.start, empty_lakehouse_id.stop, empty_lakehouse_id.delete):
         with pytest.raises(DataLensValidationError):
             method()
-    assert empty_managed.delete().id == "delete-1"
     assert bound.start().id == "start-1"
     assert bound.stop().id == "stop-1"
-    assert operations.calls == [("delete", "public-1"), ("start", "managed-1"), ("stop", "managed-1")]
+    assert bound.delete().id == "delete-1"
+    assert operations.calls == [("start", "public-1"), ("stop", "public-1"), ("delete", "public-1")]
 
 
 def test_spark_list_options_normalize_collection_filters_and_tokens() -> None:
@@ -386,10 +384,15 @@ def test_bound_spark_cluster_refresh_requires_public_id() -> None:
 
 
 def _cluster_response(
-    *, cluster_id: str = "managed-1", dependencies: object = None, logging: object = None
+    *,
+    id: str = "public-1",
+    cluster_id: str = "managed-1",
+    entry_id: str = "",
+    dependencies: object = None,
+    logging: object = None,
 ) -> dict[str, object]:
     return {
-        "id": "public-1",
+        "id": id,
         "clusterId": cluster_id,
         "collectionId": "collection-1",
         "cloudEnvironmentId": "environment-1",
@@ -398,7 +401,7 @@ def _cluster_response(
         "labels": {},
         "health": "ALIVE",
         "status": "CREATING",
-        "entryId": "",
+        "entryId": entry_id,
         "futureResource": 7,
         "config": {
             "sparkVersion": "",
@@ -587,11 +590,20 @@ def test_spark_start_stop_delete_use_distinct_identifiers_and_bound_operations()
         "error": {"code": 9, "message": "cluster is busy", "details": []},
     }
     transport = _Transport(
-        [httpx.Response(200, json=raw) for raw in (_cluster_response(), operation, stopped, operation, operation)]
+        [
+            httpx.Response(200, json=raw)
+            for raw in (
+                _cluster_response(id="lakehouse-1", entry_id="entry-1"),
+                operation,
+                stopped,
+                operation,
+                operation,
+            )
+        ]
     )
     client, service = _service(transport)
     with client:
-        cluster = service.get_spark_cluster("public-1")
+        cluster = service.get_spark_cluster("lakehouse-1")
         started = cluster.start()
         stopped_operation = cluster.stop()
         deleted = cluster.delete()
@@ -605,9 +617,9 @@ def test_spark_start_stop_delete_use_distinct_identifiers_and_bound_operations()
 
     assert transport.requests[-1].url.path == "/rpc/getLakehouseOperation"
     assert transport.bodies()[1:] == [
-        {"clusterId": "managed-1"},
-        {"clusterId": "managed-1"},
-        {"id": "public-1"},
+        {"clusterId": "lakehouse-1"},
+        {"clusterId": "lakehouse-1"},
+        {"id": "lakehouse-1"},
         {"operationId": "operation-1"},
     ]
     assert started == LakehouseOperation(
@@ -623,24 +635,25 @@ def test_spark_start_stop_delete_use_distinct_identifiers_and_bound_operations()
     assert deleted.id == "operation-1"
 
 
-def test_spark_empty_managed_id_can_delete_but_cannot_start_or_stop() -> None:
+def test_spark_empty_managed_id_does_not_block_lifecycle_operations() -> None:
     transport = _Transport(
         [
             httpx.Response(200, json=_cluster_response(cluster_id="")),
             httpx.Response(200, json={"id": "operation-1", "done": False, "metadata": {}}),
+            httpx.Response(200, json={"id": "operation-2", "done": False, "metadata": {}}),
         ]
     )
     client, service = _service(transport)
     with client:
         cluster = service.get_spark_cluster("public-1")
-        with pytest.raises(DataLensValidationError):
-            cluster.start()
-        with pytest.raises(DataLensValidationError):
-            cluster.stop()
-        assert len(transport.requests) == 1
-        assert cluster.delete().id == "operation-1"
-    assert [request.url.path for request in transport.requests] == ["/rpc/getSparkCluster", "/rpc/deleteSparkCluster"]
-    assert transport.bodies()[1] == {"id": "public-1"}
+        assert cluster.start().id == "operation-1"
+        assert cluster.stop().id == "operation-2"
+    assert [request.url.path for request in transport.requests] == [
+        "/rpc/getSparkCluster",
+        "/rpc/startSparkCluster",
+        "/rpc/stopSparkCluster",
+    ]
+    assert transport.bodies()[1:] == [{"clusterId": "public-1"}, {"clusterId": "public-1"}]
 
 
 @pytest.mark.parametrize("operation", ["startSparkCluster", "stopSparkCluster", "deleteSparkCluster"])
