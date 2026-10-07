@@ -92,16 +92,16 @@ class TrinoCluster:
     def start(self) -> LakehouseOperation:
         if self._operations is None:
             raise DataLensConfigurationError("Trino cluster is not bound to client operations")
-        if not isinstance(self.cluster_id, str) or not self.cluster_id:
-            raise DataLensValidationError("Trino cluster cluster_id must be a non-empty string")
-        return self._operations.start_trino_cluster(self.cluster_id)
+        if not isinstance(self.id, str) or not self.id:
+            raise DataLensValidationError("Trino cluster id must be a non-empty string")
+        return self._operations.start_trino_cluster(self.id)
 
     def stop(self) -> LakehouseOperation:
         if self._operations is None:
             raise DataLensConfigurationError("Trino cluster is not bound to client operations")
-        if not isinstance(self.cluster_id, str) or not self.cluster_id:
-            raise DataLensValidationError("Trino cluster cluster_id must be a non-empty string")
-        return self._operations.stop_trino_cluster(self.cluster_id)
+        if not isinstance(self.id, str) or not self.id:
+            raise DataLensValidationError("Trino cluster id must be a non-empty string")
+        return self._operations.stop_trino_cluster(self.id)
 
     def delete(self) -> LakehouseOperation:
         if self._operations is None:

@@ -65,7 +65,7 @@ def _cluster_response(*, name: str = "Analytics") -> dict[str, object]:
         "health": "ALIVE",
         "status": "RUNNING",
         "coordinatorUrl": "",
-        "entryId": "",
+        "entryId": "entry-3",
     }
 
 
@@ -434,13 +434,13 @@ def test_trino_bound_lifecycle_requires_operations_and_correct_identifier() -> N
 
     operations = RecordingTrinoLifecycleOperations()
     bound = replace(cluster, _operations=operations)
-    for action in (replace(bound, cluster_id="").start, replace(bound, cluster_id="").stop):
+    for action in (replace(bound, id="").start, replace(bound, id="").stop):
         with pytest.raises(DataLensValidationError):
             action()
     with pytest.raises(DataLensValidationError):
         replace(bound, id="").delete()
     assert [bound.start().id, bound.stop().id, bound.delete().id] == ["operation-2", "operation-3", "operation-4"]
-    assert operations.calls == [("start", "managed-1"), ("stop", "managed-1"), ("delete", "trino-1")]
+    assert operations.calls == [("start", "trino-1"), ("stop", "trino-1"), ("delete", "trino-1")]
 
 
 def test_trino_start_stop_and_delete_use_distinct_identifiers_and_bound_operations() -> None:
@@ -478,8 +478,8 @@ def test_trino_start_stop_and_delete_use_distinct_identifiers_and_bound_operatio
         "/rpc/getLakehouseOperation",
     ]
     assert recorder.bodies() == [
-        {"clusterId": "managed-2"},
-        {"clusterId": "managed-2"},
+        {"clusterId": "trino-1"},
+        {"clusterId": "trino-1"},
         {"id": "trino-1"},
         {"operationId": "operation-1"},
     ]
@@ -874,7 +874,7 @@ def test_trino_get_and_refresh_map_complete_cluster_and_retry_reads() -> None:
         health="ALIVE",
         status="RUNNING",
         coordinator_url="",
-        entry_id="",
+        entry_id="entry-3",
         raw=first,
     )
     assert refreshed is not cluster
@@ -899,7 +899,7 @@ def test_trino_get_and_refresh_map_complete_cluster_and_retry_reads() -> None:
         health="ALIVE",
         status="UPDATING",
         coordinator_url="",
-        entry_id="",
+        entry_id="entry-3",
         raw=second,
     )
     assert cluster.name == "Analytics"
