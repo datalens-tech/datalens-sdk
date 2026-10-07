@@ -128,6 +128,11 @@ installation and cloud environment against the cluster. A non-empty raw ID is
 accepted when no model is available, but cannot carry those checks. Do not
 convert the model to a generated or private type.
 
+Trino cluster APIs use the Lakehouse ID (`lakehouse_id` in entry data),
+exposed as `TrinoCluster.id`. `TrinoCluster.entry_id` is the DataLens object
+ID and `TrinoCluster.cluster_id` is the managed cloud cluster ID; do not use
+either for `client.get.trino_cluster(by_id=...)` or catalog membership.
+
 After result-handling authorization, select exactly one catalog by name and
 fetch only the requested cluster through the public SDK. Stop if the name
 matches no catalogs or more than one; never attach an arbitrary first result:
@@ -139,7 +144,7 @@ matching_catalogs = [
 if len(matching_catalogs) != 1:
     raise ValueError("Expected exactly one REST catalog named 'analytics'")
 catalog = matching_catalogs[0]
-cluster = client.get.trino_cluster(by_id="trino-42")
+cluster = client.get.trino_cluster(by_id="trino-lakehouse-id")
 ```
 
 Define this guard before running any example that changes cluster membership:
@@ -200,7 +205,7 @@ Immediately before attachment, name both actual resources in a fresh prompt:
 ```python
 require_confirmation(
     f"Attach REST catalog {catalog.name!r} (id={catalog.id!r}) "
-    f"to Trino cluster {cluster.name!r} (id={cluster.cluster_id!r})?"
+    f"to Trino cluster {cluster.name!r} (Lakehouse id={cluster.id!r})?"
 )
 operation = cluster.attach_catalog(catalog)
 ```
@@ -212,7 +217,7 @@ delete the catalog resource**.
 ```python
 require_confirmation(
     f"Detach REST catalog {catalog.name!r} (id={catalog.id!r}) "
-    f"from Trino cluster {cluster.name!r} (id={cluster.cluster_id!r})?"
+    f"from Trino cluster {cluster.name!r} (Lakehouse id={cluster.id!r})?"
 )
 operation = cluster.detach_catalog(catalog)
 ```
