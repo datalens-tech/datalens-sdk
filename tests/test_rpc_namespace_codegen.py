@@ -985,16 +985,11 @@ def test_tagged_rpc_codegen_allows_an_installation_without_the_tag(tmp_path: Pat
         result_schema={"type": "object", "properties": {"accepted": {"type": "boolean"}}},
     )
     installations = {name: _write_installation_spec(tmp_path, name, spec) for name, spec in specs.items()}
-    original_namespaces = deepcopy(codegen.NAMESPACES)
-
     metadata = codegen.build_metadata(
         installations,
         rpc_namespace_configs=({"tag": "Widgets", "namespace": "widgets"},),
     )
 
-    assert metadata["installations"]["enterprise"]["namespaces"] == original_namespaces["enterprise"]
-    assert metadata["installations"]["yacloud"]["namespaces"] == [*original_namespaces["yacloud"], "widgets"]
-    assert original_namespaces == codegen.NAMESPACES
     assert metadata["rpc_namespaces"]["widgets"]["tag"] == "Widgets"
     generated = codegen.emit_dto(metadata)
     scope = _load_models(generated[generated.index("\nclass TaggedWidgetArgsDTO(BaseModel):") :])

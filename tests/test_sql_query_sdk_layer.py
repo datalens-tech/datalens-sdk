@@ -152,14 +152,7 @@ def _navigation_entry(entry_id: str, name: str) -> dict[str, object]:
     return {"entryId": entry_id, "scope": "sql_query", "type": "sql_query", "key": "", "name": name}
 
 
-def test_yc_sql_query_actions_create_and_get_bound_queries_without_metadata_tag(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    installations = client_module._load_installations("datalens_sdk._generated")
-    installations["yacloud"]["namespaces"] = [
-        name for name in installations["yacloud"]["namespaces"] if name != "sql_queries"
-    ]
-    monkeypatch.setattr(client_module, "_load_installations", lambda package: installations)
+def test_yc_sql_query_actions_create_and_get_bound_queries() -> None:
     recorder = RecordedTransport(
         {
             "/rpc/createSqlQuery": httpx.Response(200, json={"entry": _sql_query_entry()}),
@@ -209,6 +202,22 @@ def test_yc_sql_query_actions_create_and_get_bound_queries_without_metadata_tag(
             "pageSize": 1,
         }
     ]
+
+
+@pytest.mark.parametrize("client_type", [DataLensClientYC, DataLensClientEnterprise])
+def test_sql_queries_are_not_exposed_as_a_root_client_namespace(
+    client_type: type[DataLensClientYC] | type[DataLensClientEnterprise],
+) -> None:
+    client = client_type(
+        auth=None,
+        base_url="https://datalens.test",
+        transport=httpx.MockTransport(RecordedTransport({}).handler),
+    )
+
+    with client, pytest.raises(AttributeError) as exc_info:
+        _ = client.sql_queries
+
+    assert type(exc_info.value) is AttributeError
 
 
 def test_enterprise_sql_query_actions_are_absent_without_service_or_http(
@@ -1331,10 +1340,6 @@ def test_parameter_factories_omit_unspecified_defaults() -> None:
 @pytest.mark.parametrize(
     ("parameter_type", "default"),
     [
-        ("string", 1),
-        ("number", True),
-        ("number", "1"),
-        ("boolean", 1),
         ("date", SqlQueryInterval("start", "end")),
         ("datetime", 1),
         ("date-interval", "start"),
@@ -1342,7 +1347,9 @@ def test_parameter_factories_omit_unspecified_defaults() -> None:
         ("unsupported", None),
     ],
 )
-def test_parameter_direct_construction_rejects_mismatched_defaults(parameter_type: str, default: object) -> None:
+def test_parameter_direct_construction_rejects_defaults_outside_the_schema(
+    parameter_type: str, default: object
+) -> None:
     with pytest.raises(DataLensValidationError):
         SqlQueryParameter(
             name="p",
@@ -1362,9 +1369,38 @@ def test_parameter_number_accepts_integer_and_float_defaults(default: int | floa
     assert SqlQueryParameter.number("p", default).default_value == default
 
 
-def test_parameter_number_factory_rejects_boolean_default() -> None:
-    with pytest.raises(DataLensValidationError):
-        SqlQueryParameter.number("p", True)
+def test_parameter_number_factory_accepts_boolean_default_allowed_by_the_api_schema() -> None:
+    assert SqlQueryParameter.number("p", True) == SqlQueryParameter(name="p", type="number", default_value=True)
+
+
+@pytest.mark.parametrize(
+    ("parameter_type", "default"),
+    [("number", "1"), ("boolean", 1), ("string", 1)],
+)
+@pytest.mark.parametrize("operation", ["createSqlQuery", "getSqlQuery", "updateSqlQuery"])
+def test_sql_query_responses_preserve_schema_valid_scalar_defaults(
+    parameter_type: SqlQueryParameterType,
+    default: SqlQueryScalar,
+    operation: str,
+) -> None:
+    entry = _sql_query_entry()
+    data = cast(dict[str, object], entry["data"])
+    data["params"] = [{"name": "p", "type": parameter_type, "defaultValue": default}]
+    routes = {f"/rpc/{operation}": httpx.Response(200, json={"entry": entry})}
+    if operation == "getSqlQuery":
+        routes["/rpc/getEntries"] = httpx.Response(200, json={"entries": [_navigation_entry("query-1", "Revenue")]})
+    recorder = RecordedTransport(routes)
+
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://datalens.test",
+        transport=httpx.MockTransport(recorder.handler),
+    ) as http_client:
+        query = _invoke_sql_query_operation(operation, _sql_query_service(http_client))
+
+    assert isinstance(query, SqlQuery)
+    assert query.parameters == (SqlQueryParameter(name="p", type=parameter_type, default_value=default),)
 
 
 def test_parameter_interval_accepts_arbitrary_strings_without_date_syntax() -> None:

@@ -2725,7 +2725,7 @@ def build_metadata(
         chart_meta = _chart_meta(schemas)
         installation_metadata: InstallationMetadata = {
             "name": installation,
-            "namespaces": [*NAMESPACES[installation], *installation_rpc_contracts],
+            "namespaces": list(NAMESPACES[installation]),
             "connectors": {
                 connector: _connector_meta(schemas, connector, ref, installation)
                 for connector, ref in sorted(connection_mapping.items())

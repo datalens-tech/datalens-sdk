@@ -60,27 +60,27 @@ class SqlQueryParameter:
             raise DataLensValidationError(f"Unsupported SQL query parameter type: {self.type!r}")
         if self.default_value is None:
             return
-        if self.type == "number":
-            valid = isinstance(self.default_value, (int, float)) and not isinstance(self.default_value, bool)
-        elif self.type == "boolean":
-            valid = isinstance(self.default_value, bool)
+        if self.type in ("string", "number", "boolean"):
+            valid = isinstance(self.default_value, (str, int, float, bool))
+        elif self.type in ("date", "datetime"):
+            valid = isinstance(self.default_value, str)
         elif self.type in ("date-interval", "datetime-interval"):
             valid = isinstance(self.default_value, SqlQueryInterval)
         else:
-            valid = isinstance(self.default_value, str)
+            valid = False
         if not valid:
             raise DataLensValidationError(f"SQL query parameter {self.type!r} has an incompatible default_value")
 
     @classmethod
-    def string(cls, name: str, default: str | None = None) -> Self:
+    def string(cls, name: str, default: SqlQueryScalar | None = None) -> Self:
         return cls(name=name, type="string", default_value=default)
 
     @classmethod
-    def number(cls, name: str, default: int | float | None = None) -> Self:
+    def number(cls, name: str, default: SqlQueryScalar | None = None) -> Self:
         return cls(name=name, type="number", default_value=default)
 
     @classmethod
-    def boolean(cls, name: str, default: bool | None = None) -> Self:
+    def boolean(cls, name: str, default: SqlQueryScalar | None = None) -> Self:
         return cls(name=name, type="boolean", default_value=default)
 
     @classmethod
