@@ -4,11 +4,14 @@ from collections.abc import Iterator
 
 from pydantic import ValidationError
 
+from datalens_sdk.converter.lakehouse_operation import LakehouseOperationConverter
 from datalens_sdk.converter.spark_application import SparkApplicationConverter, SparkApplicationDtoModule
+from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
 from datalens_sdk.domain.navigation import Page, Pager
-from datalens_sdk.domain.ports import SparkApplicationOperations
+from datalens_sdk.domain.ports import LakehouseOperationOperations, SparkApplicationOperations
 from datalens_sdk.domain.spark_application import (
     SparkApplication,
+    SparkApplicationCreate,
     SparkApplicationListOptions,
     SparkApplicationLogOptions,
     SparkApplicationLogPage,
@@ -19,7 +22,7 @@ from datalens_sdk.errors import (
     translate_dto_validation_error,
     translate_invalid_response_error,
 )
-from datalens_sdk.http import TRANSIENT_RETRY_POLICY, HTTPClientProtocol
+from datalens_sdk.http import DEFAULT_RETRY_POLICY, TRANSIENT_RETRY_POLICY, HTTPClientProtocol
 
 
 class SparkApplicationAPI:
@@ -37,6 +40,12 @@ class SparkApplicationAPI:
             "/rpc/listSparkApplicationLog", payload, retry_policy=TRANSIENT_RETRY_POLICY
         )
 
+    def create(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object("/rpc/createSparkApplication", payload, retry_policy=DEFAULT_RETRY_POLICY)
+
+    def cancel(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object("/rpc/cancelSparkApplication", payload, retry_policy=DEFAULT_RETRY_POLICY)
+
 
 class SparkApplicationService(SparkApplicationOperations):
     def __init__(
@@ -44,11 +53,45 @@ class SparkApplicationService(SparkApplicationOperations):
         *,
         installation: str,
         api: SparkApplicationAPI,
+        lakehouse_operations: LakehouseOperationOperations,
         dto_module: SparkApplicationDtoModule | None = None,
     ) -> None:
         self._installation = installation
         self._api = api
+        self._lakehouse_operations = lakehouse_operations
         self._dto_module = dto_module
+
+    def create_spark_application(self, builder: SparkApplicationCreate) -> LakehouseOperation:
+        try:
+            payload = SparkApplicationConverter.create_payload(
+                builder.to_spec(), dto_module=self._dto_module
+            ).to_payload()
+            return LakehouseOperationConverter.to_operation(
+                self._api.create(payload),
+                operations=self._lakehouse_operations,
+                operation="createSparkApplication",
+                dto_module=self._dto_module,
+            )
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="createSparkApplication", reason=str(exc)) from exc
+
+    def cancel_spark_application(self, cluster_id: str, application_id: str) -> LakehouseOperation:
+        if not isinstance(cluster_id, str) or not cluster_id:
+            raise DataLensValidationError("cancelSparkApplication cluster_id must be a non-empty string")
+        if not isinstance(application_id, str) or not application_id:
+            raise DataLensValidationError("cancelSparkApplication application_id must be a non-empty string")
+        try:
+            payload = SparkApplicationConverter.cancel_payload(
+                cluster_id, application_id, dto_module=self._dto_module
+            ).to_payload()
+            return LakehouseOperationConverter.to_operation(
+                self._api.cancel(payload),
+                operations=self._lakehouse_operations,
+                operation="cancelSparkApplication",
+                dto_module=self._dto_module,
+            )
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="cancelSparkApplication", reason=str(exc)) from exc
 
     def get_spark_application(self, cluster_id: str, application_id: str) -> SparkApplication:
         if not isinstance(cluster_id, str) or not cluster_id:

@@ -117,9 +117,14 @@ class LakehouseOperationConverter:
         if not isinstance(operation, str) or not operation:
             raise ValueError("operation context must be a non-empty string")
         generated = _dto_module(dto_module)
-        validated = cast(LakehouseOperationReadDTOProtocol, generated.LakehouseOperationReadDTO.model_validate(raw))
+        dto_input = dict(raw)
+        if "metadata" in dto_input and dto_input["metadata"] is None:
+            dto_input["metadata"] = {}
+        validated = cast(
+            LakehouseOperationReadDTOProtocol, generated.LakehouseOperationReadDTO.model_validate(dto_input)
+        )
         try:
-            metadata = raw["metadata"]
+            metadata = dto_input["metadata"]
             if not isinstance(metadata, Mapping):
                 raise TypeError("metadata is not an object")
             created_at = lakehouse_timestamp_from_dto(_raw_timestamp(raw, "createdAt"), dto=validated.created_at)

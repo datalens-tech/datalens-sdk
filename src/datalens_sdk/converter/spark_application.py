@@ -6,7 +6,11 @@ from typing import Literal, Protocol, TypedDict, cast
 from pydantic import TypeAdapter, ValidationError
 
 from datalens_sdk._generated import dto as generated_dto
-from datalens_sdk.converter.lakehouse_operation import LakehouseTimestampReadDTOProtocol, lakehouse_timestamp_from_dto
+from datalens_sdk.converter.lakehouse_operation import (
+    LakehouseOperationReadDtoModule,
+    LakehouseTimestampReadDTOProtocol,
+    lakehouse_timestamp_from_dto,
+)
 from datalens_sdk.domain.navigation import Page
 from datalens_sdk.domain.ports import SparkApplicationOperations
 from datalens_sdk.domain.spark_application import (
@@ -19,6 +23,12 @@ from datalens_sdk.domain.spark_application import (
     SparkApplicationPySparkSpec,
     SparkApplicationSparkSpec,
     SparkApplicationStatus,
+)
+from datalens_sdk.domain.specs.spark_application import (
+    SparkApplicationConnectCreateSpec,
+    SparkApplicationCreateSpec,
+    SparkApplicationPySparkCreateSpec,
+    SparkApplicationSparkCreateSpec,
 )
 from datalens_sdk.errors import translate_dto_validation_error, translate_invalid_response_error
 
@@ -67,7 +77,9 @@ class SparkApplicationLogReadDTOClass(Protocol):
     def model_validate(self, obj: object) -> SparkApplicationLogReadDTOProtocol: ...
 
 
-class SparkApplicationDtoModule(Protocol):
+class SparkApplicationDtoModule(LakehouseOperationReadDtoModule, Protocol):
+    CreateSparkApplicationArgsDTO: object
+    CancelSparkApplicationArgsDTO: SparkApplicationWriteDTOClass
     GetSparkApplicationArgsDTO: SparkApplicationWriteDTOClass
     ListSparkApplicationLogArgsDTO: SparkApplicationWriteDTOClass
     ListSparkApplicationLogResultReadDTO: SparkApplicationLogReadDTOClass
@@ -118,6 +130,60 @@ def _common_spec(data: Mapping[str, object]) -> _CommonSpec:
 
 
 class SparkApplicationConverter:
+    @staticmethod
+    def create_payload(
+        spec: SparkApplicationCreateSpec, *, dto_module: SparkApplicationDtoModule | None = None
+    ) -> SparkApplicationWriteDTOProtocol:
+        payload: dict[str, object] = {"clusterId": spec.cluster_id}
+        if spec.name is not None:
+            payload["name"] = spec.name
+        if spec.catalog_ids is not None:
+            payload["catalogs"] = [{"catalogId": catalog_id} for catalog_id in spec.catalog_ids]
+        variant = spec.variant
+        nested: dict[str, object] = {}
+        for name, alias in (
+            ("archive_uris", "archiveUris"),
+            ("file_uris", "fileUris"),
+            ("jar_file_uris", "jarFileUris"),
+            ("packages", "packages"),
+            ("repositories", "repositories"),
+            ("exclude_packages", "excludePackages"),
+            ("properties", "properties"),
+        ):
+            value = getattr(variant, name)
+            if value is not None:
+                nested[alias] = dict(value) if name == "properties" else list(value)
+        if isinstance(variant, SparkApplicationSparkCreateSpec):
+            nested["mainJarFileUri"] = variant.main_jar_file_uri
+            if variant.main_class is not None:
+                nested["mainClass"] = variant.main_class
+            if variant.args is not None:
+                nested["args"] = list(variant.args)
+            payload["sparkApplication"] = nested
+        elif isinstance(variant, SparkApplicationPySparkCreateSpec):
+            nested["mainPythonFileUri"] = variant.main_python_file_uri
+            if variant.args is not None:
+                nested["args"] = list(variant.args)
+            if variant.python_file_uris is not None:
+                nested["pythonFileUris"] = list(variant.python_file_uris)
+            payload["pysparkApplication"] = nested
+        elif isinstance(variant, SparkApplicationConnectCreateSpec):
+            payload["sparkConnectApplication"] = nested
+        else:
+            raise AssertionError("unknown Spark application create variant")
+        return cast(
+            SparkApplicationWriteDTOProtocol,
+            TypeAdapter[object](_dto_module(dto_module).CreateSparkApplicationArgsDTO).validate_python(payload),
+        )
+
+    @staticmethod
+    def cancel_payload(
+        cluster_id: str, application_id: str, *, dto_module: SparkApplicationDtoModule | None = None
+    ) -> SparkApplicationWriteDTOProtocol:
+        return _dto_module(dto_module).CancelSparkApplicationArgsDTO.model_validate(
+            {"clusterId": cluster_id, "applicationId": application_id}
+        )
+
     @staticmethod
     def get_payload(
         cluster_id: str, application_id: str, *, dto_module: SparkApplicationDtoModule | None = None

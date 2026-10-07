@@ -13,6 +13,7 @@ import pytest
 from datalens_sdk import DataLensClientEnterprise, DataLensClientYC
 from datalens_sdk import client as client_module
 from datalens_sdk._generated import dto as generated_dto
+from datalens_sdk.api.lakehouse_operation import LakehouseOperationAPI, LakehouseOperationService
 from datalens_sdk.api.spark_application import SparkApplicationAPI, SparkApplicationService
 from datalens_sdk.client import DataLensClientBase
 from datalens_sdk.domain.entry_location import EntryLocation
@@ -166,7 +167,11 @@ def _service(transport: _Transport) -> tuple[DataLensHTTPClient, SparkApplicatio
         base_url="https://spark.test",
         transport=httpx.MockTransport(transport.handle),
     )
-    return client, SparkApplicationService(installation="yacloud", api=SparkApplicationAPI(client))
+    return client, SparkApplicationService(
+        installation="yacloud",
+        api=SparkApplicationAPI(client),
+        lakehouse_operations=LakehouseOperationService(api=LakehouseOperationAPI(client)),
+    )
 
 
 def _log(content: str, token: str, **extra: object) -> httpx.Response:
