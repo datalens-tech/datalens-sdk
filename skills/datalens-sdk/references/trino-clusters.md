@@ -17,6 +17,18 @@ bound mutations return an asynchronous
 [Lakehouse operation](lakehouse-operations.md) immediately, without waiting.
 There is no cluster update, rename, or move action.
 
+## Cluster identifiers
+
+The cluster entry data exposes three different identifiers. `TrinoCluster.id`
+is the Lakehouse ID (`lakehouse_id` in entry data),
+`TrinoCluster.entry_id` is the DataLens entry ID, and
+`TrinoCluster.cluster_id` is the managed cloud cluster ID. For Trino API
+methods—including `client.get.trino_cluster(by_id=...)`, lifecycle methods,
+and catalog membership methods—use the Lakehouse ID from `id`. Do not pass
+`entry_id` or `cluster_id` where a Trino method expects the cluster `id`.
+Use `entry_id` only when a DataLens UI link or an API field explicitly asks
+for the entry ID.
+
 ## Authorize reads and confirm mutations
 
 Before calling get/list, requesting or iterating a pager page, refreshing a
@@ -147,13 +159,13 @@ a completed cluster; it never waits automatically.
 
 ## Get, list, and refresh clusters
 
-`client.get.trino_cluster(by_id=...)` uses the DataLens cluster entry ID and
-returns a bound `TrinoCluster`. `.refresh()` obtains a new snapshot and leaves
-the old object unchanged. Use these only after result-handling and execution
-authorization.
+`client.get.trino_cluster(by_id=...)` expects the Lakehouse ID from the
+cluster entry data and returns a bound `TrinoCluster`. `.refresh()` obtains a
+new snapshot and leaves the old object unchanged. Use these only after
+result-handling and execution authorization.
 
 ```python
-cluster = client.get.trino_cluster(by_id="trino-entry-id")
+cluster = client.get.trino_cluster(by_id="trino-lakehouse-id")
 new_snapshot = cluster.refresh()
 ```
 
@@ -212,24 +224,24 @@ confirmation requirements.
 
 ## Bound lifecycle and catalog membership
 
-`refresh()` and `delete()` internally use the public entry `id`;
-`start()`, `stop()`, `attach_catalog()`, and `detach_catalog()` internally use
-the managed `cluster_id`. Call the bound methods; do not choose a wire
-identifier yourself. Every mutation returns a bound `LakehouseOperation`
+`refresh()`, `delete()`, `start()`, `stop()`, `attach_catalog()`, and
+`detach_catalog()` use the cluster's Lakehouse `id` for Trino API requests.
+Call the bound methods; do not substitute the DataLens `entry_id` or managed
+cloud `cluster_id`. Every mutation returns a bound `LakehouseOperation`
 without automatic polling or mutation retry.
 
 ```python
-require_confirmation(f"Start Trino cluster {cluster.name!r} (id={cluster.cluster_id!r}) and incur cost?")
+require_confirmation(f"Start Trino cluster {cluster.name!r} (Lakehouse id={cluster.id!r}) and incur cost?")
 operation = cluster.start()
 ```
 
 ```python
-require_confirmation(f"Stop Trino cluster {cluster.name!r} (id={cluster.cluster_id!r}) and disrupt work?")
+require_confirmation(f"Stop Trino cluster {cluster.name!r} (Lakehouse id={cluster.id!r}) and disrupt work?")
 operation = cluster.stop()
 ```
 
 ```python
-require_confirmation(f"Delete Trino cluster {cluster.name!r} (entry id={cluster.id!r}) permanently?")
+require_confirmation(f"Delete Trino cluster {cluster.name!r} (Lakehouse id={cluster.id!r}) permanently?")
 operation = cluster.delete()
 ```
 
@@ -241,7 +253,7 @@ attachment or detachment. Detaching does not delete the REST catalog.
 ```python
 require_confirmation(
     f"Attach REST catalog {catalog.name!r} (id={catalog.id!r}) "
-    f"to Trino cluster {cluster.name!r} (id={cluster.cluster_id!r})?"
+    f"to Trino cluster {cluster.name!r} (Lakehouse id={cluster.id!r})?"
 )
 operation = cluster.attach_catalog(catalog)
 ```
@@ -249,9 +261,31 @@ operation = cluster.attach_catalog(catalog)
 ```python
 require_confirmation(
     f"Detach REST catalog {catalog.name!r} (id={catalog.id!r}) "
-    f"from Trino cluster {cluster.name!r} (id={cluster.cluster_id!r})?"
+    f"from Trino cluster {cluster.name!r} (Lakehouse id={cluster.id!r})?"
 )
 operation = cluster.detach_catalog(catalog)
+```
+
+## Connect a Trino connection to a Lakehouse cluster
+
+To create a Trino connection for a Trino cluster managed through this SDK,
+set `.cluster_entry_id(...)` to the cluster's DataLens `entry_id`. Do not
+pass the Lakehouse `id` or managed cloud `cluster_id` to this connection
+field. This Lakehouse connection does not require a username or password;
+do not add credentials unless the user explicitly asks for a different
+connection setup. `listing_sources` is required: ask which behavior is wanted
+if it was not specified, then pass `"on"` or `"off"` explicitly.
+
+```python
+from datalens_sdk import EntryLocation
+
+connection_builder = client.create.connection.trino(
+    name="analytics-trino",
+    location=EntryLocation.collection("collection-id"),
+)
+connection_builder.cluster_entry_id(cluster.entry_id)
+connection_builder.listing_sources("on")  # Pass the user's selected "on" or "off" value.
+connection = connection_builder.build()
 ```
 
 For explicit operation `refresh()` and `wait(...)`, terminal error data, and

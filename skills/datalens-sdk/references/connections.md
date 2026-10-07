@@ -40,13 +40,19 @@ reconstructing it.
 | `mssql`      | MS SQL Server      | `host`, `port`, `username`, `password`                                                      | yes | yes        |
 | `oracle`     | Oracle             | `host`, `port`, `username`, `password`, `db_connect_method`                                 | yes | yes        |
 | `greenplum`  | Greenplum          | `host`, `port`, `username`, `password`                                                      | yes | yes        |
-| `trino`      | Trino              | `host`, `listing_sources`                                                                   | yes | yes        |
+| `trino`      | Trino              | `listing_sources`; ordinary: `host`; YC Lakehouse: `cluster_entry_id`                       | yes | yes        |
 | `ydb`        | YDB                | `host`, `port`, `db_name`, `cloud_id`, `folder_id`, `service_account_id`                    | yes | yes        |
 | `chyt`       | CHYT over YTsaurus | `host`, `port`, `alias`, `token`                                                            | yes | yes        |
 | `promql`     | Prometheus         | `host`, `port`                                                                              | yes | yes        |
 | `bigquery`   | Google BigQuery    | `project_id`, `credentials`                                                                 | yes | —          |
 | `snowflake`  | Snowflake          | `account_name`, `client_id`, `client_secret`, `db_name`, `schema`, `user_name`, `warehouse` | yes | —          |
 | `yq`         | Yandex Query       | `cloud_id`, `folder_id`, `service_account_id`                                               | yes | —          |
+
+For a Trino connection linked to a managed Yandex Cloud Lakehouse cluster,
+use `cluster_entry_id` with the cluster's DataLens `entry_id`; `host`,
+`username`, and `password` are not needed. `listing_sources` is still
+required. See [managed Trino clusters](trino-clusters.md) for the exact
+workflow and identifier distinctions.
 
 ### API-based
 
