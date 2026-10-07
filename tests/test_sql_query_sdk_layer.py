@@ -52,7 +52,7 @@ from datalens_sdk.http import DataLensHTTPClient
 
 
 class RecordedTransport:
-    def __init__(self, routes: dict[str, httpx.Response | list[httpx.Response]]) -> None:
+    def __init__(self, routes: Mapping[str, httpx.Response | list[httpx.Response]]) -> None:
         self.requests: list[httpx.Request] = []
         self._routes = {
             path: responses if isinstance(responses, list) else [responses] for path, responses in routes.items()
