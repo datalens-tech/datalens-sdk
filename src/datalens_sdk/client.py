@@ -13,6 +13,7 @@ import httpx
 
 from datalens_sdk.api.chart import ChartAPI, ChartService
 from datalens_sdk.api.cloud_environment import CloudEnvironmentAPI, CloudEnvironmentService
+from datalens_sdk.api.cloud_environment_storage import CloudEnvironmentStorageAPI, CloudEnvironmentStorageService
 from datalens_sdk.api.collection import CollectionAPI, CollectionService
 from datalens_sdk.api.connection import ConnectionAPI, ConnectionService
 from datalens_sdk.api.dashboard import DashboardAPI, DashboardService
@@ -38,6 +39,7 @@ from datalens_sdk.auth import (
     _AuthProviderHTTPXAuth,
 )
 from datalens_sdk.converter.cloud_environment import CloudEnvironmentDtoModule
+from datalens_sdk.converter.cloud_environment_storage import CloudEnvironmentStorageDtoModule
 from datalens_sdk.converter.collection import CollectionDtoModule
 from datalens_sdk.converter.connection import ConnectionDtoModule
 from datalens_sdk.converter.dashboard import DashboardDtoModule
@@ -59,6 +61,10 @@ from datalens_sdk.domain.cloud_environment import (
     CloudEnvironment,
     CloudEnvironmentCreate,
     CloudEnvironmentListOptions,
+)
+from datalens_sdk.domain.cloud_environment_storage import (
+    CloudEnvironmentStorageObjectMetadata,
+    CloudEnvironmentStorageSignedUrl,
 )
 from datalens_sdk.domain.collection import Collection, CollectionCreate
 from datalens_sdk.domain.common_types import SortDirection, UILanguage, UITheme
@@ -100,6 +106,7 @@ from datalens_sdk.domain.navigation import (
 from datalens_sdk.domain.ports import (
     ChartOperations,
     CloudEnvironmentOperations,
+    CloudEnvironmentStorageOperations,
     CollectionOperations,
     ConnectionOperations,
     DashboardOperations,
@@ -427,6 +434,7 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
         spark_cluster_operations: SparkClusterOperations,
         spark_application_operations: SparkApplicationOperations,
         cloud_environment_operations: CloudEnvironmentOperations,
+        cloud_environment_storage_operations: CloudEnvironmentStorageOperations,
         installation: str,
         connection_operations: ConnectionOperations,
         dashboard_operations: DashboardOperations,
@@ -464,6 +472,17 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
         self._spark_cluster_operations = spark_cluster_operations
         self._spark_application_operations = spark_application_operations
         self._cloud_environment_operations = cloud_environment_operations
+        self._cloud_environment_storage_operations = cloud_environment_storage_operations
+
+    def bucket_upload_url(
+        self, cloud_environment_id: str, path: str, size: str, content_md5: str
+    ) -> CloudEnvironmentStorageSignedUrl:
+        return self._cloud_environment_storage_operations.create_bucket_upload_url(
+            cloud_environment_id, path, size, content_md5
+        )
+
+    def bucket_download_url(self, cloud_environment_id: str, path: str) -> CloudEnvironmentStorageSignedUrl:
+        return self._cloud_environment_storage_operations.create_bucket_download_url(cloud_environment_id, path)
 
     def cloud_environment(
         self,
@@ -759,6 +778,7 @@ class YCGetNamespace(GetNamespace):
         spark_application_operations: SparkApplicationOperations,
         trino_cluster_operations: TrinoClusterOperations,
         cloud_environment_operations: CloudEnvironmentOperations,
+        cloud_environment_storage_operations: CloudEnvironmentStorageOperations,
         chart_operations: ChartOperations,
         collection_operations: CollectionOperations,
         connection_operations: ConnectionOperations,
@@ -784,6 +804,10 @@ class YCGetNamespace(GetNamespace):
         self._spark_application_operations = spark_application_operations
         self._trino_cluster_operations = trino_cluster_operations
         self._cloud_environment_operations = cloud_environment_operations
+        self._cloud_environment_storage_operations = cloud_environment_storage_operations
+
+    def bucket_object_metadata(self, cloud_environment_id: str, path: str) -> CloudEnvironmentStorageObjectMetadata:
+        return self._cloud_environment_storage_operations.get_bucket_object_metadata(cloud_environment_id, path)
 
     def cloud_environment(self, *, by_id: str, include_permissions: bool | None = None) -> CloudEnvironment:
         return self._cloud_environment_operations.get_cloud_environment(by_id, include_permissions=include_permissions)
@@ -858,12 +882,25 @@ class YCListNamespace(ListNamespace):
         trino_cluster_operations: TrinoClusterOperations,
         rest_catalog_operations: RestCatalogOperations,
         cloud_environment_operations: CloudEnvironmentOperations,
+        cloud_environment_storage_operations: CloudEnvironmentStorageOperations,
     ) -> None:
         self._spark_cluster_operations = spark_cluster_operations
         self._spark_application_operations = spark_application_operations
         self._trino_cluster_operations = trino_cluster_operations
         self._rest_catalog_operations = rest_catalog_operations
         self._cloud_environment_operations = cloud_environment_operations
+        self._cloud_environment_storage_operations = cloud_environment_storage_operations
+
+    def bucket_objects(
+        self,
+        cloud_environment_id: str,
+        prefix: str | None = None,
+        page_size: int = 1000,
+        page_token: str | None = None,
+    ) -> Pager[str]:
+        return self._cloud_environment_storage_operations.list_bucket_objects(
+            cloud_environment_id, prefix, page_size, page_token
+        )
 
     def cloud_environments(
         self,
@@ -1448,6 +1485,10 @@ class DataLensClientYC(DataLensClientBase):
             lakehouse_operations=lakehouse_operation_service,
             dto_module=cast(CloudEnvironmentDtoModule, dto_module),
         )
+        cloud_environment_storage_service = CloudEnvironmentStorageService(
+            api=CloudEnvironmentStorageAPI(self._http),
+            dto_module=cast(CloudEnvironmentStorageDtoModule, dto_module),
+        )
         return (
             YCCreateNamespace(
                 rest_catalog_operations=rest_catalog_service,
@@ -1456,6 +1497,7 @@ class DataLensClientYC(DataLensClientBase):
                 spark_cluster_operations=spark_cluster_service,
                 spark_application_operations=spark_application_service,
                 cloud_environment_operations=cloud_environment_service,
+                cloud_environment_storage_operations=cloud_environment_storage_service,
                 installation=deps.installation,
                 chart_operations=deps.chart_operations,
                 collection_operations=deps.collection_operations,
@@ -1478,6 +1520,7 @@ class DataLensClientYC(DataLensClientBase):
                 spark_application_operations=spark_application_service,
                 trino_cluster_operations=trino_cluster_service,
                 cloud_environment_operations=cloud_environment_service,
+                cloud_environment_storage_operations=cloud_environment_storage_service,
                 chart_operations=deps.chart_operations,
                 collection_operations=deps.collection_operations,
                 connection_operations=deps.connection_operations,
@@ -1493,6 +1536,7 @@ class DataLensClientYC(DataLensClientBase):
                 trino_cluster_operations=trino_cluster_service,
                 rest_catalog_operations=rest_catalog_service,
                 cloud_environment_operations=cloud_environment_service,
+                cloud_environment_storage_operations=cloud_environment_storage_service,
             ),
         )
 

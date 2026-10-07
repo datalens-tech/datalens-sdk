@@ -310,6 +310,12 @@ RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (
         tag="CloudEnvironments", namespace="cloud_environments", installations=("yacloud",), alias_only_read=True
     ),
     RpcNamespaceConfig(
+        tag="CloudEnvironmentStorage",
+        namespace="cloud_environment_storage",
+        installations=("yacloud",),
+        alias_only_read=True,
+    ),
+    RpcNamespaceConfig(
         tag="LakehouseOperations", namespace="lakehouse_operations", installations=("yacloud",), alias_only_read=True
     ),
     RpcNamespaceConfig(

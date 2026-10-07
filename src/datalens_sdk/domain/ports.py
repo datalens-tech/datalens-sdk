@@ -18,6 +18,10 @@ if TYPE_CHECKING:
         CloudEnvironmentListOptions,
         CloudEnvironmentUpdate,
     )
+    from datalens_sdk.domain.cloud_environment_storage import (
+        CloudEnvironmentStorageObjectMetadata,
+        CloudEnvironmentStorageSignedUrl,
+    )
     from datalens_sdk.domain.collection import Collection, CollectionCreate, CollectionUpdate
     from datalens_sdk.domain.common_types import UILanguage, UITheme
     from datalens_sdk.domain.connection import Connection, ConnectionUpdate
@@ -140,6 +144,27 @@ class CloudEnvironmentOperations(Protocol):
     def delete_cloud_environment(self, cloud_environment_id: str) -> LakehouseOperation: ...
 
     def list_cloud_environments(self, options: CloudEnvironmentListOptions) -> Pager[CloudEnvironment]: ...
+
+
+@runtime_checkable
+class CloudEnvironmentStorageOperations(Protocol):
+    def create_bucket_upload_url(
+        self, cloud_environment_id: str, path: str, size: str, content_md5: str
+    ) -> CloudEnvironmentStorageSignedUrl: ...
+
+    def create_bucket_download_url(self, cloud_environment_id: str, path: str) -> CloudEnvironmentStorageSignedUrl: ...
+
+    def get_bucket_object_metadata(
+        self, cloud_environment_id: str, path: str
+    ) -> CloudEnvironmentStorageObjectMetadata: ...
+
+    def list_bucket_objects(
+        self,
+        cloud_environment_id: str,
+        prefix: str | None = None,
+        page_size: int = 1000,
+        page_token: str | None = None,
+    ) -> Pager[str]: ...
 
 
 @runtime_checkable
