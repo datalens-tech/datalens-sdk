@@ -17,12 +17,17 @@ bundled preflight and [Yandex Cloud setup](setup.md).
 
 ## Identity and references
 
-`cluster=` accepts a managed `SparkCluster` model or its non-empty managed
-`cluster_id` string. The model gives the SDK an installation and cloud
-environment to check; its DataLens entity `id` is not the managed cluster ID.
+`cluster=` accepts a managed `SparkCluster` model or its non-empty Lakehouse
+ID string. For a `SparkCluster`, pass `.id`: the cluster entry data's
+Lakehouse ID (`lakehouse_id` in entry data). `SparkCluster.entry_id` is the
+DataLens object ID and `SparkCluster.cluster_id` is the managed cloud cluster
+ID; neither is the cluster identifier expected by Spark API methods. The
+model gives the SDK an installation and cloud environment to check. A `SparkApplication` snapshot
+exposes the same Lakehouse ID as `.cluster_id`, matching the API response
+field name; reuse that value for its bound methods.
 For `client.list.spark_application_log`, `application=` accepts a
 `SparkApplication` snapshot or its non-empty `id`. An application model must
-belong to the selected managed cluster and client installation. A raw
+belong to the selected Lakehouse cluster and client installation. A raw
 application ID cannot prove either fact.
 
 Creation may attach `RestCatalog` models or catalog ID strings through
@@ -63,12 +68,12 @@ sequence of API filter expressions such as `name="daily-etl"`.
 from datalens_sdk import DataLensClientYC
 
 client = DataLensClientYC()
-application = client.get.spark_application(cluster="managed-cluster-id", by_id="known-application-id")
+application = client.get.spark_application(cluster="lakehouse-cluster-id", by_id="known-application-id")
 new_snapshot = application.refresh()
 
 applications = []
 continuation_token = None
-pager = client.list.spark_applications(cluster="managed-cluster-id", filters=('name="daily-etl"',), page_size=100)
+pager = client.list.spark_applications(cluster="lakehouse-cluster-id", filters=('name="daily-etl"',), page_size=100)
 for page in pager.pages():
     applications.extend(page.items)
     continuation_token = page.next_page_token
@@ -100,7 +105,7 @@ from datalens_sdk import DataLensClientYC
 client = DataLensClientYC()
 fragments = []
 continuation_token = None
-log_pages = client.list.spark_application_log(cluster="managed-cluster-id", application="known-application-id")
+log_pages = client.list.spark_application_log(cluster="lakehouse-cluster-id", application="known-application-id")
 for page in log_pages.pages():
     fragments.append(page.content)
     continuation_token = page.next_page_token
@@ -178,19 +183,19 @@ def require_confirmation(message: str) -> None:
 
 
 client = DataLensClientYC()
-cluster_id = "managed-cluster-id"  # Replace with the user-selected managed cluster ID.
+lakehouse_id = "lakehouse-cluster-id"  # Use SparkCluster.id or the Lakehouse ID from entry data.
 application_name = "daily-etl"  # Replace with the user-selected application name.
 main_python_file_uri = "s3://bucket/main.py"  # Replace with the user-selected workload URI.
 catalog_id: str | None = None  # Set only when the user selected an existing catalog ID.
-builder = client.create.spark_application(cluster=cluster_id, name=application_name)
+builder = client.create.spark_application(cluster=lakehouse_id, name=application_name)
 builder.pyspark(main_python_file_uri=main_python_file_uri)
 if catalog_id is not None:
     builder.catalogs([catalog_id])
 
 catalog_summary = f"catalog {catalog_id!r}" if catalog_id is not None else "no catalog"
 require_confirmation(
-    f"Submit PySpark application {application_name!r} to managed cluster "
-    f"{cluster_id!r} "
+    f"Submit PySpark application {application_name!r} to Lakehouse cluster "
+    f"{lakehouse_id!r} "
     f"using workload {main_python_file_uri!r} and {catalog_summary}? "
     "This may incur compute cost."
 )
@@ -207,8 +212,9 @@ requested application.
 
 Cancellation can disrupt a running workload. After the authorized get and
 inspection needed to identify the exact application, obtain a separate fresh
-confirmation immediately before `SparkApplication.cancel()`. The bound method uses
-the snapshot's managed cluster ID and application ID, returns a
+confirmation immediately before `SparkApplication.cancel()`. The bound method
+uses the snapshot's Lakehouse ID (exposed as `SparkApplication.cluster_id`)
+and application ID, returns a
 `LakehouseOperation`, and does not wait or check the possibly stale status.
 There is no standalone `client.cancel.spark_application` action.
 
@@ -218,13 +224,13 @@ import sys
 from datalens_sdk import DataLensClientYC
 
 
-def require_cancel_confirmation(cluster_id: str, application_id: str) -> None:
+def require_cancel_confirmation(lakehouse_id: str, application_id: str) -> None:
     if sys.stdin is None or not sys.stdin.isatty():
         raise RuntimeError("Interactive Spark application cancellation confirmation required")
     try:
         answer = input(
-            f"Cancel Spark application {application_id!r} on managed cluster "
-            f"{cluster_id!r}? "
+            f"Cancel Spark application {application_id!r} on Lakehouse cluster "
+            f"{lakehouse_id!r}? "
             "This can disrupt its workload. Type yes to confirm: "
         )
     except (EOFError, KeyboardInterrupt):
@@ -234,7 +240,7 @@ def require_cancel_confirmation(cluster_id: str, application_id: str) -> None:
 
 
 client = DataLensClientYC()
-application = client.get.spark_application(cluster="managed-cluster-id", by_id="known-application-id")
+application = client.get.spark_application(cluster="lakehouse-cluster-id", by_id="known-application-id")
 require_cancel_confirmation(application.cluster_id, application.id)
 operation = application.cancel()
 ```
@@ -267,7 +273,7 @@ new_operation = operation.refresh()
 finished_operation = new_operation.wait(timeout=600.0, poll_interval=2.0)
 operation_done = finished_operation.done
 operation_error = finished_operation.error
-application = client.get.spark_application(cluster="managed-cluster-id", by_id="known-application-id")
+application = client.get.spark_application(cluster="lakehouse-cluster-id", by_id="known-application-id")
 application_status = application.status
 ```
 
