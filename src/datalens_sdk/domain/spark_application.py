@@ -162,7 +162,7 @@ class SparkApplicationLogOptions:
                 or not application.cluster_id
                 or application.cluster_id != cluster_id
             ):
-                raise DataLensValidationError("Spark application must belong to the selected managed cluster")
+                raise DataLensValidationError("Spark application must belong to the selected Lakehouse cluster")
             application_id = application.id
         else:
             application_id = application

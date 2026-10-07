@@ -35,10 +35,10 @@ from datalens_sdk.errors import BadRequestError, DataLensValidationError, DTOVal
 from datalens_sdk.http import DataLensHTTPClient
 
 
-def _cluster(*, cluster_id: str = "managed", installation: str = "yacloud") -> SparkCluster:
+def _cluster(*, id: str = "lakehouse-1", cluster_id: str = "managed-1", installation: str = "yacloud") -> SparkCluster:
     pool = SparkResourcePoolConfig(resource_preset_id="preset", scale_policy=SparkFixedScalePolicy(size=1))
     return SparkCluster(
-        id="entry",
+        id=id,
         cluster_id=cluster_id,
         installation=installation,
         location=EntryLocation.collection("collection"),
@@ -54,13 +54,13 @@ def _cluster(*, cluster_id: str = "managed", installation: str = "yacloud") -> S
         ),
         health="ALIVE",
         status="RUNNING",
-        entry_id="entry",
+        entry_id="entry-1",
         raw={},
     )
 
 
 def _application(
-    *, cluster_id: str = "managed", installation: str = "yacloud", application_id: str = "application"
+    *, cluster_id: str = "lakehouse-1", installation: str = "yacloud", application_id: str = "application"
 ) -> SparkApplication:
     return SparkApplication(
         id=application_id,
@@ -120,7 +120,7 @@ def test_log_page_and_options_are_frozen_slotted_values() -> None:
 def test_log_options_validate_application_model_against_raw_and_model_clusters() -> None:
     assert (
         SparkApplicationLogOptions.create(
-            installation="yacloud", cluster="managed", application=_application()
+            installation="yacloud", cluster="raw-lakehouse", application=_application(cluster_id="raw-lakehouse")
         ).application_id
         == "application"
     )
@@ -128,18 +128,18 @@ def test_log_options_validate_application_model_against_raw_and_model_clusters()
         SparkApplicationLogOptions.create(
             installation="yacloud", cluster=_cluster(), application=_application()
         ).cluster_id
-        == "managed"
+        == "lakehouse-1"
     )
     for cluster, application in (
         ("", "application"),
-        ("managed", ""),
-        ("managed", _application(cluster_id="other")),
+        ("raw-lakehouse", ""),
+        ("raw-lakehouse", _application(cluster_id="other")),
         (_cluster(), _application(cluster_id="other")),
         (_cluster(installation="enterprise"), _application()),
-        ("managed", _application(installation="enterprise")),
-        ("managed", _application(application_id="")),
-        ("managed", _application(installation="")),
-        ("managed", cast(str, 42)),
+        ("raw-lakehouse", _application(installation="enterprise")),
+        ("raw-lakehouse", _application(application_id="")),
+        ("raw-lakehouse", _application(installation="")),
+        ("raw-lakehouse", cast(str, 42)),
     ):
         with pytest.raises(DataLensValidationError):
             SparkApplicationLogOptions.create(installation="yacloud", cluster=cluster, application=application)
@@ -397,14 +397,22 @@ def test_log_backend_error_retains_code_and_request_id() -> None:
     assert len(transport.requests) == 1
 
 
-def test_log_action_uses_managed_cluster_and_application_ids() -> None:
+def test_log_action_uses_lakehouse_cluster_and_application_ids() -> None:
     transport = _Transport([_log("one", ""), _log("two", ""), _log("three", "")])
     client = DataLensClientYC(auth=None, transport=httpx.MockTransport(transport.handle))
     with client:
         assert tuple(client.list.spark_application_log(cluster=_cluster(), application=_application())) == ("one",)
-        assert tuple(client.list.spark_application_log(cluster="managed", application=_application())) == ("two",)
+        assert tuple(
+            client.list.spark_application_log(
+                cluster="raw-lakehouse", application=_application(cluster_id="raw-lakehouse")
+            )
+        ) == ("two",)
         assert tuple(client.list.spark_application_log(cluster=_cluster(), application="application")) == ("three",)
-    assert transport.bodies() == [{"clusterId": "managed", "applicationId": "application"}] * 3
+    assert transport.bodies() == [
+        {"clusterId": "lakehouse-1", "applicationId": "application"},
+        {"clusterId": "raw-lakehouse", "applicationId": "application"},
+        {"clusterId": "lakehouse-1", "applicationId": "application"},
+    ]
 
 
 def test_log_action_rejects_known_reference_errors_before_http() -> None:
@@ -414,7 +422,7 @@ def test_log_action_rejects_known_reference_errors_before_http() -> None:
         for cluster, application in (
             ("", "application"),
             ("managed", ""),
-            (_cluster(cluster_id=""), "application"),
+            (_cluster(id=""), "application"),
             (_cluster(installation="enterprise"), "application"),
             ("managed", _application(application_id="")),
             ("managed", _application(cluster_id="other")),
