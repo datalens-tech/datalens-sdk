@@ -49,7 +49,12 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate
     from datalens_sdk.domain.rest_catalog import RestCatalog, RestCatalogCreate, RestCatalogListOptions
     from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
-    from datalens_sdk.domain.spark_application import SparkApplication, SparkApplicationListOptions
+    from datalens_sdk.domain.spark_application import (
+        SparkApplication,
+        SparkApplicationListOptions,
+        SparkApplicationLogOptions,
+        SparkApplicationLogPager,
+    )
     from datalens_sdk.domain.spark_cluster import (
         SparkCluster,
         SparkClusterCreate,
@@ -141,6 +146,8 @@ class SparkApplicationOperations(Protocol):
     def get_spark_application(self, cluster_id: str, application_id: str) -> SparkApplication: ...
 
     def list_spark_applications(self, options: SparkApplicationListOptions) -> Pager[SparkApplication]: ...
+
+    def list_spark_application_log(self, options: SparkApplicationLogOptions) -> SparkApplicationLogPager: ...
 
 
 @runtime_checkable

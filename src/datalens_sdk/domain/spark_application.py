@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Literal, TypeAlias
 
@@ -124,3 +124,60 @@ class SparkApplicationListOptions:
         if any(not isinstance(value, str) for value in filters):
             raise DataLensValidationError("filters must contain only strings")
         return cls(cluster_id, tuple(filters), page_size, page_token)
+
+
+@dataclass(frozen=True, slots=True)
+class SparkApplicationLogPage:
+    content: str
+    next_page_token: str
+
+
+@dataclass(frozen=True, slots=True)
+class SparkApplicationLogOptions:
+    cluster_id: str
+    application_id: str
+    page_size: int | None = None
+    page_token: str | None = None
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        installation: str,
+        cluster: SparkCluster | str,
+        application: SparkApplication | str,
+        page_size: int | None = None,
+        page_token: str | None = None,
+    ) -> SparkApplicationLogOptions:
+        cluster_id = normalize_spark_application_cluster(cluster, installation=installation)
+        if isinstance(application, SparkApplication):
+            if (
+                not isinstance(application.installation, str)
+                or not application.installation
+                or application.installation != installation
+            ):
+                raise DataLensValidationError("Spark application must belong to this installation")
+            if (
+                not isinstance(application.cluster_id, str)
+                or not application.cluster_id
+                or application.cluster_id != cluster_id
+            ):
+                raise DataLensValidationError("Spark application must belong to the selected Lakehouse cluster")
+            application_id = application.id
+        else:
+            application_id = application
+        if not isinstance(application_id, str) or not application_id:
+            raise DataLensValidationError("Spark application id must be a non-empty string")
+        return cls(cluster_id, application_id, page_size, page_token)
+
+
+class SparkApplicationLogPager:
+    def __init__(self, loader: Callable[[], Iterator[SparkApplicationLogPage]]) -> None:
+        self._loader = loader
+
+    def pages(self) -> Iterator[SparkApplicationLogPage]:
+        return self._loader()
+
+    def __iter__(self) -> Iterator[str]:
+        for page in self.pages():
+            yield page.content

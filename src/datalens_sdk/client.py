@@ -119,6 +119,8 @@ from datalens_sdk.domain.rest_catalog import (
 from datalens_sdk.domain.spark_application import (
     SparkApplication,
     SparkApplicationListOptions,
+    SparkApplicationLogOptions,
+    SparkApplicationLogPager,
     normalize_spark_application_cluster,
 )
 from datalens_sdk.domain.spark_cluster import (
@@ -852,6 +854,24 @@ class YCListNamespace(ListNamespace):
                 installation="yacloud",
                 cluster=cluster,
                 filters=filters,
+                page_size=page_size,
+                page_token=page_token,
+            )
+        )
+
+    def spark_application_log(
+        self,
+        *,
+        cluster: SparkCluster | str,
+        application: SparkApplication | str,
+        page_size: int | None = None,
+        page_token: str | None = None,
+    ) -> SparkApplicationLogPager:
+        return self._spark_application_operations.list_spark_application_log(
+            SparkApplicationLogOptions.create(
+                installation="yacloud",
+                cluster=cluster,
+                application=application,
                 page_size=page_size,
                 page_token=page_token,
             )

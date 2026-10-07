@@ -14,6 +14,8 @@ from datalens_sdk.domain.spark_application import (
     SparkApplicationCatalogRef,
     SparkApplicationConnectSpec,
     SparkApplicationListOptions,
+    SparkApplicationLogOptions,
+    SparkApplicationLogPage,
     SparkApplicationPySparkSpec,
     SparkApplicationSparkSpec,
     SparkApplicationStatus,
@@ -53,8 +55,22 @@ class SparkApplicationListReadDTOClass(Protocol):
     def model_validate(self, obj: object) -> SparkApplicationListReadDTOProtocol: ...
 
 
+class SparkApplicationLogReadDTOProtocol(Protocol):
+    @property
+    def content(self) -> str: ...
+
+    @property
+    def next_page_token(self) -> str: ...
+
+
+class SparkApplicationLogReadDTOClass(Protocol):
+    def model_validate(self, obj: object) -> SparkApplicationLogReadDTOProtocol: ...
+
+
 class SparkApplicationDtoModule(Protocol):
     GetSparkApplicationArgsDTO: SparkApplicationWriteDTOClass
+    ListSparkApplicationLogArgsDTO: SparkApplicationWriteDTOClass
+    ListSparkApplicationLogResultReadDTO: SparkApplicationLogReadDTOClass
     ListSparkApplicationsArgsDTO: SparkApplicationWriteDTOClass
     ListSparkApplicationsResultReadDTO: SparkApplicationListReadDTOClass
     SparkApplicationReadDTO: object
@@ -123,6 +139,30 @@ class SparkApplicationConverter:
         if page_token is not None:
             payload["pageToken"] = page_token
         return _dto_module(dto_module).ListSparkApplicationsArgsDTO.model_validate(payload)
+
+    @staticmethod
+    def log_payload(
+        options: SparkApplicationLogOptions,
+        *,
+        page_token: str | None,
+        dto_module: SparkApplicationDtoModule | None = None,
+    ) -> SparkApplicationWriteDTOProtocol:
+        payload: dict[str, object] = {"clusterId": options.cluster_id, "applicationId": options.application_id}
+        if options.page_size is not None:
+            payload["pageSize"] = options.page_size
+        if page_token is not None:
+            payload["pageToken"] = page_token
+        return _dto_module(dto_module).ListSparkApplicationLogArgsDTO.model_validate(payload)
+
+    @staticmethod
+    def to_log_page(
+        raw: Mapping[str, object], *, dto_module: SparkApplicationDtoModule | None = None
+    ) -> SparkApplicationLogPage:
+        try:
+            validated = _dto_module(dto_module).ListSparkApplicationLogResultReadDTO.model_validate(raw)
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="listSparkApplicationLog", reason=str(exc)) from exc
+        return SparkApplicationLogPage(content=validated.content, next_page_token=validated.next_page_token)
 
     @staticmethod
     def to_application(

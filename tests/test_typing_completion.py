@@ -63,6 +63,8 @@ from datalens_sdk import (
     SparkApplication,
     SparkApplicationCatalogRef,
     SparkApplicationConnectSpec,
+    SparkApplicationLogPage,
+    SparkApplicationLogPager,
     SparkApplicationPySparkSpec,
     SparkApplicationSparkSpec,
     SparkApplicationStatus,
@@ -1080,6 +1082,19 @@ def test_spark_application_read_types_preserve_variant_narrowing() -> None:
             assert_type(application.spec.main_python_file_uri, str)
         elif isinstance(application.spec, SparkApplicationConnectSpec):
             assert_type(application.spec.properties, Mapping[str, str])
+
+
+def test_spark_application_log_action_has_yc_only_pager_types() -> None:
+    client = DataLensClientYC(auth=None, transport=_transport())
+    assert get_type_hints(DataLensClientEnterprise)["list"] is ListNamespace
+    assert get_type_hints(YaTeamStyleClient)["list"] is ListNamespace
+    if TYPE_CHECKING:
+        pager = client.list.spark_application_log(
+            cluster="managed", application="application", page_size=0, page_token=""
+        )
+        assert_type(pager, SparkApplicationLogPager)
+        assert_type(next(pager.pages()), SparkApplicationLogPage)
+        assert_type(next(iter(pager)), str)
 
 
 def test_rest_catalog_list_is_typed_only_on_yandex_cloud() -> None:

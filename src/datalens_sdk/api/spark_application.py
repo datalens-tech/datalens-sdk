@@ -7,7 +7,13 @@ from pydantic import ValidationError
 from datalens_sdk.converter.spark_application import SparkApplicationConverter, SparkApplicationDtoModule
 from datalens_sdk.domain.navigation import Page, Pager
 from datalens_sdk.domain.ports import SparkApplicationOperations
-from datalens_sdk.domain.spark_application import SparkApplication, SparkApplicationListOptions
+from datalens_sdk.domain.spark_application import (
+    SparkApplication,
+    SparkApplicationListOptions,
+    SparkApplicationLogOptions,
+    SparkApplicationLogPage,
+    SparkApplicationLogPager,
+)
 from datalens_sdk.errors import (
     DataLensValidationError,
     translate_dto_validation_error,
@@ -25,6 +31,11 @@ class SparkApplicationAPI:
 
     def list(self, payload: dict[str, object]) -> dict[str, object]:
         return self._client.post_json_object("/rpc/listSparkApplications", payload, retry_policy=TRANSIENT_RETRY_POLICY)
+
+    def list_log(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object(
+            "/rpc/listSparkApplicationLog", payload, retry_policy=TRANSIENT_RETRY_POLICY
+        )
 
 
 class SparkApplicationService(SparkApplicationOperations):
@@ -88,3 +99,32 @@ class SparkApplicationService(SparkApplicationOperations):
                 page_token = next_token
 
         return Pager(load)
+
+    def list_spark_application_log(self, options: SparkApplicationLogOptions) -> SparkApplicationLogPager:
+        def load() -> Iterator[SparkApplicationLogPage]:
+            page_token = options.page_token
+            seen_tokens: set[str] = set()
+            while True:
+                try:
+                    payload = SparkApplicationConverter.log_payload(
+                        options, page_token=page_token, dto_module=self._dto_module
+                    ).to_payload()
+                    if not seen_tokens and page_token:
+                        seen_tokens.add(page_token)
+                    page = SparkApplicationConverter.to_log_page(
+                        self._api.list_log(payload), dto_module=self._dto_module
+                    )
+                except ValidationError as exc:
+                    raise translate_dto_validation_error(operation="listSparkApplicationLog", reason=str(exc)) from exc
+                yield page
+                next_token = page.next_page_token
+                if not next_token:
+                    return
+                if next_token in seen_tokens:
+                    raise translate_invalid_response_error(
+                        operation="listSparkApplicationLog", reason="pagination returned a repeated nextPageToken"
+                    )
+                seen_tokens.add(next_token)
+                page_token = next_token
+
+        return SparkApplicationLogPager(load)
