@@ -5,6 +5,7 @@ from datalens_sdk.domain.specs.dataset import DatasetCreateSpec, DatasetUpdateSp
 from datalens_sdk.domain.specs.editor_chart import EditorChartCreateSpec
 from datalens_sdk.domain.specs.folder import FolderCreateSpec, FolderUpdateSpec
 from datalens_sdk.domain.specs.ql_chart import QLChartCreateSpec
+from datalens_sdk.domain.specs.sql_query import SqlQueryCreateSpec, SqlQueryUpdateSpec
 from datalens_sdk.domain.specs.wizard_chart import WizardChartCreateSpec
 from datalens_sdk.domain.specs.workbook import WorkbookCreateSpec, WorkbookUpdateSpec
 
@@ -20,6 +21,8 @@ __all__ = [
     "FolderCreateSpec",
     "FolderUpdateSpec",
     "QLChartCreateSpec",
+    "SqlQueryCreateSpec",
+    "SqlQueryUpdateSpec",
     "WizardChartCreateSpec",
     "WorkbookCreateSpec",
     "WorkbookUpdateSpec",

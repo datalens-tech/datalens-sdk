@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -51,6 +51,7 @@ if TYPE_CHECKING:
         RawCreateSpec,
         RawReplaceSpec,
     )
+    from datalens_sdk.domain.sql_query import SqlQuery, SqlQueryCreate, SqlQueryRun, SqlQueryRunValue, SqlQueryUpdate
     from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
     from datalens_sdk.domain.workbook import Workbook, WorkbookCreate, WorkbookUpdate
     from datalens_sdk.serialization.artifacts import ArtifactPath
@@ -256,6 +257,31 @@ class FolderOperations(Protocol):
         path: str,
         options: DirectoryListOptions,
     ) -> DirectoryPager[EntrySummary]: ...
+
+
+@runtime_checkable
+class SqlQueryOperations(Protocol):
+    def create_sql_query(self, builder: SqlQueryCreate) -> SqlQuery: ...
+
+    def get_sql_query(
+        self,
+        sql_query_id: str,
+        *,
+        rev_id: str | None = None,
+        include_favorite: bool | None = None,
+        include_permissions: bool | None = None,
+    ) -> SqlQuery: ...
+
+    def update_sql_query(self, builder: SqlQueryUpdate) -> SqlQuery: ...
+
+    def delete_sql_query(self, sql_query_id: str) -> None: ...
+
+    def run_sql_query(
+        self,
+        sql_query_id: str,
+        *,
+        params: Mapping[str, SqlQueryRunValue] | None = None,
+    ) -> SqlQueryRun: ...
 
 
 @runtime_checkable

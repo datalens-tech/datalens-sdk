@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from importlib import import_module, resources
 from importlib.metadata import PackageNotFoundError, version
 import json
+from types import ModuleType
 from typing import TYPE_CHECKING, ClassVar, Generic, Protocol, TypedDict, TypeVar, cast
 import warnings
 
@@ -20,6 +22,7 @@ from datalens_sdk.api.folder import FolderAPI, FolderService
 from datalens_sdk.api.html_page import HtmlPageAPI, HtmlPageService
 from datalens_sdk.api.license import LicenseAPI, LicenseService
 from datalens_sdk.api.navigation import NavigationService
+from datalens_sdk.api.sql_query import SqlQueryAPI, SqlQueryService
 from datalens_sdk.api.workbook import WorkbookAPI, WorkbookService
 from datalens_sdk.auth import (
     AuthProviderProtocol,
@@ -37,6 +40,7 @@ from datalens_sdk.converter.editor_chart import EditorChartDtoModule, editor_rea
 from datalens_sdk.converter.folder import FolderDtoModule
 from datalens_sdk.converter.html_page import HtmlPageDtoModule
 from datalens_sdk.converter.license import LicenseDtoModule
+from datalens_sdk.converter.sql_query import SqlQueryDtoModule
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
 from datalens_sdk.converter.workbook import WorkbookDtoModule
 from datalens_sdk.domain.collection import Collection, CollectionCreate
@@ -85,9 +89,11 @@ from datalens_sdk.domain.ports import (
     HtmlPageOperations,
     LicenseOperations,
     NavigationOperations,
+    SqlQueryOperations,
     WorkbookOperations,
 )
 from datalens_sdk.domain.ql_chart import QLChart
+from datalens_sdk.domain.sql_query import SqlQuery, SqlQueryCreate
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.domain.workbook import Workbook, WorkbookCreate
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError, NotSupportedError
@@ -358,6 +364,53 @@ class CreateNamespace(Generic[ConnectionFactoryT_co, SourceFactoryT_co, EditorCh
         )
 
 
+class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co, EditorChartFactoryT_co]):
+    def __init__(
+        self,
+        *,
+        sql_query_operations: SqlQueryOperations,
+        installation: str,
+        connection_operations: ConnectionOperations,
+        dashboard_operations: DashboardOperations,
+        dataset_operations: DatasetOperations,
+        chart_operations: ChartOperations,
+        collection_operations: CollectionOperations,
+        workbook_operations: WorkbookOperations,
+        folder_operations: FolderOperations,
+        html_page_operations: HtmlPageOperations,
+        connection_factory: ConnectionFactoryT_co,
+        source_factory_cls: SourceFactoryConstructor[SourceFactoryT_co],
+        wizard_chart_factory: WizardChartCreateFactory,
+        editor_chart_factory: EditorChartFactoryT_co,
+        ql_chart_factory: QLChartCreateFactory,
+    ) -> None:
+        super().__init__(
+            installation=installation,
+            connection_operations=connection_operations,
+            dashboard_operations=dashboard_operations,
+            dataset_operations=dataset_operations,
+            chart_operations=chart_operations,
+            collection_operations=collection_operations,
+            workbook_operations=workbook_operations,
+            folder_operations=folder_operations,
+            html_page_operations=html_page_operations,
+            connection_factory=connection_factory,
+            source_factory_cls=source_factory_cls,
+            wizard_chart_factory=wizard_chart_factory,
+            editor_chart_factory=editor_chart_factory,
+            ql_chart_factory=ql_chart_factory,
+        )
+        self._sql_query_operations = sql_query_operations
+
+    def sql_query(self, *, name: str, location: EntryLocation) -> SqlQueryCreate:
+        return SqlQueryCreate(
+            installation=self._installation,
+            name=name,
+            location=location,
+            operations=self._sql_query_operations,
+        )
+
+
 class GetNamespace:
     def __init__(
         self,
@@ -566,6 +619,50 @@ class GetNamespace:
         )
 
 
+class YCGetNamespace(GetNamespace):
+    def __init__(
+        self,
+        *,
+        sql_query_operations: SqlQueryOperations,
+        chart_operations: ChartOperations,
+        collection_operations: CollectionOperations,
+        connection_operations: ConnectionOperations,
+        dashboard_operations: DashboardOperations,
+        dataset_operations: DatasetOperations,
+        folder_operations: FolderOperations,
+        html_page_operations: HtmlPageOperations,
+        workbook_operations: WorkbookOperations,
+    ) -> None:
+        super().__init__(
+            chart_operations=chart_operations,
+            collection_operations=collection_operations,
+            connection_operations=connection_operations,
+            dashboard_operations=dashboard_operations,
+            dataset_operations=dataset_operations,
+            folder_operations=folder_operations,
+            html_page_operations=html_page_operations,
+            workbook_operations=workbook_operations,
+        )
+        self._sql_query_operations = sql_query_operations
+
+    def sql_query(
+        self,
+        *,
+        by_id: str,
+        rev_id: str | None = None,
+        include_favorite: bool | None = None,
+        include_permissions: bool | None = None,
+    ) -> SqlQuery:
+        if not isinstance(by_id, str) or not by_id:
+            raise DataLensValidationError("by_id must be a non-empty string")
+        return self._sql_query_operations.get_sql_query(
+            by_id,
+            rev_id=rev_id,
+            include_favorite=include_favorite,
+            include_permissions=include_permissions,
+        )
+
+
 class NavigationNamespace:
     def __init__(self, operations: NavigationOperations) -> None:
         self._operations = operations
@@ -646,12 +743,31 @@ class LicensesNamespace:
         return self._operations.set_license_limit(value)
 
 
+@dataclass(frozen=True, slots=True)
+class _ActionNamespaceDependencies:
+    installation: str
+    chart_operations: ChartOperations
+    collection_operations: CollectionOperations
+    connection_operations: ConnectionOperations
+    dashboard_operations: DashboardOperations
+    dataset_operations: DatasetOperations
+    folder_operations: FolderOperations
+    html_page_operations: HtmlPageOperations
+    workbook_operations: WorkbookOperations
+    connection_factory: object
+    source_factory_cls: SourceFactoryConstructor[SourceBuilder]
+    wizard_chart_factory: WizardChartCreateFactory
+    editor_chart_factory: object
+    ql_chart_factory: QLChartCreateFactory
+
+
 class DataLensClientBase:
     INSTALLATION = ""
     GENERATED_PACKAGE = "datalens_sdk._generated"
     SDK_DISTRIBUTION = "datalens-sdk"
     DEFAULT_BASE_URL = ""
     KNOWN_NAMESPACE_OWNERS: ClassVar[dict[str, list[str]]] = {}
+    create: CreateNamespace[object, SourceBuilder, object]
     data: DataNamespace
     get: GetNamespace
     navigation: NavigationNamespace
@@ -804,13 +920,13 @@ class DataLensClientBase:
             getattr(charts_module, _class_name(self.INSTALLATION, "EditorChartCreateFactory"))(self._chart_service),
         )
         ql_chart_factory = cast("QLChartCreateFactory", charts_module.QLChartCreateFactory(self._chart_service))
-        self.create = CreateNamespace(
+        deps = _ActionNamespaceDependencies(
             installation=self.INSTALLATION,
+            chart_operations=self._chart_service,
             collection_operations=self._collection_service,
             connection_operations=self._connection_service,
             dashboard_operations=self._dashboard_service,
             dataset_operations=self._dataset_service,
-            chart_operations=self._chart_service,
             folder_operations=self._folder_service,
             html_page_operations=self._html_page_service,
             workbook_operations=self._workbook_service,
@@ -820,6 +936,7 @@ class DataLensClientBase:
             editor_chart_factory=editor_chart_factory,
             ql_chart_factory=ql_chart_factory,
         )
+        self.create, self.get = self._build_action_namespaces(deps, dto_module)
         self.raw = RawNamespace(
             installation=self.INSTALLATION,
             connection_operations=self._connection_service,
@@ -828,16 +945,6 @@ class DataLensClientBase:
             chart_operations=self._chart_service,
         )
         self.data = DataNamespace(self._dataset_service)
-        self.get = GetNamespace(
-            chart_operations=self._chart_service,
-            collection_operations=self._collection_service,
-            connection_operations=self._connection_service,
-            dashboard_operations=self._dashboard_service,
-            dataset_operations=self._dataset_service,
-            folder_operations=self._folder_service,
-            html_page_operations=self._html_page_service,
-            workbook_operations=self._workbook_service,
-        )
         self.navigation = NavigationNamespace(self._navigation_service)
         if "licenses" in self._installation_info["namespaces"]:
             self._license_service = LicenseService(
@@ -845,6 +952,40 @@ class DataLensClientBase:
                 dto_module=cast(LicenseDtoModule, dto_module),
             )
             self.licenses = LicensesNamespace(self._license_service)
+
+    def _build_action_namespaces(
+        self,
+        deps: _ActionNamespaceDependencies,
+        dto_module: ModuleType,
+    ) -> tuple[CreateNamespace[object, SourceBuilder, object], GetNamespace]:
+        return (
+            CreateNamespace(
+                installation=deps.installation,
+                chart_operations=deps.chart_operations,
+                collection_operations=deps.collection_operations,
+                connection_operations=deps.connection_operations,
+                dashboard_operations=deps.dashboard_operations,
+                dataset_operations=deps.dataset_operations,
+                folder_operations=deps.folder_operations,
+                html_page_operations=deps.html_page_operations,
+                workbook_operations=deps.workbook_operations,
+                connection_factory=deps.connection_factory,
+                source_factory_cls=deps.source_factory_cls,
+                wizard_chart_factory=deps.wizard_chart_factory,
+                editor_chart_factory=deps.editor_chart_factory,
+                ql_chart_factory=deps.ql_chart_factory,
+            ),
+            GetNamespace(
+                chart_operations=deps.chart_operations,
+                collection_operations=deps.collection_operations,
+                connection_operations=deps.connection_operations,
+                dashboard_operations=deps.dashboard_operations,
+                dataset_operations=deps.dataset_operations,
+                folder_operations=deps.folder_operations,
+                html_page_operations=deps.html_page_operations,
+                workbook_operations=deps.workbook_operations,
+            ),
+        )
 
     @property
     def capabilities(self) -> InstallationInfo:
@@ -915,10 +1056,53 @@ class DataLensClientYC(DataLensClientBase):
     def _get_default_auth_provider(cls) -> AuthProviderProtocol:
         return YCIAMAuthProvider()
 
+    def _build_action_namespaces(
+        self,
+        deps: _ActionNamespaceDependencies,
+        dto_module: ModuleType,
+    ) -> tuple[YCCreateNamespace[object, SourceBuilder, object], YCGetNamespace]:
+        sql_query_service = SqlQueryService(
+            installation=self.INSTALLATION,
+            api=SqlQueryAPI(self._http),
+            navigation_operations=self._navigation_service,
+            dto_module=cast(SqlQueryDtoModule, dto_module),
+        )
+        return (
+            YCCreateNamespace(
+                sql_query_operations=sql_query_service,
+                installation=deps.installation,
+                chart_operations=deps.chart_operations,
+                collection_operations=deps.collection_operations,
+                connection_operations=deps.connection_operations,
+                dashboard_operations=deps.dashboard_operations,
+                dataset_operations=deps.dataset_operations,
+                folder_operations=deps.folder_operations,
+                html_page_operations=deps.html_page_operations,
+                workbook_operations=deps.workbook_operations,
+                connection_factory=deps.connection_factory,
+                source_factory_cls=deps.source_factory_cls,
+                wizard_chart_factory=deps.wizard_chart_factory,
+                editor_chart_factory=deps.editor_chart_factory,
+                ql_chart_factory=deps.ql_chart_factory,
+            ),
+            YCGetNamespace(
+                sql_query_operations=sql_query_service,
+                chart_operations=deps.chart_operations,
+                collection_operations=deps.collection_operations,
+                connection_operations=deps.connection_operations,
+                dashboard_operations=deps.dashboard_operations,
+                dataset_operations=deps.dataset_operations,
+                folder_operations=deps.folder_operations,
+                html_page_operations=deps.html_page_operations,
+                workbook_operations=deps.workbook_operations,
+            ),
+        )
+
     if TYPE_CHECKING:
-        create: CreateNamespace[
+        create: YCCreateNamespace[
             YacloudConnectionCreateFactory, YacloudSourceCreateFactory, YacloudEditorChartCreateFactory
         ]
+        get: YCGetNamespace
         licenses: LicensesNamespace
 
 
