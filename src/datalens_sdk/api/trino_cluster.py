@@ -4,11 +4,14 @@ from collections.abc import Iterator
 
 from pydantic import ValidationError
 
+from datalens_sdk.converter.lakehouse_operation import LakehouseOperationConverter
 from datalens_sdk.converter.trino_cluster import TrinoClusterConverter, TrinoClusterDtoModule
+from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
 from datalens_sdk.domain.navigation import Page, Pager
-from datalens_sdk.domain.ports import TrinoClusterOperations
+from datalens_sdk.domain.ports import LakehouseOperationOperations, TrinoClusterOperations
 from datalens_sdk.domain.trino_cluster import (
     TrinoCluster,
+    TrinoClusterCreate,
     TrinoClusterListOptions,
     TrinoResourcePreset,
     TrinoResourcePresetListOptions,
@@ -20,6 +23,18 @@ from datalens_sdk.http import TRANSIENT_RETRY_POLICY, HTTPClientProtocol
 class TrinoClusterAPI:
     def __init__(self, client: HTTPClientProtocol) -> None:
         self._client = client
+
+    def create(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object("/rpc/createTrinoCluster", payload)
+
+    def start(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object("/rpc/startTrinoCluster", payload)
+
+    def stop(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object("/rpc/stopTrinoCluster", payload)
+
+    def delete(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object("/rpc/deleteTrinoCluster", payload)
 
     def get(self, payload: dict[str, object]) -> dict[str, object]:
         return self._client.post_json_object("/rpc/getTrinoCluster", payload, retry_policy=TRANSIENT_RETRY_POLICY)
@@ -44,11 +59,50 @@ class TrinoClusterService(TrinoClusterOperations):
         *,
         installation: str,
         api: TrinoClusterAPI,
+        lakehouse_operations: LakehouseOperationOperations,
         dto_module: TrinoClusterDtoModule | None = None,
     ) -> None:
         self._installation = installation
         self._api = api
+        self._lakehouse_operations = lakehouse_operations
         self._dto_module = dto_module
+
+    def _to_operation(self, raw: dict[str, object], *, operation: str) -> LakehouseOperation:
+        return LakehouseOperationConverter.to_operation(
+            raw,
+            operations=self._lakehouse_operations,
+            operation=operation,
+            dto_module=self._dto_module,
+        )
+
+    def create_trino_cluster(self, builder: TrinoClusterCreate) -> LakehouseOperation:
+        try:
+            dto = TrinoClusterConverter.create_payload(builder.to_spec(), dto_module=self._dto_module)
+            raw = self._api.create(dto.to_payload())
+            return self._to_operation(raw, operation="createTrinoCluster")
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="createTrinoCluster", reason=str(exc)) from exc
+
+    def start_trino_cluster(self, cluster_id: str) -> LakehouseOperation:
+        try:
+            dto = TrinoClusterConverter.start_payload(cluster_id, dto_module=self._dto_module)
+            return self._to_operation(self._api.start(dto.to_payload()), operation="startTrinoCluster")
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="startTrinoCluster", reason=str(exc)) from exc
+
+    def stop_trino_cluster(self, cluster_id: str) -> LakehouseOperation:
+        try:
+            dto = TrinoClusterConverter.stop_payload(cluster_id, dto_module=self._dto_module)
+            return self._to_operation(self._api.stop(dto.to_payload()), operation="stopTrinoCluster")
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="stopTrinoCluster", reason=str(exc)) from exc
+
+    def delete_trino_cluster(self, trino_cluster_id: str) -> LakehouseOperation:
+        try:
+            dto = TrinoClusterConverter.delete_payload(trino_cluster_id, dto_module=self._dto_module)
+            return self._to_operation(self._api.delete(dto.to_payload()), operation="deleteTrinoCluster")
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="deleteTrinoCluster", reason=str(exc)) from exc
 
     def get_trino_cluster(self, trino_cluster_id: str) -> TrinoCluster:
         try:

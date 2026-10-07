@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.sql_query import SqlQuery, SqlQueryCreate, SqlQueryRun, SqlQueryRunValue, SqlQueryUpdate
     from datalens_sdk.domain.trino_cluster import (
         TrinoCluster,
+        TrinoClusterCreate,
         TrinoClusterListOptions,
         TrinoResourcePreset,
         TrinoResourcePresetListOptions,
@@ -73,6 +74,14 @@ class LakehouseOperationOperations(Protocol):
 
 @runtime_checkable
 class TrinoClusterOperations(Protocol):
+    def create_trino_cluster(self, builder: TrinoClusterCreate) -> LakehouseOperation: ...
+
+    def start_trino_cluster(self, cluster_id: str) -> LakehouseOperation: ...
+
+    def stop_trino_cluster(self, cluster_id: str) -> LakehouseOperation: ...
+
+    def delete_trino_cluster(self, trino_cluster_id: str) -> LakehouseOperation: ...
+
     def get_trino_cluster(self, trino_cluster_id: str) -> TrinoCluster: ...
 
     def list_trino_clusters(self, options: TrinoClusterListOptions) -> Pager[TrinoCluster]: ...

@@ -4,9 +4,11 @@ from collections.abc import Mapping
 from typing import Literal, Protocol, cast
 
 from datalens_sdk._generated import dto as generated_dto
-from datalens_sdk.domain.entry_location import EntryLocation
+from datalens_sdk.converter.lakehouse_operation import LakehouseOperationReadDtoModule
+from datalens_sdk.domain.entry_location import EntryLocation, collection_id_from_location
 from datalens_sdk.domain.navigation import Page
 from datalens_sdk.domain.ports import TrinoClusterOperations
+from datalens_sdk.domain.specs.trino_cluster import TrinoClusterCreateSpec
 from datalens_sdk.domain.trino_cluster import (
     TrinoAutoScalePolicy,
     TrinoCatalogRef,
@@ -36,7 +38,11 @@ class TrinoClusterReadDTOClass(Protocol):
     def model_validate(self, obj: object) -> object: ...
 
 
-class TrinoClusterDtoModule(Protocol):
+class TrinoClusterDtoModule(LakehouseOperationReadDtoModule, Protocol):
+    CreateTrinoClusterArgsDTO: TrinoClusterWriteDTOClass
+    StartTrinoClusterArgsDTO: TrinoClusterWriteDTOClass
+    StopTrinoClusterArgsDTO: TrinoClusterWriteDTOClass
+    DeleteTrinoClusterArgsDTO: TrinoClusterWriteDTOClass
     GetTrinoClusterArgsDTO: TrinoClusterWriteDTOClass
     ListTrinoClustersArgsDTO: TrinoClusterWriteDTOClass
     GetTrinoResourcePresetArgsDTO: TrinoClusterWriteDTOClass
@@ -114,6 +120,59 @@ class _PresetPageDTO(Protocol):
 
 
 class TrinoClusterConverter:
+    @staticmethod
+    def create_payload(
+        spec: TrinoClusterCreateSpec,
+        *,
+        dto_module: TrinoClusterDtoModule | None = None,
+    ) -> TrinoClusterWriteDTOProtocol:
+        worker = spec.worker
+        payload: dict[str, object] = {
+            "collectionId": collection_id_from_location(spec.location),
+            "cloudEnvironmentId": spec.cloud_environment_id,
+            "name": spec.name,
+            "workerConfig": {
+                "resources": {"resourcePresetId": worker.resources.resource_preset_id},
+                "scalePolicy": {
+                    "autoScale": {
+                        "minCount": str(worker.scale_policy.min_count),
+                        "maxCount": str(worker.scale_policy.max_count),
+                    }
+                },
+            },
+        }
+        if spec.description is not None:
+            payload["description"] = spec.description
+        if spec.labels is not None:
+            payload["labels"] = dict(spec.labels)
+        if spec.trino_version is not None:
+            payload["trinoVersion"] = spec.trino_version
+        return _dto_module(dto_module).CreateTrinoClusterArgsDTO.model_validate(payload)
+
+    @staticmethod
+    def start_payload(
+        cluster_id: str,
+        *,
+        dto_module: TrinoClusterDtoModule | None = None,
+    ) -> TrinoClusterWriteDTOProtocol:
+        return _dto_module(dto_module).StartTrinoClusterArgsDTO.model_validate({"clusterId": cluster_id})
+
+    @staticmethod
+    def stop_payload(
+        cluster_id: str,
+        *,
+        dto_module: TrinoClusterDtoModule | None = None,
+    ) -> TrinoClusterWriteDTOProtocol:
+        return _dto_module(dto_module).StopTrinoClusterArgsDTO.model_validate({"clusterId": cluster_id})
+
+    @staticmethod
+    def delete_payload(
+        trino_cluster_id: str,
+        *,
+        dto_module: TrinoClusterDtoModule | None = None,
+    ) -> TrinoClusterWriteDTOProtocol:
+        return _dto_module(dto_module).DeleteTrinoClusterArgsDTO.model_validate({"id": trino_cluster_id})
+
     @staticmethod
     def get_payload(
         trino_cluster_id: str,
