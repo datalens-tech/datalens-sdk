@@ -63,6 +63,7 @@ from datalens_sdk import (
     SparkApplication,
     SparkApplicationCatalogRef,
     SparkApplicationConnectSpec,
+    SparkApplicationCreate,
     SparkApplicationLogPage,
     SparkApplicationLogPager,
     SparkApplicationPySparkSpec,
@@ -1095,6 +1096,33 @@ def test_spark_application_log_action_has_yc_only_pager_types() -> None:
         assert_type(pager, SparkApplicationLogPager)
         assert_type(next(pager.pages()), SparkApplicationLogPage)
         assert_type(next(iter(pager)), str)
+
+
+def test_spark_application_mutation_types_are_yc_only_and_keep_bound_operations() -> None:
+    client = DataLensClientYC(auth=None, transport=_transport())
+    base: DataLensClientBase = client
+    enterprise = DataLensClientEnterprise(auth=None, base_url="https://enterprise.test", transport=_transport())
+    assert_type(base.create, CreateNamespace[object, SourceBuilder, object])
+    assert_type(
+        enterprise.create,
+        CreateNamespace[
+            EnterpriseConnectionCreateFactory,
+            EnterpriseSourceCreateFactory,
+            EnterpriseEditorChartCreateFactory,
+        ],
+    )
+    if TYPE_CHECKING:
+        builder = client.create.spark_application(cluster="managed-1", name="analytics")
+        assert_type(builder, SparkApplicationCreate)
+        assert_type(builder.catalogs(["catalog-1"]), SparkApplicationCreate)
+        assert_type(builder.spark(main_jar_file_uri="jar"), SparkApplicationCreate)
+        assert_type(builder.pyspark(main_python_file_uri="python"), SparkApplicationCreate)
+        assert_type(builder.spark_connect(), SparkApplicationCreate)
+        assert_type(builder.build(), LakehouseOperation)
+        application = client.get.spark_application(cluster="managed-1", by_id="application-1")
+        assert_type(application.cancel(), LakehouseOperation)
+        assert_type(application.cancel().refresh(), LakehouseOperation)
+        assert_type(application.cancel().wait(timeout=1.0), LakehouseOperation)
 
 
 def test_rest_catalog_list_is_typed_only_on_yandex_cloud() -> None:

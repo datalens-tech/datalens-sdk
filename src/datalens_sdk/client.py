@@ -118,6 +118,7 @@ from datalens_sdk.domain.rest_catalog import (
 )
 from datalens_sdk.domain.spark_application import (
     SparkApplication,
+    SparkApplicationCreate,
     SparkApplicationListOptions,
     SparkApplicationLogOptions,
     SparkApplicationLogPager,
@@ -416,6 +417,7 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
         sql_query_operations: SqlQueryOperations,
         trino_cluster_operations: TrinoClusterOperations,
         spark_cluster_operations: SparkClusterOperations,
+        spark_application_operations: SparkApplicationOperations,
         installation: str,
         connection_operations: ConnectionOperations,
         dashboard_operations: DashboardOperations,
@@ -451,6 +453,15 @@ class YCCreateNamespace(CreateNamespace[ConnectionFactoryT_co, SourceFactoryT_co
         self._sql_query_operations = sql_query_operations
         self._trino_cluster_operations = trino_cluster_operations
         self._spark_cluster_operations = spark_cluster_operations
+        self._spark_application_operations = spark_application_operations
+
+    def spark_application(self, *, cluster: SparkCluster | str, name: str | None = None) -> SparkApplicationCreate:
+        return SparkApplicationCreate(
+            installation=self._installation,
+            cluster=cluster,
+            name=name,
+            operations=self._spark_application_operations,
+        )
 
     def rest_catalog(
         self,
@@ -1374,6 +1385,7 @@ class DataLensClientYC(DataLensClientBase):
         spark_application_service = SparkApplicationService(
             installation=self.INSTALLATION,
             api=SparkApplicationAPI(self._http),
+            lakehouse_operations=lakehouse_operation_service,
             dto_module=cast(SparkApplicationDtoModule, dto_module),
         )
         rest_catalog_service = RestCatalogService(
@@ -1388,6 +1400,7 @@ class DataLensClientYC(DataLensClientBase):
                 sql_query_operations=sql_query_service,
                 trino_cluster_operations=trino_cluster_service,
                 spark_cluster_operations=spark_cluster_service,
+                spark_application_operations=spark_application_service,
                 installation=deps.installation,
                 chart_operations=deps.chart_operations,
                 collection_operations=deps.collection_operations,

@@ -34,6 +34,7 @@
 - Add Yandex Cloud Trino catalog selection, filtering, attachment, and detachment support.
 - Add Yandex Cloud Trino cluster create, start, stop, and delete support.
 - Add Yandex Cloud Spark application log fragment pagination.
+- Add Yandex Cloud Spark application create and cancel support.
 - Add Yandex Cloud Spark application get, list, and refresh support.
 - Add Yandex Cloud Spark cluster create, start, stop, and delete support.
 - Add Yandex Cloud Spark cluster and resource preset get, list, and refresh support.
@@ -48,6 +49,7 @@
 
 ### Fixed
 
+- Accept null metadata in Yandex Cloud Lakehouse operation responses while preserving it in `operation.raw`.
 - Allow REST catalog listing responses with null bucket details.
 
 ## 3.1.0 - 2026-10-01

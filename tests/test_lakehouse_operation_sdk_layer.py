@@ -853,6 +853,17 @@ def test_lakehouse_read_ignores_unknown_fields_at_every_object_level() -> None:
     )
 
 
+def test_lakehouse_read_normalizes_null_metadata_and_preserves_raw_response() -> None:
+    response: dict[str, object] = {"id": "operation-1", "done": False, "metadata": None}
+    recorder = RecordedLakehouseTransport(response)
+    client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handle))
+
+    with client:
+        operation = client.get.lakehouse_operation(by_id="operation-1")
+
+    assert operation == LakehouseOperation(id="operation-1", done=False, metadata={}, raw=response)
+
+
 def test_lakehouse_get_ignores_unknown_python_timestamp_name() -> None:
     response: dict[str, object] = {
         "id": "operation-1",

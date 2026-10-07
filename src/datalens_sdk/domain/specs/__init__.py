@@ -5,6 +5,7 @@ from datalens_sdk.domain.specs.dataset import DatasetCreateSpec, DatasetUpdateSp
 from datalens_sdk.domain.specs.editor_chart import EditorChartCreateSpec
 from datalens_sdk.domain.specs.folder import FolderCreateSpec, FolderUpdateSpec
 from datalens_sdk.domain.specs.ql_chart import QLChartCreateSpec
+from datalens_sdk.domain.specs.spark_application import SparkApplicationCreateSpec
 from datalens_sdk.domain.specs.spark_cluster import SparkClusterCreateSpec
 from datalens_sdk.domain.specs.sql_query import SqlQueryCreateSpec, SqlQueryUpdateSpec
 from datalens_sdk.domain.specs.trino_cluster import TrinoClusterCreateSpec
@@ -23,6 +24,7 @@ __all__ = [
     "FolderCreateSpec",
     "FolderUpdateSpec",
     "QLChartCreateSpec",
+    "SparkApplicationCreateSpec",
     "SparkClusterCreateSpec",
     "SqlQueryCreateSpec",
     "SqlQueryUpdateSpec",
