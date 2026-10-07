@@ -9,12 +9,14 @@ from datalens_sdk.converter.trino_cluster import TrinoClusterConverter, TrinoClu
 from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
 from datalens_sdk.domain.navigation import Page, Pager
 from datalens_sdk.domain.ports import LakehouseOperationOperations, TrinoClusterOperations
+from datalens_sdk.domain.rest_catalog import RestCatalog
 from datalens_sdk.domain.trino_cluster import (
     TrinoCluster,
     TrinoClusterCreate,
     TrinoClusterListOptions,
     TrinoResourcePreset,
     TrinoResourcePresetListOptions,
+    _catalog_id,
 )
 from datalens_sdk.errors import translate_dto_validation_error, translate_invalid_response_error
 from datalens_sdk.http import TRANSIENT_RETRY_POLICY, HTTPClientProtocol
@@ -35,6 +37,12 @@ class TrinoClusterAPI:
 
     def delete(self, payload: dict[str, object]) -> dict[str, object]:
         return self._client.post_json_object("/rpc/deleteTrinoCluster", payload)
+
+    def attach_catalog(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object("/rpc/addTrinoClusterCatalog", payload)
+
+    def detach_catalog(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object("/rpc/deleteTrinoClusterCatalog", payload)
 
     def get(self, payload: dict[str, object]) -> dict[str, object]:
         return self._client.post_json_object("/rpc/getTrinoCluster", payload, retry_policy=TRANSIENT_RETRY_POLICY)
@@ -103,6 +111,26 @@ class TrinoClusterService(TrinoClusterOperations):
             return self._to_operation(self._api.delete(dto.to_payload()), operation="deleteTrinoCluster")
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="deleteTrinoCluster", reason=str(exc)) from exc
+
+    def attach_trino_cluster_catalog(self, cluster: TrinoCluster, catalog: RestCatalog | str) -> LakehouseOperation:
+        catalog_id = _catalog_id(
+            catalog, installation=cluster.installation, cloud_environment_id=cluster.cloud_environment_id
+        )
+        try:
+            dto = TrinoClusterConverter.attach_catalog_payload(cluster.id, catalog_id, dto_module=self._dto_module)
+            return self._to_operation(self._api.attach_catalog(dto.to_payload()), operation="addTrinoClusterCatalog")
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="addTrinoClusterCatalog", reason=str(exc)) from exc
+
+    def detach_trino_cluster_catalog(self, cluster: TrinoCluster, catalog: RestCatalog | str) -> LakehouseOperation:
+        catalog_id = _catalog_id(
+            catalog, installation=cluster.installation, cloud_environment_id=cluster.cloud_environment_id
+        )
+        try:
+            dto = TrinoClusterConverter.detach_catalog_payload(cluster.id, catalog_id, dto_module=self._dto_module)
+            return self._to_operation(self._api.detach_catalog(dto.to_payload()), operation="deleteTrinoClusterCatalog")
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="deleteTrinoClusterCatalog", reason=str(exc)) from exc
 
     def get_trino_cluster(self, trino_cluster_id: str) -> TrinoCluster:
         try:

@@ -204,11 +204,15 @@ def test_trino_lifecycle_surface_is_yc_only_for_static_tools() -> None:
         assert_type(builder.description(""), TrinoClusterCreate)
         assert_type(builder.labels({}), TrinoClusterCreate)
         assert_type(builder.trino_version("476"), TrinoClusterCreate)
+        catalog = cast(RestCatalog, object())
+        assert_type(builder.catalogs([catalog, "catalog-2"]), TrinoClusterCreate)
         assert_type(builder.build(), LakehouseOperation)
         cluster = client.get.trino_cluster(by_id="trino-1")
         assert_type(cluster.start(), LakehouseOperation)
         assert_type(cluster.stop(), LakehouseOperation)
         assert_type(cluster.delete(), LakehouseOperation)
+        assert_type(cluster.attach_catalog(catalog), LakehouseOperation)
+        assert_type(cluster.detach_catalog("catalog-2"), LakehouseOperation)
 
 
 def test_trino_read_actions_have_yc_only_static_types() -> None:
@@ -232,8 +236,10 @@ def test_trino_read_actions_have_yc_only_static_types() -> None:
         assert_type(cluster.refresh(), TrinoCluster)
         assert_type(preset, TrinoResourcePreset)
         clusters = client.list.trino_clusters(collection=EntryLocation.collection("collection-1"))
+        catalog_clusters = client.list.trino_clusters(catalog=cast(RestCatalog, object()))
         presets = client.list.trino_resource_presets(cloud_environment_id="env-1")
         assert_type(clusters, Pager[TrinoCluster])
+        assert_type(catalog_clusters, Pager[TrinoCluster])
         assert_type(presets, Pager[TrinoResourcePreset])
         cluster_page = next(clusters.pages())
         preset_page = next(presets.pages())
