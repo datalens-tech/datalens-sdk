@@ -60,6 +60,18 @@ from datalens_sdk import (
     RawWizardChartCreate,
     RawWizardChartReplace,
     RestCatalogCreate,
+    SparkAutoScalePolicy,
+    SparkCluster,
+    SparkClusterConfig,
+    SparkClusterDependencies,
+    SparkClusterHealth,
+    SparkClusterStatus,
+    SparkFixedScalePolicy,
+    SparkLoggingConfig,
+    SparkResourcePoolConfig,
+    SparkResourcePoolsConfig,
+    SparkResourcePreset,
+    SparkScalePolicy,
     SqlQuery,
     SqlQueryCell,
     SqlQueryCreate,
@@ -1009,6 +1021,38 @@ def test_lakehouse_operation_surface_is_visible_to_static_tools() -> None:
         assert_type(LakehouseOperationError(code=0, message="error").details, tuple[object, ...])
         timeout_error = DataLensOperationTimeoutError(operation_id="operation-1", timeout=1.0, last_operation=operation)
         assert_type(timeout_error.last_operation, LakehouseOperation)
+
+
+def test_spark_read_surface_is_visible_to_static_tools() -> None:
+    client = DataLensClientYC(auth=None, transport=_transport())
+    base_client: DataLensClientBase = client
+    enterprise = DataLensClientEnterprise(auth=None, base_url="https://enterprise.test", transport=_transport())
+    assert_type(base_client.get, GetNamespace)
+    assert_type(base_client.list, ListNamespace)
+    assert_type(enterprise.get, GetNamespace)
+    assert_type(enterprise.list, ListNamespace)
+    assert_type(client.get, YCGetNamespace)
+    assert_type(client.list, YCListNamespace)
+    if TYPE_CHECKING:
+        cluster = client.get.spark_cluster(by_id="public-1")
+        preset = client.get.spark_resource_preset(by_id="preset-1", cloud_environment_id="environment-1")
+        assert_type(cluster, SparkCluster)
+        assert_type(preset, SparkResourcePreset)
+        assert_type(cluster.refresh(), SparkCluster)
+        assert_type(client.list.spark_clusters(collection="collection-1"), Pager[SparkCluster])
+        assert_type(
+            client.list.spark_resource_presets(cloud_environment_id="environment-1"), Pager[SparkResourcePreset]
+        )
+        assert_type(cluster.health, SparkClusterHealth)
+        assert_type(cluster.status, SparkClusterStatus)
+        assert_type(cluster.config, SparkClusterConfig)
+        assert_type(cluster.config.resource_pools, SparkResourcePoolsConfig)
+        assert_type(cluster.config.resource_pools.driver, SparkResourcePoolConfig)
+        assert_type(cluster.config.dependencies, SparkClusterDependencies | None)
+        assert_type(cluster.config.logging, SparkLoggingConfig | None)
+        assert_type(cluster.config.resource_pools.driver.scale_policy, SparkScalePolicy)
+        assert_type(SparkFixedScalePolicy(size=1), SparkFixedScalePolicy)
+        assert_type(SparkAutoScalePolicy(min_size=0, max_size=10, initial_size=1), SparkAutoScalePolicy)
 
 
 def test_rest_catalog_list_is_typed_only_on_yandex_cloud() -> None:
