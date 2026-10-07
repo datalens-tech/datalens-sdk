@@ -105,6 +105,7 @@ def typecheck(session: nox.Session) -> None:
     session.install("--group", "dev")
     session.install("-e", ".")
     session.run("mypy")
+    session.run("python", "scripts/check_tagged_rpc_typecheck.py")
 
 
 def build_artifacts(session: nox.Session, output_dir: Path) -> tuple[Path, Path]:

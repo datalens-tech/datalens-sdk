@@ -114,6 +114,46 @@ def _widget_models(
     )
 
 
+@pytest.fixture(scope="module")
+def subscriptions_models() -> dict[str, object]:
+    metadata = codegen.build_metadata(
+        {
+            "enterprise": ROOT / "spec" / "enterprise.json",
+            "yacloud": ROOT / "spec" / "yacloud.json",
+        },
+        rpc_namespace_configs=({"tag": "Subscriptions", "namespace": "subscriptions"},),
+    )
+    scope: dict[str, object] = {}
+    exec(codegen.emit_dto(metadata), scope)
+    for value in scope.values():
+        if not isinstance(value, type):
+            continue
+        try:
+            is_model = issubclass(value, BaseModel)
+        except TypeError:
+            continue
+        if is_model and value is not BaseModel:
+            cast(type[BaseModel], value).model_rebuild(_types_namespace=scope)
+    return scope
+
+
+def test_generated_subscriptions_dto_imports_with_pydantic_lower_bound(
+    subscriptions_models: dict[str, object],
+) -> None:
+    request = subscriptions_models["DeleteSubscriptionArgsDTO"]
+
+    assert request(subscriptionId="subscription-1").to_payload() == {  # type: ignore[operator]
+        "subscriptionId": "subscription-1"
+    }
+
+
+def test_subscriptions_dto_rejects_id_with_trailing_newline(subscriptions_models: dict[str, object]) -> None:
+    request = subscriptions_models["DeleteSubscriptionArgsDTO"]
+
+    with pytest.raises(ValidationError):
+        request(subscriptionId="subscription-1\n")  # type: ignore[operator]
+
+
 def _model(scope: dict[str, object], name: str) -> type[BaseModel]:
     return cast(type[BaseModel], scope[name])
 

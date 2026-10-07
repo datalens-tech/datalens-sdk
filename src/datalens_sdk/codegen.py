@@ -635,6 +635,31 @@ def _audit_tagged_rpc_pattern(pattern: str, *, pointer: str, contract: str) -> N
             raise ValueError(f"Unsupported tagged RPC pattern at {pointer}: Python-only possessive quantifier")
 
 
+def _python_tagged_rpc_pattern(pattern: str) -> str:
+    """Preserve ECMAScript end-anchor semantics when a pattern runs through Python re."""
+    result: list[str] = []
+    escaped = False
+    in_character_class = False
+    for character in pattern:
+        if escaped:
+            result.append(character)
+            escaped = False
+            continue
+        if character == "\\":
+            result.append(character)
+            escaped = True
+            continue
+        if character == "[":
+            in_character_class = True
+        elif character == "]":
+            in_character_class = False
+        if character == "$" and not in_character_class:
+            result.append(r"\Z")
+        else:
+            result.append(character)
+    return "".join(result)
+
+
 def _audit_pydantic_schema_features(
     value: object,
     *,
@@ -3217,13 +3242,15 @@ class _PydanticSchemaEmitter:
         if minimum and isinstance(schema.get("maximum"), (int, float)):
             constraints.append(f"le={schema['maximum']!r}")
         pattern_validation = None
-        if pattern and isinstance(schema.get("pattern"), str):
+        pattern_value = schema.get("pattern")
+        if pattern and isinstance(pattern_value, str):
             if self._contract == "tagged RPC":
                 pattern_validation = (
-                    f"AfterValidator(partial(_validate_tagged_rpc_pattern, pattern={schema['pattern']!r}))"
+                    "AfterValidator(partial(_validate_tagged_rpc_pattern, "
+                    f"pattern={_python_tagged_rpc_pattern(pattern_value)!r}))"
                 )
             else:
-                constraints.append(f"pattern={schema['pattern']!r}")
+                constraints.append(f"pattern={pattern_value!r}")
         metadata: list[str] = []
         if constraints:
             metadata.append(f"Field({', '.join(constraints)})")
@@ -3255,15 +3282,20 @@ class _PydanticSchemaEmitter:
             or not isinstance(expression.slice, ast.Tuple)
         ):
             return annotation, False
-        metadata = expression.slice.elts[-1]
-        if not isinstance(metadata, ast.Call) or not isinstance(metadata.func, ast.Name) or metadata.func.id != "Field":
+        field_metadata = next(
+            (
+                metadata
+                for metadata in expression.slice.elts
+                if isinstance(metadata, ast.Call)
+                and isinstance(metadata.func, ast.Name)
+                and metadata.func.id == "Field"
+            ),
+            None,
+        )
+        if field_metadata is None or any(keyword.arg == "alias" for keyword in field_metadata.keywords):
             return annotation, False
-        head, marker, tail = annotation.rpartition(", Field(")
-        if not marker or not tail.endswith(")]"):
-            return annotation, False
-        field_args = tail[:-2]
-        separator = ", " if field_args else ""
-        return f"{head}{marker}{field_args}{separator}alias={alias!r})]", True
+        field_metadata.keywords.append(ast.keyword(arg="alias", value=ast.Constant(value=alias)))
+        return ast.unparse(expression), True
 
     def _emit_object(
         self,
@@ -4487,6 +4519,11 @@ def _emit_rpc_namespace_dto(
     prefix_items_helper = """import re
 from functools import partial
 from pydantic import AfterValidator, TypeAdapter
+from typing import Protocol
+
+
+class _TaggedRpcTypeAdapter(Protocol):
+    def validate_python(self, object: object, *, strict: bool) -> object: ...
 
 
 def _validate_tagged_rpc_pattern(value: object, pattern: str) -> object:
@@ -4497,8 +4534,8 @@ def _validate_tagged_rpc_pattern(value: object, pattern: str) -> object:
 
 def _validate_tagged_rpc_prefix_items(
     value: object,
-    prefix_adapters: tuple[TypeAdapter, ...],
-    tail_adapter: TypeAdapter | None,
+    prefix_adapters: tuple[_TaggedRpcTypeAdapter, ...],
+    tail_adapter: _TaggedRpcTypeAdapter | None,
 ) -> list[object]:
     if not isinstance(value, (list, tuple)):
         raise ValueError("tagged RPC prefixItems value must be an array")
