@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 3.2.0 - 2026-10-07
+
 ### Breaking changes
 
 - Regenerate Yandex Cloud connection builders from the refreshed contract:
@@ -14,12 +16,6 @@
 - Hide the SDK-managed `type` discriminator from `required_fields()`,
   `optional_fields()`, and `fields_help()` for both public installations.
   Use `builder.connector` for connector identity.
-- Update bundled Yandex Cloud lakehouse and permission contracts:
-  `ListSparkApplicationsArgs.filter` becomes an array;
-  `ListSparkClustersArgs.pageSize` and `ListTrinoClustersArgs.pageSize` reject
-  negative values; `SparkCluster.entryId` is required; and
-  `DlsPermissionParticipant.approver`, `description`, `extras`, and `requester`
-  become optional.
 
 ### Changed
 
