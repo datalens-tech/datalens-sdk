@@ -4,11 +4,14 @@ from collections.abc import Iterator
 
 from pydantic import ValidationError
 
+from datalens_sdk.converter.lakehouse_operation import LakehouseOperationConverter
 from datalens_sdk.converter.spark_cluster import SparkClusterConverter, SparkClusterDtoModule
+from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
 from datalens_sdk.domain.navigation import Page, Pager
-from datalens_sdk.domain.ports import SparkClusterOperations
+from datalens_sdk.domain.ports import LakehouseOperationOperations, SparkClusterOperations
 from datalens_sdk.domain.spark_cluster import (
     SparkCluster,
+    SparkClusterCreate,
     SparkClusterListOptions,
     SparkResourcePreset,
     SparkResourcePresetListOptions,
@@ -24,6 +27,18 @@ from datalens_sdk.http import TRANSIENT_RETRY_POLICY, HTTPClientProtocol
 class SparkClusterAPI:
     def __init__(self, client: HTTPClientProtocol) -> None:
         self._client = client
+
+    def create(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object("/rpc/createSparkCluster", payload)
+
+    def start(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object("/rpc/startSparkCluster", payload)
+
+    def stop(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object("/rpc/stopSparkCluster", payload)
+
+    def delete(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._client.post_json_object("/rpc/deleteSparkCluster", payload)
 
     def get(self, payload: dict[str, object]) -> dict[str, object]:
         return self._client.post_json_object("/rpc/getSparkCluster", payload, retry_policy=TRANSIENT_RETRY_POLICY)
@@ -44,11 +59,75 @@ class SparkClusterAPI:
 
 class SparkClusterService(SparkClusterOperations):
     def __init__(
-        self, *, installation: str, api: SparkClusterAPI, dto_module: SparkClusterDtoModule | None = None
+        self,
+        *,
+        installation: str,
+        api: SparkClusterAPI,
+        lakehouse_operations: LakehouseOperationOperations,
+        dto_module: SparkClusterDtoModule | None = None,
     ) -> None:
         self._installation = installation
         self._api = api
+        self._lakehouse_operations = lakehouse_operations
         self._dto_module = dto_module
+
+    def create_spark_cluster(self, builder: SparkClusterCreate) -> LakehouseOperation:
+        try:
+            payload = SparkClusterConverter.create_payload(builder.to_spec(), dto_module=self._dto_module).to_payload()
+            raw = self._api.create(payload)
+            return LakehouseOperationConverter.to_operation(
+                raw,
+                operations=self._lakehouse_operations,
+                operation="createSparkCluster",
+                dto_module=self._dto_module,
+            )
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="createSparkCluster", reason=str(exc)) from exc
+
+    def start_spark_cluster(self, cluster_id: str) -> LakehouseOperation:
+        if not isinstance(cluster_id, str) or not cluster_id:
+            raise DataLensValidationError("startSparkCluster cluster_id must be a non-empty string")
+        try:
+            payload = SparkClusterConverter.start_payload(cluster_id, dto_module=self._dto_module).to_payload()
+            raw = self._api.start(payload)
+            return LakehouseOperationConverter.to_operation(
+                raw,
+                operations=self._lakehouse_operations,
+                operation="startSparkCluster",
+                dto_module=self._dto_module,
+            )
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="startSparkCluster", reason=str(exc)) from exc
+
+    def stop_spark_cluster(self, cluster_id: str) -> LakehouseOperation:
+        if not isinstance(cluster_id, str) or not cluster_id:
+            raise DataLensValidationError("stopSparkCluster cluster_id must be a non-empty string")
+        try:
+            payload = SparkClusterConverter.stop_payload(cluster_id, dto_module=self._dto_module).to_payload()
+            raw = self._api.stop(payload)
+            return LakehouseOperationConverter.to_operation(
+                raw,
+                operations=self._lakehouse_operations,
+                operation="stopSparkCluster",
+                dto_module=self._dto_module,
+            )
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="stopSparkCluster", reason=str(exc)) from exc
+
+    def delete_spark_cluster(self, spark_cluster_id: str) -> LakehouseOperation:
+        if not isinstance(spark_cluster_id, str) or not spark_cluster_id:
+            raise DataLensValidationError("deleteSparkCluster id must be a non-empty string")
+        try:
+            payload = SparkClusterConverter.delete_payload(spark_cluster_id, dto_module=self._dto_module).to_payload()
+            raw = self._api.delete(payload)
+            return LakehouseOperationConverter.to_operation(
+                raw,
+                operations=self._lakehouse_operations,
+                operation="deleteSparkCluster",
+                dto_module=self._dto_module,
+            )
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="deleteSparkCluster", reason=str(exc)) from exc
 
     def get_spark_cluster(self, spark_cluster_id: str) -> SparkCluster:
         if not isinstance(spark_cluster_id, str) or not spark_cluster_id:

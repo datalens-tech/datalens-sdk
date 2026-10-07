@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from importlib import import_module
 import json
@@ -13,8 +13,11 @@ import pytest
 from datalens_sdk import DataLensClientEnterprise, DataLensClientYC
 from datalens_sdk import client as client_module
 from datalens_sdk._generated import dto as generated_dto
+from datalens_sdk.api.lakehouse_operation import LakehouseOperationAPI, LakehouseOperationService
 from datalens_sdk.api.spark_cluster import SparkClusterAPI, SparkClusterService
+from datalens_sdk.domain import spark_cluster as spark_domain
 from datalens_sdk.domain.entry_location import EntryLocation
+from datalens_sdk.domain.lakehouse_operation import LakehouseOperation
 from datalens_sdk.domain.navigation import Pager
 from datalens_sdk.domain.ports import SparkClusterOperations
 from datalens_sdk.domain.spark_cluster import (
@@ -31,7 +34,9 @@ from datalens_sdk.domain.spark_cluster import (
     SparkResourcePresetListOptions,
 )
 from datalens_sdk.errors import (
+    DataLensAPIError,
     DataLensConfigurationError,
+    DataLensTransportError,
     DataLensValidationError,
     DTOValidationError,
     InvalidResponseError,
@@ -69,6 +74,229 @@ def _cluster(*, cluster_id: str = "managed-1", id: str = "public-1") -> SparkClu
         entry_id="",
         raw={},
     )
+
+
+def test_spark_create_requires_collection_environment_and_both_pools() -> None:
+    class ForeignCollection(EntryLocation):
+        installation = "enterprise"
+
+        def _as_entry_location(self) -> EntryLocation:
+            return EntryLocation.collection("collection-1")
+
+    class FakeOperations:
+        creates = 0
+
+        def create_spark_cluster(self, builder: object) -> LakehouseOperation:
+            self.creates += 1
+            return LakehouseOperation(id="operation-1", done=False, metadata={})
+
+    operations = FakeOperations()
+    empty_collection = EntryLocation.collection("collection-1")
+    object.__setattr__(empty_collection, "value", "")
+    for location in (
+        EntryLocation.path("/"),
+        EntryLocation.workbook("workbook-1"),
+        empty_collection,
+    ):
+        with pytest.raises(DataLensValidationError):
+            spark_domain.SparkClusterCreate(
+                installation="yacloud",
+                name="analytics",
+                location=location,
+                cloud_environment_id="environment-1",
+                operations=cast(SparkClusterOperations, operations),
+            )
+    with pytest.raises(NotSupportedError):
+        spark_domain.SparkClusterCreate(
+            installation="yacloud",
+            name="analytics",
+            location=ForeignCollection(),
+            cloud_environment_id="environment-1",
+            operations=cast(SparkClusterOperations, operations),
+        )
+    with pytest.raises(DataLensValidationError):
+        spark_domain.SparkClusterCreate(
+            installation="yacloud",
+            name="analytics",
+            location=EntryLocation.collection("collection-1"),
+            cloud_environment_id="",
+            operations=cast(SparkClusterOperations, operations),
+        )
+    builder = spark_domain.SparkClusterCreate(
+        installation="yacloud",
+        name="analytics",
+        location=EntryLocation.collection("collection-1"),
+        cloud_environment_id="environment-1",
+        operations=cast(SparkClusterOperations, operations),
+    )
+    with pytest.raises(DataLensValidationError, match="driver"):
+        builder.build()
+    builder.driver(resource_preset="driver-1", scale_policy=SparkFixedScalePolicy(size=1))
+    with pytest.raises(DataLensValidationError, match="executor"):
+        builder.build()
+    builder.executor(resource_preset="executor-1", scale_policy=SparkFixedScalePolicy(size=1))
+    assert builder.build().id == "operation-1"
+    assert operations.creates == 1
+
+
+def test_spark_create_validates_both_preset_references_and_policy_types() -> None:
+    class FakeOperations:
+        creates = 0
+
+        def create_spark_cluster(self, builder: object) -> LakehouseOperation:
+            self.creates += 1
+            return LakehouseOperation(id="operation-1", done=False, metadata={})
+
+    operations = FakeOperations()
+    builder = spark_domain.SparkClusterCreate(
+        installation="yacloud",
+        name="analytics",
+        location=EntryLocation.collection("collection-1"),
+        cloud_environment_id="environment-1",
+        operations=cast(SparkClusterOperations, operations),
+    )
+    policy = SparkFixedScalePolicy(size=1)
+    preset = SparkResourcePreset("preset-1", "yacloud", "environment-1", "2", "8GiB", {})
+    for pool in (builder.driver, builder.executor):
+        for invalid in (
+            "",
+            replace(preset, id=""),
+            replace(preset, installation=""),
+            replace(preset, installation="enterprise"),
+            replace(preset, cloud_environment_id="environment-2"),
+        ):
+            with pytest.raises(DataLensValidationError):
+                pool(resource_preset=invalid, scale_policy=policy)
+        with pytest.raises(DataLensValidationError):
+            pool(resource_preset="preset-1", scale_policy=cast(SparkFixedScalePolicy, object()))
+    assert operations.creates == 0
+    builder.driver(resource_preset="driver-1", scale_policy=policy)
+    builder.executor(resource_preset=preset, scale_policy=SparkAutoScalePolicy(0, 10, 2))
+    spec = builder.to_spec()
+    assert spec.driver == SparkResourcePoolConfig("driver-1", policy)
+    assert spec.executor == SparkResourcePoolConfig("preset-1", SparkAutoScalePolicy(0, 10, 2))
+    builder.driver(resource_preset=preset, scale_policy=policy)
+    builder.executor(resource_preset="executor-2", scale_policy=policy)
+    assert builder.to_spec().driver == SparkResourcePoolConfig("preset-1", policy)
+    assert builder.to_spec().executor == SparkResourcePoolConfig("executor-2", policy)
+
+
+def test_spark_create_preserves_dependency_and_optional_setter_intent() -> None:
+    builder = spark_domain.SparkClusterCreate(
+        installation="yacloud",
+        name="analytics",
+        location=EntryLocation.collection("collection-1"),
+        cloud_environment_id="environment-1",
+        operations=None,
+    )
+    builder.driver(resource_preset="driver-1", scale_policy=SparkFixedScalePolicy(1))
+    builder.executor(resource_preset="executor-1", scale_policy=SparkFixedScalePolicy(1))
+    untouched = builder.to_spec()
+    assert untouched.dependencies_configured is False
+    assert (untouched.pip_packages, untouched.deb_packages) == (None, None)
+    assert (untouched.logging_enabled, untouched.spark_version, untouched.description, untouched.labels) == (
+        None,
+        None,
+        None,
+        None,
+    )
+    builder.dependencies()
+    empty_object = builder.to_spec()
+    assert empty_object.dependencies_configured is True
+    assert (empty_object.pip_packages, empty_object.deb_packages) == (None, None)
+    builder.dependencies(pip_packages=None, deb_packages=[])
+    with_one_empty_array = builder.to_spec()
+    assert (with_one_empty_array.pip_packages, with_one_empty_array.deb_packages) == (None, ())
+    for invalid in ("pandas", b"pandas"):
+        with pytest.raises(DataLensValidationError):
+            builder.dependencies(pip_packages=cast(Sequence[str], invalid), deb_packages=["lib"])
+        with pytest.raises(DataLensValidationError):
+            builder.dependencies(pip_packages=["pandas"], deb_packages=cast(Sequence[str], invalid))
+        assert builder.to_spec() == with_one_empty_array
+    builder.logging(enabled=False).spark_version("").description("").labels({})
+    explicit = builder.to_spec()
+    assert (explicit.logging_enabled, explicit.spark_version, explicit.description, explicit.labels) == (
+        False,
+        "",
+        "",
+        {},
+    )
+    with pytest.raises(DataLensConfigurationError):
+        builder.build()
+
+
+def test_spark_create_labels_snapshot_ignores_caller_and_prior_spec_mutations() -> None:
+    builder = spark_domain.SparkClusterCreate(
+        installation="yacloud",
+        name="analytics",
+        location=EntryLocation.collection("collection-1"),
+        cloud_environment_id="environment-1",
+        operations=None,
+    )
+    builder.driver(resource_preset="driver-1", scale_policy=SparkFixedScalePolicy(1))
+    builder.executor(resource_preset="executor-1", scale_policy=SparkFixedScalePolicy(1))
+    labels = {"team": "analytics"}
+    builder.labels(labels)
+    labels["team"] = "caller-mutated"
+    first = builder.to_spec()
+    assert first.labels == {"team": "analytics"}
+    cast(dict[str, str], first.labels)["team"] = "spec-mutated"
+    assert builder.to_spec().labels == {"team": "analytics"}
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [None, 42, [("team", "other")], {42: "other"}, {"team": 42}],
+)
+def test_spark_create_labels_reject_invalid_mapping_without_changing_prior_value(invalid: object) -> None:
+    builder = spark_domain.SparkClusterCreate(
+        installation="yacloud",
+        name="analytics",
+        location=EntryLocation.collection("collection-1"),
+        cloud_environment_id="environment-1",
+        operations=None,
+    )
+    builder.driver(resource_preset="driver-1", scale_policy=SparkFixedScalePolicy(1))
+    builder.executor(resource_preset="executor-1", scale_policy=SparkFixedScalePolicy(1))
+    builder.labels({"team": "analytics"})
+
+    with pytest.raises(DataLensValidationError, match="labels must map strings to strings"):
+        builder.labels(cast(Mapping[str, str], invalid))
+
+    assert builder.to_spec().labels == {"team": "analytics"}
+
+
+def test_spark_bound_lifecycle_requires_operations_and_its_exact_identifier() -> None:
+    class FakeOperations:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, str]] = []
+
+        def start_spark_cluster(self, cluster_id: str) -> LakehouseOperation:
+            self.calls.append(("start", cluster_id))
+            return LakehouseOperation(id="start-1", done=False, metadata={})
+
+        def stop_spark_cluster(self, cluster_id: str) -> LakehouseOperation:
+            self.calls.append(("stop", cluster_id))
+            return LakehouseOperation(id="stop-1", done=False, metadata={})
+
+        def delete_spark_cluster(self, spark_cluster_id: str) -> LakehouseOperation:
+            self.calls.append(("delete", spark_cluster_id))
+            return LakehouseOperation(id="delete-1", done=False, metadata={})
+
+    source = _cluster()
+    for method in (source.start, source.stop, source.delete):
+        with pytest.raises(DataLensConfigurationError):
+            method()
+    operations = FakeOperations()
+    bound = replace(source, _operations=cast(SparkClusterOperations, operations))
+    empty_lakehouse_id = replace(bound, id="")
+    for method in (empty_lakehouse_id.start, empty_lakehouse_id.stop, empty_lakehouse_id.delete):
+        with pytest.raises(DataLensValidationError):
+            method()
+    assert bound.start().id == "start-1"
+    assert bound.stop().id == "stop-1"
+    assert bound.delete().id == "delete-1"
+    assert operations.calls == [("start", "public-1"), ("stop", "public-1"), ("delete", "public-1")]
 
 
 def test_spark_list_options_normalize_collection_filters_and_tokens() -> None:
@@ -156,10 +384,15 @@ def test_bound_spark_cluster_refresh_requires_public_id() -> None:
 
 
 def _cluster_response(
-    *, cluster_id: str = "managed-1", dependencies: object = None, logging: object = None
+    *,
+    id: str = "public-1",
+    cluster_id: str = "managed-1",
+    entry_id: str = "",
+    dependencies: object = None,
+    logging: object = None,
 ) -> dict[str, object]:
     return {
-        "id": "public-1",
+        "id": id,
         "clusterId": cluster_id,
         "collectionId": "collection-1",
         "cloudEnvironmentId": "environment-1",
@@ -168,7 +401,7 @@ def _cluster_response(
         "labels": {},
         "health": "ALIVE",
         "status": "CREATING",
-        "entryId": "",
+        "entryId": entry_id,
         "futureResource": 7,
         "config": {
             "sparkVersion": "",
@@ -193,14 +426,17 @@ def _cluster_response(
 
 
 class _Transport:
-    def __init__(self, responses: Sequence[httpx.Response]) -> None:
+    def __init__(self, responses: Sequence[httpx.Response | httpx.TransportError]) -> None:
         self.responses = list(responses)
         self.requests: list[httpx.Request] = []
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
         assert self.responses, f"unexpected request: {request.url.path}"
-        return self.responses.pop(0)
+        response = self.responses.pop(0)
+        if isinstance(response, httpx.TransportError):
+            raise response
+        return response
 
     def bodies(self) -> list[dict[str, object]]:
         return [cast(dict[str, object], json.loads(request.content)) for request in self.requests]
@@ -213,7 +449,308 @@ def _service(transport: _Transport) -> tuple[DataLensHTTPClient, SparkClusterSer
         base_url="https://spark.test",
         transport=httpx.MockTransport(transport.handle),
     )
-    return client, SparkClusterService(installation="yacloud", api=SparkClusterAPI(client))
+    return client, SparkClusterService(
+        installation="yacloud",
+        api=SparkClusterAPI(client),
+        lakehouse_operations=LakehouseOperationService(api=LakehouseOperationAPI(client)),
+    )
+
+
+def _create_builder(service: SparkClusterService) -> spark_domain.SparkClusterCreate:
+    return (
+        spark_domain.SparkClusterCreate(
+            installation="yacloud",
+            name="analytics-spark",
+            location=EntryLocation.collection("collection-1"),
+            cloud_environment_id="environment-1",
+            operations=service,
+        )
+        .driver(resource_preset="driver-1", scale_policy=SparkFixedScalePolicy(size=1))
+        .executor(resource_preset="executor-1", scale_policy=SparkAutoScalePolicy(0, 10, 2))
+    )
+
+
+def test_spark_create_sends_both_scale_branches_and_returns_bound_operation() -> None:
+    response = {
+        "id": "operation-1",
+        "done": False,
+        "metadata": {"cluster": "analytics-spark"},
+        "createdBy": "user-1",
+    }
+    transport = _Transport([httpx.Response(200, json=response), httpx.Response(200, json=response)])
+    http_client, service = _service(transport)
+    with http_client:
+        operation = _create_builder(service).build()
+        assert isinstance(operation, LakehouseOperation)
+        assert operation.id == "operation-1"
+        assert operation.done is False
+        assert operation.metadata == {"cluster": "analytics-spark"}
+        assert operation.created_by == "user-1"
+        assert [request.url.path for request in transport.requests] == ["/rpc/createSparkCluster"]
+        refreshed = operation.refresh()
+    assert refreshed.id == "operation-1"
+    assert [request.url.path for request in transport.requests] == [
+        "/rpc/createSparkCluster",
+        "/rpc/getLakehouseOperation",
+    ]
+    assert transport.bodies() == [
+        {
+            "collectionId": "collection-1",
+            "cloudEnvironmentId": "environment-1",
+            "name": "analytics-spark",
+            "config": {
+                "resourcePools": {
+                    "driver": {
+                        "resourcePresetId": "driver-1",
+                        "scalePolicy": {"fixedScale": {"size": "1"}},
+                    },
+                    "executor": {
+                        "resourcePresetId": "executor-1",
+                        "scalePolicy": {"autoScale": {"minSize": "0", "initialSize": "2", "maxSize": "10"}},
+                    },
+                }
+            },
+        },
+        {"operationId": "operation-1"},
+    ]
+
+
+def test_spark_create_preserves_dependency_and_explicit_falsy_payloads() -> None:
+    operation_response = {"id": "operation-1", "done": False, "metadata": {}}
+    transport = _Transport([httpx.Response(200, json=operation_response) for _ in range(5)])
+    http_client, service = _service(transport)
+    with http_client:
+        _create_builder(service).build()
+        _create_builder(service).dependencies().build()
+        _create_builder(service).dependencies(pip_packages=None, deb_packages=[]).build()
+        (_create_builder(service).logging(enabled=False).spark_version("").description("").labels({}).build())
+        _create_builder(service).dependencies(pip_packages=["pandas==2.2.3"], deb_packages=["libpq5"]).build()
+    bodies = transport.bodies()
+    assert "dependencies" not in cast(dict[str, object], bodies[0]["config"])
+    assert cast(dict[str, object], bodies[1]["config"])["dependencies"] == {}
+    assert cast(dict[str, object], bodies[2]["config"])["dependencies"] == {"debPackages": []}
+    config = cast(dict[str, object], bodies[3]["config"])
+    assert config["logging"] == {"enabled": False}
+    assert config["sparkVersion"] == ""
+    assert "dependencies" not in config
+    assert bodies[3]["description"] == ""
+    assert bodies[3]["labels"] == {}
+    assert cast(dict[str, object], bodies[4]["config"])["dependencies"] == {
+        "pipPackages": ["pandas==2.2.3"],
+        "debPackages": ["libpq5"],
+    }
+
+
+@pytest.mark.parametrize(
+    ("driver_size", "min_size", "initial_size", "max_size"),
+    [
+        (0, 0, 2, 10),
+        (101, 0, 2, 10),
+        (1, -1, 2, 10),
+        (1, 0, -1, 10),
+        (1, 0, 101, 10),
+        (1, 0, 2, 0),
+        (1, 0, 2, 101),
+    ],
+)
+def test_spark_create_generated_dto_enforces_independent_scale_ranges_before_http(
+    driver_size: int, min_size: int, initial_size: int, max_size: int
+) -> None:
+    transport = _Transport([])
+    http_client, service = _service(transport)
+    builder = _create_builder(service)
+    builder.driver(resource_preset="driver-1", scale_policy=SparkFixedScalePolicy(size=driver_size))
+    builder.executor(
+        resource_preset="executor-1",
+        scale_policy=SparkAutoScalePolicy(min_size=min_size, initial_size=initial_size, max_size=max_size),
+    )
+    with http_client, pytest.raises(DTOValidationError, match="createSparkCluster"):
+        builder.build()
+    assert transport.requests == []
+
+
+def test_spark_create_does_not_invent_auto_scale_ordering_constraint() -> None:
+    valid_transport = _Transport([httpx.Response(200, json={"id": "operation-2", "done": False, "metadata": {}})])
+    valid_client, valid_service = _service(valid_transport)
+    valid_builder = _create_builder(valid_service)
+    valid_builder.executor(
+        resource_preset="executor-1", scale_policy=SparkAutoScalePolicy(min_size=10, initial_size=1, max_size=2)
+    )
+    with valid_client:
+        assert valid_builder.build().id == "operation-2"
+    assert len(valid_transport.requests) == 1
+
+
+def test_spark_start_stop_delete_use_distinct_identifiers_and_bound_operations() -> None:
+    operation = {"id": "operation-1", "done": False, "metadata": {}}
+    stopped = {
+        "id": "operation-2",
+        "done": True,
+        "metadata": {},
+        "error": {"code": 9, "message": "cluster is busy", "details": []},
+    }
+    transport = _Transport(
+        [
+            httpx.Response(200, json=raw)
+            for raw in (
+                _cluster_response(id="lakehouse-1", entry_id="entry-1"),
+                operation,
+                stopped,
+                operation,
+                operation,
+            )
+        ]
+    )
+    client, service = _service(transport)
+    with client:
+        cluster = service.get_spark_cluster("lakehouse-1")
+        started = cluster.start()
+        stopped_operation = cluster.stop()
+        deleted = cluster.delete()
+        assert [request.url.path for request in transport.requests] == [
+            "/rpc/getSparkCluster",
+            "/rpc/startSparkCluster",
+            "/rpc/stopSparkCluster",
+            "/rpc/deleteSparkCluster",
+        ]
+        assert started.refresh().id == "operation-1"
+
+    assert transport.requests[-1].url.path == "/rpc/getLakehouseOperation"
+    assert transport.bodies()[1:] == [
+        {"clusterId": "lakehouse-1"},
+        {"clusterId": "lakehouse-1"},
+        {"id": "lakehouse-1"},
+        {"operationId": "operation-1"},
+    ]
+    assert started == LakehouseOperation(
+        id="operation-1",
+        done=False,
+        metadata={},
+        raw=operation,
+    )
+    assert stopped_operation.done is True
+    assert stopped_operation.error is not None
+    assert stopped_operation.error.code == 9
+    assert stopped_operation.error.message == "cluster is busy"
+    assert deleted.id == "operation-1"
+
+
+def test_spark_empty_managed_id_does_not_block_lifecycle_operations() -> None:
+    transport = _Transport(
+        [
+            httpx.Response(200, json=_cluster_response(cluster_id="")),
+            httpx.Response(200, json={"id": "operation-1", "done": False, "metadata": {}}),
+            httpx.Response(200, json={"id": "operation-2", "done": False, "metadata": {}}),
+        ]
+    )
+    client, service = _service(transport)
+    with client:
+        cluster = service.get_spark_cluster("public-1")
+        assert cluster.start().id == "operation-1"
+        assert cluster.stop().id == "operation-2"
+    assert [request.url.path for request in transport.requests] == [
+        "/rpc/getSparkCluster",
+        "/rpc/startSparkCluster",
+        "/rpc/stopSparkCluster",
+    ]
+    assert transport.bodies()[1:] == [{"clusterId": "public-1"}, {"clusterId": "public-1"}]
+
+
+@pytest.mark.parametrize("operation", ["startSparkCluster", "stopSparkCluster", "deleteSparkCluster"])
+def test_spark_lifecycle_generated_dto_rejects_overlong_identifier_before_http(operation: str) -> None:
+    transport = _Transport([])
+    client, service = _service(transport)
+    cluster = replace(_cluster(cluster_id="x" * 51, id="x" * 51), _operations=service)
+    calls = {
+        "startSparkCluster": cluster.start,
+        "stopSparkCluster": cluster.stop,
+        "deleteSparkCluster": cluster.delete,
+    }
+    with client, pytest.raises(DTOValidationError, match=operation):
+        calls[operation]()
+    assert transport.requests == []
+
+
+@pytest.mark.parametrize(
+    "operation", ["createSparkCluster", "startSparkCluster", "stopSparkCluster", "deleteSparkCluster"]
+)
+def test_spark_mutations_make_one_attempt_on_transient_failure(operation: str) -> None:
+    transport = _Transport(
+        [
+            httpx.Response(
+                503,
+                json={"code": "TEMPORARY", "message": "try later"},
+                headers={"x-request-id": "spark-temporary"},
+            )
+        ]
+    )
+    client, service = _service(transport)
+    cluster = replace(_cluster(), _operations=service)
+    calls = {
+        "createSparkCluster": lambda: _create_builder(service).build(),
+        "startSparkCluster": cluster.start,
+        "stopSparkCluster": cluster.stop,
+        "deleteSparkCluster": cluster.delete,
+    }
+    with client, pytest.raises(DataLensAPIError) as raised:
+        calls[operation]()
+    assert [request.url.path for request in transport.requests] == [f"/rpc/{operation}"]
+    assert raised.value.context.code == "TEMPORARY"
+    assert raised.value.context.request_id == "spark-temporary"
+    assert raised.value.context.attempts == 1
+
+
+@pytest.mark.parametrize(
+    "operation", ["createSparkCluster", "startSparkCluster", "stopSparkCluster", "deleteSparkCluster"]
+)
+def test_spark_mutations_do_not_retry_after_transport_error(operation: str) -> None:
+    transport = _Transport(
+        [
+            httpx.ConnectError("connection lost"),
+            httpx.Response(200, json={"id": "operation-1", "done": False, "metadata": {}}),
+        ]
+    )
+    client, service = _service(transport)
+    cluster = replace(_cluster(), _operations=service)
+    calls = {
+        "createSparkCluster": lambda: _create_builder(service).build(),
+        "startSparkCluster": cluster.start,
+        "stopSparkCluster": cluster.stop,
+        "deleteSparkCluster": cluster.delete,
+    }
+    with client, pytest.raises(DataLensTransportError) as raised:
+        calls[operation]()
+
+    assert [request.url.path for request in transport.requests] == [f"/rpc/{operation}"]
+    assert raised.value.url.endswith(f"/rpc/{operation}")
+    assert raised.value.attempts == 1
+
+
+@pytest.mark.parametrize(
+    "operation", ["createSparkCluster", "startSparkCluster", "stopSparkCluster", "deleteSparkCluster"]
+)
+@pytest.mark.parametrize(
+    "raw",
+    [
+        {"id": "operation-1", "done": False},
+        {"id": "operation-1", "done": False, "metadata": {}, "createdAt": {"seconds": "1", "nanos": "invalid"}},
+        {"id": "operation-1", "done": True, "metadata": {}, "error": {"code": "invalid", "message": "failed"}},
+    ],
+    ids=["missing-metadata", "invalid-timestamp", "invalid-error"],
+)
+def test_spark_mutations_report_operation_specific_invalid_responses(operation: str, raw: dict[str, object]) -> None:
+    transport = _Transport([httpx.Response(200, json=raw)])
+    client, service = _service(transport)
+    cluster = replace(_cluster(), _operations=service)
+    calls = {
+        "createSparkCluster": lambda: _create_builder(service).build(),
+        "startSparkCluster": cluster.start,
+        "stopSparkCluster": cluster.stop,
+        "deleteSparkCluster": cluster.delete,
+    }
+    with client, pytest.raises((DTOValidationError, InvalidResponseError), match=operation):
+        calls[operation]()
+    assert [request.url.path for request in transport.requests] == [f"/rpc/{operation}"]
 
 
 def test_spark_read_surface_is_yc_only(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -287,7 +824,7 @@ def test_spark_read_surface_is_yc_only(monkeypatch: pytest.MonkeyPatch) -> None:
     assert enterprise_transport.requests == []
 
 
-def test_spark_read_yateam_style_base_client_has_no_spark_actions(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_spark_create_yateam_style_base_client_has_no_action(monkeypatch: pytest.MonkeyPatch) -> None:
     class YaTeamStyleClient(client_module.DataLensClientBase):
         INSTALLATION = "yateam"
         GENERATED_PACKAGE = "test_yateam_generated"
@@ -331,9 +868,11 @@ def test_spark_read_yateam_style_base_client_has_no_spark_actions(monkeypatch: p
     monkeypatch.setattr(SparkClusterService, "__init__", unexpected_service)
     transport = _Transport([])
     with YaTeamStyleClient(auth=None, transport=httpx.MockTransport(transport.handle)) as client:
+        assert type(client.create) is client_module.CreateNamespace
         assert type(client.get) is client_module.GetNamespace
         assert type(client.list) is client_module.ListNamespace
         for namespace, names in (
+            (client.create, ("spark_cluster",)),
             (client.get, ("spark_cluster", "spark_resource_preset")),
             (client.list, ("spark_clusters", "spark_resource_presets")),
         ):
@@ -342,6 +881,72 @@ def test_spark_read_yateam_style_base_client_has_no_spark_actions(monkeypatch: p
                     getattr(namespace, name)
                 assert type(raised.value) is AttributeError
     assert transport.requests == []
+
+
+def test_spark_lifecycle_surface_is_yc_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    operation_response = {"id": "operation-1", "done": False, "metadata": {}}
+    yc_transport = _Transport([httpx.Response(200, json=operation_response)])
+    client = DataLensClientYC(auth=None, transport=httpx.MockTransport(yc_transport.handle))
+    with client:
+        operation = (
+            client.create.spark_cluster(
+                name="analytics-spark",
+                location=EntryLocation.collection("collection-1"),
+                cloud_environment_id="environment-1",
+            )
+            .driver(resource_preset="driver-1", scale_policy=SparkFixedScalePolicy(size=1))
+            .executor(resource_preset="executor-1", scale_policy=SparkAutoScalePolicy(0, 10, 2))
+            .build()
+        )
+    assert isinstance(operation, LakehouseOperation)
+    assert operation.id == "operation-1"
+    assert [request.url.path for request in yc_transport.requests] == ["/rpc/createSparkCluster"]
+    assert yc_transport.bodies() == [
+        {
+            "collectionId": "collection-1",
+            "cloudEnvironmentId": "environment-1",
+            "name": "analytics-spark",
+            "config": {
+                "resourcePools": {
+                    "driver": {"resourcePresetId": "driver-1", "scalePolicy": {"fixedScale": {"size": "1"}}},
+                    "executor": {
+                        "resourcePresetId": "executor-1",
+                        "scalePolicy": {"autoScale": {"minSize": "0", "initialSize": "2", "maxSize": "10"}},
+                    },
+                }
+            },
+        }
+    ]
+
+    class DtoWithoutSpark(ModuleType):
+        def __getattr__(self, name: str) -> object:
+            if "Spark" in name:
+                raise AssertionError(f"Unexpected Spark DTO access: {name}")
+            return getattr(generated_dto, name)
+
+    original_import = import_module
+    dto_stub = DtoWithoutSpark("datalens_sdk._generated.dto")
+    monkeypatch.setattr(
+        client_module,
+        "import_module",
+        lambda name: dto_stub if name == "datalens_sdk._generated.dto" else original_import(name),
+    )
+
+    def unexpected_service(*args: object, **kwargs: object) -> None:
+        raise AssertionError("Spark service initialized on Enterprise")
+
+    monkeypatch.setattr(SparkClusterService, "__init__", unexpected_service)
+    enterprise_transport = _Transport([])
+    with DataLensClientEnterprise(
+        auth=None,
+        base_url="https://enterprise.test",
+        transport=httpx.MockTransport(enterprise_transport.handle),
+    ) as enterprise:
+        spark_action = "spark_cluster"
+        with pytest.raises(AttributeError) as raised:
+            getattr(enterprise.create, spark_action)
+        assert type(raised.value) is AttributeError
+    assert enterprise_transport.requests == []
 
 
 def test_spark_get_and_refresh_map_complete_cluster_and_retry_reads(monkeypatch: pytest.MonkeyPatch) -> None:

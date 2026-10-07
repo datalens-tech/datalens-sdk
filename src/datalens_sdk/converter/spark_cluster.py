@@ -4,7 +4,8 @@ from collections.abc import Mapping
 from typing import Literal, Protocol, cast
 
 from datalens_sdk._generated import dto as generated_dto
-from datalens_sdk.domain.entry_location import EntryLocation
+from datalens_sdk.converter.lakehouse_operation import LakehouseOperationReadDtoModule
+from datalens_sdk.domain.entry_location import EntryLocation, collection_id_from_location
 from datalens_sdk.domain.navigation import Page
 from datalens_sdk.domain.ports import SparkClusterOperations
 from datalens_sdk.domain.spark_cluster import (
@@ -21,6 +22,7 @@ from datalens_sdk.domain.spark_cluster import (
     SparkResourcePresetListOptions,
     SparkScalePolicy,
 )
+from datalens_sdk.domain.specs.spark_cluster import SparkClusterCreateSpec
 from datalens_sdk.errors import translate_invalid_response_error
 
 
@@ -40,7 +42,11 @@ class SparkClusterReadDTOClass(Protocol):
     def model_validate(self, obj: object) -> SparkClusterReadDTOProtocol: ...
 
 
-class SparkClusterDtoModule(Protocol):
+class SparkClusterDtoModule(LakehouseOperationReadDtoModule, Protocol):
+    CreateSparkClusterArgsDTO: SparkClusterWriteDTOClass
+    StartSparkClusterArgsDTO: SparkClusterWriteDTOClass
+    StopSparkClusterArgsDTO: SparkClusterWriteDTOClass
+    DeleteSparkClusterArgsDTO: SparkClusterWriteDTOClass
     GetSparkClusterArgsDTO: SparkClusterWriteDTOClass
     ListSparkClustersArgsDTO: SparkClusterWriteDTOClass
     GetSparkResourcePresetArgsDTO: SparkClusterWriteDTOClass
@@ -90,6 +96,68 @@ def _pool(raw: Mapping[str, object]) -> SparkResourcePoolConfig:
 
 
 class SparkClusterConverter:
+    @staticmethod
+    def create_payload(
+        spec: SparkClusterCreateSpec,
+        *,
+        dto_module: SparkClusterDtoModule | None = None,
+    ) -> SparkClusterWriteDTOProtocol:
+        def pool(config: SparkResourcePoolConfig) -> dict[str, object]:
+            policy = config.scale_policy
+            if isinstance(policy, SparkFixedScalePolicy):
+                scale: dict[str, object] = {"fixedScale": {"size": str(policy.size)}}
+            else:
+                scale = {
+                    "autoScale": {
+                        "minSize": str(policy.min_size),
+                        "initialSize": str(policy.initial_size),
+                        "maxSize": str(policy.max_size),
+                    }
+                }
+            return {"resourcePresetId": config.resource_preset_id, "scalePolicy": scale}
+
+        config: dict[str, object] = {"resourcePools": {"driver": pool(spec.driver), "executor": pool(spec.executor)}}
+        if spec.dependencies_configured:
+            dependencies: dict[str, object] = {}
+            if spec.pip_packages is not None:
+                dependencies["pipPackages"] = list(spec.pip_packages)
+            if spec.deb_packages is not None:
+                dependencies["debPackages"] = list(spec.deb_packages)
+            config["dependencies"] = dependencies
+        if spec.logging_enabled is not None:
+            config["logging"] = {"enabled": spec.logging_enabled}
+        if spec.spark_version is not None:
+            config["sparkVersion"] = spec.spark_version
+        payload: dict[str, object] = {
+            "name": spec.name,
+            "collectionId": collection_id_from_location(spec.location),
+            "cloudEnvironmentId": spec.cloud_environment_id,
+            "config": config,
+        }
+        if spec.description is not None:
+            payload["description"] = spec.description
+        if spec.labels is not None:
+            payload["labels"] = dict(spec.labels)
+        return _dto_module(dto_module).CreateSparkClusterArgsDTO.model_validate(payload)
+
+    @staticmethod
+    def start_payload(
+        cluster_id: str, *, dto_module: SparkClusterDtoModule | None = None
+    ) -> SparkClusterWriteDTOProtocol:
+        return _dto_module(dto_module).StartSparkClusterArgsDTO.model_validate({"clusterId": cluster_id})
+
+    @staticmethod
+    def stop_payload(
+        cluster_id: str, *, dto_module: SparkClusterDtoModule | None = None
+    ) -> SparkClusterWriteDTOProtocol:
+        return _dto_module(dto_module).StopSparkClusterArgsDTO.model_validate({"clusterId": cluster_id})
+
+    @staticmethod
+    def delete_payload(
+        spark_cluster_id: str, *, dto_module: SparkClusterDtoModule | None = None
+    ) -> SparkClusterWriteDTOProtocol:
+        return _dto_module(dto_module).DeleteSparkClusterArgsDTO.model_validate({"id": spark_cluster_id})
+
     @staticmethod
     def get_payload(
         spark_cluster_id: str, *, dto_module: SparkClusterDtoModule | None = None
