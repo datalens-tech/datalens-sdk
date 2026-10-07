@@ -1,8 +1,9 @@
 # Lakehouse operations (Yandex Cloud)
 
 Use this reference for asynchronous operations returned by Yandex Cloud Trino
-cluster mutations and REST catalog attach/detach calls. They return a
-`LakehouseOperation` snapshot and do not wait for completion. Enterprise and YaTeam do not expose
+and Spark cluster mutations and REST catalog attach/detach calls. They return a
+`LakehouseOperation` snapshot and do not wait for completion. Enterprise and
+YaTeam do not expose
 `client.get.lakehouse_operation`; the missing action raises ordinary
 `AttributeError`. Stop at the public SDK boundary: do not substitute raw HTTP,
 generated DTOs, or a private package. Configure a client through [setup](setup.md).

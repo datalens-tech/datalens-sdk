@@ -1,22 +1,24 @@
 ---
 name: datalens-sdk
 description: >-
-  Use this skill for any Yandex DataLens automation task through the Python
-  package `datalens-sdk`. Trigger on: DataLens, datalens, даталенс, chart,
+  Use for DataLens automation with Python `datalens-sdk`. Trigger on:
+  DataLens, datalens, даталенс, chart,
   чарт, график, dashboard, дашборд, dataset, датасет, connection, подключение,
   workbook, воркбук, collection, коллекция, HTML page, HTML-страница,
-  saved SQL query, сохранённый SQL-запрос, managing or executing a saved
-  DataLens SQL query, DataLens REST catalog, REST-каталог DataLens,
+  saved SQL query, managing or executing a saved DataLens SQL query,
+  сохранённый SQL-запрос, DataLens REST catalog, REST-каталог DataLens,
   REST-каталоги DataLens, Trino catalog membership, managed DataLens Trino
   cluster, Trino resource preset, кластер Trino, ресурсный пресет Trino,
+  managed Spark cluster, Spark resource preset, кластер Spark,
+  ресурсный пресет Spark,
   wizard chart, QL chart, editor chart, BI automation, автоматизация DataLens,
   "create a dashboard", "построй дашборд", "создай чарт", "export dataset",
-  or "clone dashboard"; entity ids such as dataset_id, chart_id, dashboard_id,
-  or workbook_id; and
-  requests to create, update, inspect, import, export, copy, or diagnose
-  DataLens objects with code. NOT for: business questions about metric values;
-  viewing or screenshotting the DataLens web UI; embedding or iframes; raw
-  SQL/YQL analysis that does not manage DataLens entities; raw HTTP API calls.
+  or "clone dashboard"; entity IDs: dataset_id, chart_id, dashboard_id, or
+  workbook_id; and requests to create, update, inspect, import, export, copy,
+  or diagnose DataLens objects with code. NOT for: business questions about
+  metric values; viewing or screenshotting the DataLens web UI; embedding or
+  iframes; raw SQL/YQL analysis that does not manage DataLens entities; raw
+  HTTP API calls.
 ---
 
 # DataLens SDK
@@ -140,6 +142,10 @@ Managed Yandex Cloud Trino follows `collection + cloud environment -> Trino
 cluster -> asynchronous Lakehouse operation`; existing REST catalogs become
 cluster memberships. The user supplies the cloud environment. This is not
 an ordinary Trino database connection or raw SQL analysis.
+Managed Yandex Cloud Spark follows `collection + cloud environment -> Spark
+cluster -> asynchronous Lakehouse operation`. A Spark cluster is distinct
+from Spark job submission and ordinary Apache Spark programming. The user
+supplies the cloud environment.
 
 Dataset, chart, Dashboard, and HTML content updates use
 `.mode("save" | "publish")`. Save is the default except for Dashboard, which
@@ -309,7 +315,8 @@ Editor index replaces the public Editor subtree for that installation.
 | Finding, listing, moving, renaming entities; revision history; containers | [references/navigation.md](references/navigation.md)                     |
 | Listing DataLens REST catalogs or selecting one for a Trino cluster (Yandex Cloud only) | [references/rest-catalogs.md](references/rest-catalogs.md)                |
 | Creating, getting, listing, starting, stopping, deleting, or changing catalog membership on a managed Trino cluster; Trino resource presets (Yandex Cloud only) | [references/trino-clusters.md](references/trino-clusters.md) |
-| Refreshing, waiting for, or interpreting a Trino/REST catalog operation (Yandex Cloud only) | [references/lakehouse-operations.md](references/lakehouse-operations.md) |
+| Refreshing, waiting for, or interpreting a Trino/Spark/REST catalog operation (Yandex Cloud only) | [references/lakehouse-operations.md](references/lakehouse-operations.md) |
+| Creating, getting, listing, starting, stopping, refreshing, or deleting a managed Spark cluster; Spark resource presets (Yandex Cloud only) | [references/spark-clusters.md](references/spark-clusters.md) |
 | Export, import, clone, copy across workbooks                               | [references/serialization.md](references/serialization.md)               |
 | Any `DataLensAPIError` or unexpected SDK exception                         | [references/troubleshooting.md](references/troubleshooting.md)           |
 | "Make it look good" — visual design, palettes, dashboard composition       | [references/design-guide.md](references/design-guide.md)                 |
@@ -428,7 +435,8 @@ Use the non-executing allowlisted reader from [references/setup.md](references/s
 | `references/navigation.md`                      | listing/finding/moving entities, revision history; collections, workbooks, folders                                   |
 | `references/rest-catalogs.md`                   | Yandex Cloud REST catalog listing and Trino catalog membership references                                           |
 | `references/trino-clusters.md`                  | Yandex Cloud managed Trino clusters, resource presets, lifecycle, and catalog membership                           |
-| `references/lakehouse-operations.md`            | Yandex Cloud Trino and REST-catalog operation snapshots, explicit refresh/wait, errors, and timeouts              |
+| `references/spark-clusters.md`                  | Yandex Cloud managed Spark clusters, resource presets, driver/executor pools, and lifecycle                        |
+| `references/lakehouse-operations.md`            | Yandex Cloud Trino, Spark, and REST-catalog operation snapshots, explicit refresh/wait, errors, and timeouts     |
 | `references/serialization.md`                   | export/import/clone via `to_file` and `client.raw`                                                 |
 | `references/troubleshooting.md`                 | any API error; before retrying anything                                                            |
 | `references/design-guide.md`                    | choosing visual encodings or polishing look and feel                                               |

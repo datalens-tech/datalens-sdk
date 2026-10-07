@@ -349,6 +349,24 @@
         {"text": "Does NOT currently fetch or list presets/catalogs/clusters, iterate a pager, use a smoke-test read, call .build() or any bound mutation, wait, or inspect any result", "type": "workflow"},
         {"text": "Does NOT invent cloud-environment discovery, use raw HTTP or hand-built API payloads, import generated/private modules, or claim catalog detachment deletes the REST catalog", "type": "code"}
       ]
+    },
+    {
+      "id": 24,
+      "name": "spark-cluster-prepare-without-execution",
+      "prompt": "Prepare and save a Python script for Yandex Cloud DataLens that can later get resource preset 'preset-7', create managed Spark cluster 'analytics-spark' in collection 'c-1' and cloud environment 'e-1' with one fixed driver and auto-scaled executors (minimum 2, maximum 4, initial 3), wait for creation, abort on any operation error, find the unique created cluster, start it, and wait for the start operation, again aborting on error. I authorize only preparing the script now. Do not run it, fetch or list anything, iterate a pager, inspect an operation or result, or create/change any cluster. Tell me where the script is saved; ask how future results should be handled before any future read, and require my fresh confirmation immediately before each future cost-bearing or disruptive mutation.",
+      "expected_output": "Saves an unexecuted script routed to the Spark cluster and shared Lakehouse-operation references. It uses package-root public SDK types, client.get.spark_resource_preset(by_id='preset-7', cloud_environment_id='e-1'), EntryLocation.collection('c-1'), client.create.spark_cluster(name='analytics-spark', cloud_environment_id='e-1', ...), fixed driver size 1, executor auto scale 2/4/3, and a fail-closed confirmation immediately before .build(). After an explicit future operation.wait(), it aborts if the terminal error is non-null before listing collection 'c-1', selects exactly one cluster matching 'analytics-spark' and environment 'e-1', confirms that exact bound cluster immediately before .start(), and waits for the start operation explicitly, aborting on its terminal error too. It reports the saved path and asks how future preset, cluster, and operation results should be handled, waiting for an answer. It makes no SDK call, pager request, mutation, poll, inspection, or installation contact during this prepare-only request.",
+      "files": [],
+      "assertions": [
+        {"text": "Routes managed Spark cluster work to spark-clusters.md and operation polling to lakehouse-operations.md, not generic Apache Spark programming, SparkJobs, or a database connection", "type": "workflow"},
+        {"text": "Saves an unexecuted Python script with only package-root datalens_sdk imports, exact preset get by id and cloud environment, and reports its path", "type": "code"},
+        {"text": "Saved code uses EntryLocation.collection('c-1'), caller-supplied cloud_environment_id='e-1', client.create.spark_cluster(name='analytics-spark', ...), .driver(...SparkFixedScalePolicy(size=1)), .executor(...SparkAutoScalePolicy(min_size=2, max_size=4, initial_size=3)), and .build() returning a LakehouseOperation", "type": "code"},
+        {"text": "After future creation wait succeeds, saved code lists the known collection, requires exactly one name and cloud-environment match, and uses that bound cluster rather than parsing an opaque operation response or guessing an entry ID", "type": "code"},
+        {"text": "Saved code has distinct fresh fail-closed interactive confirmations immediately before future .build() and bound cluster.start(); blank, negative, or noninteractive execution cancels either mutation", "type": "code"},
+        {"text": "Saved code calls operation.wait(timeout=600.0, poll_interval=2.0) for creation and start only later, rejects non-null terminal.error before any cluster lookup or start and rejects non-null start-terminal.error; the agent does not launch either wait or inspect metadata, response, error, or timeout.last_operation now", "type": "workflow"},
+        {"text": "Asks how future preset, cluster, and operation results should be handled and waits for that answer before any future get/list, pager request or iteration, refresh/wait, or result inspection; a destination alone is not execution approval", "type": "workflow"},
+        {"text": "Does not currently get/list presets or clusters, iterate a pager, make a smoke-test read, call .build() or any bound mutation, wait, or inspect a result", "type": "workflow"},
+        {"text": "Does not invent cloud-environment discovery or SparkJobs APIs, use raw HTTP or hand-built API payloads, or import generated/private modules", "type": "code"}
+      ]
     }
   ]
 }
