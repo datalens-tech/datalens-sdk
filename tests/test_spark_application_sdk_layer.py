@@ -44,10 +44,16 @@ from datalens_sdk.errors import (
 from datalens_sdk.http import DataLensHTTPClient
 
 
-def _cluster(*, cluster_id: str = "managed-1", installation: str = "yacloud") -> SparkCluster:
+def _cluster(
+    *,
+    id: str = "lakehouse-1",
+    cluster_id: str = "managed-1",
+    entry_id: str = "entry-1",
+    installation: str = "yacloud",
+) -> SparkCluster:
     pool = SparkResourcePoolConfig(resource_preset_id="preset-1", scale_policy=SparkFixedScalePolicy(size=1))
     return SparkCluster(
-        id="entry-1",
+        id=id,
         cluster_id=cluster_id,
         installation=installation,
         location=EntryLocation.collection("collection-1"),
@@ -63,15 +69,15 @@ def _cluster(*, cluster_id: str = "managed-1", installation: str = "yacloud") ->
         ),
         health="ALIVE",
         status="RUNNING",
-        entry_id="entry-1",
+        entry_id=entry_id,
         raw={},
     )
 
 
-def test_application_cluster_reference_uses_managed_id_and_rejects_known_mismatches() -> None:
-    assert normalize_spark_application_cluster(_cluster(), installation="yacloud") == "managed-1"
-    assert normalize_spark_application_cluster("raw-managed", installation="yacloud") == "raw-managed"
-    for value in ("", _cluster(cluster_id=""), _cluster(installation="enterprise"), _cluster(installation=""), 42):
+def test_application_cluster_reference_uses_lakehouse_id_and_rejects_known_mismatches() -> None:
+    assert normalize_spark_application_cluster(_cluster(), installation="yacloud") == "lakehouse-1"
+    assert normalize_spark_application_cluster("raw-lakehouse", installation="yacloud") == "raw-lakehouse"
+    for value in ("", _cluster(id=""), _cluster(installation="enterprise"), _cluster(installation=""), 42):
         with pytest.raises(DataLensValidationError):
             normalize_spark_application_cluster(value, installation="yacloud")  # type: ignore[arg-type]
 
@@ -83,17 +89,17 @@ def test_application_list_options_snapshot_filters_and_preserve_explicit_paginat
     )
     filters.append('job_type="sparkApplication"')
 
-    assert options == SparkApplicationListOptions("managed-1", ('name="first"', 'created_by="second"'), 0, "")
-    assert SparkApplicationListOptions.create(installation="yacloud", cluster="managed-1").page_token is None
+    assert options == SparkApplicationListOptions("lakehouse-1", ('name="first"', 'created_by="second"'), 0, "")
+    assert SparkApplicationListOptions.create(installation="yacloud", cluster="raw-lakehouse").page_token is None
     for invalid in ('name="x"', b'name="x"'):
         with pytest.raises(DataLensValidationError):
             SparkApplicationListOptions.create(installation="yacloud", cluster="managed-1", filters=invalid)  # type: ignore[arg-type]
 
 
-def test_application_refresh_requires_binding_and_uses_held_managed_ids_without_mutation() -> None:
+def test_application_refresh_requires_binding_and_uses_held_lakehouse_ids_without_mutation() -> None:
     application = SparkApplication(
         id="application-1",
-        cluster_id="managed-1",
+        cluster_id="lakehouse-1",
         installation="yacloud",
         name="before",
         created_by="user-1",
@@ -121,14 +127,14 @@ def test_application_refresh_requires_binding_and_uses_held_managed_ids_without_
     bound = replace(application, _operations=cast(SparkApplicationOperations, operations))
     assert bound.refresh() == replace(application, name="after")
     assert bound.name == "before"
-    assert operations.calls == [("managed-1", "application-1")]
+    assert operations.calls == [("lakehouse-1", "application-1")]
     for invalid in (replace(bound, id=""), replace(bound, cluster_id="")):
         with pytest.raises(DataLensValidationError):
             invalid.refresh()
-    assert operations.calls == [("managed-1", "application-1")]
+    assert operations.calls == [("lakehouse-1", "application-1")]
 
 
-def _wire_application(kind: str | None = "sparkApplication") -> dict[str, object]:
+def _wire_application(kind: str | None = "sparkApplication", *, cluster_id: str = "managed-1") -> dict[str, object]:
     common: dict[str, object] = {
         "archiveUris": [],
         "fileUris": [],
@@ -140,7 +146,7 @@ def _wire_application(kind: str | None = "sparkApplication") -> dict[str, object
     }
     result: dict[str, object] = {
         "id": "application-1",
-        "clusterId": "managed-1",
+        "clusterId": cluster_id,
         "name": "analytics",
         "createdBy": "user-1",
         "status": "RUNNING",
@@ -198,11 +204,11 @@ def _service(transport: _Transport) -> tuple[DataLensHTTPClient, SparkApplicatio
 
 @pytest.mark.parametrize("kind", ["sparkApplication", "pysparkApplication", "sparkConnectApplication", None])
 def test_application_get_maps_typed_and_common_only_specs_preserving_raw(kind: str | None) -> None:
-    wire = _wire_application(kind)
+    wire = _wire_application(kind, cluster_id="lakehouse-1")
     transport = _Transport([httpx.Response(200, json=wire), httpx.Response(200, json=wire)])
     client, service = _service(transport)
     with client:
-        application = service.get_spark_application("managed-1", "application-1")
+        application = service.get_spark_application("lakehouse-1", "application-1")
         refreshed = application.refresh()
 
     expected_spec = {
@@ -213,7 +219,7 @@ def test_application_get_maps_typed_and_common_only_specs_preserving_raw(kind: s
     }[kind]
     expected = SparkApplication(
         id="application-1",
-        cluster_id="managed-1",
+        cluster_id="lakehouse-1",
         installation="yacloud",
         name="analytics",
         created_by="user-1",
@@ -231,8 +237,8 @@ def test_application_get_maps_typed_and_common_only_specs_preserving_raw(kind: s
     assert refreshed is not application
     assert type(application.created_at.nanos) is int
     assert transport.bodies() == [
-        {"clusterId": "managed-1", "applicationId": "application-1"},
-        {"clusterId": "managed-1", "applicationId": "application-1"},
+        {"clusterId": "lakehouse-1", "applicationId": "application-1"},
+        {"clusterId": "lakehouse-1", "applicationId": "application-1"},
     ]
 
 
@@ -375,10 +381,10 @@ def test_application_list_is_lazy_repeatable_and_keeps_final_empty_token() -> No
         assert [application for page in pages for application in page.items] == expected_applications
         assert list(pager) == expected_applications
     assert transport.bodies() == [
-        {"clusterId": "managed-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "A"},
-        {"clusterId": "managed-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "B"},
-        {"clusterId": "managed-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "A"},
-        {"clusterId": "managed-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "B"},
+        {"clusterId": "lakehouse-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "A"},
+        {"clusterId": "lakehouse-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "B"},
+        {"clusterId": "lakehouse-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "A"},
+        {"clusterId": "lakehouse-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "B"},
     ]
 
 
@@ -532,23 +538,32 @@ def test_application_list_sends_maximum_allowed_request_values() -> None:
     ]
 
 
-def test_yc_application_actions_use_managed_cluster_id_and_return_bound_models() -> None:
+def test_yc_application_actions_use_lakehouse_id_and_return_bound_models() -> None:
     transport = _Transport(
         [
-            httpx.Response(200, json=_wire_application()),
-            httpx.Response(200, json={"applications": [_wire_application(None)], "nextPageToken": ""}),
+            httpx.Response(200, json=_wire_application(cluster_id="lakehouse-1")),
+            httpx.Response(200, json=_wire_application(cluster_id="lakehouse-1")),
+            httpx.Response(
+                200,
+                json={"applications": [_wire_application(None, cluster_id="lakehouse-1")], "nextPageToken": ""},
+            ),
         ]
     )
     client = DataLensClientYC(auth=None, transport=httpx.MockTransport(transport.handle))
     with client:
         application = client.get.spark_application(cluster=_cluster(), by_id="application-1")
+        refreshed = application.refresh()
         pager = client.list.spark_applications(cluster=_cluster())
-        assert len(transport.requests) == 1
-        assert next(iter(pager)).id == "application-1"
-    assert application.cluster_id == "managed-1"
+        assert len(transport.requests) == 2
+        listed_application = next(iter(pager))
+        assert listed_application.id == "application-1"
+        assert listed_application.cluster_id == "lakehouse-1"
+    assert application.cluster_id == "lakehouse-1"
+    assert refreshed.cluster_id == "lakehouse-1"
     assert transport.bodies() == [
-        {"clusterId": "managed-1", "applicationId": "application-1"},
-        {"clusterId": "managed-1", "pageSize": 100},
+        {"clusterId": "lakehouse-1", "applicationId": "application-1"},
+        {"clusterId": "lakehouse-1", "applicationId": "application-1"},
+        {"clusterId": "lakehouse-1", "pageSize": 100},
     ]
 
 
@@ -556,7 +571,7 @@ def test_yc_application_actions_reject_unusable_inputs_before_http() -> None:
     transport = _Transport([])
     client = DataLensClientYC(auth=None, transport=httpx.MockTransport(transport.handle))
     with client:
-        for cluster, application_id in ((_cluster(cluster_id=""), "application-1"), (_cluster(), "")):
+        for cluster, application_id in ((_cluster(id=""), "application-1"), (_cluster(), "")):
             with pytest.raises(DataLensValidationError):
                 client.get.spark_application(cluster=cluster, by_id=application_id)
         with pytest.raises(DataLensValidationError):

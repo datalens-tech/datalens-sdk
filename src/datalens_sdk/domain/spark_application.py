@@ -22,11 +22,11 @@ def normalize_spark_application_cluster(cluster: SparkCluster | str, *, installa
             or cluster.installation != installation
         ):
             raise DataLensValidationError("Spark cluster must belong to this installation")
-        cluster_id = cluster.cluster_id
+        cluster_id = cluster.id
     else:
         cluster_id = cluster
     if not isinstance(cluster_id, str) or not cluster_id:
-        raise DataLensValidationError("Spark managed cluster id must be a non-empty string")
+        raise DataLensValidationError("Spark Lakehouse cluster id must be a non-empty string")
     return cluster_id
 
 
@@ -93,7 +93,7 @@ class SparkApplication:
 
     def refresh(self) -> SparkApplication:
         if not isinstance(self.cluster_id, str) or not self.cluster_id:
-            raise DataLensValidationError("Spark managed cluster id must be a non-empty string")
+            raise DataLensValidationError("Spark Lakehouse cluster id must be a non-empty string")
         if not isinstance(self.id, str) or not self.id:
             raise DataLensValidationError("Spark application id must be a non-empty string")
         if self._operations is None:
