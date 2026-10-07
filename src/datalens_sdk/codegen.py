@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 from collections.abc import Iterable, Mapping
 from enum import Enum
 import hashlib
@@ -8,8 +9,10 @@ import json
 import keyword
 from pathlib import Path
 import re
-from typing import TypedDict, cast
+import symtable
+from typing import Literal, TypedDict, cast
 
+from pydantic import BaseModel
 from typing_extensions import NotRequired
 
 from datalens_sdk._runtime.method_specs import (
@@ -29,6 +32,7 @@ from datalens_sdk._runtime.wizard_structure import (
     WizardVisualizationRegistry,
     WizardVisualizationStructure,
 )
+from datalens_sdk.api_version import API_VERSION
 from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -106,16 +110,6 @@ _HTML_PAGE_ROUTES = {
     "/rpc/getHtmlPagePreviewUrl": ("GetHtmlPagePreviewUrlArgs", "GetHtmlPagePreviewUrlResult"),
     "/rpc/updateHtmlPage": ("UpdateHtmlPageArgs", "UpdateHtmlPageResult"),
 }
-_HTML_PAGE_WRITE_DTO_NAMES = frozenset(
-    {
-        "CreateHtmlPageArgsDTO",
-        "DeleteHtmlPageArgsDTO",
-        "GetHtmlPageArgsDTO",
-        "GetHtmlPagePreviewUrlArgsDTO",
-        "UpdateHtmlPageArgsAnyOf0DTO",
-        "UpdateHtmlPageArgsAnyOf1DTO",
-    }
-)
 _DATASET_DATA_ROUTE = "/rpc/getDatasetData"
 _DATASET_DATA_ROOTS = ("DatasetDataArgs", "DatasetData")
 _ENTRY_REVISIONS_ROUTE = "/rpc/getRevisions"
@@ -146,6 +140,9 @@ _DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "maxItems", "minI
 _DATASET_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"maximum", "minItems", "minLength", "minimum"})
 _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS = frozenset({"default", "maximum", "maxItems", "minItems", "minimum"})
 _HTML_PAGE_SCHEMA_SUPPORTED_KEYS = frozenset({"maxLength"})
+_TAGGED_RPC_SCHEMA_SUPPORTED_KEYS = frozenset(
+    {"minLength", "maxLength", "pattern", "minimum", "maximum", "minItems", "maxItems"}
+)
 
 
 class _WizardSchemaFeatureState(Enum):
@@ -279,6 +276,34 @@ class HtmlPageContractMeta(TypedDict):
     schemas: dict[str, JsonValue]
 
 
+class RpcNamespaceConfig(TypedDict):
+    tag: str
+    namespace: str
+    operation_name_overrides: NotRequired[dict[str, str]]
+
+
+class RpcOperationMeta(TypedDict):
+    name: str
+    method: str
+    route: str
+    request_schema: str
+    result_schema: str
+    request_body_required: bool
+    request_dto: str
+    result_dto: str
+
+
+class RpcNamespaceContractMeta(TypedDict):
+    tag: str
+    namespace: str
+    operations: dict[str, RpcOperationMeta]
+    roots: list[str]
+    schemas: dict[str, JsonValue]
+
+
+RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = ()
+
+
 class InstallationMetadata(TypedDict):
     name: str
     namespaces: list[str]
@@ -296,6 +321,7 @@ class Metadata(TypedDict):
     entry_move: NotRequired[EntryMoveContractMeta]
     entry_revisions: NotRequired[EntryRevisionsContractMeta]
     html_page: NotRequired[HtmlPageContractMeta]
+    rpc_namespaces: NotRequired[dict[str, RpcNamespaceContractMeta]]
 
 
 def _string_object_dict(value: object, *, context: str) -> dict[str, object]:
@@ -376,6 +402,24 @@ def _schema_refs(value: object) -> set[str]:
     return refs
 
 
+def _schema_refs_with_pointers(value: object, *, pointer: str) -> list[tuple[str, str]]:
+    if isinstance(value, list):
+        return [
+            ref
+            for index, item in enumerate(value)
+            for ref in _schema_refs_with_pointers(item, pointer=_schema_pointer(pointer, index))
+        ]
+    if not isinstance(value, dict):
+        return []
+    refs = (
+        [(_schema_ref_name(value, context="schema node"), _schema_pointer(pointer, "$ref"))] if "$ref" in value else []
+    )
+    for key, child in sorted(value.items()):
+        if key != "$ref":
+            refs.extend(_schema_refs_with_pointers(child, pointer=_schema_pointer(pointer, key)))
+    return refs
+
+
 def _canonical_json(value: JsonValue) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
 
@@ -432,10 +476,188 @@ def _one_of_is_provably_disjoint(branches: list[object]) -> bool:
         values = frozenset(raw_type if isinstance(raw_type, list) else [raw_type])
         if not values or not all(isinstance(item, str) for item in values):
             return False
+        if "number" in values:
+            values = values | {"integer"}
         primitive_types.append(values)
     return all(
         left.isdisjoint(right) for index, left in enumerate(primitive_types) for right in primitive_types[index + 1 :]
     )
+
+
+def _all_of_property_variants(
+    value: object,
+    *,
+    schemas: Mapping[str, dict[str, object]],
+    pointer: str,
+    contract: str,
+    seen: frozenset[str] = frozenset(),
+) -> list[dict[str, object]]:
+    if not isinstance(value, Mapping):
+        return [{}]
+    if value.get("additionalProperties") is False:
+        raise ValueError(
+            f"Unsupported behavior-bearing {contract} schema feature at "
+            f"{_schema_pointer(pointer, 'additionalProperties')}: allOf cannot merge a closed object branch"
+        )
+    if contract.startswith("tagged RPC ") and value.get("additionalProperties") is True:
+        raise ValueError(
+            f"Unsupported behavior-bearing {contract} schema feature at "
+            f"{_schema_pointer(pointer, 'additionalProperties')}: allOf cannot merge an open map branch"
+        )
+    if contract.startswith("tagged RPC ") and isinstance(value.get("additionalProperties"), Mapping):
+        raise ValueError(
+            f"Unsupported behavior-bearing {contract} schema feature at "
+            f"{_schema_pointer(pointer, 'additionalProperties')}: allOf cannot merge a typed map branch"
+        )
+    ref = value.get("$ref")
+    if isinstance(ref, str):
+        name = _ref_name(ref)
+        if name in seen:
+            return [{}]
+        target = schemas.get(name)
+        return _all_of_property_variants(
+            target,
+            schemas=schemas,
+            pointer=f"/schemas/{_json_pointer_token(name)}",
+            contract=contract,
+            seen=seen | {name},
+        )
+    for union_key in ("oneOf", "anyOf"):
+        branches = value.get(union_key)
+        if isinstance(branches, list):
+            return [
+                variant
+                for index, branch in enumerate(branches)
+                for variant in _all_of_property_variants(
+                    branch,
+                    schemas=schemas,
+                    pointer=_schema_pointer(_schema_pointer(pointer, union_key), index),
+                    contract=contract,
+                    seen=seen,
+                )
+            ]
+    properties = value.get("properties")
+    own = (
+        {name: schema for name, schema in properties.items() if isinstance(name, str)}
+        if isinstance(properties, Mapping)
+        else {}
+    )
+    branches = value.get("allOf")
+    if not isinstance(branches, list):
+        return [own]
+    combinations = [own]
+    for index, branch in enumerate(branches):
+        combinations = [
+            {**left, **right}
+            for left in combinations
+            for right in _all_of_property_variants(
+                branch,
+                schemas=schemas,
+                pointer=_schema_pointer(_schema_pointer(pointer, "allOf"), index),
+                contract=contract,
+                seen=seen,
+            )
+        ]
+    return combinations
+
+
+def _all_of_open_map_pointer(
+    value: object,
+    *,
+    schemas: Mapping[str, dict[str, object]],
+    pointer: str,
+    seen: frozenset[str] = frozenset(),
+) -> str | None:
+    if not isinstance(value, Mapping):
+        return None
+    additional = value.get("additionalProperties")
+    properties = value.get("properties")
+    if additional is True or isinstance(additional, Mapping) or (additional is None and not properties):
+        return _schema_pointer(pointer, "additionalProperties")
+    ref = value.get("$ref")
+    if isinstance(ref, str):
+        name = _ref_name(ref)
+        if name in seen:
+            return None
+        return _all_of_open_map_pointer(
+            schemas.get(name),
+            schemas=schemas,
+            pointer=f"/schemas/{_json_pointer_token(name)}",
+            seen=seen | {name},
+        )
+    for key in ("allOf", "oneOf", "anyOf"):
+        branches = value.get(key)
+        if isinstance(branches, list):
+            for index, branch in enumerate(branches):
+                location = _all_of_open_map_pointer(
+                    branch,
+                    schemas=schemas,
+                    pointer=_schema_pointer(_schema_pointer(pointer, key), index),
+                    seen=seen,
+                )
+                if location is not None:
+                    return location
+    return None
+
+
+def _audit_tagged_rpc_pattern(pattern: str, *, pointer: str, contract: str) -> None:
+    if not contract.startswith("tagged RPC "):
+        return
+    try:
+        re.compile(pattern)
+    except re.error as exc:
+        raise ValueError(f"Unsupported tagged RPC pattern at {pointer}: invalid regular expression") from exc
+
+    in_character_class = False
+    escaped = False
+    for index, character in enumerate(pattern):
+        if escaped:
+            if character in "dDwWsSbBAZN":
+                raise ValueError(
+                    f"Unsupported tagged RPC pattern at {pointer}: escape \\{character} has different "
+                    "semantics in Python and ECMAScript regular expressions"
+                )
+            escaped = False
+            continue
+        if character == "\\":
+            escaped = True
+            continue
+        if in_character_class:
+            if character == "]":
+                in_character_class = False
+            continue
+        if character == "[":
+            in_character_class = True
+            continue
+        if pattern.startswith(("(?P", "(?#", "(?>"), index) or re.match(r"\(\?[aiLmsux-]+\)", pattern[index:]):
+            raise ValueError(f"Unsupported tagged RPC pattern at {pointer}: Python-only regular expression construct")
+        if pattern[index : index + 2] in {"*+", "++", "?+", "}+"}:
+            raise ValueError(f"Unsupported tagged RPC pattern at {pointer}: Python-only possessive quantifier")
+
+
+def _python_tagged_rpc_pattern(pattern: str) -> str:
+    """Preserve ECMAScript end-anchor semantics when a pattern runs through Python re."""
+    result: list[str] = []
+    escaped = False
+    in_character_class = False
+    for character in pattern:
+        if escaped:
+            result.append(character)
+            escaped = False
+            continue
+        if character == "\\":
+            result.append(character)
+            escaped = True
+            continue
+        if character == "[":
+            in_character_class = True
+        elif character == "]":
+            in_character_class = False
+        if character == "$" and not in_character_class:
+            result.append(r"\Z")
+        else:
+            result.append(character)
+    return "".join(result)
 
 
 def _audit_pydantic_schema_features(
@@ -444,6 +666,7 @@ def _audit_pydantic_schema_features(
     pointer: str,
     contract: str,
     require_provably_disjoint_one_of: bool,
+    component_schemas: Mapping[str, dict[str, object]] | None = None,
 ) -> None:
     if not isinstance(value, Mapping):
         raise TypeError(f"{contract} schema node at {pointer} must be an object")
@@ -457,6 +680,7 @@ def _audit_pydantic_schema_features(
             or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
             or (contract == "getRevisions" and key in _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS)
             or (contract == "HtmlPages" and key in _HTML_PAGE_SCHEMA_SUPPORTED_KEYS)
+            or (contract.startswith("tagged RPC ") and key in _TAGGED_RPC_SCHEMA_SUPPORTED_KEYS)
         )
         if state is _WizardSchemaFeatureState.SEMANTIC_UNSUPPORTED and not contract_extension:
             raise ValueError(
@@ -479,6 +703,49 @@ def _audit_pydantic_schema_features(
         raise ValueError(
             f"{contract} schema feature at {_schema_pointer(pointer, 'type')} must contain supported JSON Schema types"
         )
+    if contract.startswith("tagged RPC "):
+        for composition_key in ("$ref", "anyOf", "oneOf"):
+            if composition_key not in value:
+                continue
+            preserved_keys = {composition_key}
+            if composition_key != "$ref":
+                preserved_keys.add("discriminator")
+            siblings = {
+                key
+                for key in value
+                if key not in preserved_keys
+                and _wizard_schema_feature_state(key) is not _WizardSchemaFeatureState.DOCUMENTATION_ONLY
+            }
+            if siblings:
+                # Prefer the specific constraint pointer to a sibling type declaration.
+                constraint = min(siblings, key=lambda key: (key == "type", key))
+                raise ValueError(
+                    f"Unsupported behavior-bearing {contract} schema feature at "
+                    f"{_schema_pointer(pointer, constraint)}: {composition_key} sibling constraint"
+                )
+        actual_types = set(schema_types)
+        constraints_by_type = {
+            "minItems": {"array", "null"},
+            "maxItems": {"array", "null"},
+            "minLength": {"string", "null"},
+            "maxLength": {"string", "null"},
+            "pattern": {"string", "null"},
+            "minimum": {"integer", "number", "null"},
+            "maximum": {"integer", "number", "null"},
+        }
+        for constraint, allowed_types in constraints_by_type.items():
+            if constraint in value and (
+                "type" not in value or not actual_types <= allowed_types or actual_types == {"null"}
+            ):
+                raise ValueError(
+                    f"Unsupported behavior-bearing {contract} schema feature at "
+                    f"{_schema_pointer(pointer, constraint)}: incompatible schema type"
+                )
+        pattern = value.get("pattern")
+        if "pattern" in value and not isinstance(pattern, str):
+            raise ValueError(f"{contract} schema feature at {_schema_pointer(pointer, 'pattern')} must be a string")
+        if isinstance(pattern, str):
+            _audit_tagged_rpc_pattern(pattern, pointer=_schema_pointer(pointer, "pattern"), contract=contract)
     required = value.get("required")
     if "required" in value and (not isinstance(required, list) or any(not isinstance(name, str) for name in required)):
         raise ValueError(f"{contract} schema feature at {_schema_pointer(pointer, 'required')} must be a string list")
@@ -490,6 +757,32 @@ def _audit_pydantic_schema_features(
         or any(item is not None and not isinstance(item, (str, bool, int, float)) for item in enum)
     ):
         raise ValueError(f"{contract} schema enum at {_schema_pointer(pointer, 'enum')} must contain JSON scalars")
+    if contract.startswith("tagged RPC ") and isinstance(enum, list) and "type" in value:
+        for item in enum:
+            if item is None:
+                item_types = {"null"}
+            elif isinstance(item, bool):
+                item_types = {"boolean"}
+            elif isinstance(item, int):
+                item_types = {"integer", "number"}
+            elif isinstance(item, float):
+                item_types = {"number"}
+                if item.is_integer():
+                    item_types.add("integer")
+            else:
+                item_types = {"string"}
+            if set(schema_types).isdisjoint(item_types):
+                raise ValueError(
+                    f"Unsupported behavior-bearing {contract} schema feature at "
+                    f"{_schema_pointer(pointer, 'enum')}: enum value has an incompatible schema type"
+                )
+    if contract.startswith("tagged RPC ") and isinstance(enum, list) and isinstance(raw_type, list):
+        for constraint in ("minLength", "maxLength", "pattern", "minimum", "maximum"):
+            if constraint in value:
+                raise ValueError(
+                    f"Unsupported behavior-bearing {contract} schema feature at "
+                    f"{_schema_pointer(pointer, constraint)}: constrained enum with a type array"
+                )
 
     for constraint in ("maxItems", "maxLength", "minItems", "minLength"):
         constraint_value = value.get(constraint)
@@ -530,28 +823,67 @@ def _audit_pydantic_schema_features(
             "must be a boolean or schema"
         )
     properties = value.get("properties")
+    if (
+        contract.startswith("tagged RPC ")
+        and (additional is False or isinstance(additional, Mapping))
+        and raw_type != "object"
+        and not (isinstance(raw_type, list) and "object" in raw_type)
+        and not (raw_type is None and isinstance(properties, Mapping) and properties)
+    ):
+        raise ValueError(
+            f"Unsupported behavior-bearing {contract} schema feature at "
+            f"{_schema_pointer(pointer, 'additionalProperties')}: constrained map requires an object type"
+        )
     if isinstance(additional, Mapping) and isinstance(properties, Mapping) and properties:
         raise ValueError(
             f"Unsupported behavior-bearing {contract} schema feature at "
             f"{_schema_pointer(pointer, 'additionalProperties')}: typed extras on an object with named properties"
         )
-
+    if contract.startswith("tagged RPC ") and additional is True and isinstance(properties, Mapping) and properties:
+        raise ValueError(
+            f"Unsupported behavior-bearing {contract} schema feature at "
+            f"{_schema_pointer(pointer, 'additionalProperties')}: open extras on an object with named properties"
+        )
     for map_key in ("properties",):
         children = value.get(map_key)
         if map_key not in value:
             continue
         if not isinstance(children, Mapping):
             raise ValueError(f"{contract} schema feature at {_schema_pointer(pointer, map_key)} must be an object")
+        python_fields: dict[str, str] = {}
         for name, child in children.items():
             if not isinstance(name, str):
                 raise TypeError(
                     f"{contract} schema map at {_schema_pointer(pointer, map_key)} contains a non-string key"
                 )
+            if contract.startswith("tagged RPC "):
+                python_name = _wizard_python_field_name(name)
+                if not python_name.isidentifier() or python_name.startswith("_"):
+                    raise ValueError(
+                        f"Unsupported behavior-bearing {contract} schema feature at "
+                        f"{_schema_pointer(_schema_pointer(pointer, map_key), name)}: "
+                        f"wire property {name!r} has an unusable Python field name {python_name!r}"
+                    )
+                if python_name.startswith("model_") or hasattr(BaseModel, python_name):
+                    raise ValueError(
+                        f"Unsupported behavior-bearing {contract} schema feature at "
+                        f"{_schema_pointer(_schema_pointer(pointer, map_key), name)}: "
+                        f"wire property {name!r} shadows Pydantic member {python_name!r}"
+                    )
+                previous = python_fields.get(python_name)
+                if previous is not None:
+                    raise ValueError(
+                        f"Unsupported behavior-bearing {contract} schema feature at "
+                        f"{_schema_pointer(_schema_pointer(pointer, map_key), name)}: "
+                        f"wire properties {previous!r} and {name!r} both normalize to Python field {python_name!r}"
+                    )
+                python_fields[python_name] = name
             _audit_pydantic_schema_features(
                 child,
                 pointer=_schema_pointer(_schema_pointer(pointer, map_key), name),
                 contract=contract,
                 require_provably_disjoint_one_of=require_provably_disjoint_one_of,
+                component_schemas=component_schemas,
             )
 
     items = value.get("items")
@@ -563,8 +895,9 @@ def _audit_pydantic_schema_features(
             pointer=_schema_pointer(pointer, "items"),
             contract=contract,
             require_provably_disjoint_one_of=require_provably_disjoint_one_of,
+            component_schemas=component_schemas,
         )
-    else:
+    elif not (contract.startswith("tagged RPC ") and "prefixItems" in value and isinstance(items, bool)):
         raise ValueError(f"{contract} schema feature at {_schema_pointer(pointer, 'items')} must be a schema")
 
     additional_schema = value.get("additionalProperties")
@@ -574,6 +907,7 @@ def _audit_pydantic_schema_features(
             pointer=_schema_pointer(pointer, "additionalProperties"),
             contract=contract,
             require_provably_disjoint_one_of=require_provably_disjoint_one_of,
+            component_schemas=component_schemas,
         )
 
     for list_key in ("allOf", "anyOf", "oneOf", "prefixItems"):
@@ -589,8 +923,76 @@ def _audit_pydantic_schema_features(
                 f"Unsupported behavior-bearing {contract} schema feature at "
                 f"{_schema_pointer(pointer, list_key)}: oneOf branches are not provably disjoint"
             )
+        if list_key == "allOf" and contract.startswith("tagged RPC "):
+            if raw_type is not None and raw_type != "object" and raw_type != ["object"]:
+                raise ValueError(
+                    f"Unsupported behavior-bearing {contract} schema feature at "
+                    f"{_schema_pointer(pointer, 'type')}: allOf parent constraint is not preserved by an object DTO"
+                )
+            if "enum" in value:
+                raise ValueError(
+                    f"Unsupported behavior-bearing {contract} schema feature at "
+                    f"{_schema_pointer(pointer, 'enum')}: allOf parent constraint is not preserved by an object DTO"
+                )
+        prior_variants: list[dict[str, object]] = (
+            [{name: schema for name, schema in properties.items() if isinstance(name, str)}]
+            if list_key == "allOf" and contract.startswith("tagged RPC ") and isinstance(properties, Mapping)
+            else [{}]
+        )
+        if (
+            list_key == "allOf"
+            and contract.startswith("tagged RPC ")
+            and (additional is True or isinstance(additional, Mapping))
+        ):
+            map_kind = "open" if additional is True else "typed"
+            raise ValueError(
+                f"Unsupported behavior-bearing {contract} schema feature at "
+                f"{_schema_pointer(pointer, 'additionalProperties')}: "
+                f"allOf cannot merge a {map_kind} map branch"
+            )
         for index, child in enumerate(children):
             child_pointer = _schema_pointer(_schema_pointer(pointer, list_key), index)
+            if list_key == "allOf" and contract.startswith("tagged RPC ") and component_schemas is not None:
+                child_variants = _all_of_property_variants(
+                    child, schemas=component_schemas, pointer=child_pointer, contract=contract
+                )
+                if additional is False or isinstance(additional, Mapping):
+                    parent_properties = set(properties) if isinstance(properties, Mapping) else set()
+                    if any(set(variant) - parent_properties for variant in child_variants):
+                        raise ValueError(
+                            f"Unsupported behavior-bearing {contract} schema feature at "
+                            f"{_schema_pointer(pointer, 'additionalProperties')}: "
+                            "allOf introduces properties constrained by the parent"
+                        )
+                for prior in prior_variants:
+                    for current in child_variants:
+                        prior_python_fields = {_wizard_python_field_name(name): name for name in prior}
+                        for name in sorted(current):
+                            python_name = _wizard_python_field_name(name)
+                            previous = prior_python_fields.get(python_name)
+                            if previous is not None and previous != name:
+                                location = (
+                                    _schema_pointer(_schema_pointer(child_pointer, "properties"), name)
+                                    if isinstance(child, Mapping) and isinstance(child.get("properties"), Mapping)
+                                    else child_pointer
+                                )
+                                raise ValueError(
+                                    f"Unsupported behavior-bearing {contract} schema feature at {location}: "
+                                    f"wire properties {previous!r} and {name!r} "
+                                    f"both normalize to Python field {python_name!r}"
+                                )
+                        for name in sorted(prior.keys() & current.keys()):
+                            if _normalize_wizard_schema(prior[name]) != _normalize_wizard_schema(current[name]):
+                                location = (
+                                    _schema_pointer(_schema_pointer(child_pointer, "properties"), name)
+                                    if isinstance(child, Mapping) and isinstance(child.get("properties"), Mapping)
+                                    else child_pointer
+                                )
+                                raise ValueError(
+                                    f"Unsupported behavior-bearing {contract} schema feature at {location}: "
+                                    f"allOf overlaps property {name!r} with a different definition"
+                                )
+                prior_variants = [{**prior, **current} for prior in prior_variants for current in child_variants]
             if list_key == "allOf" and isinstance(child, Mapping):
                 unsupported_merge_keys = {
                     key
@@ -603,6 +1005,7 @@ def _audit_pydantic_schema_features(
                         or (contract == "HtmlPages" and key in _HTML_PAGE_SCHEMA_SUPPORTED_KEYS)
                     )
                     and key not in {"$ref", "properties", "required", "type"}
+                    and not (contract.startswith("tagged RPC ") and key in {"anyOf", "oneOf"})
                 }
                 if unsupported_merge_keys:
                     key = min(str(item) for item in unsupported_merge_keys)
@@ -615,6 +1018,7 @@ def _audit_pydantic_schema_features(
                 pointer=child_pointer,
                 contract=contract,
                 require_provably_disjoint_one_of=require_provably_disjoint_one_of,
+                component_schemas=component_schemas,
             )
 
 
@@ -700,6 +1104,279 @@ def _route_schema(
 def _wizard_schema_dto_name(schema_name: str, *, read: bool = False) -> str:
     suffix = "ReadDTO" if read else "DTO"
     return f"{schema_name}{suffix}"
+
+
+def _rpc_route_schema(
+    operation: dict[str, object],
+    *,
+    route: str,
+    name: str,
+    request: bool,
+    schemas: dict[str, dict[str, object]],
+) -> tuple[str, bool]:
+    """Extract a tagged JSON root without changing legacy inline-result handling."""
+
+    context = f"{route} {'request' if request else 'result'} schema"
+    try:
+        if request:
+            body = _string_object_dict(operation.get("requestBody"), context=f"{route}.post.requestBody")
+            required = body.get("required", False)
+            if not isinstance(required, bool):
+                raise ValueError(f"{route}.post.requestBody.required must be a boolean")
+        else:
+            responses = _string_object_dict(operation.get("responses"), context=f"{route}.post.responses")
+            body = _string_object_dict(responses.get("200"), context=f"{route}.post.responses.200")
+            required = False
+        content = _string_object_dict(body.get("content"), context=f"{context}.content")
+        content_pointer = (
+            f"/paths/{_json_pointer_token(route)}/post/{'requestBody' if request else 'responses/200'}/content"
+        )
+        unsupported = sorted(set(content) - {"application/json"})
+        if unsupported:
+            pointer = f"{content_pointer}/{_json_pointer_token(unsupported[0])}"
+            raise ValueError(f"{route}: Unsupported tagged RPC media representation at {pointer}")
+        if "application/json" not in content:
+            raise ValueError(f"{route}: tagged RPC requires application/json at {content_pointer}")
+        media = _string_object_dict(content.get("application/json"), context=f"{context}.content.application/json")
+        schema = _string_object_dict(media.get("schema"), context=context)
+    except TypeError as exc:
+        raise ValueError(str(exc)) from exc
+
+    normalized = _normalize_wizard_schema(schema)
+    if isinstance(normalized, dict) and set(normalized) == {"$ref"}:
+        return _schema_ref_name(schema, context=context), required
+
+    root_name = _class_name(name, "Args" if request else "Result")
+    existing = schemas.get(root_name)
+    if existing is not None and _normalize_wizard_schema(existing) != normalized:
+        raise ValueError(f"{context} inline root {root_name!r} collides with an existing component")
+    schemas[root_name] = schema
+    return root_name, required
+
+
+def _is_transport_api_version_parameter(parameter: object, *, components: Mapping[str, object]) -> bool:
+    if parameter != {"$ref": "#/components/parameters/ApiVersionHeader"}:
+        return False
+    component_parameters = components.get("parameters")
+    if not isinstance(component_parameters, Mapping):
+        return False
+    header = component_parameters.get("ApiVersionHeader")
+    if not isinstance(header, Mapping) or set(header) - {"description", "in", "name", "required", "schema"}:
+        return False
+    schema = header.get("schema")
+    return (
+        header.get("in") == "header"
+        and header.get("name") == "x-dl-api-version"
+        and header.get("required") is True
+        and isinstance(schema, Mapping)
+        and not (set(schema) - {"const", "description", "example", "type"})
+        and schema.get("type") == "string"
+        and schema.get("const") == API_VERSION
+        and ("example" not in schema or schema["example"] == API_VERSION)
+    )
+
+
+def build_rpc_namespace_contract_meta(
+    spec: Mapping[str, object],
+    *,
+    config: RpcNamespaceConfig,
+) -> RpcNamespaceContractMeta | None:
+    """Derive one tagged RPC namespace and its transitive schema closure."""
+
+    paths = _string_object_dict(spec.get("paths"), context="paths")
+    selected: list[tuple[str, str, dict[str, object], dict[str, object]]] = []
+    http_methods = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
+    for route, raw_path in sorted(paths.items()):
+        path_item = _string_object_dict(raw_path, context=route)
+        for method in sorted(http_methods & path_item.keys()):
+            operation = _string_object_dict(path_item[method], context=f"{route}.{method}")
+            tags = _string_list(operation.get("tags", []), context=f"{route}.{method}.tags")
+            if config["tag"] in tags:
+                selected.append((route, method, path_item, operation))
+    if not selected:
+        return None
+
+    components = _string_object_dict(spec.get("components", {}), context="components")
+    schemas = _schema_dict(components.get("schemas", {}), context="components.schemas")
+    operations: dict[str, RpcOperationMeta] = {}
+    root_contexts: dict[str, str] = {}
+    overrides = config.get("operation_name_overrides", {})
+    for route, method, path_item, operation in selected:
+        if method != "post" or re.fullmatch(r"/rpc/[A-Za-z_][A-Za-z0-9_-]*", route) is None:
+            raise ValueError(f"{route}.{method} tagged RPC must use POST /rpc/<operation>")
+        version_header_seen = False
+        for owner, source in (("", path_item), ("/post", operation)):
+            if "parameters" not in source:
+                continue
+            pointer = f"/paths/{_json_pointer_token(route)}{owner}/parameters"
+            parameters = source["parameters"]
+            if not isinstance(parameters, list):
+                raise ValueError(f"{route}: tagged RPC parameters must be an array at {pointer}")
+            for index, parameter in enumerate(parameters):
+                if version_header_seen or not _is_transport_api_version_parameter(parameter, components=components):
+                    raise ValueError(f"{route}: Unsupported tagged RPC parameter at {pointer}/{index}")
+                version_header_seen = True
+        raw_name = overrides.get(route, operation.get("operationId", route.removeprefix("/rpc/")))
+        if not isinstance(raw_name, str):
+            raise ValueError(f"{route}.{method} RPC operation name must be a string")
+        name = to_snake(raw_name)
+        if not name.isidentifier() or keyword.iskeyword(name):
+            raise ValueError(f"{route}.{method} has invalid RPC operation name {name!r}")
+        if name in operations:
+            raise ValueError(f"duplicate RPC operation name {name!r}: {operations[name]['route']} and {route}")
+        request_schema, required = _rpc_route_schema(operation, route=route, name=name, request=True, schemas=schemas)
+        result_schema, _ = _rpc_route_schema(operation, route=route, name=name, request=False, schemas=schemas)
+        operations[name] = {
+            "name": name,
+            "method": method,
+            "route": route,
+            "request_schema": request_schema,
+            "result_schema": result_schema,
+            "request_body_required": required,
+            "request_dto": _wizard_schema_dto_name(request_schema),
+            "result_dto": _wizard_schema_dto_name(result_schema, read=True),
+        }
+        for root in (request_schema, result_schema):
+            root_contexts.setdefault(root, f"{route} schema {root!r}")
+
+    reached: set[str] = set()
+    queue = sorted(root_contexts.items())
+    normalized_schemas: dict[str, JsonValue] = {}
+    while queue:
+        name, context = queue.pop(0)
+        if name in reached:
+            continue
+        schema = schemas.get(name)
+        if schema is None:
+            raise ValueError(f"{context} references missing component {name!r}")
+        try:
+            _audit_pydantic_schema_features(
+                schema,
+                pointer=f"/schemas/{_json_pointer_token(name)}",
+                contract=f"tagged RPC {config['tag']}",
+                require_provably_disjoint_one_of=True,
+                component_schemas=schemas,
+            )
+            normalized = _normalize_wizard_schema(schema)
+            refs = _schema_refs(normalized)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{context}: {exc}") from exc
+        reached.add(name)
+        normalized_schemas[name] = normalized
+        queue.extend((ref, f"{context} via schema {name!r}") for ref in sorted(refs - reached))
+
+    visited: set[str] = set()
+    active: set[str] = set()
+
+    def reject_recursive_schema(name: str) -> None:
+        if name in visited:
+            return
+        active.add(name)
+        pointer = f"/schemas/{_json_pointer_token(name)}"
+        for referenced_name, reference_pointer in _schema_refs_with_pointers(normalized_schemas[name], pointer=pointer):
+            if referenced_name in active:
+                raise ValueError(f"Unsupported recursive tagged RPC schema reference at {reference_pointer}")
+            reject_recursive_schema(referenced_name)
+        active.remove(name)
+        visited.add(name)
+
+    for root in sorted(root_contexts):
+        reject_recursive_schema(root)
+
+    for rpc_operation in operations.values():
+        request_root_name = rpc_operation["request_schema"]
+        request_root_schema = normalized_schemas[request_root_name]
+        seen_request_refs = {request_root_name}
+        while isinstance(request_root_schema, Mapping):
+            ref = request_root_schema.get("$ref")
+            if not isinstance(ref, str):
+                break
+            request_root_name = _ref_name(ref)
+            if request_root_name in seen_request_refs:
+                break
+            seen_request_refs.add(request_root_name)
+            request_root_schema = normalized_schemas[request_root_name]
+        if not isinstance(request_root_schema, Mapping):
+            continue
+        properties = request_root_schema.get("properties")
+        additional = request_root_schema.get("additionalProperties")
+        root_pointer = f"/schemas/{_json_pointer_token(request_root_name)}"
+        all_of = request_root_schema.get("allOf")
+        if (
+            not isinstance(all_of, list)
+            and not properties
+            and (additional is None or additional is True or isinstance(additional, Mapping))
+        ):
+            raise ValueError(
+                f"{rpc_operation['route']} request schema {request_root_name!r}: "
+                f"Unsupported behavior-bearing tagged RPC {config['tag']} schema feature at "
+                f"{root_pointer}/additionalProperties: "
+                "map request roots do not emit a DTO with validation and payload methods"
+            )
+        raw_type = request_root_schema.get("type")
+        if isinstance(all_of, list):
+            variants = _all_of_property_variants(
+                request_root_schema,
+                schemas=schemas,
+                pointer=root_pointer,
+                contract=f"tagged RPC {config['tag']}",
+            )
+            if any(not variant for variant in variants):
+                map_pointer = _all_of_open_map_pointer(request_root_schema, schemas=schemas, pointer=root_pointer)
+                if map_pointer is not None:
+                    raise ValueError(
+                        f"{rpc_operation['route']} request schema {request_root_name!r}: "
+                        f"Unsupported behavior-bearing tagged RPC {config['tag']} schema feature at "
+                        f"{map_pointer}: map request roots do not emit DTOs that accept map entries"
+                    )
+            emits_model = len(variants) == 1
+        else:
+            emits_model = (
+                (
+                    raw_type == "object"
+                    or raw_type == ["object"]
+                    or (raw_type is None and isinstance(properties, Mapping))
+                )
+                and "enum" not in request_root_schema
+                and "oneOf" not in request_root_schema
+                and "anyOf" not in request_root_schema
+                and "items" not in request_root_schema
+                and "prefixItems" not in request_root_schema
+            )
+        if not emits_model:
+            raise ValueError(
+                f"{rpc_operation['route']} request schema {request_root_name!r}: "
+                f"Unsupported behavior-bearing tagged RPC {config['tag']} schema at {root_pointer}: "
+                "request root does not emit a DTO with validation and payload methods"
+            )
+
+    return {
+        "tag": config["tag"],
+        "namespace": config["namespace"],
+        "operations": dict(sorted(operations.items())),
+        "roots": sorted(root_contexts),
+        "schemas": dict(sorted(normalized_schemas.items())),
+    }
+
+
+def build_rpc_namespace_contracts(
+    spec: Mapping[str, object],
+    *,
+    configs: Iterable[RpcNamespaceConfig],
+) -> dict[str, RpcNamespaceContractMeta]:
+    """Extract configured namespaces that are present in this installation."""
+
+    contracts: dict[str, RpcNamespaceContractMeta] = {}
+    namespaces: set[str] = set()
+    for config in configs:
+        namespace = config["namespace"]
+        if namespace in namespaces:
+            raise ValueError(f"duplicate RPC namespace configuration {namespace!r}")
+        namespaces.add(namespace)
+        contract = build_rpc_namespace_contract_meta(spec, config=config)
+        if contract is not None:
+            contracts[namespace] = contract
+    return dict(sorted(contracts.items()))
 
 
 def _singleton_union_variant_paths(
@@ -1986,8 +2663,14 @@ def _chart_meta(schemas: dict[str, dict[str, object]]) -> ChartMeta:
     }
 
 
-def build_metadata(installations: dict[str, Path]) -> Metadata:
+def build_metadata(
+    installations: dict[str, Path],
+    *,
+    rpc_namespace_configs: Iterable[RpcNamespaceConfig] = RPC_NAMESPACE_CONFIGS,
+) -> Metadata:
     out: Metadata = {"installations": {}}
+    configs = tuple(rpc_namespace_configs)
+    rpc_namespace_contracts: dict[str, tuple[str, RpcNamespaceContractMeta]] = {}
     dashboard_contracts: list[tuple[str, DashboardContractMeta]] = []
     dataset_data_contracts: list[tuple[str, DatasetDataContractMeta]] = []
     dataset_data_missing: list[str] = []
@@ -1998,6 +2681,14 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
+        installation_rpc_contracts = build_rpc_namespace_contracts(spec, configs=configs)
+        for namespace, contract in installation_rpc_contracts.items():
+            previous_rpc = rpc_namespace_contracts.get(namespace)
+            if previous_rpc is not None and previous_rpc[1] != contract:
+                raise ValueError(
+                    f"tagged RPC namespace {namespace!r} differs between {previous_rpc[0]!r} and {installation!r}"
+                )
+            rpc_namespace_contracts[namespace] = (installation, contract)
         schemas = _schemas(spec)
         validate_dataset_update_mode_contract(spec)
         dashboard_contract = build_dashboard_contract_meta(spec)
@@ -2034,7 +2725,7 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
         chart_meta = _chart_meta(schemas)
         installation_metadata: InstallationMetadata = {
             "name": installation,
-            "namespaces": NAMESPACES[installation],
+            "namespaces": [*NAMESPACES[installation], *installation_rpc_contracts],
             "connectors": {
                 connector: _connector_meta(schemas, connector, ref, installation)
                 for connector, ref in sorted(connection_mapping.items())
@@ -2107,6 +2798,10 @@ def build_metadata(installations: dict[str, Path]) -> Metadata:
                     f"getRevisions schemas differ between {canonical_revisions_installation!r} and {installation!r}"
                 )
         out["entry_revisions"] = canonical_entry_revisions
+    if rpc_namespace_contracts:
+        out["rpc_namespaces"] = {
+            namespace: contract for namespace, (_, contract) in sorted(rpc_namespace_contracts.items())
+        }
     editor_methods_by_wire_type: dict[str, tuple[str, str]] = {}
     for installation, info in sorted(out["installations"].items()):
         for wire_type, node_meta in sorted(info["charts"]["editor_nodes"].items()):
@@ -2170,6 +2865,9 @@ class _PydanticSchemaEmitter:
         field_name_overrides: Mapping[tuple[str, ...], str] | None = None,
         model_name_overrides: Mapping[tuple[str, ...], str] | None = None,
         use_schema_defaults: bool = False,
+        payload_methods: Literal["none", "roots", "recursive"] = "none",
+        strict_write_extra: bool = False,
+        empty_object_models: bool = False,
     ) -> None:
         self._schemas = schemas
         self._read = read
@@ -2182,16 +2880,103 @@ class _PydanticSchemaEmitter:
         self._field_name_overrides = dict(field_name_overrides or {})
         self._model_name_overrides = dict(model_name_overrides or {})
         self._use_schema_defaults = use_schema_defaults
+        self._payload_methods = payload_methods
+        self._strict_write_extra = strict_write_extra
+        self._empty_object_models = empty_object_models
+        self._payload_schemas: set[str] = set()
+        self._payload_paths: set[tuple[str, ...]] = set()
+        self._root_level_paths: set[tuple[str, ...]] = set()
+        self._payload_root_names: set[str] = set()
         self._lines: list[str] = []
         self._emitted: set[str] = set()
+        self._emitted_components: dict[str, str] = {}
+        self._emitted_paths: dict[str, tuple[str, ...]] = {}
         self._emitting: set[str] = set()
         self._definitions: dict[str, str] = {}
         self._definitions_by_schema: dict[str, str] = {}
+        self._definitions_by_schema_and_payload: dict[tuple[str, bool], str] = {}
 
     def emit(self, schema_names: Iterable[str]) -> str:
-        for schema_name in sorted(schema_names):
+        roots = sorted(set(schema_names))
+        if self._payload_methods != "none":
+            self._payload_root_names.update(roots)
+            for schema_name in roots:
+                raw = self._schemas.get(schema_name)
+                if raw is None:
+                    raise ValueError(f"{self._contract} contract references missing schema {schema_name!r}")
+                self._collect_payload_schemas(
+                    self._schema_object(raw, context=schema_name), path=(schema_name,), seen=frozenset({schema_name})
+                )
+        for schema_name in roots:
             self._emit_named(schema_name)
         return "\n".join(self._lines)
+
+    def _collect_payload_schemas(
+        self,
+        schema: dict[str, JsonValue],
+        *,
+        path: tuple[str, ...],
+        seen: frozenset[str],
+    ) -> None:
+        if self._payload_methods == "roots":
+            self._root_level_paths.add(path)
+        ref = schema.get("$ref")
+        if isinstance(ref, str):
+            name = _ref_name(ref)
+            if self._payload_methods == "roots":
+                self._payload_root_names.add(name)
+            if name not in seen:
+                raw = self._schemas.get(name)
+                if raw is None:
+                    raise ValueError(f"{self._contract} contract references missing schema {name!r}")
+                self._collect_payload_schemas(self._schema_object(raw, context=name), path=(name,), seen=seen | {name})
+            return
+        for union_key in ("oneOf", "anyOf"):
+            branches = schema.get(union_key)
+            if isinstance(branches, list):
+                for index, branch in enumerate(branches):
+                    self._collect_payload_schemas(
+                        self._schema_object(branch, context=union_key),
+                        path=(*path, f"{union_key}{index}"),
+                        seen=seen,
+                    )
+                return
+        if isinstance(schema.get("allOf"), list):
+            variants = self._all_of_variants(schema, context="payload", seen=frozenset())
+            for index, variant in enumerate(variants):
+                self._collect_payload_schemas(
+                    variant, path=(*path, f"allOf{index}") if len(variants) > 1 else path, seen=seen
+                )
+            return
+        raw_type = schema.get("type")
+        if isinstance(raw_type, list):
+            for item in raw_type:
+                if isinstance(item, str):
+                    self._collect_payload_schemas({**schema, "type": item}, path=(*path, item), seen=seen)
+            return
+        if schema.get("type") == "object" or isinstance(schema.get("properties"), dict):
+            self._payload_schemas.add(_canonical_json(schema))
+            self._payload_paths.add(path)
+        if self._payload_methods != "recursive":
+            return
+        properties = schema.get("properties")
+        if isinstance(properties, dict):
+            for name, child in properties.items():
+                self._collect_payload_schemas(
+                    self._schema_object(child, context="property"), path=(*path, name), seen=seen
+                )
+        additional = schema.get("additionalProperties")
+        if isinstance(additional, dict):
+            self._collect_payload_schemas(additional, path=(*path, "value"), seen=seen)
+        items = schema.get("items")
+        if isinstance(items, dict):
+            self._collect_payload_schemas(items, path=(*path, "item"), seen=seen)
+        prefix_items = schema.get("prefixItems")
+        if isinstance(prefix_items, list):
+            for index, item in enumerate(prefix_items):
+                self._collect_payload_schemas(
+                    self._schema_object(item, context="prefixItems"), path=(*path, f"item{index}"), seen=seen
+                )
 
     def _model_name(self, path: tuple[str, ...]) -> str:
         return self._model_name_overrides.get(path, _wizard_inline_model_name(path, read=self._read))
@@ -2201,9 +2986,22 @@ class _PydanticSchemaEmitter:
             raise TypeError(f"{context} must be an object")
         return value
 
-    def _emit_named(self, schema_name: str) -> str:
-        name = self._model_name_overrides.get((schema_name,), _wizard_schema_dto_name(schema_name, read=self._read))
+    def _emit_named(self, schema_name: str, *, nested_reference: bool = False) -> str:
+        root_name = self._model_name_overrides.get(
+            (schema_name,), _wizard_schema_dto_name(schema_name, read=self._read)
+        )
+        name = f"{root_name}NestedReference" if nested_reference else root_name
+        path = (schema_name, "nestedReference") if nested_reference else (schema_name,)
         if name in self._emitted:
+            previous_path = self._emitted_paths[name]
+            if previous_path != path:
+                previous = f"#/components/schemas/{_json_pointer_token(previous_path[0])}"
+                if len(previous_path) > 1:
+                    previous += f" (schema path {previous_path[1:]!r})"
+                current = f"#/components/schemas/{_json_pointer_token(schema_name)}"
+                raise ValueError(
+                    f"{self._contract} generated model name {name!r} collides between {previous} and {current}"
+                )
             return name
         if name in self._emitting:
             raise ValueError(f"Recursive {self._contract} schema {schema_name!r} is not supported")
@@ -2212,11 +3010,13 @@ class _PydanticSchemaEmitter:
             raise ValueError(f"{self._contract} contract references missing schema {schema_name!r}")
         schema = self._schema_object(raw, context=f"{self._contract} schema {schema_name}")
         self._emitting.add(name)
-        annotation = self._annotation(schema, path=(schema_name,), preferred_name=name)
+        annotation = self._annotation(schema, path=path, preferred_name=name)
         if annotation != name:
             self._lines.append(f"{name} = {annotation}")
             self._lines.append("")
             self._emitted.add(name)
+            self._emitted_components[name] = schema_name
+            self._emitted_paths[name] = path
         self._emitting.remove(name)
         return name
 
@@ -2232,11 +3032,24 @@ class _PydanticSchemaEmitter:
             schema_name = _ref_name(ref)
             if schema_name in self._open_schema_refs:
                 return self._open_schema_refs[schema_name]
-            return self._emit_named(schema_name)
+            nested_reference = (
+                self._payload_methods == "roots"
+                and schema_name in self._payload_root_names
+                and path not in self._root_level_paths
+            )
+            return self._emit_named(schema_name, nested_reference=nested_reference)
 
+        raw_type = schema.get("type")
         enum = schema.get("enum")
         if isinstance(enum, list) and enum:
-            return f"Literal[{', '.join(_emit_literal(value) for value in enum)}]"
+            literal = f"Literal[{', '.join(_emit_literal(value) for value in enum)}]"
+            if raw_type == "string":
+                return self._with_constraints(
+                    literal, schema, length_key="minLength", max_length_key="maxLength", pattern=True
+                )
+            if raw_type == "integer" or raw_type == "number":
+                return self._with_constraints(literal, schema, minimum=True)
+            return literal
 
         for union_key in ("oneOf", "anyOf"):
             branches = schema.get(union_key)
@@ -2322,13 +3135,12 @@ class _PydanticSchemaEmitter:
             ]
             return " | ".join(dict.fromkeys(annotations))
 
-        raw_type = schema.get("type")
         if isinstance(raw_type, list):
             annotations = [
                 self._annotation(
                     {**schema, "type": item},
                     path=(*path, str(item)),
-                    preferred_name=preferred_name,
+                    preferred_name=preferred_name if len(raw_type) == 1 else None,
                 )
                 for item in raw_type
                 if isinstance(item, str)
@@ -2336,11 +3148,14 @@ class _PydanticSchemaEmitter:
             return " | ".join(dict.fromkeys(annotations)) or "JsonValue"
 
         if raw_type == "string":
-            return self._with_constraints("str", schema, length_key="minLength", max_length_key="maxLength")
+            return self._with_constraints(
+                "str", schema, length_key="minLength", max_length_key="maxLength", pattern=True
+            )
         if raw_type == "integer":
             return self._with_constraints("int", schema, minimum=True)
         if raw_type == "number":
-            return self._with_constraints("float", schema, minimum=True)
+            annotation = "int | float" if self._contract == "tagged RPC" else "float"
+            return self._with_constraints(annotation, schema, minimum=True)
         if raw_type == "boolean":
             return "bool"
         if raw_type == "null":
@@ -2355,7 +3170,22 @@ class _PydanticSchemaEmitter:
                     )
                     for index, item in enumerate(prefix_items)
                 ]
-                annotation = f"Annotated[tuple[{', '.join(annotations)}], BeforeValidator(_json_array_to_tuple)]"
+                if self._contract == "tagged RPC":
+                    items = schema.get("items")
+                    tail_annotation = (
+                        self._annotation(items, path=(*path, "item")) if isinstance(items, dict) else "JsonValue"
+                    )
+                    prefix_adapters = (
+                        f"({', '.join(f'TypeAdapter({item})' for item in annotations)}"
+                        f"{',' if len(annotations) == 1 else ''})"
+                    )
+                    tail_adapter = f"TypeAdapter({tail_annotation})" if items is not False else "None"
+                    annotation = (
+                        "Annotated[list[object], BeforeValidator(partial(_validate_tagged_rpc_prefix_items, "
+                        f"prefix_adapters={prefix_adapters}, tail_adapter={tail_adapter}))]"
+                    )
+                else:
+                    annotation = f"Annotated[tuple[{', '.join(annotations)}], BeforeValidator(_json_array_to_tuple)]"
                 return self._with_constraints(
                     annotation,
                     schema,
@@ -2376,8 +3206,14 @@ class _PydanticSchemaEmitter:
             if isinstance(properties, dict) and properties:
                 return self._emit_object(schema, path=path, preferred_name=preferred_name)
             additional = schema.get("additionalProperties")
-            if additional is False:
+            if additional is False or (self._empty_object_models and additional is None):
                 return self._emit_object(schema, path=path, preferred_name=preferred_name)
+            required = schema.get("required")
+            if self._contract == "tagged RPC" and isinstance(required, list) and required:
+                raise ValueError(
+                    f"tagged RPC schema {'.'.join(path)} has required property {required[0]!r} "
+                    "that a map alias cannot validate"
+                )
             if isinstance(additional, dict) and additional:
                 value_annotation = self._annotation(additional, path=(*path, "value"))
             else:
@@ -2386,14 +3222,15 @@ class _PydanticSchemaEmitter:
 
         return "JsonValue"
 
-    @staticmethod
     def _with_constraints(
+        self,
         annotation: str,
         schema: Mapping[str, JsonValue],
         *,
         length_key: str | None = None,
         max_length_key: str | None = None,
         minimum: bool = False,
+        pattern: bool = False,
     ) -> str:
         constraints: list[str] = []
         if length_key is not None and isinstance(schema.get(length_key), int):
@@ -2404,13 +3241,30 @@ class _PydanticSchemaEmitter:
             constraints.append(f"ge={schema['minimum']!r}")
         if minimum and isinstance(schema.get("maximum"), (int, float)):
             constraints.append(f"le={schema['maximum']!r}")
-        if not constraints:
+        pattern_validation = None
+        pattern_value = schema.get("pattern")
+        if pattern and isinstance(pattern_value, str):
+            if self._contract == "tagged RPC":
+                pattern_validation = (
+                    "AfterValidator(partial(_validate_tagged_rpc_pattern, "
+                    f"pattern={_python_tagged_rpc_pattern(pattern_value)!r}))"
+                )
+            else:
+                constraints.append(f"pattern={pattern_value!r}")
+        metadata: list[str] = []
+        if constraints:
+            metadata.append(f"Field({', '.join(constraints)})")
+        if pattern_validation is not None:
+            metadata.append(pattern_validation)
+        if not metadata:
             return annotation
-        return f"Annotated[{annotation}, Field({', '.join(constraints)})]"
+        return f"Annotated[{annotation}, {', '.join(metadata)}]"
 
     def _object_extra(self, schema: Mapping[str, JsonValue]) -> str:
         if self._read:
             return "ignore"
+        if self._strict_write_extra:
+            return "forbid"
         additional = schema.get("additionalProperties")
         return "allow" if additional is True or isinstance(additional, dict) else "forbid"
 
@@ -2418,12 +3272,30 @@ class _PydanticSchemaEmitter:
     def _embed_field_alias(annotation: str, alias: str) -> tuple[str, bool]:
         if not annotation.startswith("Annotated["):
             return annotation, False
-        head, marker, tail = annotation.rpartition(", Field(")
-        if not marker or not tail.endswith(")]"):
+        # Only the outermost Field can describe the model field. Nested tuple items may
+        # contain Field constraints while the outer annotation ends in BeforeValidator.
+        expression = ast.parse(annotation, mode="eval").body
+        if (
+            not isinstance(expression, ast.Subscript)
+            or not isinstance(expression.value, ast.Name)
+            or expression.value.id != "Annotated"
+            or not isinstance(expression.slice, ast.Tuple)
+        ):
             return annotation, False
-        field_args = tail[:-2]
-        separator = ", " if field_args else ""
-        return f"{head}{marker}{field_args}{separator}alias={alias!r})]", True
+        field_metadata = next(
+            (
+                metadata
+                for metadata in expression.slice.elts
+                if isinstance(metadata, ast.Call)
+                and isinstance(metadata.func, ast.Name)
+                and metadata.func.id == "Field"
+            ),
+            None,
+        )
+        if field_metadata is None or any(keyword.arg == "alias" for keyword in field_metadata.keywords):
+            return annotation, False
+        field_metadata.keywords.append(ast.keyword(arg="alias", value=ast.Constant(value=alias)))
+        return ast.unparse(expression), True
 
     def _emit_object(
         self,
@@ -2433,8 +3305,17 @@ class _PydanticSchemaEmitter:
         preferred_name: str | None,
     ) -> str:
         canonical = _canonical_json(schema)
+        payload_eligible = (
+            canonical in self._payload_schemas
+            if self._payload_methods == "recursive"
+            else self._payload_methods == "roots" and path in self._payload_paths
+        )
         if preferred_name is None:
-            existing_name = self._definitions_by_schema.get(canonical)
+            existing_name = (
+                self._definitions_by_schema_and_payload.get((canonical, payload_eligible))
+                if self._payload_methods == "roots"
+                else self._definitions_by_schema.get(canonical)
+            )
             if existing_name is not None:
                 return existing_name
 
@@ -2452,6 +3333,14 @@ class _PydanticSchemaEmitter:
         required = (
             {value for value in required_value if isinstance(value, str)} if isinstance(required_value, list) else set()
         )
+        if self._contract == "tagged RPC" and isinstance(required_value, list):
+            for index, wire_name in enumerate(required_value):
+                if wire_name not in properties:
+                    raise ValueError(
+                        f"Unsupported behavior-bearing tagged RPC schema feature at "
+                        f"/schemas/{_json_pointer_token(path[0])}/required/{index}: "
+                        f"required property {wire_name!r} is not declared in generated model {name!r}"
+                    )
 
         fields: list[tuple[str, str, str, bool, bool]] = []
         for wire_name, raw_field_schema in sorted(properties.items()):
@@ -2461,6 +3350,12 @@ class _PydanticSchemaEmitter:
                 (*path, wire_name),
                 _wizard_python_field_name(wire_name),
             )
+            if self._contract == "tagged RPC" and payload_eligible and python_name == "to_payload":
+                pointer = f"/schemas/{_json_pointer_token(path[0])}/properties/{_json_pointer_token(wire_name)}"
+                raise ValueError(
+                    f"Unsupported behavior-bearing tagged RPC schema feature at {pointer}: "
+                    f"wire property {wire_name!r} shadows generated method {python_name!r}"
+                )
             annotation = self._annotation(raw_field_schema, path=(*path, wire_name))
             alias_in_annotation = False
             if python_name != wire_name:
@@ -2502,7 +3397,7 @@ class _PydanticSchemaEmitter:
                     )
             else:
                 self._lines.append(f"    {python_name}: {annotation} = _UNVALIDATED_NONE_DEFAULT")
-        if self._contract == "HtmlPages" and name in _HTML_PAGE_WRITE_DTO_NAMES:
+        if payload_eligible:
             self._lines.extend(
                 (
                     "",
@@ -2512,7 +3407,10 @@ class _PydanticSchemaEmitter:
             )
         self._lines.append("")
         self._emitted.add(name)
+        self._emitted_components[name] = path[0]
+        self._emitted_paths[name] = path
         self._definitions_by_schema.setdefault(canonical, name)
+        self._definitions_by_schema_and_payload.setdefault((canonical, payload_eligible), name)
         return name
 
     def _object_variants(
@@ -3545,6 +4443,7 @@ def _emit_html_page_dto(metadata: Metadata) -> str:
         schemas,
         read=False,
         contract="HtmlPages",
+        payload_methods="roots",
     ).emit(
         (
             "CreateHtmlPageArgs",
@@ -3560,6 +4459,95 @@ def _emit_html_page_dto(metadata: Metadata) -> str:
         contract="HtmlPages",
     ).emit(("CreateHtmlPageResult", "GetHtmlPageResult", "GetHtmlPagePreviewUrlResult", "UpdateHtmlPageResult"))
     return f"\n{request_models}\n{result_models}".rstrip() + "\n"
+
+
+def _emit_rpc_namespace_dto(
+    metadata: Metadata,
+    *,
+    reserved_model_names: set[str] | frozenset[str] = frozenset(),
+) -> str:
+    contracts = metadata.get("rpc_namespaces", {})
+    if not contracts:
+        return ""
+    schemas: dict[str, JsonValue] = {}
+    request_roots: set[str] = set()
+    result_roots: set[str] = set()
+    for namespace, contract in sorted(contracts.items()):
+        for name, schema in contract["schemas"].items():
+            previous = schemas.get(name)
+            if previous is not None and previous != schema:
+                raise ValueError(f"tagged RPC namespace {namespace!r} has conflicting schema {name!r}")
+            schemas[name] = schema
+        for operation in contract["operations"].values():
+            request_roots.add(operation["request_schema"])
+            result_roots.add(operation["result_schema"])
+    request_emitter = _PydanticSchemaEmitter(
+        schemas,
+        read=False,
+        contract="tagged RPC",
+        payload_methods="recursive",
+        strict_write_extra=True,
+        empty_object_models=True,
+    )
+    request_models = request_emitter.emit(request_roots)
+    response_emitter = _PydanticSchemaEmitter(
+        schemas,
+        read=True,
+        contract="tagged RPC",
+        empty_object_models=True,
+    )
+    response_models = response_emitter.emit(result_roots)
+    collisions = request_emitter._emitted_components.keys() & response_emitter._emitted_components.keys()
+    if collisions:
+        name = min(collisions)
+        request_component = _json_pointer_token(request_emitter._emitted_components[name])
+        response_component = _json_pointer_token(response_emitter._emitted_components[name])
+        raise ValueError(
+            f"tagged RPC generated model name {name!r} collides between "
+            f"request #/components/schemas/{request_component} and response #/components/schemas/{response_component}"
+        )
+    existing_class_collisions = (
+        request_emitter._emitted_components.keys() | response_emitter._emitted_components.keys()
+    ) & (reserved_model_names)
+    if existing_class_collisions:
+        name = min(existing_class_collisions)
+        component = request_emitter._emitted_components.get(name) or response_emitter._emitted_components[name]
+        raise ValueError(
+            f"tagged RPC generated model name {name!r} collides with existing DTO class {name!r} "
+            f"from #/components/schemas/{_json_pointer_token(component)}"
+        )
+    prefix_items_helper = """import re
+from functools import partial
+from pydantic import AfterValidator, TypeAdapter
+from typing import Protocol
+
+
+class _TaggedRpcTypeAdapter(Protocol):
+    def validate_python(self, object: object, *, strict: bool) -> object: ...
+
+
+def _validate_tagged_rpc_pattern(value: object, pattern: str) -> object:
+    if not isinstance(value, str) or re.search(pattern, value) is None:
+        raise ValueError("value does not match the OpenAPI pattern")
+    return value
+
+
+def _validate_tagged_rpc_prefix_items(
+    value: object,
+    prefix_adapters: tuple[_TaggedRpcTypeAdapter, ...],
+    tail_adapter: _TaggedRpcTypeAdapter | None,
+) -> list[object]:
+    if not isinstance(value, (list, tuple)):
+        raise ValueError("tagged RPC prefixItems value must be an array")
+    result: list[object] = []
+    for index, item in enumerate(value):
+        adapter = prefix_adapters[index] if index < len(prefix_adapters) else tail_adapter
+        if adapter is None:
+            raise ValueError("tagged RPC prefixItems array has forbidden tail items")
+        result.append(adapter.validate_python(item, strict=True))
+    return result
+"""
+    return f"\n{prefix_items_helper}\n{request_models}\n{response_models}".rstrip() + "\n"
 
 
 def _emit_dataset_data_dto(metadata: Metadata) -> str:
@@ -3655,7 +4643,7 @@ def emit_dto(metadata: Metadata) -> str:
     entry_revisions_dto_block = _emit_entry_revisions_dto(metadata)
     html_page_dto_block = _emit_html_page_dto(metadata)
     navigation_dto_block = _emit_navigation_dto()
-    return f"""# AUTOGENERATED by scripts/generate_sdk.py. Do not edit by hand.
+    base_dto_module = f"""# AUTOGENERATED by scripts/generate_sdk.py. Do not edit by hand.
 # ruff: noqa
 from __future__ import annotations
 
@@ -4190,6 +5178,14 @@ class LicenseSetLimitArgsDTO(BaseModel):
         return {{"value": self.value}}
 {chart_dto_block}{dashboard_dto_block}{entry_revisions_dto_block}
 {html_page_dto_block}"""
+    if not metadata.get("rpc_namespaces"):
+        return base_dto_module
+    reserved_model_names = {
+        symbol.get_name()
+        for symbol in symtable.symtable(base_dto_module, "<generated dto module>", "exec").get_symbols()
+    }
+    rpc_namespace_dto_block = _emit_rpc_namespace_dto(metadata, reserved_model_names=reserved_model_names)
+    return f"{base_dto_module}{rpc_namespace_dto_block}"
 
 
 def emit_builder_module(installation: str, info: InstallationMetadata) -> str:
