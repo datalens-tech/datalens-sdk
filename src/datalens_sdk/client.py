@@ -24,6 +24,7 @@ from datalens_sdk.api.lakehouse_operation import LakehouseOperationAPI, Lakehous
 from datalens_sdk.api.license import LicenseAPI, LicenseService
 from datalens_sdk.api.navigation import NavigationService
 from datalens_sdk.api.sql_query import SqlQueryAPI, SqlQueryService
+from datalens_sdk.api.trino_cluster import TrinoClusterAPI, TrinoClusterService
 from datalens_sdk.api.workbook import WorkbookAPI, WorkbookService
 from datalens_sdk.auth import (
     AuthProviderProtocol,
@@ -43,6 +44,7 @@ from datalens_sdk.converter.html_page import HtmlPageDtoModule
 from datalens_sdk.converter.lakehouse_operation import LakehouseOperationDtoModule
 from datalens_sdk.converter.license import LicenseDtoModule
 from datalens_sdk.converter.sql_query import SqlQueryDtoModule
+from datalens_sdk.converter.trino_cluster import TrinoClusterDtoModule
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
 from datalens_sdk.converter.workbook import WorkbookDtoModule
 from datalens_sdk.domain.collection import Collection, CollectionCreate
@@ -94,10 +96,17 @@ from datalens_sdk.domain.ports import (
     LicenseOperations,
     NavigationOperations,
     SqlQueryOperations,
+    TrinoClusterOperations,
     WorkbookOperations,
 )
 from datalens_sdk.domain.ql_chart import QLChart
 from datalens_sdk.domain.sql_query import SqlQuery, SqlQueryCreate
+from datalens_sdk.domain.trino_cluster import (
+    TrinoCluster,
+    TrinoClusterListOptions,
+    TrinoResourcePreset,
+    TrinoResourcePresetListOptions,
+)
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.domain.workbook import Workbook, WorkbookCreate
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError, NotSupportedError
@@ -629,6 +638,7 @@ class YCGetNamespace(GetNamespace):
         *,
         sql_query_operations: SqlQueryOperations,
         lakehouse_operation_operations: LakehouseOperationOperations,
+        trino_cluster_operations: TrinoClusterOperations,
         chart_operations: ChartOperations,
         collection_operations: CollectionOperations,
         connection_operations: ConnectionOperations,
@@ -650,6 +660,21 @@ class YCGetNamespace(GetNamespace):
         )
         self._sql_query_operations = sql_query_operations
         self._lakehouse_operation_operations = lakehouse_operation_operations
+        self._trino_cluster_operations = trino_cluster_operations
+
+    def trino_cluster(self, *, by_id: str) -> TrinoCluster:
+        if not isinstance(by_id, str) or not by_id:
+            raise DataLensValidationError("by_id must be a non-empty string")
+        return self._trino_cluster_operations.get_trino_cluster(by_id)
+
+    def trino_resource_preset(self, *, by_id: str, cloud_environment_id: str) -> TrinoResourcePreset:
+        if not isinstance(by_id, str) or not by_id:
+            raise DataLensValidationError("by_id must be a non-empty string")
+        if not isinstance(cloud_environment_id, str) or not cloud_environment_id:
+            raise DataLensValidationError("cloud_environment_id must be a non-empty string")
+        return self._trino_cluster_operations.get_trino_resource_preset(
+            by_id, cloud_environment_id=cloud_environment_id
+        )
 
     def lakehouse_operation(self, *, by_id: str) -> LakehouseOperation:
         if not isinstance(by_id, str) or not by_id:
@@ -679,7 +704,39 @@ class ListNamespace:
 
 
 class YCListNamespace(ListNamespace):
-    pass
+    def __init__(self, *, trino_cluster_operations: TrinoClusterOperations) -> None:
+        self._trino_cluster_operations = trino_cluster_operations
+
+    def trino_clusters(
+        self,
+        *,
+        collection: EntryLocation | str | None = None,
+        filters: Sequence[str] = (),
+        page_size: int = 100,
+        page_token: str | None = None,
+    ) -> Pager[TrinoCluster]:
+        options = TrinoClusterListOptions.create(
+            installation="yacloud",
+            collection=collection,
+            filters=filters,
+            page_size=page_size,
+            page_token=page_token,
+        )
+        return self._trino_cluster_operations.list_trino_clusters(options)
+
+    def trino_resource_presets(
+        self,
+        *,
+        cloud_environment_id: str,
+        page_size: int = 100,
+        page_token: str | None = None,
+    ) -> Pager[TrinoResourcePreset]:
+        options = TrinoResourcePresetListOptions.create(
+            cloud_environment_id=cloud_environment_id,
+            page_size=page_size,
+            page_token=page_token,
+        )
+        return self._trino_cluster_operations.list_trino_resource_presets(options)
 
 
 class NavigationNamespace:
@@ -1092,6 +1149,11 @@ class DataLensClientYC(DataLensClientBase):
             api=LakehouseOperationAPI(self._http),
             dto_module=cast(LakehouseOperationDtoModule, dto_module),
         )
+        trino_cluster_service = TrinoClusterService(
+            installation=self.INSTALLATION,
+            api=TrinoClusterAPI(self._http),
+            dto_module=cast(TrinoClusterDtoModule, dto_module),
+        )
         return (
             YCCreateNamespace(
                 sql_query_operations=sql_query_service,
@@ -1113,6 +1175,7 @@ class DataLensClientYC(DataLensClientBase):
             YCGetNamespace(
                 sql_query_operations=sql_query_service,
                 lakehouse_operation_operations=lakehouse_operation_service,
+                trino_cluster_operations=trino_cluster_service,
                 chart_operations=deps.chart_operations,
                 collection_operations=deps.collection_operations,
                 connection_operations=deps.connection_operations,
@@ -1122,7 +1185,7 @@ class DataLensClientYC(DataLensClientBase):
                 html_page_operations=deps.html_page_operations,
                 workbook_operations=deps.workbook_operations,
             ),
-            YCListNamespace(),
+            YCListNamespace(trino_cluster_operations=trino_cluster_service),
         )
 
     if TYPE_CHECKING:

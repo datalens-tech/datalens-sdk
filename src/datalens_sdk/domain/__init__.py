@@ -146,6 +146,20 @@ from datalens_sdk.domain.sql_query import (
     SqlQueryStatementSuccess,
     SqlQueryUpdate,
 )
+from datalens_sdk.domain.trino_cluster import (
+    TrinoAutoScalePolicy,
+    TrinoCatalogRef,
+    TrinoCluster,
+    TrinoClusterConfig,
+    TrinoClusterHealth,
+    TrinoClusterListOptions,
+    TrinoClusterStatus,
+    TrinoCoordinatorConfig,
+    TrinoResourceConfig,
+    TrinoResourcePreset,
+    TrinoResourcePresetListOptions,
+    TrinoWorkerConfig,
+)
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
 from datalens_sdk.domain.workbook import Workbook, WorkbookCreate, WorkbookStatus, WorkbookUpdate
 
@@ -292,6 +306,18 @@ __all__ = [
     "StructureOrderField",
     "StructureSummary",
     "ThemedColor",
+    "TrinoAutoScalePolicy",
+    "TrinoCatalogRef",
+    "TrinoCluster",
+    "TrinoClusterConfig",
+    "TrinoClusterHealth",
+    "TrinoClusterListOptions",
+    "TrinoClusterStatus",
+    "TrinoCoordinatorConfig",
+    "TrinoResourceConfig",
+    "TrinoResourcePreset",
+    "TrinoResourcePresetListOptions",
+    "TrinoWorkerConfig",
     "UILanguage",
     "UITheme",
     "WhereOperation",

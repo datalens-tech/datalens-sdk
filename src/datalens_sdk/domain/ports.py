@@ -53,6 +53,12 @@ if TYPE_CHECKING:
         RawReplaceSpec,
     )
     from datalens_sdk.domain.sql_query import SqlQuery, SqlQueryCreate, SqlQueryRun, SqlQueryRunValue, SqlQueryUpdate
+    from datalens_sdk.domain.trino_cluster import (
+        TrinoCluster,
+        TrinoClusterListOptions,
+        TrinoResourcePreset,
+        TrinoResourcePresetListOptions,
+    )
     from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
     from datalens_sdk.domain.workbook import Workbook, WorkbookCreate, WorkbookUpdate
     from datalens_sdk.serialization.artifacts import ArtifactPath
@@ -62,6 +68,22 @@ if TYPE_CHECKING:
 @runtime_checkable
 class LakehouseOperationOperations(Protocol):
     def get_lakehouse_operation(self, operation_id: str) -> LakehouseOperation: ...
+
+
+@runtime_checkable
+class TrinoClusterOperations(Protocol):
+    def get_trino_cluster(self, trino_cluster_id: str) -> TrinoCluster: ...
+
+    def list_trino_clusters(self, options: TrinoClusterListOptions) -> Pager[TrinoCluster]: ...
+
+    def get_trino_resource_preset(
+        self,
+        resource_preset_id: str,
+        *,
+        cloud_environment_id: str,
+    ) -> TrinoResourcePreset: ...
+
+    def list_trino_resource_presets(self, options: TrinoResourcePresetListOptions) -> Pager[TrinoResourcePreset]: ...
 
 
 @runtime_checkable
