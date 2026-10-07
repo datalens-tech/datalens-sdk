@@ -5009,7 +5009,7 @@ class CancelSparkApplicationArgsDTO(BaseModel):
 class CreateCloudEnvironmentArgsStorageDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
-    max_size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[0-9]+$'))] = Field(alias='maxSize')
+    max_size: Annotated[str, AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[0-9]+\\Z'))] = Field(alias='maxSize')
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
@@ -5019,7 +5019,7 @@ class CreateCloudEnvironmentArgsDTO(BaseModel):
 
     cloud_id: Annotated[str, Field(min_length=1, max_length=50, alias='cloudId')]
     description: Annotated[str, Field(max_length=200)] = _UNVALIDATED_NONE_DEFAULT
-    name: Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[a-zA-Z0-9ЁёА-я][^\\u0009-\\u000d\\u0020\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]{1,61}[a-zA-Z0-9ЁёА-я]$'))]
+    name: Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[a-zA-Z0-9ЁёА-я][^\\u0009-\\u000d\\u0020\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]{1,61}[a-zA-Z0-9ЁёА-я]\\Z'))]
     security_group_ids: list[str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='securityGroupIds')
     storage: CreateCloudEnvironmentArgsStorageDTO = _UNVALIDATED_NONE_DEFAULT
     subnet_id: Annotated[str, Field(min_length=1, max_length=50, alias='subnetId')]
@@ -5466,7 +5466,7 @@ class ListCatalogsArgsDTO(BaseModel):
 class ListCloudEnvironmentsArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
-    filter: Annotated[list[Annotated[str, Field(max_length=200), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:name|cloud_id|status|created_by_id)="[^"]*"$'))]], Field(max_length=100)] = _UNVALIDATED_NONE_DEFAULT
+    filter: Annotated[list[Annotated[str, Field(max_length=200), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^(?:name|cloud_id|status|created_by_id)="[^"]*"\\Z'))]], Field(max_length=100)] = _UNVALIDATED_NONE_DEFAULT
     include_permissions: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includePermissions')
     page_size: Annotated[int, Field(ge=0, alias='pageSize')] = _UNVALIDATED_NONE_DEFAULT
     page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='pageToken')
@@ -5585,7 +5585,7 @@ class UpdateCloudEnvironmentArgsDTO(BaseModel):
 
     description: Annotated[str, Field(max_length=200)] = _UNVALIDATED_NONE_DEFAULT
     id: Annotated[str, Field(min_length=1, max_length=50)]
-    name: Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[a-zA-Z0-9ЁёА-я][^\\u0009-\\u000d\\u0020\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]{1,61}[a-zA-Z0-9ЁёА-я]$'))] = _UNVALIDATED_NONE_DEFAULT
+    name: Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[a-zA-Z0-9ЁёА-я][^\\u0009-\\u000d\\u0020\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]{1,61}[a-zA-Z0-9ЁёА-я]\\Z'))] = _UNVALIDATED_NONE_DEFAULT
     security_group_ids: list[str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='securityGroupIds')
     storage: CreateCloudEnvironmentArgsStorageDTO = _UNVALIDATED_NONE_DEFAULT
 
