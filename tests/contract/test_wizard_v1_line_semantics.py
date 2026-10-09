@@ -264,6 +264,29 @@ def test_measure_format_update_merges_existing_document_v1_formatting() -> None:
     }
 
 
+def test_label_mode_built_chart_remains_readable_with_different_placement_formatting() -> None:
+    data = _create_data(
+        _line_builder()
+        .dataset(_dataset())
+        .x(["Date"])
+        .y(["Amount"])
+        .labels(["Amount"])
+        .measure_format("Amount", precision=2)
+        .label_mode(mode="absolute")
+    )
+    response = _line_response()
+    cast(dict[str, Any], response["entry"])["data"] = data
+    chart = WizardChartConverter.to_domain(response, installation="yacloud")
+
+    visualization = cast(dict[str, Any], chart.data["visualization"])
+    assert chart.fields.by_guid("amount-guid").raw == visualization["labels"]["items"][0]
+    assert visualization["y"]["items"][0]["formatting"] == {"precision": 2}
+    assert visualization["labels"]["items"][0]["formatting"] == {
+        "precision": 2,
+        "labelMode": "absolute",
+    }
+
+
 def test_dataset_parameter_is_emitted_under_document_v1_sources_updates() -> None:
     data = _create_data(_line_builder().dataset(_dataset()).x(["Date"]).y(["Amount"]))
 

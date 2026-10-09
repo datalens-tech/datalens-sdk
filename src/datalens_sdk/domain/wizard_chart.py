@@ -157,6 +157,12 @@ class WizardChart(Chart):
 
     @property
     def fields(self) -> FieldsProxy:
+        """Representative active snapshots, deduplicated by field GUID.
+
+        The first encountered snapshot is enriched by chart-local definitions.
+        Its ``raw`` properties reflect that enriched snapshot, including formatting;
+        formatting from other placements is neither merged nor normalized.
+        """
         return FieldsProxy(WizardFieldReferences(self.data).unique_active_snapshots())
 
     @property

@@ -29,6 +29,12 @@
   RPC returns a structured error in an HTTP 200 response. For a wrapped `429`,
   honor `Retry-After` and retry when the remaining timeout permits it.
 
+- Restore Wizard field inspection and update resolution when the same field
+  has different numeric or label formatting in separate placements. Each
+  placement retains its formatting. `chart.fields` exposes one representative
+  snapshot per GUID; slot setters continue to copy that snapshot's decorations
+  when replacing the complete field list.
+
 ### Documentation
 
 - Clarify typed connection creates, including the `ai_access_level` default
