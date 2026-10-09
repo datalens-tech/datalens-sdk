@@ -19,12 +19,15 @@ and locations with values from the user's DataLens installation.
 
 ## Resolve Fields Safely on Update
 
-Re-fetch a chart before updating it. Use `chart.fields` for fields already
-referenced by the chart. Fetch its dataset and use a `DatasetField` when adding
-a field that is not yet referenced. Each active GUID has one representative
-snapshot: the first encountered occurrence, enriched by chart-local definitions.
-Its `.raw` reflects that representative after definition enrichment; other
-slots or layers may format the same GUID differently.
+Re-fetch a chart before updating it. `chart.fields` contains fields currently
+referenced by visualization and layer slots, sort lists, filters, and hierarchy
+members. Fetch its dataset and use a `DatasetField` when adding a field that is
+not yet referenced. For each GUID, the proxy keeps the first encountered
+snapshot and fills missing properties from its chart-local definition. Its
+`.raw` exposes that enriched snapshot. Numeric formatting, date formats, and
+title overrides may differ between occurrences; reading `.fields` leaves them
+unchanged. Use the GUID when occurrences have different title overrides,
+because name lookup uses only the selected snapshot's title and name.
 
 ```python
 chart = client.get.wizard_chart(by_id="chart-id")
