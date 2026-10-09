@@ -21,7 +21,10 @@ and locations with values from the user's DataLens installation.
 
 Re-fetch a chart before updating it. Use `chart.fields` for fields already
 referenced by the chart. Fetch its dataset and use a `DatasetField` when adding
-a field that is not yet referenced.
+a field that is not yet referenced. Each active GUID has one representative
+snapshot: the first encountered occurrence, enriched by chart-local definitions.
+Its `.raw` reflects that representative after definition enrichment; other
+slots or layers may format the same GUID differently.
 
 ```python
 chart = client.get.wizard_chart(by_id="chart-id")
@@ -35,6 +38,10 @@ chart = chart.update.y([placed_revenue, new_profit]).mode("save").execute()
 
 Placeholder setters replace the complete field list. Include fields that must
 remain, and pass `[]` only when intentionally clearing an optional slot.
+Setters copy the supplied snapshot's supported presentation properties. For example,
+`chart.update.labels([chart.fields.by_guid(guid)])` can copy the representative
+value-slot formatting over the existing label formatting. Reading `.fields`
+itself preserves every placement's formatting.
 The public typed API lists active fields through `chart.fields` but does not
 report which slot each field occupies. This example assumes Revenue is
 the complete current `y` list; if the current layout is unknown, ask the user
@@ -232,6 +239,11 @@ chart = (
     .build()
 )
 ```
+
+`measure_format()` targets a GUID across its presentation placements and merges
+only the supplied keys into each placement's original formatting. A precision
+patch preserves distinct numeric formats, label modes, and other untouched
+keys. Filter and sort references do not acquire presentation formatting.
 
 Use `palette()` after binding color to a dimension when a categorical palette
 is desired.

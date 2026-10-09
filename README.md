@@ -168,7 +168,13 @@ chart = (
 The remembered handles remain valid after re-fetch because references resolve
 by GUID. Without a saved handle, use an exact GUID through
 `chart.fields.by_guid(...)`; `chart.fields` intentionally returns
-`DatasetField` snapshots and does not reconstruct handles.
+`DatasetField` snapshots and does not reconstruct handles. Each GUID has one
+representative active snapshot, selected in encounter order and enriched by
+chart-local definitions. Its `.raw` reflects that enriched snapshot;
+other placements may use different formatting. Reading `.fields` leaves all
+placements unchanged. Slot setters replace complete item lists and copy the
+supplied snapshot's supported decorations, while `measure_format()` patches the supplied
+keys across presentation placements of the target GUID.
 
 ## Examples
 

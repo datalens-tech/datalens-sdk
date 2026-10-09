@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+
+- Restore Wizard field inspection and update resolution when the same field
+  has different numeric or label formatting in separate placements. Each
+  placement retains its formatting. `chart.fields` exposes one representative
+  snapshot per GUID; slot setters continue to copy that snapshot's decorations
+  when replacing the complete field list.
+
 ## 3.2.0 - 2026-10-07
 
 ### Breaking changes
