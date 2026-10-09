@@ -157,11 +157,15 @@ class WizardChart(Chart):
 
     @property
     def fields(self) -> FieldsProxy:
-        """Representative active snapshots, deduplicated by field GUID.
+        """Fields currently referenced by this chart, deduplicated by GUID.
 
-        The first encountered snapshot is enriched by chart-local definitions.
-        Its ``raw`` properties reflect that enriched snapshot, including formatting;
-        formatting from other placements is neither merged nor normalized.
+        Includes visualization and layer slots, sort lists, filters, and hierarchy
+        members. For each GUID, the first encountered snapshot is enriched with
+        missing properties from its chart-local definition. Its ``raw`` exposes
+        that snapshot. Numeric formatting, date formats, and title overrides may
+        differ between occurrences. Reading fields leaves them unchanged.
+        Snapshots without a GUID remain separate. A nonempty dataset ID that
+        conflicts with the selected snapshot raises ``DataLensValidationError``.
         """
         return FieldsProxy(WizardFieldReferences(self.data).unique_active_snapshots())
 

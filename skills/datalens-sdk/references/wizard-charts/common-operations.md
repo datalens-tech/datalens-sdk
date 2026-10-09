@@ -154,7 +154,7 @@ are provided, `rev_id` wins and the client emits `UserWarning`.
 | `.collection_id` | Collection metadata, if reported. |
 | `.category` | Always `"wizard"`. |
 | `.visualization_id` | Current Wizard visualization ID, or `None`. |
-| `.fields` | `FieldsProxy` with one representative active snapshot per field GUID. |
+| `.fields` | `FieldsProxy` containing fields currently referenced by the chart (slots, filters, sorts, and hierarchy members), deduplicated by GUID. |
 | `.dataset_ids` | Tuple of datasets currently referenced by the chart. |
 | `.update` | A new `WizardChartUpdate` bound to this chart. |
 
@@ -293,15 +293,22 @@ Prefer a saved Wizard handle or the matching `DatasetField` from
 `replace_formula()` applies only to a chart-local `add_field` formula. An
 unknown or title-like target can fail or leave the formula unchanged.
 
-`chart.fields` deduplicates active snapshots by GUID, keeps the first encountered
-occurrence, and enriches it with any chart-local definition. Known properties
-are available in `chart.fields.by_guid(handle.guid).raw`; the returned object
-remains a `DatasetField`, not the original handle type. Its `formatting` mapping
-reflects that representative after definition enrichment. It is not a merged
-view of every placement
-or a lookup of labels, a particular slot, or a layer. Placements of one GUID
-may have different numeric formats, precision, and label modes. Reading fields
-does not change those dictionaries.
+`chart.fields` contains fields referenced by visualization and layer slots,
+sort lists, filters, and hierarchy members. It deduplicates them by GUID,
+keeping the first encountered snapshot and filling missing properties from
+its chart-local definition. Standalone field definitions do not add fields
+to this inventory. The returned objects are `DatasetField` snapshots;
+`chart.fields.by_guid(handle.guid).raw` exposes the enriched snapshot.
+Numeric formatting, date formats, and title overrides may differ between
+occurrences. Reading `.fields` leaves those occurrences unchanged. A nonempty
+`datasetId` that conflicts with the selected snapshot raises
+`DataLensValidationError`.
+
+The selected snapshot's `title` supplies the field title. When it is absent,
+`fakeTitle` supplies the title and default name. `.fields.by_name()` searches
+only these selected titles and names; use the GUID when another occurrence
+has a different title override. The proxy does not merge presentation properties
+or select a particular slot or layer.
 
 Slot setters replace that slot's complete field list; pass `[]`
 to clear an optional slot. Setters copy the supplied field snapshot's

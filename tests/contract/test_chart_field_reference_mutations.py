@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 import copy
+from dataclasses import replace
 from typing import Any, Literal, cast
 
 import pytest
@@ -510,19 +511,141 @@ def test_wizard_chart_fields_accepts_placement_formatting_differences(
     assert chart.data == before
 
 
-@pytest.mark.parametrize("key", ["datasetId", "fakeTitle", "format"])
-def test_wizard_chart_fields_rejects_retained_snapshot_conflicts(key: str) -> None:
+def test_wizard_chart_fields_rejects_conflicting_dataset_identity() -> None:
     data = _data_for_carrier("slot")
-    data["visualization"]["x"]["items"][0][key] = "first"
-    conflicting = _field()
-    conflicting[key] = "second"
+    conflicting = _field(dataset_id=_NEW_DATASET)
     data["visualization"]["labels"]["items"] = [conflicting]
     chart = _chart(data)
 
-    with pytest.raises(DataLensValidationError, match=rf"conflicting snapshots.*\['{key}'\]"):
+    with pytest.raises(DataLensValidationError, match=r"conflicting snapshots.*\['datasetId'\]"):
         list(chart.fields)
     with pytest.raises(DataLensValidationError, match="conflicting snapshots"):
         _payload(chart.update.measure_format(_OLD_GUID, precision=4))
+
+
+def _differently_presented_date_data() -> dict[str, Any]:
+    data = _data_for_carrier("slot")
+    first = data["visualization"]["x"]["items"][0]
+    first.update({"data_type": "date", "format": "YYYY-MM-DD", "fakeTitle": "Axis date"})
+    data["visualization"]["labels"]["items"] = [
+        {**copy.deepcopy(first), "format": "YYYY", "fakeTitle": "Label date"},
+    ]
+    data["visualization"]["sort"]["items"] = [
+        {
+            "guid": _OLD_GUID,
+            "datasetId": _OLD_DATASET,
+            "format": "YYYY-MM",
+            "fakeTitle": "Sort date",
+            "direction": "ASC",
+        },
+    ]
+    data["sources"]["filters"] = [
+        {
+            "guid": _OLD_GUID,
+            "datasetId": _OLD_DATASET,
+            "fakeTitle": "Filter date",
+            "filter": {"operation": {"code": "EQ"}, "value": ["2026-01-01"]},
+        }
+    ]
+    data["visualization"] = {"x": data["visualization"]["x"], **data["visualization"]}
+    return data
+
+
+@pytest.mark.parametrize("explicit_title", [True, False], ids=["title", "fake-title-fallback"])
+def test_fields_use_first_date_snapshot_with_distinct_formats_and_titles(explicit_title: bool) -> None:
+    data = _differently_presented_date_data()
+    if not explicit_title:
+        for slot in ("x", "labels"):
+            data["visualization"][slot]["items"][0].pop("title")
+    chart = _loaded_chart(data)
+    before = copy.deepcopy(cast(dict[str, Any], chart.data))
+
+    field = chart.fields.by_guid(_OLD_GUID)
+
+    assert [item.guid for item in chart.fields] == [_OLD_GUID, "keep-guid"]
+    assert field.raw == before["visualization"]["x"]["items"][0]
+    expected_title = "Old field" if explicit_title else "Axis date"
+    assert field.title == expected_title
+    assert field.name == expected_title
+    assert chart.fields.by_name(expected_title) == field
+    for alias in ("Label date", "Sort date", "Filter date"):
+        with pytest.raises(DataLensValidationError, match="not found"):
+            chart.fields.by_name(alias)
+    assert chart.data == before
+
+
+def test_unrelated_update_preserves_date_formats_and_placement_titles() -> None:
+    chart = _loaded_chart(_differently_presented_date_data())
+    before = copy.deepcopy(cast(dict[str, Any], chart.data))
+
+    data = _payload(chart.update.legend(mode="hide"))
+
+    assert data["visualization"] == {**before["visualization"], "chartSettings": {"legendMode": "hide"}}
+    assert data["sources"] == before["sources"]
+    assert chart.data == before
+
+
+def test_column_title_preserves_filter_alias_and_remains_readable() -> None:
+    column = _field()
+    column.pop("title")
+    column["fakeTitle"] = "Original title"
+    data = {
+        "sources": {
+            "datasetsIds": [_OLD_DATASET],
+            "filters": [
+                {
+                    "guid": _OLD_GUID,
+                    "datasetId": _OLD_DATASET,
+                    "fakeTitle": "Original title",
+                    "filter": {"operation": {"code": "EQ"}, "value": ["old"]},
+                }
+            ],
+        },
+        "visualization": {"type": "flatTable", "columns": {"items": [column]}, "sort": {"items": []}},
+    }
+    chart = _loaded_chart(data)
+    before = copy.deepcopy(cast(dict[str, Any], chart.data))
+
+    updated = _payload(chart.update.column_title(chart.fields.by_guid(_OLD_GUID), title="New title"))
+    fetched = _loaded_chart(updated)
+
+    assert updated["visualization"]["columns"]["items"][0]["fakeTitle"] == "New title"
+    assert updated["sources"]["filters"] == before["sources"]["filters"]
+    assert len(fetched.fields) == 1
+    assert fetched.fields.by_guid(_OLD_GUID).title == "New title"
+    assert fetched.fields.by_name("New title").guid == _OLD_GUID
+    assert _payload(fetched.update.pagination(enabled=True))["sources"]["filters"] == before["sources"]["filters"]
+    assert chart.data == before
+
+
+@pytest.mark.parametrize("replacement_presentation", [True, False], ids=["supplied", "absent"])
+def test_replace_field_owns_date_format_and_title_independently_of_lookup(replacement_presentation: bool) -> None:
+    chart = _loaded_chart(_differently_presented_date_data())
+    before = copy.deepcopy(cast(dict[str, Any], chart.data))
+    presentation = {"format": "YYYY-MM", "fakeTitle": "Replacement date"} if replacement_presentation else {}
+    replacement = replace(
+        _replacement_field(),
+        raw={**_field(_NEW_GUID, title="New field", dataset_id=_NEW_DATASET), "data_type": "date", **presentation},
+    )
+
+    data = _payload(chart.update.replace_field(chart.fields.by_guid(_OLD_GUID), replacement))
+
+    for slot in ("x", "labels", "sort"):
+        item = data["visualization"][slot]["items"][0]
+        assert item["guid"] == _NEW_GUID
+        for key in ("format", "fakeTitle"):
+            if replacement_presentation:
+                assert item[key] == presentation[key]
+            else:
+                assert key not in item
+    filter_item = data["sources"]["filters"][0]
+    assert filter_item["guid"] == _NEW_GUID
+    assert filter_item["filter"] == before["sources"]["filters"][0]["filter"]
+    if replacement_presentation:
+        assert filter_item["fakeTitle"] == presentation["fakeTitle"]
+    else:
+        assert "fakeTitle" not in filter_item
+    assert chart.data == before
 
 
 def _differently_formatted_data() -> dict[str, Any]:
