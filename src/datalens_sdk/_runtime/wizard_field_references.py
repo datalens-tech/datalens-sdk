@@ -55,9 +55,9 @@ _FIELD_SNAPSHOT_OWNED_KEYS_BY_CARRIER: Mapping[FieldCarrier, frozenset[str]] = {
     "field_definition": _MOUNTED_FIELD_OWNED_KEYS,
 }
 
-# Only disagreements that make a GUID-based lookup ambiguous are conflicts;
-# other open decorations stay carrier-local and server-owned.
-_ACTIVE_SNAPSHOT_CONFLICT_KEYS = frozenset({"datasetId", "fakeTitle", "format", "formatting"})
+# A GUID identifies one field within its dataset. Presentation properties can
+# differ between active placements without changing that field identity.
+_ACTIVE_SNAPSHOT_CONFLICT_KEYS = frozenset({"datasetId"})
 _GUID_VALUE_KEYS = frozenset({"colorFieldGuid", "fieldGuid"})
 _GUID_MAP_KEYS = frozenset({"axisModeMap", "mountedColors", "mountedShapes"})
 

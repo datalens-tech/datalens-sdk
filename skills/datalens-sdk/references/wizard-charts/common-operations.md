@@ -154,7 +154,7 @@ are provided, `rev_id` wins and the client emits `UserWarning`.
 | `.collection_id` | Collection metadata, if reported. |
 | `.category` | Always `"wizard"`. |
 | `.visualization_id` | Current Wizard visualization ID, or `None`. |
-| `.fields` | `FieldsProxy` containing fields currently referenced by the chart. |
+| `.fields` | `FieldsProxy` containing fields currently referenced by the chart (slots, filters, sorts, and hierarchy members), deduplicated by GUID. |
 | `.dataset_ids` | Tuple of datasets currently referenced by the chart. |
 | `.update` | A new `WizardChartUpdate` bound to this chart. |
 
@@ -293,14 +293,29 @@ Prefer a saved Wizard handle or the matching `DatasetField` from
 `replace_formula()` applies only to a chart-local `add_field` formula. An
 unknown or title-like target can fail or leave the formula unchanged.
 
-After a formatting update and re-fetch, inspect the active snapshot selected
-by GUID. Known persisted presentation properties are available in
-`chart.fields.by_guid(handle.guid).raw`, for example its `formatting` mapping;
-the returned object remains a `DatasetField`, not the original handle type.
+`chart.fields` contains fields referenced by visualization and layer slots,
+sort lists, filters, and hierarchy members. It deduplicates them by GUID,
+keeping the first encountered snapshot and filling missing properties from
+its chart-local definition. Standalone field definitions do not add fields
+to this inventory. The returned objects are `DatasetField` snapshots;
+`chart.fields.by_guid(handle.guid).raw` exposes the enriched snapshot.
+Numeric formatting, date formats, and title overrides may differ between
+occurrences. Reading `.fields` leaves those occurrences unchanged. A nonempty
+`datasetId` that conflicts with the selected snapshot raises
+`DataLensValidationError`.
+
+The selected snapshot's `title` supplies the field title. When it is absent,
+`fakeTitle` supplies the title and default name. `.fields.by_name()` searches
+only these selected titles and names; use the GUID when another occurrence
+has a different title override. The proxy does not merge presentation properties
+or select a particular slot or layer.
 
 Slot setters replace that slot's complete field list; pass `[]`
-to clear an optional slot. `chart.fields` lists active fields but does
-not expose their slot membership. When updating an existing chart,
+to clear an optional slot. Setters copy the supplied field snapshot's
+supported presentation properties, including formatting; reusing a representative from
+`y` in `labels` can therefore replace the previous label formatting.
+`chart.fields` lists active fields but does not expose their slot membership.
+When updating an existing chart,
 obtain the intended complete field list from the user or known chart design;
 do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 `sort(fields)` replaces the create-side sort list, while
@@ -341,7 +356,7 @@ do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 | `.add_sort(field, *, direction="asc")` | C/U | Append one directional sort; direction is `"asc"` or `"desc"`. |
 | `.labels(fields: Sequence[WizardFieldRef])` | C/U | Replace labels fields. |
 | `.segments(fields: Sequence[WizardFieldRef])` | C/U | Replace split/segment fields where supported. |
-| `.measure_format(field, *, format=None, precision=None, unit=None, prefix=None, postfix=None, show_rank_delimiter=None)` | C/U | Patch only supplied formatting keys; the field must already be placed in a visualization slot. |
+| `.measure_format(field, *, format=None, precision=None, unit=None, prefix=None, postfix=None, show_rank_delimiter=None)` | C/U | Patch only supplied formatting keys across presentation placements of the target GUID, preserving other keys in each placement; the field must already be placed in a visualization slot. |
 
 `aggregation` for aggregated-measure operations is one of `"sum"`, `"avg"`,
 `"min"`, `"max"`, `"count"`, or `"countunique"`.

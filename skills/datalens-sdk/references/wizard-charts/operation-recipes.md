@@ -19,9 +19,15 @@ and locations with values from the user's DataLens installation.
 
 ## Resolve Fields Safely on Update
 
-Re-fetch a chart before updating it. Use `chart.fields` for fields already
-referenced by the chart. Fetch its dataset and use a `DatasetField` when adding
-a field that is not yet referenced.
+Re-fetch a chart before updating it. `chart.fields` contains fields currently
+referenced by visualization and layer slots, sort lists, filters, and hierarchy
+members. Fetch its dataset and use a `DatasetField` when adding a field that is
+not yet referenced. For each GUID, the proxy keeps the first encountered
+snapshot and fills missing properties from its chart-local definition. Its
+`.raw` exposes that enriched snapshot. Numeric formatting, date formats, and
+title overrides may differ between occurrences; reading `.fields` leaves them
+unchanged. Use the GUID when occurrences have different title overrides,
+because name lookup uses only the selected snapshot's title and name.
 
 ```python
 chart = client.get.wizard_chart(by_id="chart-id")
@@ -35,6 +41,10 @@ chart = chart.update.y([placed_revenue, new_profit]).mode("save").execute()
 
 Placeholder setters replace the complete field list. Include fields that must
 remain, and pass `[]` only when intentionally clearing an optional slot.
+Setters copy the supplied snapshot's supported presentation properties. For example,
+`chart.update.labels([chart.fields.by_guid(guid)])` can copy the representative
+value-slot formatting over the existing label formatting. Reading `.fields`
+itself preserves every placement's formatting.
 The public typed API lists active fields through `chart.fields` but does not
 report which slot each field occupies. This example assumes Revenue is
 the complete current `y` list; if the current layout is unknown, ask the user
@@ -232,6 +242,11 @@ chart = (
     .build()
 )
 ```
+
+`measure_format()` targets a GUID across its presentation placements and merges
+only the supplied keys into each placement's original formatting. A precision
+patch preserves distinct numeric formats, label modes, and other untouched
+keys. Filter and sort references do not acquire presentation formatting.
 
 Use `palette()` after binding color to a dimension when a categorical palette
 is desired.
