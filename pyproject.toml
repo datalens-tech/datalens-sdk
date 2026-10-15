@@ -27,7 +27,7 @@ dependencies = [
   "httpx>=0.27",
   "pydantic>=2,<3",
   "PyJWT[crypto]>=2.10,<3",
-  "typing_extensions>=4.12",
+  "typing_extensions>=4.13",
 ]
 
 [dependency-groups]
