@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import Literal, Protocol, TypedDict, cast
 
 from pydantic import TypeAdapter, ValidationError
+from typing_extensions import TypeForm
 
 from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.converter.lakehouse_operation import (
@@ -78,14 +79,14 @@ class SparkApplicationLogReadDTOClass(Protocol):
 
 
 class SparkApplicationDtoModule(LakehouseOperationReadDtoModule, Protocol):
-    CreateSparkApplicationArgsDTO: object
+    CreateSparkApplicationArgsDTO: TypeForm[object]
     CancelSparkApplicationArgsDTO: SparkApplicationWriteDTOClass
     GetSparkApplicationArgsDTO: SparkApplicationWriteDTOClass
     ListSparkApplicationLogArgsDTO: SparkApplicationWriteDTOClass
     ListSparkApplicationLogResultReadDTO: SparkApplicationLogReadDTOClass
     ListSparkApplicationsArgsDTO: SparkApplicationWriteDTOClass
     ListSparkApplicationsResultReadDTO: SparkApplicationListReadDTOClass
-    SparkApplicationReadDTO: object
+    SparkApplicationReadDTO: TypeForm[object]
 
 
 def _dto_module(dto_module: SparkApplicationDtoModule | None) -> SparkApplicationDtoModule:

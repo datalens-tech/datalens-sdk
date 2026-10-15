@@ -7,6 +7,7 @@ from typing import Annotated, Literal, cast
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, TypeAdapter, ValidationError
 import pytest
+from typing_extensions import TypeForm
 
 from datalens_sdk import codegen
 from datalens_sdk.api_version import API_VERSION
@@ -158,6 +159,10 @@ def _model(scope: dict[str, object], name: str) -> type[BaseModel]:
     return cast(type[BaseModel], scope[name])
 
 
+def _type_form(scope: dict[str, object], name: str) -> TypeForm[object]:
+    return cast(TypeForm[object], scope[name])
+
+
 def test_tagged_read_union_does_not_discard_known_sibling_fields() -> None:
     result: dict[str, object] = {
         "anyOf": [
@@ -180,7 +185,7 @@ def test_tagged_read_union_does_not_discard_known_sibling_fields() -> None:
         ]
     }
     scope = _widget_models(request={"type": "object", "additionalProperties": False}, result=result)
-    adapter: TypeAdapter[object] = TypeAdapter(scope["WidgetResultReadDTO"])
+    adapter: TypeAdapter[object] = TypeAdapter(_type_form(scope, "WidgetResultReadDTO"))
 
     with pytest.raises(ValidationError):
         adapter.validate_python({"id": "i", "tag": "alpha", "alpha": "wrong"})
@@ -210,7 +215,7 @@ def test_tagged_read_union_does_not_discard_sibling_python_alias() -> None:
             ]
         },
     )
-    adapter: TypeAdapter[object] = TypeAdapter(scope["WidgetResultReadDTO"])
+    adapter: TypeAdapter[object] = TypeAdapter(_type_form(scope, "WidgetResultReadDTO"))
 
     with pytest.raises(ValidationError):
         adapter.validate_python({"id": "i", "alpha_value": "wrong"})
@@ -339,8 +344,8 @@ def test_tagged_read_union_reference_guard_is_local_to_each_union() -> None:
         schemas=schemas,
     )
     scope = _models(_contract(spec))
-    first: TypeAdapter[object] = TypeAdapter(scope["WidgetResultReadDTO"])
-    second: TypeAdapter[object] = TypeAdapter(scope["OtherResultReadDTO"])
+    first: TypeAdapter[object] = TypeAdapter(_type_form(scope, "WidgetResultReadDTO"))
+    second: TypeAdapter[object] = TypeAdapter(_type_form(scope, "OtherResultReadDTO"))
 
     with pytest.raises(ValidationError):
         first.validate_python({"id": "i", "alpha": "wrong"})

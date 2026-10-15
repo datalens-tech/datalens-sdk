@@ -256,7 +256,7 @@ def dependency_lower_bounds(session: nox.Session) -> None:
         "httpx==0.27.0",
         "pydantic==2.0.0",
         "PyJWT[crypto]==2.10.0",
-        "typing_extensions==4.12.0",
+        "typing_extensions==4.13.0",
         "pytest",
     )
     session.install(".", "--no-deps")
