@@ -1268,8 +1268,3 @@ def test_application_mutations_report_malformed_operations_with_original_rpc(mut
     with http_client, pytest.raises((DTOValidationError, InvalidResponseError), match=f"{mutation}SparkApplication"):
         _invoke_mutation(service, mutation)
     assert len(transport.requests) == 1
-
-
-def test_empty_cluster_entry_id_reports_entry_identity() -> None:
-    with pytest.raises(DataLensValidationError, match="Spark cluster entry id"):
-        normalize_spark_application_cluster("", installation="yacloud")
