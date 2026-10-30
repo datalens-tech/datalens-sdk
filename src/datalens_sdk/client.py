@@ -813,6 +813,7 @@ class YCGetNamespace(GetNamespace):
         return self._cloud_environment_operations.get_cloud_environment(by_id, include_permissions=include_permissions)
 
     def spark_cluster(self, *, by_id: str) -> SparkCluster:
+        """Get a cluster by its ordinary DataLens entry ID."""
         if not isinstance(by_id, str) or not by_id:
             raise DataLensValidationError("by_id must be a non-empty string")
         return self._spark_cluster_operations.get_spark_cluster(by_id)
@@ -833,6 +834,7 @@ class YCGetNamespace(GetNamespace):
         )
 
     def trino_cluster(self, *, by_id: str) -> TrinoCluster:
+        """Get a cluster by its ordinary DataLens entry ID."""
         if not isinstance(by_id, str) or not by_id:
             raise DataLensValidationError("by_id must be a non-empty string")
         return self._trino_cluster_operations.get_trino_cluster(by_id)

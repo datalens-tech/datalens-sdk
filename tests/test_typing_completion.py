@@ -1092,8 +1092,8 @@ def test_spark_read_surface_is_visible_to_static_tools() -> None:
 def test_spark_application_read_types_preserve_variant_narrowing() -> None:
     client = DataLensClientYC(auth=None, transport=_transport())
     if TYPE_CHECKING:
-        application = client.get.spark_application(cluster="managed-1", by_id="application-1")
-        pager = client.list.spark_applications(cluster="managed-1", filters=['name="analytics"'])
+        application = client.get.spark_application(cluster="entry-1", by_id="application-1")
+        pager = client.list.spark_applications(cluster="entry-1", filters=['name="analytics"'])
         assert_type(application, SparkApplication)
         assert_type(application.refresh(), SparkApplication)
         assert_type(application.status, SparkApplicationStatus)
@@ -1136,14 +1136,14 @@ def test_spark_application_mutation_types_are_yc_only_and_keep_bound_operations(
         ],
     )
     if TYPE_CHECKING:
-        builder = client.create.spark_application(cluster="managed-1", name="analytics")
+        builder = client.create.spark_application(cluster="entry-1", name="analytics")
         assert_type(builder, SparkApplicationCreate)
         assert_type(builder.catalogs(["catalog-1"]), SparkApplicationCreate)
         assert_type(builder.spark(main_jar_file_uri="jar"), SparkApplicationCreate)
         assert_type(builder.pyspark(main_python_file_uri="python"), SparkApplicationCreate)
         assert_type(builder.spark_connect(), SparkApplicationCreate)
         assert_type(builder.build(), LakehouseOperation)
-        application = client.get.spark_application(cluster="managed-1", by_id="application-1")
+        application = client.get.spark_application(cluster="entry-1", by_id="application-1")
         assert_type(application.cancel(), LakehouseOperation)
         assert_type(application.cancel().refresh(), LakehouseOperation)
         assert_type(application.cancel().wait(timeout=1.0), LakehouseOperation)

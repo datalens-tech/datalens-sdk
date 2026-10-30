@@ -106,6 +106,12 @@ class SparkClusterConfig:
 
 @dataclass(slots=True)
 class SparkCluster:
+    """A cluster whose ``id`` is its DataLens entry ID for all actions.
+
+    ``entry_id`` is the entry ID returned by the API; ``cluster_id`` is the
+    managed cloud cluster ID, which is not used for DataLens actions.
+    """
+
     id: str
     cluster_id: str
     installation: str

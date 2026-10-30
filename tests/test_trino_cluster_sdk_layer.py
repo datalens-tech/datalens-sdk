@@ -66,7 +66,7 @@ def _cluster_response(*, name: str = "Analytics") -> dict[str, object]:
         "health": "ALIVE",
         "status": "RUNNING",
         "coordinatorUrl": "",
-        "entryId": "entry-3",
+        "entryId": "trino-1",
     }
 
 
@@ -529,7 +529,7 @@ def test_trino_list_catalog_filter_rejects_invalid_references_before_http(refere
 def test_trino_attach_and_detach_use_distinct_payloads_and_bind_operations() -> None:
     pending = {"id": "operation-1", "done": False, "metadata": {}}
     recorder = RecordedTrinoTransport(
-        httpx.Response(200, json={**_cluster_response(), "entryId": "entry-3"}),
+        httpx.Response(200, json={**_cluster_response(), "entryId": "trino-1"}),
         httpx.Response(200, json=pending),
         httpx.Response(200, json=pending),
         httpx.Response(200, json={**pending, "done": True}),
@@ -589,7 +589,7 @@ def test_trino_catalog_mutations_reject_invalid_references_before_http(
 
 
 @pytest.mark.parametrize("method", ["attach_catalog", "detach_catalog"])
-def test_trino_catalog_mutations_reject_missing_lakehouse_id_and_unbound_cluster(method: str) -> None:
+def test_trino_catalog_mutations_reject_missing_entry_id_and_unbound_cluster(method: str) -> None:
     recorder = RecordedTrinoTransport()
     with DataLensHTTPClient(
         installation="yacloud",
@@ -1158,7 +1158,7 @@ def test_trino_get_and_refresh_map_complete_cluster_and_retry_reads() -> None:
         health="ALIVE",
         status="RUNNING",
         coordinator_url="",
-        entry_id="entry-3",
+        entry_id="trino-1",
         raw=first,
     )
     assert refreshed is not cluster
@@ -1183,7 +1183,7 @@ def test_trino_get_and_refresh_map_complete_cluster_and_retry_reads() -> None:
         health="ALIVE",
         status="UPDATING",
         coordinator_url="",
-        entry_id="entry-3",
+        entry_id="trino-1",
         raw=second,
     )
     assert cluster.name == "Analytics"
@@ -1422,3 +1422,62 @@ def test_trino_list_page_sizes_use_generated_validation_before_http(
             with pytest.raises(DTOValidationError, match="listTrino"):
                 list(pager.pages())
             assert recorder.requests == []
+
+
+def test_trino_entry_id_is_shared_by_lifecycle_catalogs_and_connection() -> None:
+    entry_id = "w6feq8qxr6a2f"
+    wire = {**_cluster_response(), "id": entry_id, "entryId": entry_id, "clusterId": "c9qhdetm565qsev0skr7"}
+    operation = {"id": "operation-1", "done": False, "metadata": {}}
+    recorder = RecordedTrinoTransport(
+        httpx.Response(
+            200,
+            json={
+                "entries": [
+                    {
+                        "entryId": entry_id,
+                        "scope": "compute",
+                        "type": "lakehouse-trino",
+                        "name": "Trino",
+                        "key": "collection/Trino",
+                        "data": None,
+                    }
+                ]
+            },
+        ),
+        httpx.Response(200, json=wire),
+        httpx.Response(200, json=wire),
+        *(httpx.Response(200, json=operation) for _ in range(5)),
+        httpx.Response(200, json={"id": "connection-1"}),
+        httpx.Response(200, json={"id": "connection-1", "type": "trino", "name": "Trino"}),
+    )
+    client = DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handle))
+    with client:
+        entry = next(iter(client.navigation.get_entries(scope="compute")))
+        cluster = client.get.trino_cluster(by_id=entry.id)
+        assert cluster.id == cluster.entry_id == entry_id
+        assert cluster.cluster_id == "c9qhdetm565qsev0skr7"
+        assert cluster.raw == wire
+        cluster.refresh()
+        cluster.start()
+        cluster.stop()
+        cluster.attach_catalog("catalog-1")
+        cluster.detach_catalog("catalog-1")
+        cluster.delete()
+        (
+            client.create.connection.trino(name="Trino", location=EntryLocation.collection("collection-1"))
+            .cluster_entry_id(cluster.id)
+            .listing_sources("on")
+            .build()
+        )
+    assert recorder.bodies()[1:8] == [
+        {"id": entry_id},
+        {"id": entry_id},
+        {"clusterId": entry_id},
+        {"clusterId": entry_id},
+        {"clusterId": entry_id, "catalog": {"catalogId": "catalog-1"}},
+        {"clusterId": entry_id, "catalogId": "catalog-1"},
+        {"id": entry_id},
+    ]
+    assert len(recorder.requests) == 10
+    assert "c9qhdetm565qsev0skr7" not in str(recorder.bodies())
+    assert json.loads(recorder.requests[8].content)["cluster_entry_id"] == entry_id

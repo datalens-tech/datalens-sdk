@@ -49,10 +49,10 @@ reconstructing it.
 | `yq`         | Yandex Query       | `cloud_id`, `folder_id`, `service_account_id`                                               | yes | —          |
 
 For a Trino connection linked to a managed Yandex Cloud Lakehouse cluster,
-use `cluster_entry_id` with the cluster's DataLens `entry_id`; `host`,
+use `cluster_entry_id` with the cluster's `.id` (ordinary DataLens entry ID); `host`,
 `username`, and `password` are not needed. `listing_sources` is still
 required. See [managed Trino clusters](trino-clusters.md) for the exact
-workflow and identifier distinctions.
+workflow.
 
 ### API-based
 
