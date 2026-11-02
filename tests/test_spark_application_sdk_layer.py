@@ -52,7 +52,7 @@ from datalens_sdk.http import DataLensHTTPClient
 
 def _cluster(
     *,
-    id: str = "lakehouse-1",
+    id: str = "entry-1",
     cluster_id: str = "managed-1",
     entry_id: str = "entry-1",
     installation: str = "yacloud",
@@ -80,9 +80,9 @@ def _cluster(
     )
 
 
-def test_application_cluster_reference_uses_lakehouse_id_and_rejects_known_mismatches() -> None:
-    assert normalize_spark_application_cluster(_cluster(), installation="yacloud") == "lakehouse-1"
-    assert normalize_spark_application_cluster("raw-lakehouse", installation="yacloud") == "raw-lakehouse"
+def test_application_cluster_reference_uses_entry_id_and_rejects_known_mismatches() -> None:
+    assert normalize_spark_application_cluster(_cluster(), installation="yacloud") == "entry-1"
+    assert normalize_spark_application_cluster("raw-entry", installation="yacloud") == "raw-entry"
     for value in ("", _cluster(id=""), _cluster(installation="enterprise"), _cluster(installation=""), 42):
         with pytest.raises(DataLensValidationError):
             normalize_spark_application_cluster(value, installation="yacloud")  # type: ignore[arg-type]
@@ -95,17 +95,17 @@ def test_application_list_options_snapshot_filters_and_preserve_explicit_paginat
     )
     filters.append('job_type="sparkApplication"')
 
-    assert options == SparkApplicationListOptions("lakehouse-1", ('name="first"', 'created_by="second"'), 0, "")
-    assert SparkApplicationListOptions.create(installation="yacloud", cluster="raw-lakehouse").page_token is None
+    assert options == SparkApplicationListOptions("entry-1", ('name="first"', 'created_by="second"'), 0, "")
+    assert SparkApplicationListOptions.create(installation="yacloud", cluster="raw-entry").page_token is None
     for invalid in ('name="x"', b'name="x"'):
         with pytest.raises(DataLensValidationError):
-            SparkApplicationListOptions.create(installation="yacloud", cluster="managed-1", filters=invalid)  # type: ignore[arg-type]
+            SparkApplicationListOptions.create(installation="yacloud", cluster="entry-1", filters=invalid)  # type: ignore[arg-type]
 
 
-def test_application_refresh_requires_binding_and_uses_held_lakehouse_ids_without_mutation() -> None:
+def test_application_refresh_requires_binding_and_uses_held_entry_ids_without_mutation() -> None:
     application = SparkApplication(
         id="application-1",
-        cluster_id="lakehouse-1",
+        cluster_id="entry-1",
         installation="yacloud",
         name="before",
         created_by="user-1",
@@ -133,14 +133,14 @@ def test_application_refresh_requires_binding_and_uses_held_lakehouse_ids_withou
     bound = replace(application, _operations=cast(SparkApplicationOperations, operations))
     assert bound.refresh() == replace(application, name="after")
     assert bound.name == "before"
-    assert operations.calls == [("lakehouse-1", "application-1")]
+    assert operations.calls == [("entry-1", "application-1")]
     for invalid in (replace(bound, id=""), replace(bound, cluster_id="")):
         with pytest.raises(DataLensValidationError):
             invalid.refresh()
-    assert operations.calls == [("lakehouse-1", "application-1")]
+    assert operations.calls == [("entry-1", "application-1")]
 
 
-def _wire_application(kind: str | None = "sparkApplication", *, cluster_id: str = "managed-1") -> dict[str, object]:
+def _wire_application(kind: str | None = "sparkApplication", *, cluster_id: str = "entry-1") -> dict[str, object]:
     common: dict[str, object] = {
         "archiveUris": [],
         "fileUris": [],
@@ -217,11 +217,11 @@ def _service(transport: _Transport) -> tuple[DataLensHTTPClient, SparkApplicatio
 
 @pytest.mark.parametrize("kind", ["sparkApplication", "pysparkApplication", "sparkConnectApplication", None])
 def test_application_get_maps_typed_and_common_only_specs_preserving_raw(kind: str | None) -> None:
-    wire = _wire_application(kind, cluster_id="lakehouse-1")
+    wire = _wire_application(kind, cluster_id="entry-1")
     transport = _Transport([httpx.Response(200, json=wire), httpx.Response(200, json=wire)])
     client, service = _service(transport)
     with client:
-        application = service.get_spark_application("lakehouse-1", "application-1")
+        application = service.get_spark_application("entry-1", "application-1")
         refreshed = application.refresh()
 
     expected_spec = {
@@ -232,7 +232,7 @@ def test_application_get_maps_typed_and_common_only_specs_preserving_raw(kind: s
     }[kind]
     expected = SparkApplication(
         id="application-1",
-        cluster_id="lakehouse-1",
+        cluster_id="entry-1",
         installation="yacloud",
         name="analytics",
         created_by="user-1",
@@ -250,8 +250,8 @@ def test_application_get_maps_typed_and_common_only_specs_preserving_raw(kind: s
     assert refreshed is not application
     assert type(application.created_at.nanos) is int
     assert transport.bodies() == [
-        {"clusterId": "lakehouse-1", "applicationId": "application-1"},
-        {"clusterId": "lakehouse-1", "applicationId": "application-1"},
+        {"clusterId": "entry-1", "applicationId": "application-1"},
+        {"clusterId": "entry-1", "applicationId": "application-1"},
     ]
 
 
@@ -266,9 +266,9 @@ def test_application_read_rejects_python_field_name_instead_of_nested_wire_alias
 
     def read() -> None:
         if operation == "getSparkApplication":
-            service.get_spark_application("managed-1", "application-1")
+            service.get_spark_application("entry-1", "application-1")
         else:
-            options = SparkApplicationListOptions.create(installation="yacloud", cluster="managed-1")
+            options = SparkApplicationListOptions.create(installation="yacloud", cluster="entry-1")
             next(service.list_spark_applications(options).pages())
 
     with client, pytest.raises(DTOValidationError, match=operation):
@@ -316,11 +316,11 @@ def test_application_read_rejects_malformed_typed_response_with_rpc_context(
 
     def read() -> None:
         if operation == "getSparkApplication":
-            service.get_spark_application("managed-1", "application-1")
+            service.get_spark_application("entry-1", "application-1")
         else:
             next(
                 service.list_spark_applications(
-                    SparkApplicationListOptions.create(installation="yacloud", cluster="managed-1")
+                    SparkApplicationListOptions.create(installation="yacloud", cluster="entry-1")
                 ).pages()
             )
 
@@ -337,8 +337,8 @@ def test_application_read_preserves_zero_and_fractional_timestamp_nanos() -> Non
     transport = _Transport([httpx.Response(200, json=value) for value in (zero, fractional)])
     client, service = _service(transport)
     with client:
-        first = service.get_spark_application("managed-1", "application-1")
-        second = service.get_spark_application("managed-1", "application-1")
+        first = service.get_spark_application("entry-1", "application-1")
+        second = service.get_spark_application("entry-1", "application-1")
 
     assert first.created_at == LakehouseTimestamp("0", 0)
     assert type(first.created_at.nanos) is int
@@ -357,7 +357,7 @@ def test_application_list_is_lazy_repeatable_and_keeps_final_empty_token() -> No
     expected_applications = [
         SparkApplication(
             id="application-1",
-            cluster_id="managed-1",
+            cluster_id="entry-1",
             installation="yacloud",
             name="analytics",
             created_by="user-1",
@@ -372,7 +372,7 @@ def test_application_list_is_lazy_repeatable_and_keeps_final_empty_token() -> No
         ),
         SparkApplication(
             id="application-1",
-            cluster_id="managed-1",
+            cluster_id="entry-1",
             installation="yacloud",
             name="analytics",
             created_by="user-1",
@@ -394,33 +394,33 @@ def test_application_list_is_lazy_repeatable_and_keeps_final_empty_token() -> No
         assert [application for page in pages for application in page.items] == expected_applications
         assert list(pager) == expected_applications
     assert transport.bodies() == [
-        {"clusterId": "lakehouse-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "A"},
-        {"clusterId": "lakehouse-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "B"},
-        {"clusterId": "lakehouse-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "A"},
-        {"clusterId": "lakehouse-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "B"},
+        {"clusterId": "entry-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "A"},
+        {"clusterId": "entry-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "B"},
+        {"clusterId": "entry-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "A"},
+        {"clusterId": "entry-1", "filter": ['name="analytics"'], "pageSize": 0, "pageToken": "B"},
     ]
 
 
 def test_application_list_sends_explicit_initial_empty_token() -> None:
     transport = _Transport([httpx.Response(200, json={"applications": [], "nextPageToken": ""})])
     client, service = _service(transport)
-    options = SparkApplicationListOptions.create(installation="yacloud", cluster="managed-1", page_token="")
+    options = SparkApplicationListOptions.create(installation="yacloud", cluster="entry-1", page_token="")
     with client:
         pager = service.list_spark_applications(options)
         assert transport.requests == []
         assert [page.next_page_token for page in pager.pages()] == [""]
-    assert transport.bodies() == [{"clusterId": "managed-1", "pageSize": 100, "pageToken": ""}]
+    assert transport.bodies() == [{"clusterId": "entry-1", "pageSize": 100, "pageToken": ""}]
 
 
 @pytest.mark.parametrize("tokens", [["A"], ["B", "A"]])
 def test_application_list_rejects_token_cycle_before_replaying_page(tokens: list[str]) -> None:
     transport = _Transport([httpx.Response(200, json={"applications": [], "nextPageToken": token}) for token in tokens])
     client, service = _service(transport)
-    options = SparkApplicationListOptions.create(installation="yacloud", cluster="managed-1", page_token="A")
+    options = SparkApplicationListOptions.create(installation="yacloud", cluster="entry-1", page_token="A")
     with client, pytest.raises(InvalidResponseError, match="listSparkApplications"):
         list(service.list_spark_applications(options).pages())
     assert transport.bodies() == [
-        {"clusterId": "managed-1", "pageSize": 100, "pageToken": token} for token in ["A", *tokens[:-1]]
+        {"clusterId": "entry-1", "pageSize": 100, "pageToken": token} for token in ["A", *tokens[:-1]]
     ]
 
 
@@ -442,7 +442,7 @@ def test_application_list_rejects_malformed_page_root_with_rpc_context(
     with client, pytest.raises(error_type, match="listSparkApplications"):
         next(
             service.list_spark_applications(
-                SparkApplicationListOptions.create(installation="yacloud", cluster="managed-1")
+                SparkApplicationListOptions.create(installation="yacloud", cluster="entry-1")
             ).pages()
         )
     assert len(transport.requests) == 1
@@ -464,11 +464,11 @@ def test_application_get_and_each_list_page_retry_transient_http_failures() -> N
     )
     client, service = _service(transport)
     with client:
-        assert service.get_spark_application("managed-1", "application-1").id == "application-1"
+        assert service.get_spark_application("entry-1", "application-1").id == "application-1"
         assert [
             application.id
             for application in service.list_spark_applications(
-                SparkApplicationListOptions.create(installation="yacloud", cluster="managed-1")
+                SparkApplicationListOptions.create(installation="yacloud", cluster="entry-1")
             )
         ] == ["application-1"]
     assert [request.url.path for request in transport.requests] == [
@@ -480,23 +480,23 @@ def test_application_get_and_each_list_page_retry_transient_http_failures() -> N
         "/rpc/listSparkApplications",
     ]
     assert transport.bodies()[2:] == [
-        {"clusterId": "managed-1", "pageSize": 100},
-        {"clusterId": "managed-1", "pageSize": 100},
-        {"clusterId": "managed-1", "pageSize": 100, "pageToken": "B"},
-        {"clusterId": "managed-1", "pageSize": 100, "pageToken": "B"},
+        {"clusterId": "entry-1", "pageSize": 100},
+        {"clusterId": "entry-1", "pageSize": 100},
+        {"clusterId": "entry-1", "pageSize": 100, "pageToken": "B"},
+        {"clusterId": "entry-1", "pageSize": 100, "pageToken": "B"},
     ]
 
 
 @pytest.mark.parametrize(
     ("cluster_id", "page_size", "filters", "page_token"),
     [
-        ("managed-1", -1, (), None),
-        ("managed-1", 1001, (), None),
-        ("managed-1", 100, ('bad="x"',), None),
-        ("managed-1", 100, ('name="unterminated',), None),
-        ("managed-1", 100, ('name="' + "x" * 194 + '"',), None),
-        ("managed-1", 100, ('name="x"',) * 101, None),
-        ("managed-1", 100, (), "x" * 201),
+        ("entry-1", -1, (), None),
+        ("entry-1", 1001, (), None),
+        ("entry-1", 100, ('bad="x"',), None),
+        ("entry-1", 100, ('name="unterminated',), None),
+        ("entry-1", 100, ('name="' + "x" * 194 + '"',), None),
+        ("entry-1", 100, ('name="x"',) * 101, None),
+        ("entry-1", 100, (), "x" * 201),
         ("x" * 51, 100, (), None),
     ],
 )
@@ -517,7 +517,7 @@ def test_application_list_validates_unhashable_initial_token_before_http() -> No
     transport = _Transport([])
     client, service = _service(transport)
     options = SparkApplicationListOptions.create(
-        installation="yacloud", cluster="managed-1", page_token=cast(str, ["resume"])
+        installation="yacloud", cluster="entry-1", page_token=cast(str, ["resume"])
     )
 
     with client:
@@ -533,7 +533,7 @@ def test_application_get_rejects_overlong_application_id_before_http() -> None:
     transport = _Transport([])
     client, service = _service(transport)
     with client, pytest.raises(DTOValidationError, match="getSparkApplication"):
-        service.get_spark_application("managed-1", "x" * 51)
+        service.get_spark_application("entry-1", "x" * 51)
     assert transport.requests == []
 
 
@@ -551,14 +551,14 @@ def test_application_list_sends_maximum_allowed_request_values() -> None:
     ]
 
 
-def test_yc_application_actions_use_lakehouse_id_and_return_bound_models() -> None:
+def test_yc_application_actions_use_entry_id_and_return_bound_models() -> None:
     transport = _Transport(
         [
-            httpx.Response(200, json=_wire_application(cluster_id="lakehouse-1")),
-            httpx.Response(200, json=_wire_application(cluster_id="lakehouse-1")),
+            httpx.Response(200, json=_wire_application(cluster_id="entry-1")),
+            httpx.Response(200, json=_wire_application(cluster_id="entry-1")),
             httpx.Response(
                 200,
-                json={"applications": [_wire_application(None, cluster_id="lakehouse-1")], "nextPageToken": ""},
+                json={"applications": [_wire_application(None, cluster_id="entry-1")], "nextPageToken": ""},
             ),
         ]
     )
@@ -570,13 +570,13 @@ def test_yc_application_actions_use_lakehouse_id_and_return_bound_models() -> No
         assert len(transport.requests) == 2
         listed_application = next(iter(pager))
         assert listed_application.id == "application-1"
-        assert listed_application.cluster_id == "lakehouse-1"
-    assert application.cluster_id == "lakehouse-1"
-    assert refreshed.cluster_id == "lakehouse-1"
+        assert listed_application.cluster_id == "entry-1"
+    assert application.cluster_id == "entry-1"
+    assert refreshed.cluster_id == "entry-1"
     assert transport.bodies() == [
-        {"clusterId": "lakehouse-1", "applicationId": "application-1"},
-        {"clusterId": "lakehouse-1", "applicationId": "application-1"},
-        {"clusterId": "lakehouse-1", "pageSize": 100},
+        {"clusterId": "entry-1", "applicationId": "application-1"},
+        {"clusterId": "entry-1", "applicationId": "application-1"},
+        {"clusterId": "entry-1", "pageSize": 100},
     ]
 
 
@@ -588,7 +588,7 @@ def test_yc_application_actions_reject_unusable_inputs_before_http() -> None:
             with pytest.raises(DataLensValidationError):
                 client.get.spark_application(cluster=cluster, by_id=application_id)
         with pytest.raises(DataLensValidationError):
-            client.list.spark_applications(cluster="managed-1", filters=cast(Sequence[str], "name=bad"))
+            client.list.spark_applications(cluster="entry-1", filters=cast(Sequence[str], "name=bad"))
     assert transport.requests == []
 
 
@@ -667,15 +667,15 @@ def _operation_wire() -> dict[str, object]:
     return {"id": "operation-1", "done": False, "metadata": {"opaque": "value"}}
 
 
-def test_application_create_uses_lakehouse_id_and_validates_known_references() -> None:
+def test_application_create_uses_entry_id_and_validates_known_references() -> None:
     builder = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster=_cluster())
-    assert builder.spark_connect().to_spec().cluster_id == "lakehouse-1"
+    assert builder.spark_connect().to_spec().cluster_id == "entry-1"
     assert (
-        spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="raw-lakehouse")
+        spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="raw-entry")
         .spark_connect()
         .to_spec()
         .cluster_id
-        == "raw-lakehouse"
+        == "raw-entry"
     )
     for cluster in ("", 42, _cluster(id=""), _cluster(installation="enterprise")):
         with pytest.raises(DataLensValidationError):
@@ -702,14 +702,14 @@ def test_application_catalogs_validate_local_facts_without_raw_cluster_discovery
         with pytest.raises(DataLensValidationError):
             builder.catalogs(cast(Sequence[RestCatalog | str], catalogs))
         assert builder.to_spec() == original
-    raw = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="raw-lakehouse")
+    raw = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="raw-entry")
     assert raw.catalogs([_catalog(environment="other")]).spark_connect().to_spec().catalog_ids == ("catalog-1",)
 
 
 @pytest.mark.parametrize("first", ["spark", "pyspark", "spark_connect"])
 @pytest.mark.parametrize("second", ["spark", "pyspark", "spark_connect"])
 def test_application_builder_rejects_every_second_selector_without_changing_selection(first: str, second: str) -> None:
-    builder = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="lakehouse-1")
+    builder = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="entry-1")
 
     def select(name: str) -> object:
         if name == "spark":
@@ -731,7 +731,7 @@ def test_application_builder_snapshots_inputs_and_preserves_explicit_empty_value
     args = ["first"]
     props = {"key": "before"}
     catalogs = ["catalog-1"]
-    builder = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="lakehouse-1", name="")
+    builder = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="entry-1", name="")
     builder.catalogs(catalogs).spark(
         main_jar_file_uri="s3://bucket/main.jar", args=args, properties=props, archive_uris=[]
     )
@@ -747,14 +747,14 @@ def test_application_builder_snapshots_inputs_and_preserves_explicit_empty_value
     assert before.variant.archive_uris == ()
     assert builder.catalogs([]).to_spec().catalog_ids == ()
     assert (
-        spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="lakehouse-1")
+        spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="entry-1")
         .spark_connect()
         .to_spec()
         .variant.properties
         is None
     )
     for invalid in ("one", b"one"):
-        candidate = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="lakehouse-1")
+        candidate = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="entry-1")
         with pytest.raises(DataLensValidationError):
             candidate.spark_connect(packages=cast(Sequence[str], invalid))
         candidate.spark_connect()
@@ -776,7 +776,7 @@ def test_application_builder_snapshots_inputs_and_preserves_explicit_empty_value
 def test_application_builder_rejects_scalar_sequence_for_every_variant_field(
     selector: str, field: str, invalid: object
 ) -> None:
-    builder = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="lakehouse-1")
+    builder = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="entry-1")
     kwargs: dict[str, object] = {field: invalid}
 
     def select() -> None:
@@ -804,7 +804,7 @@ def test_application_builder_rejects_scalar_sequence_for_every_variant_field(
 def test_application_builder_rejects_scalar_variant_sequence_without_selecting(
     selector: str, field: str, invalid: object
 ) -> None:
-    builder = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="lakehouse-1")
+    builder = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="entry-1")
     kwargs: dict[str, object] = {field: invalid}
 
     def select() -> None:
@@ -821,9 +821,9 @@ def test_application_builder_rejects_scalar_variant_sequence_without_selecting(
 @pytest.mark.parametrize(
     ("selector", "expected"),
     [
-        ("spark", {"clusterId": "lakehouse-1", "sparkApplication": {"mainJarFileUri": "s3://bucket/main.jar"}}),
-        ("pyspark", {"clusterId": "lakehouse-1", "pysparkApplication": {"mainPythonFileUri": "s3://bucket/main.py"}}),
-        ("spark_connect", {"clusterId": "lakehouse-1", "sparkConnectApplication": {}}),
+        ("spark", {"clusterId": "entry-1", "sparkApplication": {"mainJarFileUri": "s3://bucket/main.jar"}}),
+        ("pyspark", {"clusterId": "entry-1", "pysparkApplication": {"mainPythonFileUri": "s3://bucket/main.py"}}),
+        ("spark_connect", {"clusterId": "entry-1", "sparkConnectApplication": {}}),
     ],
 )
 def test_application_create_serializes_three_variants_and_returns_bound_operation(
@@ -856,7 +856,7 @@ def test_application_create_serializes_three_variants_and_returns_bound_operatio
 @pytest.mark.parametrize("status", ["RUNNING", "DONE", "CANCELLED", "CANCELLING"])
 def test_application_cancel_posts_snapshot_ids_without_status_preflight(status: str) -> None:
     wire = _wire_application(None)
-    wire["clusterId"] = "lakehouse-1"
+    wire["clusterId"] = "entry-1"
     wire["status"] = status
     transport = _Transport(
         [
@@ -867,7 +867,7 @@ def test_application_cancel_posts_snapshot_ids_without_status_preflight(status: 
     )
     client = DataLensClientYC(auth=None, transport=httpx.MockTransport(transport.handle))
     with client:
-        application = client.get.spark_application(cluster="lakehouse-1", by_id="application-1")
+        application = client.get.spark_application(cluster="entry-1", by_id="application-1")
         operation = application.cancel()
         assert application.status == status
         assert operation.id == "operation-1"
@@ -881,7 +881,7 @@ def test_application_cancel_posts_snapshot_ids_without_status_preflight(status: 
         "/rpc/getLakehouseOperation",
     ]
     assert transport.bodies()[1:] == [
-        {"clusterId": "lakehouse-1", "applicationId": "application-1"},
+        {"clusterId": "entry-1", "applicationId": "application-1"},
         {"operationId": "operation-1"},
     ]
 
@@ -937,7 +937,7 @@ def test_application_create_preserves_all_variant_fields_and_explicit_empty_valu
         nested.update(args=["arg"], pythonFileUris=[])
     assert transport.bodies() == [
         {
-            "clusterId": "lakehouse-1",
+            "clusterId": "entry-1",
             "name": "",
             "catalogs": [{"catalogId": "catalog-1"}, {"catalogId": "catalog-raw"}],
             key: nested,
@@ -949,13 +949,13 @@ def test_application_create_sends_explicit_empty_catalogs_arrays_and_properties(
     transport = _Transport([httpx.Response(200, json=_operation_wire())])
     client = DataLensClientYC(auth=None, transport=httpx.MockTransport(transport.handle))
     with client:
-        client.create.spark_application(cluster="lakehouse-1", name="").catalogs([]).spark_connect(
+        client.create.spark_application(cluster="entry-1", name="").catalogs([]).spark_connect(
             archive_uris=[],
             properties={},
         ).build()
     assert transport.bodies() == [
         {
-            "clusterId": "lakehouse-1",
+            "clusterId": "entry-1",
             "name": "",
             "catalogs": [],
             "sparkConnectApplication": {"archiveUris": [], "properties": {}},
@@ -989,7 +989,7 @@ def test_application_create_generated_constraints_fail_before_http_with_rpc_cont
     transport = _Transport([])
     client = DataLensClientYC(auth=None, transport=httpx.MockTransport(transport.handle))
     with client:
-        cluster = cast(str, value) if name == "cluster" else "lakehouse-1"
+        cluster = cast(str, value) if name == "cluster" else "entry-1"
         builder = client.create.spark_application(cluster=cluster, name=cast(str, value) if name == "name" else None)
         kwargs: dict[str, object] = {"main_jar_file_uri": "s3://bucket/main.jar"}
         if name == "catalog_id":
@@ -1007,9 +1007,7 @@ def test_application_create_pyspark_rejects_out_of_bounds_main_file_before_http(
     transport = _Transport([])
     client = DataLensClientYC(auth=None, transport=httpx.MockTransport(transport.handle))
     with client:
-        builder = client.create.spark_application(cluster="lakehouse-1").pyspark(
-            main_python_file_uri=main_python_file_uri
-        )
+        builder = client.create.spark_application(cluster="entry-1").pyspark(main_python_file_uri=main_python_file_uri)
         with pytest.raises(DTOValidationError, match="createSparkApplication"):
             builder.build()
     assert transport.requests == []
@@ -1034,7 +1032,7 @@ def test_application_create_all_variants_apply_generated_common_constraints(
     transport = _Transport([])
     client = DataLensClientYC(auth=None, transport=httpx.MockTransport(transport.handle))
     with client:
-        builder = client.create.spark_application(cluster="lakehouse-1")
+        builder = client.create.spark_application(cluster="entry-1")
         kwargs: dict[str, object] = {field: value}
         if selector == "spark":
             builder.spark(main_jar_file_uri="jar", **cast(Any, kwargs))
@@ -1078,7 +1076,7 @@ def test_application_create_rejects_over_limit_array_for_each_variant_schema(
     transport = _Transport([])
     client = DataLensClientYC(auth=None, transport=httpx.MockTransport(transport.handle))
     with client:
-        builder = client.create.spark_application(cluster="lakehouse-1")
+        builder = client.create.spark_application(cluster="entry-1")
         kwargs = {field: ["item"] * (max_items + 1)}
         if selector == "spark":
             builder.spark(main_jar_file_uri="jar", **cast(Any, kwargs))
@@ -1103,7 +1101,7 @@ def test_application_create_accepts_array_at_generated_limit_for_each_variant_sc
     transport = _Transport([httpx.Response(200, json=_operation_wire())])
     client = DataLensClientYC(auth=None, transport=httpx.MockTransport(transport.handle))
     with client:
-        builder = client.create.spark_application(cluster="lakehouse-1")
+        builder = client.create.spark_application(cluster="entry-1")
         kwargs = {field: ["item"] * max_items}
         if selector == "spark":
             builder.spark(main_jar_file_uri="jar", **cast(Any, kwargs))
@@ -1142,7 +1140,7 @@ def test_application_create_accepts_inclusive_generated_boundaries_and_empty_opt
 def test_application_cancel_generated_id_constraints_prevent_transport(field: str) -> None:
     transport = _Transport([])
     client, service = _service(transport)
-    ids = {"cluster_id": "lakehouse-1", "application_id": "application-1"}
+    ids = {"cluster_id": "entry-1", "application_id": "application-1"}
     ids[field] = "x" * 51
     with client, pytest.raises(DTOValidationError, match="cancelSparkApplication"):
         service.cancel_spark_application(ids["cluster_id"], ids["application_id"])
@@ -1150,14 +1148,14 @@ def test_application_cancel_generated_id_constraints_prevent_transport(field: st
 
 
 def test_application_cancel_and_create_require_binding_and_completed_intent() -> None:
-    builder = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="lakehouse-1")
+    builder = spark_application_module.SparkApplicationCreate(installation="yacloud", cluster="entry-1")
     with pytest.raises(DataLensValidationError):
         builder.build()
     with pytest.raises(DataLensConfigurationError):
         builder.spark_connect().build()
     unbound = SparkApplication(
         id="application-1",
-        cluster_id="lakehouse-1",
+        cluster_id="entry-1",
         installation="yacloud",
         name="application",
         created_by="user",
@@ -1195,13 +1193,13 @@ def test_application_mutations_preserve_terminal_operation_errors_and_unknown_da
         operation = (
             spark_application_module.SparkApplicationCreate(
                 installation="yacloud",
-                cluster="lakehouse-1",
+                cluster="entry-1",
                 operations=service,
             )
             .spark_connect()
             .build()
             if mutation == "create"
-            else service.cancel_spark_application("lakehouse-1", "application-1")
+            else service.cancel_spark_application("entry-1", "application-1")
         )
     assert operation == LakehouseOperation(
         id="operation-1",
@@ -1221,13 +1219,13 @@ def _invoke_mutation(service: SparkApplicationService, mutation: str) -> Lakehou
         return (
             spark_application_module.SparkApplicationCreate(
                 installation="yacloud",
-                cluster="lakehouse-1",
+                cluster="entry-1",
                 operations=service,
             )
             .spark_connect()
             .build()
         )
-    return service.cancel_spark_application("lakehouse-1", "application-1")
+    return service.cancel_spark_application("entry-1", "application-1")
 
 
 @pytest.mark.parametrize("mutation", ["create", "cancel"])

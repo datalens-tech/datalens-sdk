@@ -36,7 +36,7 @@ from datalens_sdk.errors import BadRequestError, DataLensValidationError, DTOVal
 from datalens_sdk.http import DataLensHTTPClient
 
 
-def _cluster(*, id: str = "lakehouse-1", cluster_id: str = "managed-1", installation: str = "yacloud") -> SparkCluster:
+def _cluster(*, id: str = "entry-1", cluster_id: str = "managed-1", installation: str = "yacloud") -> SparkCluster:
     pool = SparkResourcePoolConfig(resource_preset_id="preset", scale_policy=SparkFixedScalePolicy(size=1))
     return SparkCluster(
         id=id,
@@ -61,7 +61,7 @@ def _cluster(*, id: str = "lakehouse-1", cluster_id: str = "managed-1", installa
 
 
 def _application(
-    *, cluster_id: str = "lakehouse-1", installation: str = "yacloud", application_id: str = "application"
+    *, cluster_id: str = "entry-1", installation: str = "yacloud", application_id: str = "application"
 ) -> SparkApplication:
     return SparkApplication(
         id=application_id,
@@ -129,7 +129,7 @@ def test_log_options_validate_application_model_against_raw_and_model_clusters()
         SparkApplicationLogOptions.create(
             installation="yacloud", cluster=_cluster(), application=_application()
         ).cluster_id
-        == "lakehouse-1"
+        == "entry-1"
     )
     for cluster, application in (
         ("", "application"),
@@ -414,9 +414,9 @@ def test_log_action_uses_lakehouse_cluster_and_application_ids() -> None:
         ) == ("two",)
         assert tuple(client.list.spark_application_log(cluster=_cluster(), application="application")) == ("three",)
     assert transport.bodies() == [
-        {"clusterId": "lakehouse-1", "applicationId": "application"},
+        {"clusterId": "entry-1", "applicationId": "application"},
         {"clusterId": "raw-lakehouse", "applicationId": "application"},
-        {"clusterId": "lakehouse-1", "applicationId": "application"},
+        {"clusterId": "entry-1", "applicationId": "application"},
     ]
 
 

@@ -289,8 +289,8 @@ def test_spark_bound_lifecycle_requires_operations_and_its_exact_identifier() ->
             method()
     operations = FakeOperations()
     bound = replace(source, _operations=cast(SparkClusterOperations, operations))
-    empty_lakehouse_id = replace(bound, id="")
-    for method in (empty_lakehouse_id.start, empty_lakehouse_id.stop, empty_lakehouse_id.delete):
+    empty_entry_id = replace(bound, id="")
+    for method in (empty_entry_id.start, empty_entry_id.stop, empty_entry_id.delete):
         with pytest.raises(DataLensValidationError):
             method()
     assert bound.start().id == "start-1"
@@ -593,7 +593,7 @@ def test_spark_start_stop_delete_use_distinct_identifiers_and_bound_operations()
         [
             httpx.Response(200, json=raw)
             for raw in (
-                _cluster_response(id="lakehouse-1", entry_id="entry-1"),
+                _cluster_response(id="entry-1", entry_id="entry-1"),
                 operation,
                 stopped,
                 operation,
@@ -603,7 +603,7 @@ def test_spark_start_stop_delete_use_distinct_identifiers_and_bound_operations()
     )
     client, service = _service(transport)
     with client:
-        cluster = service.get_spark_cluster("lakehouse-1")
+        cluster = service.get_spark_cluster("entry-1")
         started = cluster.start()
         stopped_operation = cluster.stop()
         deleted = cluster.delete()
@@ -617,9 +617,9 @@ def test_spark_start_stop_delete_use_distinct_identifiers_and_bound_operations()
 
     assert transport.requests[-1].url.path == "/rpc/getLakehouseOperation"
     assert transport.bodies()[1:] == [
-        {"clusterId": "lakehouse-1"},
-        {"clusterId": "lakehouse-1"},
-        {"id": "lakehouse-1"},
+        {"clusterId": "entry-1"},
+        {"clusterId": "entry-1"},
+        {"id": "entry-1"},
         {"operationId": "operation-1"},
     ]
     assert started == LakehouseOperation(

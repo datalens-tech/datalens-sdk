@@ -556,7 +556,7 @@
             "type": "object"
           },
           "clusterId": {
-            "description": "ID of the Trino cluster.",
+            "description": "DataLens entry ID of the Trino cluster.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -3094,7 +3094,7 @@
             "type": "string"
           },
           "clusterId": {
-            "description": "ID of the Spark cluster.",
+            "description": "DataLens entry ID of the Spark cluster.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -5447,7 +5447,7 @@
                 "type": "array"
               },
               "clusterId": {
-                "description": "ID of the Spark cluster.",
+                "description": "DataLens entry ID of the Spark cluster.",
                 "maxLength": 50,
                 "minLength": 1,
                 "type": "string"
@@ -5578,7 +5578,7 @@
                 "type": "array"
               },
               "clusterId": {
-                "description": "ID of the Spark cluster.",
+                "description": "DataLens entry ID of the Spark cluster.",
                 "maxLength": 50,
                 "minLength": 1,
                 "type": "string"
@@ -5713,7 +5713,7 @@
                 "type": "array"
               },
               "clusterId": {
-                "description": "ID of the Spark cluster.",
+                "description": "DataLens entry ID of the Spark cluster.",
                 "maxLength": 50,
                 "minLength": 1,
                 "type": "string"
@@ -10477,7 +10477,7 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "description": "ID of the Spark cluster to delete.",
+            "description": "DataLens entry ID of the Spark cluster to delete.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -10524,7 +10524,7 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "description": "ID of the Trino cluster to delete.",
+            "description": "DataLens entry ID of the Trino cluster to delete.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -10545,7 +10545,7 @@
             "type": "string"
           },
           "clusterId": {
-            "description": "ID of the Trino cluster.",
+            "description": "DataLens entry ID of the Trino cluster.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -15781,7 +15781,7 @@
             "type": "string"
           },
           "clusterId": {
-            "description": "ID of the Spark cluster.",
+            "description": "DataLens entry ID of the Spark cluster.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -15797,7 +15797,7 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "description": "ID of the Spark cluster to return.",
+            "description": "DataLens entry ID of the Spark cluster to return.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -16377,7 +16377,7 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "description": "ID of the Trino cluster to return.",
+            "description": "DataLens entry ID of the Trino cluster to return.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -18810,7 +18810,7 @@
             "type": "string"
           },
           "clusterId": {
-            "description": "ID of the Spark cluster.",
+            "description": "DataLens entry ID of the Spark cluster.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -18855,7 +18855,7 @@
         "additionalProperties": false,
         "properties": {
           "clusterId": {
-            "description": "ID of the Spark cluster.",
+            "description": "DataLens entry ID of the Spark cluster.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -24039,7 +24039,7 @@
                 "type": "array"
               },
               "clusterId": {
-                "description": "ID of the Spark cluster.",
+                "description": "DataLens entry ID of the Spark cluster.",
                 "maxLength": 50,
                 "minLength": 1,
                 "type": "string"
@@ -24278,7 +24278,7 @@
                 "type": "array"
               },
               "clusterId": {
-                "description": "ID of the Spark cluster.",
+                "description": "DataLens entry ID of the Spark cluster.",
                 "maxLength": 50,
                 "minLength": 1,
                 "type": "string"
@@ -24521,7 +24521,7 @@
                 "type": "array"
               },
               "clusterId": {
-                "description": "ID of the Spark cluster.",
+                "description": "DataLens entry ID of the Spark cluster.",
                 "maxLength": 50,
                 "minLength": 1,
                 "type": "string"
@@ -24731,7 +24731,7 @@
                 "type": "array"
               },
               "clusterId": {
-                "description": "ID of the Spark cluster.",
+                "description": "DataLens entry ID of the Spark cluster.",
                 "maxLength": 50,
                 "minLength": 1,
                 "type": "string"
@@ -25123,7 +25123,7 @@
             "type": "string"
           },
           "id": {
-            "description": "ID of the Spark cluster.",
+            "description": "DataLens entry ID of the Spark cluster.",
             "minLength": 1,
             "type": "string"
           },
@@ -25502,7 +25502,7 @@
         "additionalProperties": false,
         "properties": {
           "clusterId": {
-            "description": "ID of the Spark cluster to start.",
+            "description": "DataLens entry ID of the Spark cluster to start.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -25517,7 +25517,7 @@
         "additionalProperties": false,
         "properties": {
           "clusterId": {
-            "description": "ID of the Trino cluster to start.",
+            "description": "DataLens entry ID of the Trino cluster to start.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -25603,7 +25603,7 @@
         "additionalProperties": false,
         "properties": {
           "clusterId": {
-            "description": "ID of the Spark cluster to stop.",
+            "description": "DataLens entry ID of the Spark cluster to stop.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -25618,7 +25618,7 @@
         "additionalProperties": false,
         "properties": {
           "clusterId": {
-            "description": "ID of the Trino cluster to stop.",
+            "description": "DataLens entry ID of the Trino cluster to stop.",
             "maxLength": 50,
             "minLength": 1,
             "type": "string"
@@ -26448,7 +26448,7 @@
             "type": "string"
           },
           "id": {
-            "description": "ID of the Trino cluster.",
+            "description": "DataLens entry ID of the Trino cluster.",
             "minLength": 1,
             "type": "string"
           },

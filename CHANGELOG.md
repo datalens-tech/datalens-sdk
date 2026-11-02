@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Changed
+
+- Use ordinary DataLens entry IDs for Trino and Spark cluster actions,
+  Spark applications and logs, and Trino catalog membership. Pass the same
+  `cluster.id` to Trino connection `cluster_entry_id` and UI links. Separate
+  Lakehouse IDs are no longer used; `cluster.cluster_id` remains the managed
+  cloud cluster ID.
+
 ## 3.2.0 - 2026-10-07
 
 ### Breaking changes

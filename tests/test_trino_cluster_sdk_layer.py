@@ -66,7 +66,7 @@ def _cluster_response(*, name: str = "Analytics") -> dict[str, object]:
         "health": "ALIVE",
         "status": "RUNNING",
         "coordinatorUrl": "",
-        "entryId": "entry-3",
+        "entryId": "trino-1",
     }
 
 
@@ -529,7 +529,7 @@ def test_trino_list_catalog_filter_rejects_invalid_references_before_http(refere
 def test_trino_attach_and_detach_use_distinct_payloads_and_bind_operations() -> None:
     pending = {"id": "operation-1", "done": False, "metadata": {}}
     recorder = RecordedTrinoTransport(
-        httpx.Response(200, json={**_cluster_response(), "entryId": "entry-3"}),
+        httpx.Response(200, json={**_cluster_response(), "entryId": "trino-1"}),
         httpx.Response(200, json=pending),
         httpx.Response(200, json=pending),
         httpx.Response(200, json={**pending, "done": True}),
@@ -589,7 +589,7 @@ def test_trino_catalog_mutations_reject_invalid_references_before_http(
 
 
 @pytest.mark.parametrize("method", ["attach_catalog", "detach_catalog"])
-def test_trino_catalog_mutations_reject_missing_lakehouse_id_and_unbound_cluster(method: str) -> None:
+def test_trino_catalog_mutations_reject_missing_entry_id_and_unbound_cluster(method: str) -> None:
     recorder = RecordedTrinoTransport()
     with DataLensHTTPClient(
         installation="yacloud",
@@ -1158,7 +1158,7 @@ def test_trino_get_and_refresh_map_complete_cluster_and_retry_reads() -> None:
         health="ALIVE",
         status="RUNNING",
         coordinator_url="",
-        entry_id="entry-3",
+        entry_id="trino-1",
         raw=first,
     )
     assert refreshed is not cluster
@@ -1183,7 +1183,7 @@ def test_trino_get_and_refresh_map_complete_cluster_and_retry_reads() -> None:
         health="ALIVE",
         status="UPDATING",
         coordinator_url="",
-        entry_id="entry-3",
+        entry_id="trino-1",
         raw=second,
     )
     assert cluster.name == "Analytics"

@@ -22,14 +22,12 @@ application submission method in this reference.
 
 ## Cluster identifiers
 
-The cluster entry data exposes three different identifiers. `SparkCluster.id`
-is the Lakehouse ID (`lakehouse_id` in entry data),
-`SparkCluster.entry_id` is the DataLens entry ID, and
-`SparkCluster.cluster_id` is the managed cloud cluster ID. For Spark cluster
-API methods—including `client.get.spark_cluster(by_id=...)` and lifecycle
-methods—use the Lakehouse ID from `id`. Do not pass `entry_id` or `cluster_id`
-where a Spark method expects the cluster `id`. Use `entry_id` only for a
-DataLens UI link or an API field that explicitly asks for the entry ID.
+Use the ordinary DataLens entry ID for all cluster actions and UI links.
+`SparkCluster.id` contains this entry ID; `SparkCluster.entry_id` exposes
+the same identity from the API response. `SparkCluster.cluster_id` is the
+managed cloud cluster ID and is not an argument to DataLens cluster actions.
+Use an entry ID from navigation or a known cluster link directly, even when
+entry `data` is null. No separate identifier lookup is needed.
 
 ## Authorize reads and confirm mutations
 
@@ -149,13 +147,12 @@ completed cluster; it never waits automatically.
 
 ## Get, list, and refresh clusters
 
-`client.get.spark_cluster(by_id=...)` expects the Lakehouse ID from the
-cluster entry data and returns a bound `SparkCluster`. `.refresh()` obtains a
+`client.get.spark_cluster(by_id=...)` expects the ordinary DataLens entry ID and returns a bound `SparkCluster`. `.refresh()` obtains a
 new snapshot; it does not mutate the old object. Use these only after
 result-handling and execution authorization.
 
 ```python
-cluster = client.get.spark_cluster(by_id="spark-lakehouse-id")
+cluster = client.get.spark_cluster(by_id="spark-entry-id")
 new_snapshot = cluster.refresh()
 ```
 
@@ -213,23 +210,23 @@ authorized refresh or lifecycle call.
 
 ## Bound lifecycle
 
-`refresh()`, `delete()`, `start()`, and `stop()` use the cluster's Lakehouse
+`refresh()`, `delete()`, `start()`, and `stop()` use the cluster's entry
 `id` for Spark API requests. Call the bound methods; do not substitute the
-DataLens `entry_id` or managed cloud `cluster_id`. Every mutation returns a
+managed cloud `cluster_id`. Every mutation returns a
 bound `LakehouseOperation` without automatic polling or mutation retry.
 
 ```python
-require_confirmation(f"Start Spark cluster {cluster.name!r} (Lakehouse id={cluster.id!r}) and incur cost?")
+require_confirmation(f"Start Spark cluster {cluster.name!r} (entry ID={cluster.id!r}) and incur cost?")
 operation = cluster.start()
 ```
 
 ```python
-require_confirmation(f"Stop Spark cluster {cluster.name!r} (Lakehouse id={cluster.id!r}) and disrupt work?")
+require_confirmation(f"Stop Spark cluster {cluster.name!r} (entry ID={cluster.id!r}) and disrupt work?")
 operation = cluster.stop()
 ```
 
 ```python
-require_confirmation(f"Delete Spark cluster {cluster.name!r} (Lakehouse id={cluster.id!r}) permanently?")
+require_confirmation(f"Delete Spark cluster {cluster.name!r} (entry ID={cluster.id!r}) permanently?")
 operation = cluster.delete()
 ```
 

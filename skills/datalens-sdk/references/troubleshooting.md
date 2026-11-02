@@ -164,8 +164,7 @@ fixed by retrying immediately.
 Explain the missing Spark authorization to the user and direct them to the
 affected cluster page:
 `https://datalens.ru/compute/spark/<entry_id>`. Use a known DataLens cluster
-entry ID (`SparkCluster.entry_id`), not `SparkCluster.id` or the managed
-`cluster_id`. If the entry ID is not already known, ask the user for it or for
+entry ID (`SparkCluster.id`), not the managed cloud `cluster_id`. If the entry ID is not already known, ask the user for it or for
 the cluster page link; do not make another SDK read just to construct the link.
 Tell the user to click **«Получить токен»**, then wait for them to confirm that
 they completed the flow before continuing the original task. Do not ask them
