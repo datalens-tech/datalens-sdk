@@ -19,6 +19,7 @@ from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirect
 from datalens_sdk.domain.ports import DashboardOperations
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.screenshot import (
+    DASHBOARD_PAGE_PARAMS,
     DASHBOARD_SCREENSHOT_WIDTH,
     DEFAULT_SCREENSHOT_TIMEOUT,
     EntityScreenshot,
@@ -440,8 +441,11 @@ class Dashboard:
 
         Without ``height`` the whole tab is captured at full length. With ``height``
         the picture is cut to that viewport unless ``full_page=True`` is passed.
-        ``tab`` is a tab id from ``tabs``; ``params`` are selector and dashboard
-        parameter values.
+        ``tab`` is a tab id from ``tabs``. ``params`` are values of parameters
+        declared in the dashboard settings; DataLens ignores any other name, so
+        an undeclared one is rejected here instead of producing an unfiltered picture.
+        Names DataLens reserves for the page itself, such as ``state``, cannot be
+        declared and are passed through unchanged.
         """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
@@ -449,22 +453,28 @@ class Dashboard:
             tab_ids = [_.id for _ in self.tabs if _.id]
             if tab not in tab_ids:
                 raise DataLensValidationError(f"Unknown dashboard tab id {tab!r}; available tab ids: {tab_ids}")
-        return self._operations.get_screenshot(
-            ScreenshotRequest.create(
-                entity_kind="dashboard",
-                entity_id=self.id,
-                width=width,
-                height=height,
-                full_page=height is None if full_page is None else full_page,
-                params=params,
-                rev_id=self.rev_id,
-                tab=tab,
-                theme=theme,
-                show_title=show_title,
-                show_tabs=show_tabs,
-                timeout=timeout,
-            )
+        request = ScreenshotRequest.create(
+            entity_kind="dashboard",
+            entity_id=self.id,
+            width=width,
+            height=height,
+            full_page=height is None if full_page is None else full_page,
+            params=params,
+            rev_id=self.rev_id,
+            tab=tab,
+            theme=theme,
+            show_title=show_title,
+            show_tabs=show_tabs,
+            timeout=timeout,
         )
+        declared = sorted(_mapping(_mapping(self.data.get("settings")).get("globalParams")))
+        undeclared = [_ for _ in request.params if _ not in declared and _ not in DASHBOARD_PAGE_PARAMS]
+        if undeclared:
+            raise DataLensValidationError(
+                f"Dashboard settings do not declare parameters {undeclared}, so DataLens would ignore their values; "
+                f"declared parameters: {declared}. Declare a parameter with dashboard.update.global_params(...) first"
+            )
+        return self._operations.get_screenshot(request)
 
     def refresh(self) -> Dashboard:
         """Re-read the current default revision of this dashboard.

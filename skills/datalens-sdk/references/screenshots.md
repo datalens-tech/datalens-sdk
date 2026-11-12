@@ -76,21 +76,28 @@ A dataset field title is accepted too, but prefer the guid: titles can repeat
 and change.
 
 **Dashboard.** Only parameters declared in the dashboard settings are read
-from `params`; every other name is ignored without an error, so the picture
-silently stays unfiltered. A dashboard parameter is free-form: a name and a
-list of values, with no type, and the name does not have to match a dataset
-field. A selector does not declare a parameter by itself. How a declared
-parameter reaches a selector depends on its name:
+from `params`; DataLens ignores every other name without an error. The SDK
+therefore rejects an undeclared name with `DataLensValidationError` before
+HTTP and lists the declared ones. A dashboard parameter is free-form: a name
+and a list of values, with no type, and the name does not have to match a
+dataset field. A selector does not declare a parameter by itself. How a
+declared parameter reaches a selector depends on its name:
 
 - a name equal to the selector's dataset field id is linked to that selector
   automatically;
 - any other name needs an explicit alias that links the dashboard parameter to
   the selector's field; see [dashboards.md](dashboards.md).
 
-Before filtering a dashboard screenshot, read the declared names from
-`dashboard.data["settings"]["globalParams"]`. When the needed one is missing,
-declaring it with `dashboard.update.global_params({...})` changes the
-dashboard and needs the user's consent. See [parameters.md](parameters.md),
+DataLens reserves some names for the page itself: `state`, `mode`, `focus`,
+`grid`, `scale`, `tz`, `timezone`, `date`, `datetime`, `report_page`, and
+`preview_mode`. They cannot be declared as dashboard parameters. The SDK passes
+them through unchanged, and their effect on a screenshot is not guaranteed.
+
+The SDK checks the declaration only. A declared parameter that is linked to
+nothing still leaves the picture unfiltered, without an error. The declared
+names are in `dashboard.data["settings"]["globalParams"]`. When the needed one
+is missing, declaring it with `dashboard.update.global_params({...})` changes
+the dashboard and needs the user's consent. See [parameters.md](parameters.md),
 the
 [dashboard parameter rules](https://yandex.cloud/en/docs/datalens/dashboard/dashboard_parameters),
 and the

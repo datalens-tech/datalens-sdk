@@ -17,8 +17,11 @@
   `get_temp_s3_url()`. The loaded revision is rendered as an embedded page
   without the DataLens navigation. Dashboards are captured at full length and
   accept `tab`, `show_title`, and `show_tabs`; both entities accept `theme`,
-  `params`, and a per-call `timeout`. A rate-limited screenshot request is sent
-  again after the server's `Retry-After` when that wait fits in `timeout`.
+  `params`, and a per-call `timeout`. Dashboard `params` must name parameters
+  declared in the dashboard settings, because DataLens ignores any other name;
+  an undeclared one is rejected before HTTP. A rate-limited screenshot request
+  is sent again after the server's `Retry-After` when that wait fits in
+  `timeout`.
 - Add `APIErrorContext.retry_after` with the seconds from a numeric
   `Retry-After` response header.
 

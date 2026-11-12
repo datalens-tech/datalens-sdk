@@ -35,6 +35,9 @@ NO_TITLE_PARAM = "_no_title"
 NO_TABS_PARAM = "_no_tabs"
 ENABLED = "1"
 SCREENSHOT_THEMES = ("light", "dark")
+DASHBOARD_PAGE_PARAMS = frozenset(
+    {"state", "mode", "focus", "grid", "scale", "tz", "timezone", "date", "datetime", "report_page", "preview_mode"}
+)
 
 UNBOUND_SCREENSHOT = "Screenshot is not bound to client operations. Take it from a client-loaded chart or dashboard."
 

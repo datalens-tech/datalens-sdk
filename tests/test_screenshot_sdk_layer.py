@@ -94,7 +94,8 @@ def dashboard_entry() -> dict[str, object]:
             "tabs": [
                 {"id": "tab-1", "title": "Overview", "items": [{"id": "i1", "type": "widget", "data": {"tabs": []}}]},
                 {"id": "tab-2", "title": "Details", "items": [{"id": "i2", "type": "widget", "data": {"tabs": []}}]},
-            ]
+            ],
+            "settings": {"globalParams": {"Region": []}},
         },
     }
 
@@ -296,6 +297,8 @@ def test_screenshot_validates_arguments_before_http() -> None:
         dashboard.screenshot(params={"_embedded": "0"})
     with pytest.raises(dl.DataLensValidationError, match="Unknown dashboard tab id 'Details'"):
         dashboard.screenshot(tab="Details")
+    with pytest.raises(dl.DataLensValidationError, match=r"do not declare parameters \['Segment'\]"):
+        dashboard.screenshot(params={"Region": "East", "Segment": "Consumer"})
     assert recorder.calls("/rpc/getDashScreenshot") == []
 
 

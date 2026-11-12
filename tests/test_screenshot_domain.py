@@ -150,7 +150,10 @@ def test_chart_screenshot_uses_default_viewport_and_loaded_revision() -> None:
 def loaded_dashboard(operations: RecordingOperations) -> dl.Dashboard:
     return dl.Dashboard(
         id="dash-1",
-        data={"tabs": [{"id": "tab-1", "title": "Overview"}, {"id": "tab-2", "title": "Details"}]},
+        data={
+            "tabs": [{"id": "tab-1", "title": "Overview"}, {"id": "tab-2", "title": "Details"}],
+            "settings": {"globalParams": {"region_guid": [], "env": ["prod"]}},
+        },
         rev_id="rev-3",
         _operations=cast(DashboardOperations, operations),
     )
@@ -206,6 +209,48 @@ def test_dashboard_screenshot_rejects_an_unknown_tab_id_before_http() -> None:
     with pytest.raises(dl.DataLensValidationError, match=r"Unknown dashboard tab id 'Details'.*'tab-1', 'tab-2'"):
         loaded_dashboard(operations).screenshot(tab="Details")
     assert operations.requests == []
+
+
+def test_dashboard_screenshot_accepts_only_parameters_declared_in_its_settings() -> None:
+    operations = RecordingOperations()
+    dashboard = loaded_dashboard(operations)
+
+    dashboard.screenshot(params={"region_guid": ["West", "East"], "env": "test"})
+
+    assert [dict(_.params) for _ in operations.requests] == [{"region_guid": ("West", "East"), "env": "test"}]
+    with pytest.raises(
+        dl.DataLensValidationError,
+        match=r"do not declare parameters \['Region', 'segment'\].*declared parameters: \['env', 'region_guid'\]",
+    ):
+        dashboard.screenshot(params={"region_guid": "West", "Region": "West", "segment": "Consumer"})
+    assert len(operations.requests) == 1
+
+
+def test_dashboard_screenshot_passes_page_names_reserved_by_datalens_without_declaration() -> None:
+    operations = RecordingOperations()
+    dashboard = dl.Dashboard(
+        id="dash-1", data={"tabs": [{"id": "tab-1"}]}, _operations=cast(DashboardOperations, operations)
+    )
+
+    dashboard.screenshot(params={"state": "a1b2c3", "scale": "d", "tz": "UTC"})
+
+    assert [dict(_.params) for _ in operations.requests] == [{"state": "a1b2c3", "scale": "d", "tz": "UTC"}]
+    with pytest.raises(dl.DataLensValidationError, match=r"do not declare parameters \['Region'\]"):
+        dashboard.screenshot(params={"state": "a1b2c3", "Region": "West"})
+
+
+def test_dashboard_without_declared_parameters_rejects_any_params_but_reserved_names_fail_first() -> None:
+    operations = RecordingOperations()
+    dashboard = dl.Dashboard(
+        id="dash-1", data={"tabs": [{"id": "tab-1"}]}, _operations=cast(DashboardOperations, operations)
+    )
+
+    with pytest.raises(dl.DataLensValidationError, match=r"declared parameters: \[\]"):
+        dashboard.screenshot(params={"Region": "West"})
+    with pytest.raises(dl.DataLensValidationError, match="'tab' is set by the SDK"):
+        dashboard.screenshot(params={"tab": "tab-1"})
+    assert dashboard.screenshot().entity_id == "dash-1"
+    assert len(operations.requests) == 1
 
 
 def test_chart_screenshot_passes_the_theme() -> None:
