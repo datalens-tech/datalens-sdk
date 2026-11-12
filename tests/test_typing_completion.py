@@ -33,6 +33,7 @@ from datalens_sdk import (
     DatasetUpdate,
     DirectoryPager,
     EditorChart,
+    EntityScreenshot,
     EntryLocation,
     EntryRelation,
     EntrySummary,
@@ -65,6 +66,7 @@ from datalens_sdk import (
     RawWizardChartCreate,
     RawWizardChartReplace,
     RestCatalogCreate,
+    ScreenshotParams,
     SparkApplication,
     SparkApplicationCatalogRef,
     SparkApplicationConnectSpec,
@@ -1246,6 +1248,31 @@ def test_spark_lifecycle_surface_is_visible_to_static_tools() -> None:
         assert_type(cluster.start(), LakehouseOperation)
         assert_type(cluster.stop(), LakehouseOperation)
         assert_type(cluster.delete(), LakehouseOperation)
+
+
+def test_screenshot_surface_is_visible_to_static_tools() -> None:
+    yc_client = DataLensClientYC(auth=None, transport=_object_transport())
+    enterprise_client = DataLensClientEnterprise(auth=None, base_url="http://test", transport=_object_transport())
+
+    if TYPE_CHECKING:
+        params: ScreenshotParams = {"City": ["Moscow", "Kazan"], "Year": "2026"}
+        chart_screenshot = yc_client.get.chart(by_id="chart-1").screenshot(width=800, height=600, params=params)
+        assert_type(chart_screenshot, EntityScreenshot)
+        assert_type(chart_screenshot.image, bytes)
+        assert_type(chart_screenshot.width, int | None)
+        assert_type(chart_screenshot.save("chart.png"), Path)
+        assert_type(chart_screenshot.get_temp_s3_url(), str)
+        dashboard_screenshot = enterprise_client.get.dashboard(by_id="dash-1").screenshot(
+            tab="tab-1", full_page=True, params=params, timeout=300.0
+        )
+        assert_type(dashboard_screenshot, EntityScreenshot)
+
+    hints = get_type_hints(sdk.Dashboard.screenshot)
+    assert hints["return"] is EntityScreenshot
+    assert get_type_hints(sdk.Chart.screenshot)["return"] is EntityScreenshot
+    assert sdk.ScreenshotParams is ScreenshotParams
+    assert "screenshot" in dir(sdk.Dashboard)
+    assert "screenshot" in dir(sdk.Chart)
 
 
 def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> None:

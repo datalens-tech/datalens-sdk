@@ -5,8 +5,10 @@ from typing import Protocol, cast
 
 from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.domain.screenshot import ScreenshotRequest
+from datalens_sdk.errors import NotSupportedError
 
 SCREENSHOT_FORMAT = "png"
+SCREENSHOT_DTO_NAMES = ("GetChartScreenshotArgsDTO", "GetDashScreenshotArgsDTO", "GetScreenshotResultReadDTO")
 
 
 class ScreenshotWriteDTOProtocol(Protocol):
@@ -32,7 +34,12 @@ class ScreenshotDtoModule(Protocol):
 
 
 def resolve_dto_module(dto_module: ScreenshotDtoModule | None) -> ScreenshotDtoModule:
-    return cast(ScreenshotDtoModule, generated_dto if dto_module is None else dto_module)
+    """Return the generated DTO module, or fail when its API contract has no screenshot routes."""
+    module = generated_dto if dto_module is None else dto_module
+    for name in SCREENSHOT_DTO_NAMES:
+        if not hasattr(module, name):
+            raise NotSupportedError("Screenshots are not part of the API contract generated for this installation")
+    return cast(ScreenshotDtoModule, module)
 
 
 class ScreenshotConverter:
