@@ -2,20 +2,24 @@ from __future__ import annotations
 
 import base64
 import binascii
+import logging
+import time
 
 from pydantic import ValidationError
 
 from datalens_sdk.converter.screenshot import ScreenshotConverter, ScreenshotDtoModule
 from datalens_sdk.domain.ports import ScreenshotOperations
 from datalens_sdk.domain.screenshot import EntityScreenshot, ScreenshotRequest
-from datalens_sdk.errors import translate_dto_validation_error, translate_invalid_response_error
+from datalens_sdk.errors import RateLimitError, translate_dto_validation_error, translate_invalid_response_error
 from datalens_sdk.http import DEFAULT_RETRY_POLICY, HTTPClientProtocol, RetryPolicy
 
+LOGGER = logging.getLogger(__name__)
 SCREENSHOT_OPERATIONS = {"chart": "getChartScreenshot", "dashboard": "getDashScreenshot"}
+MIN_RATE_LIMIT_WAIT = 1.0
 
 
 def screenshot_retry_policy(timeout: float) -> RetryPolicy:
-    """Wait up to ``timeout`` seconds for one render; a failed render is never repeated."""
+    """Wait up to ``timeout`` seconds for one render; the transport never repeats it."""
     connect_timeout = DEFAULT_RETRY_POLICY.connect_timeout
     return RetryPolicy(
         total_timeout=timeout + connect_timeout,
@@ -67,12 +71,41 @@ class ScreenshotService(ScreenshotOperations):
             payload = ScreenshotConverter.from_domain_request(request, s3=s3, dto_module=self._dto_module).to_payload()
         except ValidationError as exc:
             raise translate_dto_validation_error(operation=operation, reason=str(exc)) from exc
-        retry_policy = screenshot_retry_policy(request.timeout)
-        if request.entity_kind == "chart":
-            response = self._api.get_chart_screenshot(payload, retry_policy=retry_policy)
-        else:
-            response = self._api.get_dash_screenshot(payload, retry_policy=retry_policy)
+        response = self.__post_within_rate_limit(request, payload, operation=operation)
         try:
             return ScreenshotConverter.to_data(response, dto_module=self._dto_module)
         except ValidationError as exc:
             raise translate_dto_validation_error(operation=operation, reason=str(exc)) from exc
+
+    def __post_within_rate_limit(
+        self, request: ScreenshotRequest, payload: dict[str, object], *, operation: str
+    ) -> dict[str, object]:
+        """Send the render request; a 429 is waited out by its Retry-After while ``timeout`` allows.
+
+        A rate-limited request never started a render, so sending it again is safe.
+        Any other failure is raised at once.
+        """
+        deadline = time.monotonic() + request.timeout
+        remaining = request.timeout
+        while True:
+            retry_policy = screenshot_retry_policy(remaining)
+            try:
+                if request.entity_kind == "chart":
+                    return self._api.get_chart_screenshot(payload, retry_policy=retry_policy)
+                return self._api.get_dash_screenshot(payload, retry_policy=retry_policy)
+            except RateLimitError as error:
+                retry_after = error.context.retry_after
+                if retry_after is None:
+                    raise
+                wait = max(retry_after, MIN_RATE_LIMIT_WAIT)
+                if wait >= deadline - time.monotonic():
+                    raise
+                LOGGER.warning(
+                    "Screenshot rate limit reached, waiting before the next attempt: operation=%s request_id=%s "
+                    "wait=%.0fs",
+                    operation,
+                    error.context.request_id,
+                    wait,
+                )
+                time.sleep(wait)
+                remaining = deadline - time.monotonic()

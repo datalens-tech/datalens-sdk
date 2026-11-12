@@ -47,7 +47,7 @@ so the DataLens navigation, the entry path, and the chart menu are not in it.
 | `show_title` | not available | `True` | keep the dashboard title |
 | `show_tabs` | not available | `True` | keep the dashboard tab bar |
 | `params` | optional | optional | parameter values as page query parameters |
-| `timeout` | `120` seconds | `120` seconds | how long to wait for one render |
+| `timeout` | `120` seconds | `120` seconds | time budget for the call, including a wait for the rate limit |
 
 A chart fills its viewport, so choose `width` and `height` for the shape you
 need. A dashboard without `height` is captured at its full length, and never
@@ -64,9 +64,18 @@ the produced picture, and `height` is `None` when it was not sent.
 
 `params` maps a name to a string or a sequence of strings. Format numbers and
 dates as strings yourself. A chart accepts the names of its dataset fields and
-parameters; a sequence filters by several values. A dashboard applies the
-parameters and selector fields it defines and ignores the rest without an
-error. See [parameters.md](parameters.md) and the
+parameters; a sequence filters by several values.
+
+A dashboard accepts only the parameters declared in its settings and ignores
+every other name without an error, so the picture silently stays unfiltered.
+A selector on the dashboard does not declare a parameter by itself. Before
+filtering a dashboard screenshot, check `dashboard.data["settings"]["globalParams"]`
+for the name. When it is missing, declare it once with
+`dashboard.update.global_params({...})`, using the dataset field id as the
+name for a dataset-based selector; that update changes the dashboard and needs
+the user's consent. See [parameters.md](parameters.md), the
+[dashboard parameter rules](https://yandex.cloud/en/docs/datalens/dashboard/dashboard_parameters),
+and the
 [parameter naming rules](https://yandex.cloud/en/docs/datalens/concepts/parameters).
 
 The SDK owns three kinds of page parameters. Passing them in `params` fails
@@ -99,13 +108,17 @@ link.
 ## Rate limit, timeouts, and failures
 
 Yandex Cloud currently accepts 3 screenshots per minute for charts and 3 per
-minute for dashboards. `get_temp_s3_url()` counts as one. The next request in the same
-minute fails with `RateLimitError`; the SDK does not wait or retry. Space the
-calls out, and after a `RateLimitError` wait a minute before the next one.
+minute for dashboards. `get_temp_s3_url()` counts as one. When the server
+answers that the limit is reached, the SDK waits for the time the server names
+and sends the request again, as long as that wait fits in `timeout`. A fourth
+screenshot in a row can therefore take up to a minute longer. When the wait
+does not fit, or the server names none, the call fails with `RateLimitError`;
+`error.context.retry_after` holds the named seconds. Do not add your own retry
+loop around it.
 
 A render usually takes a few seconds. For a heavy dashboard raise `timeout`
-instead of repeating the call: the SDK sends one request and never repeats a
-render. A client-side timeout raises `DataLensTransportError`.
+instead of repeating the call: the SDK never repeats a render that started.
+A client-side timeout raises `DataLensTransportError`.
 
 Invalid arguments fail locally with `DataLensValidationError`. An entity id
 the server cannot render fails with `BadRequestError`. A malformed response

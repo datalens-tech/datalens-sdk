@@ -186,8 +186,9 @@ screenshot.save("dashboard.png")
 ```
 
 The screenshot API is experimental and accepts 3 chart and 3 dashboard
-screenshots per minute. `screenshot.get_temp_s3_url()` renders the same picture
-again and returns a temporary signed link to it.
+screenshots per minute; the SDK waits out that limit when the wait fits in the
+call's `timeout`. `screenshot.get_temp_s3_url()` renders the same picture again
+and returns a temporary signed link to it.
 
 ## Examples
 

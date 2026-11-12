@@ -315,3 +315,74 @@ def test_screenshot_is_not_supported_when_the_generated_contract_has_no_screensh
     with pytest.raises(dl.NotSupportedError, match="Screenshots are not part of the API contract"):
         service.get_screenshot_url(request)
     assert recorder.requests == []
+
+
+def rate_limited(retry_after: str | None) -> httpx.Response:
+    headers = {} if retry_after is None else {"retry-after": retry_after}
+    return httpx.Response(429, headers=headers, json={"message": "Too many requests, please try again later."})
+
+
+@pytest.mark.parametrize(("retry_after", "expected_wait"), [("7", 7.0), ("0", 1.0)])
+def test_screenshot_waits_out_the_rate_limit_named_by_the_server(
+    monkeypatch: pytest.MonkeyPatch, retry_after: str, expected_wait: float
+) -> None:
+    sleeps: list[float] = []
+    monkeypatch.setattr("datalens_sdk.api.screenshot.time.sleep", sleeps.append)
+    recorder = RecordedTransport(
+        screenshot_routes(
+            "/rpc/getChartScreenshot",
+            [rate_limited(retry_after), httpx.Response(200, json={"data": PNG_BASE64})],
+        )
+    )
+    chart = make_client(recorder).get.ql_chart(by_id="chart-1")
+
+    screenshot = chart.screenshot()
+
+    assert screenshot.image == PNG_BYTES
+    assert sleeps == [expected_wait]
+    first, second = recorder.bodies("/rpc/getChartScreenshot")
+    assert first == second
+
+
+def test_temp_s3_url_waits_out_the_rate_limit_too(monkeypatch: pytest.MonkeyPatch) -> None:
+    sleeps: list[float] = []
+    monkeypatch.setattr("datalens_sdk.api.screenshot.time.sleep", sleeps.append)
+    recorder = RecordedTransport(
+        screenshot_routes(
+            "/rpc/getChartScreenshot",
+            [
+                httpx.Response(200, json={"data": PNG_BASE64}),
+                rate_limited("53"),
+                httpx.Response(200, json={"data": S3_URL}),
+            ],
+        )
+    )
+    chart = make_client(recorder).get.ql_chart(by_id="chart-1")
+
+    assert chart.screenshot().get_temp_s3_url() == S3_URL
+    assert sleeps == [53.0]
+
+
+@pytest.mark.parametrize(
+    ("retry_after", "expected_retry_after"),
+    [(None, None), ("soon", None), ("500", 500.0)],
+)
+def test_screenshot_raises_rate_limit_error_when_the_wait_is_unknown_or_exceeds_the_timeout(
+    monkeypatch: pytest.MonkeyPatch, retry_after: str | None, expected_retry_after: float | None
+) -> None:
+    sleeps: list[float] = []
+    monkeypatch.setattr("datalens_sdk.api.screenshot.time.sleep", sleeps.append)
+    recorder = RecordedTransport(
+        screenshot_routes(
+            "/rpc/getDashScreenshot",
+            [rate_limited(retry_after), httpx.Response(200, json={"data": PNG_BASE64})],
+        )
+    )
+    dashboard = make_client(recorder).get.dashboard(by_id="dash-1")
+
+    with pytest.raises(dl.RateLimitError) as raised:
+        dashboard.screenshot(timeout=30)
+
+    assert raised.value.context.retry_after == expected_retry_after
+    assert sleeps == []
+    assert len(recorder.calls("/rpc/getDashScreenshot")) == 1
