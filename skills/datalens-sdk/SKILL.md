@@ -22,7 +22,7 @@ description: >-
   workbook_id, or application_id; and requests to create, update, inspect,
   import, export, copy,
   or diagnose DataLens objects with code. NOT for: business questions about
-  metric values; viewing or screenshotting the DataLens web UI; embedding or
+  metric values; browsing the DataLens web UI; embedding or
   iframes; raw SQL/YQL analysis that does not manage DataLens entities; raw
   HTTP API calls.
 ---
@@ -32,9 +32,9 @@ description: >-
 Operate Yandex DataLens through the official Python SDK. This skill covers
 installation configuration and credentials, the full entity
 lifecycle (connection → dataset → chart → dashboard), standalone HTML pages,
-and safe editing practices. Write Python against the SDK — never hand-built
-HTTP requests.
-For UI viewing or screenshots, business metric interpretation, embedding, or
+server-rendered chart and dashboard screenshots, and safe editing practices.
+Write Python against the SDK — never hand-built HTTP requests.
+For browsing the web UI, business metric interpretation, embedding, or
 raw REST work, state that the request is outside this skill and stop instead of
 improvising an SDK solution.
 
@@ -327,6 +327,7 @@ Editor index replaces the public Editor subtree for that installation.
 | A custom-code (JavaScript) chart or selector                               | [references/editor-charts/_index.md](references/editor-charts/_index.md) |
 | Parameters across Dataset/Wizard, QL, Editor, widgets, dashboards, selectors, or chart clicks | [references/parameters.md](references/parameters.md) |
 | Dashboards: tabs, widgets, selectors, layout, read model                   | [references/dashboards.md](references/dashboards.md)                     |
+| A picture of a saved chart or dashboard; a visual check of a result         | [references/screenshots.md](references/screenshots.md)                   |
 | Finding, listing, moving, renaming entities; revision history; containers | [references/navigation.md](references/navigation.md)                     |
 | Listing DataLens REST catalogs or selecting one for a Trino cluster (Yandex Cloud only) | [references/rest-catalogs.md](references/rest-catalogs.md)                |
 | Creating, getting, listing, updating, or deleting a Yandex Cloud environment | [references/cloud-environments.md](references/cloud-environments.md) |
@@ -371,7 +372,7 @@ list for the configured client, where `family` is `"wizard"`, `"ql"`, or
 |---|---|
 | A data factory is absent from its capability mapping, or a chart factory is absent from `client.capabilities["chart_factories"][family]` | Report that it is unavailable on the selected installation; do not invent a factory or setter |
 | The relevant chart matrix marks an operation unsupported | Use a documented alternative only when one exists; otherwise report the limitation and stop |
-| The request is about the web UI, screenshots, embedding, or interpreting business metric values | Say that it is outside this SDK skill's scope and stop; do not disguise it as SDK automation |
+| The request is about browsing the web UI, embedding, or interpreting business metric values | Say that it is outside this SDK skill's scope and stop; do not disguise it as SDK automation |
 | Completion would require raw HTTP, a private import, or a hand-built payload | Stop at the public SDK boundary; do not bypass it |
 
 ### Which chart family?
@@ -450,6 +451,7 @@ Use the non-executing allowlisted reader from [references/setup.md](references/s
 | `references/editor-charts/<renderer>.md`        | one minimal working payload, the renderer's SDK contract, and exact runtime-documentation sections  |
 | `references/parameters.md`                      | parameter definitions, override precedence, selectors, global/widget/action params                 |
 | `references/dashboards.md`                      | building or editing dashboards; discovering existing item, selector, and chart-tab ids             |
+| `references/screenshots.md`                     | server-rendered PNG of a chart or dashboard, result-handling rule, tab and params, temporary link  |
 | `references/navigation.md`                      | listing/finding/moving entities, revision history; collections, workbooks, folders                                   |
 | `references/rest-catalogs.md`                   | Yandex Cloud REST catalog listing and Trino catalog membership references                                           |
 | `references/trino-clusters.md`                  | Yandex Cloud managed Trino clusters, resource presets, lifecycle, and catalog membership                           |

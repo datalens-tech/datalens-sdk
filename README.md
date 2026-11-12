@@ -170,6 +170,18 @@ by GUID. Without a saved handle, use an exact GUID through
 `chart.fields.by_guid(...)`; `chart.fields` intentionally returns
 `DatasetField` snapshots and does not reconstruct handles.
 
+Loaded charts and dashboards can be rendered on the server and saved as PNG
+files. A dashboard screenshot accepts a tab id and selector values:
+
+```python
+dashboard = client.get.dashboard(by_id="<dashboard-id>")
+screenshot = dashboard.screenshot(tab=dashboard.tabs[0].id, params={"Region": ["East", "West"]})
+screenshot.save("dashboard.png")
+```
+
+The screenshot API is experimental. `screenshot.get_temp_s3_url()` renders the
+same picture again and returns a temporary link to it.
+
 ## Examples
 
 Runnable Yandex Cloud examples are available in [`examples/`](examples/):

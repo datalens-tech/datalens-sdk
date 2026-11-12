@@ -10,6 +10,13 @@
   Lakehouse IDs are no longer used; `cluster.cluster_id` remains the managed
   cloud cluster ID.
 
+### Added
+
+- Add experimental server-rendered screenshots: `screenshot()` on loaded charts
+  and dashboards returns an `EntityScreenshot` with PNG bytes, `save(path)`, and
+  `get_temp_s3_url()`. The loaded revision is rendered; dashboards accept a
+  `tab` id, and both accept `params` and a per-call `timeout`.
+
 ## 3.2.0 - 2026-10-07
 
 ### Breaking changes
