@@ -62,18 +62,36 @@ the produced picture, and `height` is `None` when it was not sent.
 
 ## Parameters and filters
 
-`params` maps a name to a string or a sequence of strings. Format numbers and
-dates as strings yourself. A chart accepts the names of its dataset fields and
-parameters; a sequence filters by several values.
+`params` maps a name to a string or a sequence of strings; a sequence filters
+by several values. Format numbers and dates as strings yourself. The name a
+value needs depends on the entity.
 
-A dashboard accepts only the parameters declared in its settings and ignores
-every other name without an error, so the picture silently stays unfiltered.
-A selector on the dashboard does not declare a parameter by itself. Before
-filtering a dashboard screenshot, check `dashboard.data["settings"]["globalParams"]`
-for the name. When it is missing, declare it once with
-`dashboard.update.global_params({...})`, using the dataset field id as the
-name for a dataset-based selector; that update changes the dashboard and needs
-the user's consent. See [parameters.md](parameters.md), the
+**Chart.** Nothing has to be declared. A name applies when it is one of:
+
+- the guid of a field, whether the field lives in the dataset or was created
+  in the chart itself; take it from `chart.fields` or `dataset.fields`;
+- the name of a parameter declared in the dataset.
+
+A dataset field title is accepted too, but prefer the guid: titles can repeat
+and change.
+
+**Dashboard.** Only parameters declared in the dashboard settings are read
+from `params`; every other name is ignored without an error, so the picture
+silently stays unfiltered. A dashboard parameter is free-form: a name and a
+list of values, with no type, and the name does not have to match a dataset
+field. A selector does not declare a parameter by itself. How a declared
+parameter reaches a selector depends on its name:
+
+- a name equal to the selector's dataset field id is linked to that selector
+  automatically;
+- any other name needs an explicit alias that links the dashboard parameter to
+  the selector's field; see [dashboards.md](dashboards.md).
+
+Before filtering a dashboard screenshot, read the declared names from
+`dashboard.data["settings"]["globalParams"]`. When the needed one is missing,
+declaring it with `dashboard.update.global_params({...})` changes the
+dashboard and needs the user's consent. See [parameters.md](parameters.md),
+the
 [dashboard parameter rules](https://yandex.cloud/en/docs/datalens/dashboard/dashboard_parameters),
 and the
 [parameter naming rules](https://yandex.cloud/en/docs/datalens/concepts/parameters).
