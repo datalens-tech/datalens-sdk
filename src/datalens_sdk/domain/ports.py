@@ -59,6 +59,7 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate
     from datalens_sdk.domain.rest_catalog import RestCatalog, RestCatalogCreate, RestCatalogListOptions
     from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
+    from datalens_sdk.domain.screenshot import EntityScreenshot, ScreenshotRequest
     from datalens_sdk.domain.spark_application import (
         SparkApplication,
         SparkApplicationCreate,
@@ -241,6 +242,13 @@ class NavigationOperations(Protocol):
 @runtime_checkable
 class EntryRevisionsOperations(Protocol):
     def get_entry_revisions(self, entry_id: str, options: EntryRevisionsOptions) -> Pager[EntryRevision]: ...
+
+
+@runtime_checkable
+class ScreenshotOperations(Protocol):
+    def get_screenshot(self, request: ScreenshotRequest) -> EntityScreenshot: ...
+
+    def get_screenshot_url(self, request: ScreenshotRequest) -> str: ...
 
 
 @runtime_checkable
@@ -457,7 +465,7 @@ class HtmlPageOperations(EntryRevisionsOperations, Protocol):
 
 
 @runtime_checkable
-class DashboardOperations(EntryRevisionsOperations, Protocol):
+class DashboardOperations(EntryRevisionsOperations, ScreenshotOperations, Protocol):
     def create_dashboard(self, builder: DashboardCreate) -> Dashboard: ...
 
     def create_dashboard_from_raw(self, spec: RawCreateSpec) -> Dashboard: ...
@@ -530,7 +538,7 @@ class LicenseOperations(Protocol):
 
 
 @runtime_checkable
-class ChartOperations(EntryRevisionsOperations, Protocol):
+class ChartOperations(EntryRevisionsOperations, ScreenshotOperations, Protocol):
     @property
     def installation(self) -> str: ...
 

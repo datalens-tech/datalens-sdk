@@ -17,7 +17,7 @@ from datalens_sdk.domain.chart_types import GradientPaletteId
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.fields import DatasetField, WizardHierarchy
-from datalens_sdk.domain.ports import NavigationOperations
+from datalens_sdk.domain.ports import NavigationOperations, ScreenshotOperations
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.errors import DataLensAPIError, DataLensConfigurationError
 from datalens_sdk.http import DataLensHTTPClient
@@ -989,6 +989,7 @@ def test_update_raises_on_conflict() -> None:
         api=ChartAPI(client),
         entries_service=EntriesService(api=EntriesAPI(client)),
         navigation_operations=cast(NavigationOperations, object()),
+        screenshot_operations=cast(ScreenshotOperations, object()),
     )
     chart = WizardChart(
         id="chart-1",
@@ -1248,6 +1249,7 @@ def test_update_raises_on_409() -> None:
         api=ChartAPI(client),
         entries_service=EntriesService(api=EntriesAPI(client)),
         navigation_operations=cast(NavigationOperations, object()),
+        screenshot_operations=cast(ScreenshotOperations, object()),
     )
     chart = WizardChart(
         id="chart-1",

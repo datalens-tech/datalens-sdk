@@ -18,6 +18,12 @@ from datalens_sdk.domain.entry_location import (
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import DashboardOperations
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
+from datalens_sdk.domain.screenshot import (
+    DEFAULT_SCREENSHOT_TIMEOUT,
+    EntityScreenshot,
+    ScreenshotParams,
+    ScreenshotRequest,
+)
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.artifacts import ArtifactPath, write_dashboard_artifact
 from datalens_sdk.serialization.json_types import JsonValue
@@ -414,6 +420,37 @@ class Dashboard:
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
         return self._operations.export_dashboard_with_dependencies(self, path)
+
+    def screenshot(
+        self,
+        *,
+        width: int | None = None,
+        height: int | None = None,
+        full_page: bool | None = None,
+        tab: str | None = None,
+        params: ScreenshotParams | None = None,
+        timeout: float = DEFAULT_SCREENSHOT_TIMEOUT,
+    ) -> EntityScreenshot:
+        """Render the revision loaded into this dashboard on the server and return it as a PNG.
+
+        ``tab`` is a tab id; ``params`` are selector and chart parameters passed
+        as page query parameters.
+        """
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        return self._operations.get_screenshot(
+            ScreenshotRequest.create(
+                entity_kind="dashboard",
+                entity_id=self.id,
+                width=width,
+                height=height,
+                full_page=full_page,
+                params=params,
+                rev_id=self.rev_id,
+                tab=tab,
+                timeout=timeout,
+            )
+        )
 
     def refresh(self) -> Dashboard:
         """Re-read the current default revision of this dashboard.
