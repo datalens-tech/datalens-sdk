@@ -18,13 +18,23 @@ if TYPE_CHECKING:
 ScreenshotParamValue: TypeAlias = str | Sequence[str]
 ScreenshotParams: TypeAlias = Mapping[str, ScreenshotParamValue]
 ScreenshotEntityKind: TypeAlias = Literal["chart", "dashboard"]
+ScreenshotTheme: TypeAlias = Literal["light", "dark"]
 
 DEFAULT_SCREENSHOT_TIMEOUT = 120.0
 CHART_SCREENSHOT_WIDTH = 1024
 CHART_SCREENSHOT_HEIGHT = 768
+DASHBOARD_SCREENSHOT_WIDTH = 1280
 MAX_SCREENSHOT_SIDE = 6000
 REVISION_PARAM = "revId"
 TAB_PARAM = "tab"
+VIEW_PARAM_PREFIX = "_"
+EMBEDDED_PARAM = "_embedded"
+NO_CONTROLS_PARAM = "_no_controls"
+THEME_PARAM = "_theme"
+NO_TITLE_PARAM = "_no_title"
+NO_TABS_PARAM = "_no_tabs"
+ENABLED = "1"
+SCREENSHOT_THEMES = ("light", "dark")
 
 UNBOUND_SCREENSHOT = "Screenshot is not bound to client operations. Take it from a client-loaded chart or dashboard."
 
@@ -65,6 +75,10 @@ def normalize_params(
             raise DataLensValidationError(
                 f"Screenshot parameter {key!r} is set by the SDK and cannot be passed in params"
             )
+        if key.startswith(VIEW_PARAM_PREFIX):
+            raise DataLensValidationError(
+                f"Screenshot parameter {key!r} is a page view setting owned by the SDK; use the screenshot arguments"
+            )
         normalized[key] = normalize_param_value(key, value)
     return MappingProxyType(normalized)
 
@@ -79,6 +93,9 @@ class ScreenshotRequest:
     params: Mapping[str, str | tuple[str, ...]] = field(default_factory=dict)
     rev_id: str | None = None
     tab: str | None = None
+    theme: ScreenshotTheme | None = None
+    show_title: bool = True
+    show_tabs: bool = True
     timeout: float = DEFAULT_SCREENSHOT_TIMEOUT
 
     def __post_init__(self) -> None:
@@ -92,6 +109,12 @@ class ScreenshotRequest:
             raise DataLensValidationError("Screenshot full_page must be a boolean")
         if self.tab is not None and (self.entity_kind != "dashboard" or not self.tab):
             raise DataLensValidationError("Screenshot tab must be a non-empty dashboard tab id")
+        if self.theme is not None and self.theme not in SCREENSHOT_THEMES:
+            raise DataLensValidationError(f"Screenshot theme must be one of {SCREENSHOT_THEMES}")
+        if not isinstance(self.show_title, bool) or not isinstance(self.show_tabs, bool):
+            raise DataLensValidationError("Screenshot show_title and show_tabs must be booleans")
+        if self.entity_kind != "dashboard" and not (self.show_title and self.show_tabs):
+            raise DataLensValidationError("Screenshot show_title and show_tabs apply only to dashboards")
         if isinstance(self.timeout, bool) or not isinstance(self.timeout, (int, float)):
             raise DataLensValidationError("Screenshot timeout must be a number of seconds")
         if not math.isfinite(self.timeout) or self.timeout <= 0:
@@ -109,6 +132,9 @@ class ScreenshotRequest:
         params: ScreenshotParams | None = None,
         rev_id: str | None = None,
         tab: str | None = None,
+        theme: ScreenshotTheme | None = None,
+        show_title: bool = True,
+        show_tabs: bool = True,
         timeout: float = DEFAULT_SCREENSHOT_TIMEOUT,
     ) -> Self:
         reserved = frozenset({REVISION_PARAM, TAB_PARAM} if entity_kind == "dashboard" else {REVISION_PARAM})
@@ -121,14 +147,30 @@ class ScreenshotRequest:
             params=normalize_params(params, reserved=reserved),
             rev_id=rev_id,
             tab=tab,
+            theme=theme,
+            show_title=show_title,
+            show_tabs=show_tabs,
             timeout=timeout,
         )
 
     def query_params(self) -> dict[str, str | list[str]]:
-        """Return page query parameters: caller params plus the SDK-owned revision and tab."""
+        """Return page query parameters: caller params plus the SDK-owned view, revision and tab.
+
+        The page is always rendered embedded, so the picture holds the entity alone
+        and not the DataLens navigation around it.
+        """
         result: dict[str, str | list[str]] = {}
         for key, value in self.params.items():
             result[key] = value if isinstance(value, str) else list(value)
+        result[EMBEDDED_PARAM] = ENABLED
+        if self.entity_kind == "chart":
+            result[NO_CONTROLS_PARAM] = ENABLED
+        if self.theme is not None:
+            result[THEME_PARAM] = self.theme
+        if not self.show_title:
+            result[NO_TITLE_PARAM] = ENABLED
+        if not self.show_tabs:
+            result[NO_TABS_PARAM] = ENABLED
         if self.rev_id is not None:
             result[REVISION_PARAM] = self.rev_id
         if self.tab is not None:

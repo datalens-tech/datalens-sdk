@@ -131,7 +131,13 @@ def test_chart_screenshot_requests_inline_png_of_the_loaded_revision(client_cls:
             "base64": True,
             "width": 1024,
             "height": 768,
-            "queryParams": {"City": ["Moscow", "Kazan"], "Year": "2026", "revId": "rev-chart"},
+            "queryParams": {
+                "City": ["Moscow", "Kazan"],
+                "Year": "2026",
+                "_embedded": "1",
+                "_no_controls": "1",
+                "revId": "rev-chart",
+            },
         }
     ]
     assert screenshot.image == PNG_BYTES
@@ -140,29 +146,56 @@ def test_chart_screenshot_requests_inline_png_of_the_loaded_revision(client_cls:
 
 
 @pytest.mark.parametrize("client_cls", CLIENT_CLASSES)
-def test_dashboard_screenshot_sends_only_explicit_options_tab_and_revision(client_cls: ClientClass) -> None:
+def test_dashboard_screenshot_sends_embedded_full_page_view_tab_and_revision(client_cls: ClientClass) -> None:
     recorder = RecordedTransport(
-        screenshot_routes("/rpc/getDashScreenshot", [httpx.Response(200, json={"data": PNG_BASE64})] * 2)
+        screenshot_routes("/rpc/getDashScreenshot", [httpx.Response(200, json={"data": PNG_BASE64})] * 3)
     )
     dashboard = make_client(recorder, client_cls).get.dashboard(by_id="dash-1")
 
     default_screenshot = dashboard.screenshot()
-    full_screenshot = dashboard.screenshot(width=1600, full_page=True, tab="tab-2", params={"Region": "East"})
+    styled_screenshot = dashboard.screenshot(
+        width=1600, tab="tab-2", theme="dark", show_title=False, show_tabs=False, params={"Region": "East"}
+    )
+    dashboard.screenshot(height=900)
 
     assert recorder.bodies("/rpc/getDashScreenshot") == [
-        {"dashId": "dash-1", "type": "png", "base64": True, "queryParams": {"revId": "rev-dash"}},
+        {
+            "dashId": "dash-1",
+            "type": "png",
+            "base64": True,
+            "width": 1280,
+            "fullPage": True,
+            "queryParams": {"_embedded": "1", "revId": "rev-dash"},
+        },
         {
             "dashId": "dash-1",
             "type": "png",
             "base64": True,
             "width": 1600,
             "fullPage": True,
-            "queryParams": {"Region": "East", "revId": "rev-dash", "tab": "tab-2"},
+            "queryParams": {
+                "Region": "East",
+                "_embedded": "1",
+                "_theme": "dark",
+                "_no_title": "1",
+                "_no_tabs": "1",
+                "revId": "rev-dash",
+                "tab": "tab-2",
+            },
+        },
+        {
+            "dashId": "dash-1",
+            "type": "png",
+            "base64": True,
+            "width": 1280,
+            "height": 900,
+            "fullPage": False,
+            "queryParams": {"_embedded": "1", "revId": "rev-dash"},
         },
     ]
-    assert (default_screenshot.width, default_screenshot.height) == (None, None)
-    assert (full_screenshot.width, full_screenshot.height) == (1600, None)
-    assert full_screenshot.image == PNG_BYTES
+    assert (default_screenshot.width, default_screenshot.height) == (1280, None)
+    assert (styled_screenshot.width, styled_screenshot.height) == (1600, None)
+    assert styled_screenshot.image == PNG_BYTES
 
 
 def test_screenshot_save_writes_the_decoded_png(tmp_path: Path) -> None:
@@ -194,7 +227,8 @@ def test_temp_s3_url_repeats_the_request_with_s3_upload_instead_of_base64() -> N
         "type": "png",
         "width": 1280,
         "height": 900,
-        "queryParams": {"Region": "East", "revId": "rev-dash", "tab": "tab-1"},
+        "fullPage": False,
+        "queryParams": {"Region": "East", "_embedded": "1", "revId": "rev-dash", "tab": "tab-1"},
     }
     assert inline_body == {**shared, "base64": True}
     assert s3_body == {**shared, "s3": True}
@@ -258,6 +292,10 @@ def test_screenshot_validates_arguments_before_http() -> None:
         dashboard.screenshot(params={"revId": "rev-old"})
     with pytest.raises(dl.DataLensValidationError, match="width must be between 1 and 6000"):
         dashboard.screenshot(width=7000)
+    with pytest.raises(dl.DataLensValidationError, match="'_embedded' is a page view setting owned by the SDK"):
+        dashboard.screenshot(params={"_embedded": "0"})
+    with pytest.raises(dl.DataLensValidationError, match="Unknown dashboard tab id 'Details'"):
+        dashboard.screenshot(tab="Details")
     assert recorder.calls("/rpc/getDashScreenshot") == []
 
 

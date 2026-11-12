@@ -39,7 +39,7 @@ def chart_request(**overrides: object) -> ScreenshotRequest:
     return ScreenshotRequest.create(**arguments)  # type: ignore[arg-type]
 
 
-def test_request_merges_params_with_sdk_owned_revision_and_tab() -> None:
+def test_request_merges_params_with_sdk_owned_view_revision_and_tab() -> None:
     request = ScreenshotRequest.create(
         entity_kind="dashboard",
         entity_id="dash-1",
@@ -52,13 +52,26 @@ def test_request_merges_params_with_sdk_owned_revision_and_tab() -> None:
     assert request.query_params() == {
         "City": ["Moscow", "Kazan"],
         "Year": "2026",
+        "_embedded": "1",
         "revId": "rev-2",
         "tab": "tab-2",
     }
 
 
-def test_request_without_params_or_revision_has_no_query_params() -> None:
-    assert chart_request().query_params() == {}
+def test_request_always_renders_the_embedded_page_without_chart_controls() -> None:
+    dashboard_request = ScreenshotRequest.create(entity_kind="dashboard", entity_id="dash-1")
+
+    assert chart_request().query_params() == {"_embedded": "1", "_no_controls": "1"}
+    assert dashboard_request.query_params() == {"_embedded": "1"}
+
+
+def test_request_maps_view_arguments_to_page_parameters() -> None:
+    request = ScreenshotRequest.create(
+        entity_kind="dashboard", entity_id="dash-1", theme="dark", show_title=False, show_tabs=False
+    )
+
+    assert chart_request(theme="light").query_params() == {"_embedded": "1", "_no_controls": "1", "_theme": "light"}
+    assert request.query_params() == {"_embedded": "1", "_theme": "dark", "_no_title": "1", "_no_tabs": "1"}
 
 
 def test_request_params_do_not_follow_later_changes_of_the_source_mapping() -> None:
@@ -86,6 +99,11 @@ def test_request_params_do_not_follow_later_changes_of_the_source_mapping() -> N
         ({"timeout": "120"}, "timeout must be a number"),
         ({"tab": "tab-1"}, "tab must be a non-empty dashboard tab id"),
         ({"params": {"revId": "rev-9"}}, "'revId' is set by the SDK"),
+        ({"params": {"_embedded": "0"}}, "'_embedded' is a page view setting owned by the SDK"),
+        ({"params": {"_theme": "dark"}}, "'_theme' is a page view setting owned by the SDK"),
+        ({"theme": "sepia"}, "theme must be one of"),
+        ({"show_title": False}, "apply only to dashboards"),
+        ({"show_tabs": "no"}, "must be booleans"),
         ({"params": {"": "x"}}, "names must be non-empty strings"),
         ({"params": {"City": 5}}, "must be a string or a sequence of strings"),
         ({"params": {"City": b"Moscow"}}, "must be a string or a sequence of strings"),
@@ -99,7 +117,7 @@ def test_request_rejects_invalid_arguments(overrides: dict[str, object], message
 
 
 def test_dashboard_request_reserves_tab_but_chart_request_does_not() -> None:
-    assert chart_request(params={"tab": "sales"}).query_params() == {"tab": "sales"}
+    assert chart_request(params={"tab": "sales"}).query_params()["tab"] == "sales"
     with pytest.raises(dl.DataLensValidationError, match="'tab' is set by the SDK"):
         ScreenshotRequest.create(entity_kind="dashboard", entity_id="dash-1", params={"tab": "tab-1"})
     with pytest.raises(dl.DataLensValidationError, match="tab must be a non-empty dashboard tab id"):
@@ -129,11 +147,32 @@ def test_chart_screenshot_uses_default_viewport_and_loaded_revision() -> None:
     assert screenshot.entity_id == "chart-1"
 
 
-def test_dashboard_screenshot_passes_tab_revision_and_explicit_options() -> None:
-    operations = RecordingOperations()
-    dashboard = dl.Dashboard(id="dash-1", rev_id="rev-3", _operations=cast(DashboardOperations, operations))
+def loaded_dashboard(operations: RecordingOperations) -> dl.Dashboard:
+    return dl.Dashboard(
+        id="dash-1",
+        data={"tabs": [{"id": "tab-1", "title": "Overview"}, {"id": "tab-2", "title": "Details"}]},
+        rev_id="rev-3",
+        _operations=cast(DashboardOperations, operations),
+    )
 
-    screenshot = dashboard.screenshot(width=1600, full_page=True, tab="tab-2", timeout=300)
+
+def test_dashboard_screenshot_captures_the_full_page_at_default_width() -> None:
+    operations = RecordingOperations()
+
+    screenshot = loaded_dashboard(operations).screenshot()
+
+    assert operations.requests == [
+        ScreenshotRequest(entity_kind="dashboard", entity_id="dash-1", width=1280, full_page=True, rev_id="rev-3")
+    ]
+    assert (screenshot.width, screenshot.height) == (1280, None)
+
+
+def test_dashboard_screenshot_passes_tab_view_and_explicit_options() -> None:
+    operations = RecordingOperations()
+
+    loaded_dashboard(operations).screenshot(
+        width=1600, tab="tab-2", theme="dark", show_title=False, show_tabs=False, timeout=300
+    )
 
     assert operations.requests == [
         ScreenshotRequest(
@@ -143,10 +182,41 @@ def test_dashboard_screenshot_passes_tab_revision_and_explicit_options() -> None
             full_page=True,
             rev_id="rev-3",
             tab="tab-2",
+            theme="dark",
+            show_title=False,
+            show_tabs=False,
             timeout=300,
         )
     ]
-    assert (screenshot.width, screenshot.height) == (1600, None)
+
+
+def test_dashboard_screenshot_with_height_cuts_to_the_viewport_unless_full_page_is_requested() -> None:
+    operations = RecordingOperations()
+    dashboard = loaded_dashboard(operations)
+
+    dashboard.screenshot(height=900)
+    dashboard.screenshot(height=900, full_page=True)
+
+    assert [(_.height, _.full_page) for _ in operations.requests] == [(900, False), (900, True)]
+
+
+def test_dashboard_screenshot_rejects_an_unknown_tab_id_before_http() -> None:
+    operations = RecordingOperations()
+
+    with pytest.raises(dl.DataLensValidationError, match=r"Unknown dashboard tab id 'Details'.*'tab-1', 'tab-2'"):
+        loaded_dashboard(operations).screenshot(tab="Details")
+    assert operations.requests == []
+
+
+def test_chart_screenshot_passes_the_theme() -> None:
+    operations = RecordingOperations()
+    chart = dl.QLChart(id="chart-1", _operations=cast(ChartOperations, operations))
+
+    chart.screenshot(width=600, height=320, theme="dark")
+
+    assert operations.requests == [
+        ScreenshotRequest(entity_kind="chart", entity_id="chart-1", width=600, height=320, theme="dark")
+    ]
 
 
 def test_unbound_or_unsaved_resources_cannot_take_screenshots() -> None:

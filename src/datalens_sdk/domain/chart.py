@@ -29,6 +29,7 @@ from datalens_sdk.domain.screenshot import (
     EntityScreenshot,
     ScreenshotParams,
     ScreenshotRequest,
+    ScreenshotTheme,
 )
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.artifacts import ArtifactPath, write_chart_artifact
@@ -177,13 +178,14 @@ class Chart(ABC):
         *,
         width: int = CHART_SCREENSHOT_WIDTH,
         height: int = CHART_SCREENSHOT_HEIGHT,
-        full_page: bool | None = None,
+        theme: ScreenshotTheme | None = None,
         params: ScreenshotParams | None = None,
         timeout: float = DEFAULT_SCREENSHOT_TIMEOUT,
     ) -> EntityScreenshot:
         """Render the revision loaded into this chart on the server and return it as a PNG.
 
-        ``params`` are chart parameters passed as page query parameters.
+        The chart fills the ``width`` x ``height`` viewport. ``params`` are chart
+        parameters, keyed by field or parameter name.
         """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
@@ -193,9 +195,9 @@ class Chart(ABC):
                 entity_id=self.id,
                 width=width,
                 height=height,
-                full_page=full_page,
                 params=params,
                 rev_id=self.rev_id,
+                theme=theme,
                 timeout=timeout,
             )
         )

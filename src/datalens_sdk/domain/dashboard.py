@@ -19,10 +19,12 @@ from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirect
 from datalens_sdk.domain.ports import DashboardOperations
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.screenshot import (
+    DASHBOARD_SCREENSHOT_WIDTH,
     DEFAULT_SCREENSHOT_TIMEOUT,
     EntityScreenshot,
     ScreenshotParams,
     ScreenshotRequest,
+    ScreenshotTheme,
 )
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.artifacts import ArtifactPath, write_dashboard_artifact
@@ -424,30 +426,42 @@ class Dashboard:
     def screenshot(
         self,
         *,
-        width: int | None = None,
+        width: int = DASHBOARD_SCREENSHOT_WIDTH,
         height: int | None = None,
         full_page: bool | None = None,
         tab: str | None = None,
+        theme: ScreenshotTheme | None = None,
+        show_title: bool = True,
+        show_tabs: bool = True,
         params: ScreenshotParams | None = None,
         timeout: float = DEFAULT_SCREENSHOT_TIMEOUT,
     ) -> EntityScreenshot:
         """Render the revision loaded into this dashboard on the server and return it as a PNG.
 
-        ``tab`` is a tab id; ``params`` are selector and chart parameters passed
-        as page query parameters.
+        Without ``height`` the whole tab is captured at full length. With ``height``
+        the picture is cut to that viewport unless ``full_page=True`` is passed.
+        ``tab`` is a tab id from ``tabs``; ``params`` are selector and dashboard
+        parameter values.
         """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
+        if tab is not None:
+            tab_ids = [_.id for _ in self.tabs if _.id]
+            if tab not in tab_ids:
+                raise DataLensValidationError(f"Unknown dashboard tab id {tab!r}; available tab ids: {tab_ids}")
         return self._operations.get_screenshot(
             ScreenshotRequest.create(
                 entity_kind="dashboard",
                 entity_id=self.id,
                 width=width,
                 height=height,
-                full_page=full_page,
+                full_page=height is None if full_page is None else full_page,
                 params=params,
                 rev_id=self.rev_id,
                 tab=tab,
+                theme=theme,
+                show_title=show_title,
+                show_tabs=show_tabs,
                 timeout=timeout,
             )
         )

@@ -148,7 +148,7 @@ from datalens_sdk.domain.rest_catalog import (
     RestCatalogSortField,
 )
 from datalens_sdk.domain.revisions import EntryRevision
-from datalens_sdk.domain.screenshot import EntityScreenshot, ScreenshotParams, ScreenshotParamValue
+from datalens_sdk.domain.screenshot import EntityScreenshot, ScreenshotParams, ScreenshotParamValue, ScreenshotTheme
 from datalens_sdk.domain.spark_application import (
     SparkApplication,
     SparkApplicationCatalogRef,
@@ -349,6 +349,7 @@ __all__ = [
     "RestCatalogSortField",
     "ScreenshotParamValue",
     "ScreenshotParams",
+    "ScreenshotTheme",
     "SelectorOperation",
     "SortDirection",
     "Source",

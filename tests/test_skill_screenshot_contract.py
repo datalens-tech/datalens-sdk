@@ -33,12 +33,19 @@ def test_screenshot_reference_documents_the_public_surface() -> None:
         "DataLensValidationError",
         "NotSupportedError",
         "before HTTP",
-        "7 days",
+        "RateLimitError",
+        "3 screenshots per minute",
+        "BadRequestError",
+        "DataLensTransportError",
+        "https://yandex.cloud/en/docs/datalens/security/embedded-objects",
     ):
         assert fragment in reference
-    for argument in inspect.signature(dl.Dashboard.screenshot).parameters:
-        if argument != "self":
-            assert f"`{argument}`" in reference
+    for method in (dl.Dashboard.screenshot, dl.Chart.screenshot):
+        for argument in inspect.signature(method).parameters:
+            if argument != "self":
+                assert f"`{argument}`" in reference
+    assert "TODO" not in reference
+    assert "yandex-team" not in reference
 
 
 def test_screenshot_reference_keeps_the_result_handling_rule() -> None:
@@ -49,6 +56,7 @@ def test_screenshot_reference_keeps_the_result_handling_rule() -> None:
     assert "only when the user asked for a visual check" in reference
     assert "is not\npermission to inspect its screenshot" in reference
     assert "new render" in reference
+    assert "opens without DataLens credentials" in reference
 
 
 def test_screenshot_evals_cover_saving_without_viewing_and_requested_visual_checks() -> None:

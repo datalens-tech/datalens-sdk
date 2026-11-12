@@ -171,16 +171,23 @@ by GUID. Without a saved handle, use an exact GUID through
 `DatasetField` snapshots and does not reconstruct handles.
 
 Loaded charts and dashboards can be rendered on the server and saved as PNG
-files. A dashboard screenshot accepts a tab id and selector values:
+files. The picture holds the entity alone, without the DataLens navigation. A
+dashboard screenshot captures the whole tab and accepts a tab id, a theme, and
+selector values:
 
 ```python
 dashboard = client.get.dashboard(by_id="<dashboard-id>")
-screenshot = dashboard.screenshot(tab=dashboard.tabs[0].id, params={"Region": ["East", "West"]})
+screenshot = dashboard.screenshot(
+    tab=dashboard.tabs[0].id,
+    theme="dark",
+    params={"Region": ["East", "West"]},
+)
 screenshot.save("dashboard.png")
 ```
 
-The screenshot API is experimental. `screenshot.get_temp_s3_url()` renders the
-same picture again and returns a temporary link to it.
+The screenshot API is experimental and accepts 3 chart and 3 dashboard
+screenshots per minute. `screenshot.get_temp_s3_url()` renders the same picture
+again and returns a temporary signed link to it.
 
 ## Examples
 

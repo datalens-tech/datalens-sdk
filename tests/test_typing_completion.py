@@ -67,6 +67,7 @@ from datalens_sdk import (
     RawWizardChartReplace,
     RestCatalogCreate,
     ScreenshotParams,
+    ScreenshotTheme,
     SparkApplication,
     SparkApplicationCatalogRef,
     SparkApplicationConnectSpec,
@@ -1256,14 +1257,17 @@ def test_screenshot_surface_is_visible_to_static_tools() -> None:
 
     if TYPE_CHECKING:
         params: ScreenshotParams = {"City": ["Moscow", "Kazan"], "Year": "2026"}
-        chart_screenshot = yc_client.get.chart(by_id="chart-1").screenshot(width=800, height=600, params=params)
+        theme: ScreenshotTheme = "dark"
+        chart_screenshot = yc_client.get.chart(by_id="chart-1").screenshot(
+            width=800, height=600, theme=theme, params=params
+        )
         assert_type(chart_screenshot, EntityScreenshot)
         assert_type(chart_screenshot.image, bytes)
         assert_type(chart_screenshot.width, int | None)
         assert_type(chart_screenshot.save("chart.png"), Path)
         assert_type(chart_screenshot.get_temp_s3_url(), str)
         dashboard_screenshot = enterprise_client.get.dashboard(by_id="dash-1").screenshot(
-            tab="tab-1", full_page=True, params=params, timeout=300.0
+            tab="tab-1", theme=theme, show_title=False, show_tabs=False, full_page=True, params=params, timeout=300.0
         )
         assert_type(dashboard_screenshot, EntityScreenshot)
 
