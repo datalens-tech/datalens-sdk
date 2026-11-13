@@ -39,7 +39,7 @@ def chart_request(**overrides: object) -> ScreenshotRequest:
     return ScreenshotRequest.create(**arguments)  # type: ignore[arg-type]
 
 
-def test_request_merges_params_with_sdk_owned_view_revision_tab_and_state() -> None:
+def test_request_keeps_validated_values_apart_from_caller_params() -> None:
     request = ScreenshotRequest.create(
         entity_kind="dashboard",
         entity_id="dash-1",
@@ -50,30 +50,7 @@ def test_request_merges_params_with_sdk_owned_view_revision_tab_and_state() -> N
     )
 
     assert request.params == {"City": ("Moscow", "Kazan"), "Year": "2026"}
-    assert request.query_params() == {
-        "City": ["Moscow", "Kazan"],
-        "Year": "2026",
-        "_embedded": "1",
-        "revId": "rev-2",
-        "tab": "tab-2",
-        "state": "a1b2c3",
-    }
-
-
-def test_request_always_renders_the_embedded_page_without_chart_controls() -> None:
-    dashboard_request = ScreenshotRequest.create(entity_kind="dashboard", entity_id="dash-1")
-
-    assert chart_request().query_params() == {"_embedded": "1", "_no_controls": "1"}
-    assert dashboard_request.query_params() == {"_embedded": "1"}
-
-
-def test_request_maps_view_arguments_to_page_parameters() -> None:
-    request = ScreenshotRequest.create(
-        entity_kind="dashboard", entity_id="dash-1", theme="dark", show_title=False, show_tabs=False
-    )
-
-    assert chart_request(theme="light").query_params() == {"_embedded": "1", "_no_controls": "1", "_theme": "light"}
-    assert request.query_params() == {"_embedded": "1", "_theme": "dark", "_no_title": "1", "_no_tabs": "1"}
+    assert (request.rev_id, request.tab, request.state) == ("rev-2", "tab-2", "a1b2c3")
 
 
 def test_request_params_do_not_follow_later_changes_of_the_source_mapping() -> None:
@@ -120,7 +97,7 @@ def test_request_rejects_invalid_arguments(overrides: dict[str, object], message
 
 
 def test_dashboard_request_reserves_tab_but_chart_request_does_not() -> None:
-    assert chart_request(params={"tab": "sales"}).query_params()["tab"] == "sales"
+    assert chart_request(params={"tab": "sales"}).params == {"tab": "sales"}
     with pytest.raises(dl.DataLensValidationError, match="'tab' is set by the SDK"):
         ScreenshotRequest.create(entity_kind="dashboard", entity_id="dash-1", params={"tab": "tab-1"})
     with pytest.raises(dl.DataLensValidationError, match="tab must be a non-empty dashboard tab id"):
@@ -128,7 +105,7 @@ def test_dashboard_request_reserves_tab_but_chart_request_does_not() -> None:
 
 
 def test_dashboard_request_reserves_state_but_chart_request_does_not() -> None:
-    assert chart_request(params={"state": "open"}).query_params()["state"] == "open"
+    assert chart_request(params={"state": "open"}).params == {"state": "open"}
     with pytest.raises(dl.DataLensValidationError, match="'state' is set by the SDK"):
         ScreenshotRequest.create(entity_kind="dashboard", entity_id="dash-1", params={"state": "a1b2c3"})
     for invalid in ("", 5):

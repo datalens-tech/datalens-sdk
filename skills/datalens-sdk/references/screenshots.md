@@ -68,14 +68,20 @@ the produced picture, and `height` is `None` when it was not sent.
 by several values. Format numbers and dates as strings yourself. The name a
 value needs depends on the entity.
 
-**Chart.** Nothing has to be declared. A name applies when it is one of:
+**Chart.** Nothing has to be declared for the screenshot. The name a value
+needs depends on the chart family:
 
-- the guid of a field, whether the field lives in the dataset or was created
-  in the chart itself; take it from `chart.fields` or `dataset.fields`;
-- the name of a parameter declared in the dataset.
+- Wizard: the guid of a field, whether the field lives in the dataset or was
+  created in the chart itself (take it from `chart.fields` or `dataset.fields`),
+  or the name of a parameter declared in the dataset. A dataset field title
+  works too, but prefer the guid: titles can repeat and change.
+- QL: the name of a `QLParam` the chart declares; the query reads it as
+  `{{name}}`.
+- Editor: a key exported by the chart's `params` tab. An Editor chart has no
+  `chart.fields`.
 
-A dataset field title is accepted too, but prefer the guid: titles can repeat
-and change.
+[parameters.md](parameters.md) describes how each family defines its
+parameters.
 
 **Dashboard.** Only parameters declared in the dashboard settings are read
 from `params`; DataLens ignores every other name without an error. The SDK
@@ -166,6 +172,13 @@ loop around it.
 A render usually takes a few seconds. For a heavy dashboard raise `timeout`
 instead of repeating the call: the SDK never repeats a render that started.
 A client-side timeout raises `DataLensTransportError`.
+
+This differs from other reads, which the SDK retries by itself. After a
+`DataLensTransportError` or a `ServerError` the render may still be running
+on the server, so the general advice in
+[troubleshooting.md](troubleshooting.md) to re-run a failed read does not
+apply as is: raise `timeout` after a client-side timeout, re-run at most once
+after a `ServerError`, then report the request id.
 
 Invalid arguments fail locally with `DataLensValidationError`. An entity id
 the server cannot render fails with `BadRequestError`. A malformed response

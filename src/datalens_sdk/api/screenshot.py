@@ -16,6 +16,7 @@ from datalens_sdk.http import DEFAULT_RETRY_POLICY, HTTPClientProtocol, RetryPol
 LOGGER = logging.getLogger(__name__)
 SCREENSHOT_OPERATIONS = {"chart": "getChartScreenshot", "dashboard": "getDashScreenshot"}
 MIN_RATE_LIMIT_WAIT = 1.0
+MIN_ATTEMPT_TIMEOUT = 1.0
 
 
 def screenshot_retry_policy(timeout: float) -> RetryPolicy:
@@ -83,7 +84,8 @@ class ScreenshotService(ScreenshotOperations):
         """Send the render request; a 429 is waited out by its Retry-After while ``timeout`` allows.
 
         A rate-limited request never started a render, so sending it again is safe.
-        Any other failure is raised at once.
+        Any other failure is raised at once. When the wait leaves less than
+        ``MIN_ATTEMPT_TIMEOUT`` for the next attempt, the rate-limit error is raised.
         """
         deadline = time.monotonic() + request.timeout
         remaining = request.timeout
@@ -98,7 +100,7 @@ class ScreenshotService(ScreenshotOperations):
                 if retry_after is None:
                     raise
                 wait = max(retry_after, MIN_RATE_LIMIT_WAIT)
-                if wait >= deadline - time.monotonic():
+                if deadline - time.monotonic() - wait < MIN_ATTEMPT_TIMEOUT:
                     raise
                 LOGGER.warning(
                     "Screenshot rate limit reached, waiting before the next attempt: operation=%s request_id=%s "
@@ -109,3 +111,5 @@ class ScreenshotService(ScreenshotOperations):
                 )
                 time.sleep(wait)
                 remaining = deadline - time.monotonic()
+                if remaining < MIN_ATTEMPT_TIMEOUT:
+                    raise

@@ -4,10 +4,16 @@ from collections.abc import Mapping
 from typing import Protocol, cast
 
 from datalens_sdk._generated import dto as generated_dto
-from datalens_sdk.domain.screenshot import ScreenshotRequest
+from datalens_sdk.domain.screenshot import REVISION_PARAM, STATE_PARAM, TAB_PARAM, ScreenshotRequest
 from datalens_sdk.errors import NotSupportedError
 
 SCREENSHOT_FORMAT = "png"
+EMBEDDED_PARAM = "_embedded"
+NO_CONTROLS_PARAM = "_no_controls"
+THEME_PARAM = "_theme"
+NO_TITLE_PARAM = "_no_title"
+NO_TABS_PARAM = "_no_tabs"
+ENABLED = "1"
 SCREENSHOT_DTO_NAMES = ("GetChartScreenshotArgsDTO", "GetDashScreenshotArgsDTO", "GetScreenshotResultReadDTO")
 
 
@@ -63,12 +69,37 @@ class ScreenshotConverter:
             payload["height"] = request.height
         if request.full_page is not None:
             payload["full_page"] = request.full_page
-        query_params = request.query_params()
-        if query_params:
-            payload["query_params"] = query_params
+        payload["query_params"] = ScreenshotConverter.query_params(request)
         if request.entity_kind == "chart":
             return generated.GetChartScreenshotArgsDTO.model_validate({"chart_id": request.entity_id, **payload})
         return generated.GetDashScreenshotArgsDTO.model_validate({"dash_id": request.entity_id, **payload})
+
+    @staticmethod
+    def query_params(request: ScreenshotRequest) -> dict[str, str | list[str]]:
+        """Encode caller params and the SDK-owned view, revision, tab and state as page query parameters.
+
+        The page is always rendered embedded, so the picture holds the entity alone
+        and not the DataLens navigation around it.
+        """
+        result: dict[str, str | list[str]] = {}
+        for key, value in request.params.items():
+            result[key] = value if isinstance(value, str) else list(value)
+        result[EMBEDDED_PARAM] = ENABLED
+        if request.entity_kind == "chart":
+            result[NO_CONTROLS_PARAM] = ENABLED
+        if request.theme is not None:
+            result[THEME_PARAM] = request.theme
+        if not request.show_title:
+            result[NO_TITLE_PARAM] = ENABLED
+        if not request.show_tabs:
+            result[NO_TABS_PARAM] = ENABLED
+        if request.rev_id is not None:
+            result[REVISION_PARAM] = request.rev_id
+        if request.tab is not None:
+            result[TAB_PARAM] = request.tab
+        if request.state is not None:
+            result[STATE_PARAM] = request.state
+        return result
 
     @staticmethod
     def to_data(raw: Mapping[str, object], *, dto_module: ScreenshotDtoModule | None = None) -> str:

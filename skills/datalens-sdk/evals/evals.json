@@ -388,13 +388,14 @@
     {
       "id": 26,
       "name": "dashboard-screenshot-save-without-viewing",
-      "prompt": "Save a PNG of the Details tab of dashboard dash-ops-26 with the Region selector set to East and West into reports/ops-details.png. I will attach the file to a weekly mail myself.",
-      "expected_output": "Loads the dashboard with client.get.dashboard, finds the Details tab id in dashboard.tabs, calls dashboard.screenshot(tab=<id>, params={'Region': ['East', 'West']}).save('reports/ops-details.png'), and reports the saved path. It does not open the picture, print bytes or base64, or request a temporary link.",
+      "prompt": "Save a PNG of the Details tab of dashboard dash-ops-26 filtered to the regions East and West into reports/ops-details.png. The dashboard settings already declare a parameter that is linked to its region selector. I will attach the file to a weekly mail myself.",
+      "expected_output": "Loads the dashboard with client.get.dashboard, finds the Details tab id in dashboard.tabs, reads the declared parameter names from dashboard.data['settings']['globalParams'] and picks the region one, calls dashboard.screenshot(tab=<id>, params={<declared name>: ['East', 'West']}).save('reports/ops-details.png'), and reports the saved path. It does not open the picture, print bytes or base64, or request a temporary link.",
       "files": [],
       "assertions": [
         {"text": "Calls screenshot() on the dashboard loaded through client.get.dashboard(by_id='dash-ops-26')", "type": "code"},
         {"text": "Passes the Details tab through the tab argument using an id taken from dashboard.tabs, not through params", "type": "code"},
-        {"text": "Passes Region as a sequence of strings in params and saves the result with .save('reports/ops-details.png')", "type": "code"},
+        {"text": "Takes the params key from the parameter names declared in dashboard.data['settings']['globalParams'] instead of guessing it from the selector title", "type": "code"},
+        {"text": "Passes the region values as a sequence of strings in params under that declared name and saves the result with .save('reports/ops-details.png')", "type": "code"},
         {"text": "Does NOT open or describe the saved picture, print image bytes or base64, or call get_temp_s3_url()", "type": "workflow"},
         {"text": "Does NOT use a browser, raw HTTP, or revId/tab keys inside params", "type": "workflow"}
       ]

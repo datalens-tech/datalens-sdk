@@ -29,12 +29,6 @@ REVISION_PARAM = "revId"
 TAB_PARAM = "tab"
 STATE_PARAM = "state"
 VIEW_PARAM_PREFIX = "_"
-EMBEDDED_PARAM = "_embedded"
-NO_CONTROLS_PARAM = "_no_controls"
-THEME_PARAM = "_theme"
-NO_TITLE_PARAM = "_no_title"
-NO_TABS_PARAM = "_no_tabs"
-ENABLED = "1"
 SCREENSHOT_THEMES = ("light", "dark")
 DASHBOARD_PAGE_PARAMS = frozenset(
     {"mode", "focus", "grid", "scale", "tz", "timezone", "date", "datetime", "report_page", "preview_mode"}
@@ -165,32 +159,6 @@ class ScreenshotRequest:
             show_tabs=show_tabs,
             timeout=timeout,
         )
-
-    def query_params(self) -> dict[str, str | list[str]]:
-        """Return page query parameters: caller params plus the SDK-owned view, revision, tab and state.
-
-        The page is always rendered embedded, so the picture holds the entity alone
-        and not the DataLens navigation around it.
-        """
-        result: dict[str, str | list[str]] = {}
-        for key, value in self.params.items():
-            result[key] = value if isinstance(value, str) else list(value)
-        result[EMBEDDED_PARAM] = ENABLED
-        if self.entity_kind == "chart":
-            result[NO_CONTROLS_PARAM] = ENABLED
-        if self.theme is not None:
-            result[THEME_PARAM] = self.theme
-        if not self.show_title:
-            result[NO_TITLE_PARAM] = ENABLED
-        if not self.show_tabs:
-            result[NO_TABS_PARAM] = ENABLED
-        if self.rev_id is not None:
-            result[REVISION_PARAM] = self.rev_id
-        if self.tab is not None:
-            result[TAB_PARAM] = self.tab
-        if self.state is not None:
-            result[STATE_PARAM] = self.state
-        return result
 
 
 @dataclass(frozen=True, slots=True)

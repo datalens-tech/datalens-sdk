@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast
 
 import httpx
@@ -10,7 +11,7 @@ import pytest
 
 import datalens_sdk as dl
 from datalens_sdk.api.screenshot import ScreenshotAPI, ScreenshotService
-from datalens_sdk.converter.screenshot import ScreenshotDtoModule
+from datalens_sdk.converter.screenshot import ScreenshotConverter, ScreenshotDtoModule
 from datalens_sdk.domain.screenshot import ScreenshotRequest
 from datalens_sdk.http import DataLensHTTPClient
 
@@ -114,6 +115,53 @@ def make_client(
     recorder: RecordedTransport, client_cls: ClientClass = dl.DataLensClientYC
 ) -> dl.DataLensClientYC | dl.DataLensClientEnterprise:
     return client_cls(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+
+
+def test_converter_merges_params_with_sdk_owned_view_revision_tab_and_state() -> None:
+    request = ScreenshotRequest.create(
+        entity_kind="dashboard",
+        entity_id="dash-1",
+        params={"City": ["Moscow", "Kazan"], "Year": "2026"},
+        rev_id="rev-2",
+        tab="tab-2",
+        state="a1b2c3",
+    )
+
+    assert ScreenshotConverter.query_params(request) == {
+        "City": ["Moscow", "Kazan"],
+        "Year": "2026",
+        "_embedded": "1",
+        "revId": "rev-2",
+        "tab": "tab-2",
+        "state": "a1b2c3",
+    }
+
+
+def test_converter_always_renders_the_embedded_page_without_chart_controls() -> None:
+    chart_request = ScreenshotRequest.create(entity_kind="chart", entity_id="chart-1", params={"tab": "sales"})
+    dashboard_request = ScreenshotRequest.create(entity_kind="dashboard", entity_id="dash-1")
+
+    assert ScreenshotConverter.query_params(chart_request) == {"tab": "sales", "_embedded": "1", "_no_controls": "1"}
+    assert ScreenshotConverter.query_params(dashboard_request) == {"_embedded": "1"}
+
+
+def test_converter_maps_view_arguments_to_page_parameters() -> None:
+    chart_request = ScreenshotRequest.create(entity_kind="chart", entity_id="chart-1", theme="light")
+    dashboard_request = ScreenshotRequest.create(
+        entity_kind="dashboard", entity_id="dash-1", theme="dark", show_title=False, show_tabs=False
+    )
+
+    assert ScreenshotConverter.query_params(chart_request) == {
+        "_embedded": "1",
+        "_no_controls": "1",
+        "_theme": "light",
+    }
+    assert ScreenshotConverter.query_params(dashboard_request) == {
+        "_embedded": "1",
+        "_theme": "dark",
+        "_no_title": "1",
+        "_no_tabs": "1",
+    }
 
 
 @pytest.mark.parametrize("client_cls", CLIENT_CLASSES)
@@ -375,9 +423,9 @@ def test_temp_s3_url_waits_out_the_rate_limit_too(monkeypatch: pytest.MonkeyPatc
 
 @pytest.mark.parametrize(
     ("retry_after", "expected_retry_after"),
-    [(None, None), ("soon", None), ("500", 500.0)],
+    [(None, None), ("soon", None), ("500", 500.0), ("29.5", 29.5)],
 )
-def test_screenshot_raises_rate_limit_error_when_the_wait_is_unknown_or_exceeds_the_timeout(
+def test_screenshot_raises_rate_limit_error_when_the_wait_is_unknown_or_leaves_no_time_for_the_request(
     monkeypatch: pytest.MonkeyPatch, retry_after: str | None, expected_retry_after: float | None
 ) -> None:
     sleeps: list[float] = []
@@ -395,4 +443,26 @@ def test_screenshot_raises_rate_limit_error_when_the_wait_is_unknown_or_exceeds_
 
     assert raised.value.context.retry_after == expected_retry_after
     assert sleeps == []
+    assert len(recorder.calls("/rpc/getDashScreenshot")) == 1
+
+
+def test_screenshot_raises_rate_limit_error_when_the_wait_overruns_the_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = iter([0.0, 0.0, 3.0])
+    sleeps: list[float] = []
+    monkeypatch.setattr(
+        "datalens_sdk.api.screenshot.time", SimpleNamespace(monotonic=clock.__next__, sleep=sleeps.append)
+    )
+    recorder = RecordedTransport(
+        screenshot_routes(
+            "/rpc/getDashScreenshot",
+            [rate_limited("1"), httpx.Response(200, json={"data": PNG_BASE64})],
+        )
+    )
+    dashboard = make_client(recorder).get.dashboard(by_id="dash-1")
+
+    with pytest.raises(dl.RateLimitError) as raised:
+        dashboard.screenshot(timeout=2)
+
+    assert raised.value.context.retry_after == 1.0
+    assert sleeps == [1.0]
     assert len(recorder.calls("/rpc/getDashScreenshot")) == 1
