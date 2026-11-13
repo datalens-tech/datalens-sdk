@@ -147,7 +147,7 @@ def test_chart_screenshot_requests_inline_png_of_the_loaded_revision(client_cls:
 
 
 @pytest.mark.parametrize("client_cls", CLIENT_CLASSES)
-def test_dashboard_screenshot_sends_embedded_full_page_view_tab_and_revision(client_cls: ClientClass) -> None:
+def test_dashboard_screenshot_sends_embedded_full_page_view_tab_state_and_revision(client_cls: ClientClass) -> None:
     recorder = RecordedTransport(
         screenshot_routes("/rpc/getDashScreenshot", [httpx.Response(200, json={"data": PNG_BASE64})] * 3)
     )
@@ -155,7 +155,13 @@ def test_dashboard_screenshot_sends_embedded_full_page_view_tab_and_revision(cli
 
     default_screenshot = dashboard.screenshot()
     styled_screenshot = dashboard.screenshot(
-        width=1600, tab="tab-2", theme="dark", show_title=False, show_tabs=False, params={"Region": "East"}
+        width=1600,
+        tab="tab-2",
+        state="a1b2c3",
+        theme="dark",
+        show_title=False,
+        show_tabs=False,
+        params={"Region": "East"},
     )
     dashboard.screenshot(height=900)
 
@@ -182,6 +188,7 @@ def test_dashboard_screenshot_sends_embedded_full_page_view_tab_and_revision(cli
                 "_no_tabs": "1",
                 "revId": "rev-dash",
                 "tab": "tab-2",
+                "state": "a1b2c3",
             },
         },
         {

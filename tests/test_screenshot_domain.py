@@ -39,13 +39,14 @@ def chart_request(**overrides: object) -> ScreenshotRequest:
     return ScreenshotRequest.create(**arguments)  # type: ignore[arg-type]
 
 
-def test_request_merges_params_with_sdk_owned_view_revision_and_tab() -> None:
+def test_request_merges_params_with_sdk_owned_view_revision_tab_and_state() -> None:
     request = ScreenshotRequest.create(
         entity_kind="dashboard",
         entity_id="dash-1",
         params={"City": ["Moscow", "Kazan"], "Year": "2026"},
         rev_id="rev-2",
         tab="tab-2",
+        state="a1b2c3",
     )
 
     assert request.params == {"City": ("Moscow", "Kazan"), "Year": "2026"}
@@ -55,6 +56,7 @@ def test_request_merges_params_with_sdk_owned_view_revision_and_tab() -> None:
         "_embedded": "1",
         "revId": "rev-2",
         "tab": "tab-2",
+        "state": "a1b2c3",
     }
 
 
@@ -98,6 +100,7 @@ def test_request_params_do_not_follow_later_changes_of_the_source_mapping() -> N
         ({"timeout": float("inf")}, "timeout must be a positive"),
         ({"timeout": "120"}, "timeout must be a number"),
         ({"tab": "tab-1"}, "tab must be a non-empty dashboard tab id"),
+        ({"state": "a1b2c3"}, "state must be a non-empty dashboard state hash"),
         ({"params": {"revId": "rev-9"}}, "'revId' is set by the SDK"),
         ({"params": {"_embedded": "0"}}, "'_embedded' is a page view setting owned by the SDK"),
         ({"params": {"_theme": "dark"}}, "'_theme' is a page view setting owned by the SDK"),
@@ -122,6 +125,15 @@ def test_dashboard_request_reserves_tab_but_chart_request_does_not() -> None:
         ScreenshotRequest.create(entity_kind="dashboard", entity_id="dash-1", params={"tab": "tab-1"})
     with pytest.raises(dl.DataLensValidationError, match="tab must be a non-empty dashboard tab id"):
         ScreenshotRequest.create(entity_kind="dashboard", entity_id="dash-1", tab="")
+
+
+def test_dashboard_request_reserves_state_but_chart_request_does_not() -> None:
+    assert chart_request(params={"state": "open"}).query_params()["state"] == "open"
+    with pytest.raises(dl.DataLensValidationError, match="'state' is set by the SDK"):
+        ScreenshotRequest.create(entity_kind="dashboard", entity_id="dash-1", params={"state": "a1b2c3"})
+    for invalid in ("", 5):
+        with pytest.raises(dl.DataLensValidationError, match="state must be a non-empty dashboard state hash"):
+            ScreenshotRequest.create(entity_kind="dashboard", entity_id="dash-1", state=invalid)  # type: ignore[arg-type]
 
 
 def test_chart_screenshot_uses_default_viewport_and_loaded_revision() -> None:
@@ -174,7 +186,7 @@ def test_dashboard_screenshot_passes_tab_view_and_explicit_options() -> None:
     operations = RecordingOperations()
 
     loaded_dashboard(operations).screenshot(
-        width=1600, tab="tab-2", theme="dark", show_title=False, show_tabs=False, timeout=300
+        width=1600, tab="tab-2", state="a1b2c3", theme="dark", show_title=False, show_tabs=False, timeout=300
     )
 
     assert operations.requests == [
@@ -185,6 +197,7 @@ def test_dashboard_screenshot_passes_tab_view_and_explicit_options() -> None:
             full_page=True,
             rev_id="rev-3",
             tab="tab-2",
+            state="a1b2c3",
             theme="dark",
             show_title=False,
             show_tabs=False,
@@ -232,11 +245,13 @@ def test_dashboard_screenshot_passes_page_names_reserved_by_datalens_without_dec
         id="dash-1", data={"tabs": [{"id": "tab-1"}]}, _operations=cast(DashboardOperations, operations)
     )
 
-    dashboard.screenshot(params={"state": "a1b2c3", "scale": "d", "tz": "UTC"})
+    dashboard.screenshot(state="a1b2c3", params={"scale": "d", "tz": "UTC"})
 
-    assert [dict(_.params) for _ in operations.requests] == [{"state": "a1b2c3", "scale": "d", "tz": "UTC"}]
+    assert [(_.state, dict(_.params)) for _ in operations.requests] == [("a1b2c3", {"scale": "d", "tz": "UTC"})]
     with pytest.raises(dl.DataLensValidationError, match=r"do not declare parameters \['Region'\]"):
-        dashboard.screenshot(params={"state": "a1b2c3", "Region": "West"})
+        dashboard.screenshot(state="a1b2c3", params={"scale": "d", "Region": "West"})
+    with pytest.raises(dl.DataLensValidationError, match="'state' is set by the SDK"):
+        dashboard.screenshot(params={"state": "a1b2c3"})
 
 
 def test_dashboard_without_declared_parameters_rejects_any_params_but_reserved_names_fail_first() -> None:

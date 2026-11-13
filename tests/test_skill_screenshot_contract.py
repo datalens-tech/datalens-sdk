@@ -54,8 +54,19 @@ def test_screenshot_reference_documents_the_public_surface() -> None:
         for argument in inspect.signature(method).parameters:
             if argument != "self":
                 assert f"`{argument}`" in reference
+    assert "## Saved dashboard state" in reference
+    assert "draws an error notice" in reference
     assert "TODO" not in reference
     assert "yandex-team" not in reference
+
+
+def test_readme_lists_every_screenshot_argument() -> None:
+    readme = (SKILL_DIR.parents[1] / "README.md").read_text()
+
+    for method in (dl.Dashboard.screenshot, dl.Chart.screenshot):
+        for argument in inspect.signature(method).parameters:
+            if argument != "self":
+                assert f"| `{argument}` |" in readme
 
 
 def test_screenshot_reference_keeps_the_result_handling_rule() -> None:

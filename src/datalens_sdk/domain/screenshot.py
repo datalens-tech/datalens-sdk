@@ -27,6 +27,7 @@ DASHBOARD_SCREENSHOT_WIDTH = 1280
 MAX_SCREENSHOT_SIDE = 6000
 REVISION_PARAM = "revId"
 TAB_PARAM = "tab"
+STATE_PARAM = "state"
 VIEW_PARAM_PREFIX = "_"
 EMBEDDED_PARAM = "_embedded"
 NO_CONTROLS_PARAM = "_no_controls"
@@ -36,7 +37,7 @@ NO_TABS_PARAM = "_no_tabs"
 ENABLED = "1"
 SCREENSHOT_THEMES = ("light", "dark")
 DASHBOARD_PAGE_PARAMS = frozenset(
-    {"state", "mode", "focus", "grid", "scale", "tz", "timezone", "date", "datetime", "report_page", "preview_mode"}
+    {"mode", "focus", "grid", "scale", "tz", "timezone", "date", "datetime", "report_page", "preview_mode"}
 )
 
 UNBOUND_SCREENSHOT = "Screenshot is not bound to client operations. Take it from a client-loaded chart or dashboard."
@@ -96,6 +97,7 @@ class ScreenshotRequest:
     params: Mapping[str, str | tuple[str, ...]] = field(default_factory=dict)
     rev_id: str | None = None
     tab: str | None = None
+    state: str | None = None
     theme: ScreenshotTheme | None = None
     show_title: bool = True
     show_tabs: bool = True
@@ -112,6 +114,10 @@ class ScreenshotRequest:
             raise DataLensValidationError("Screenshot full_page must be a boolean")
         if self.tab is not None and (self.entity_kind != "dashboard" or not self.tab):
             raise DataLensValidationError("Screenshot tab must be a non-empty dashboard tab id")
+        if self.state is not None and (
+            self.entity_kind != "dashboard" or not isinstance(self.state, str) or not self.state
+        ):
+            raise DataLensValidationError("Screenshot state must be a non-empty dashboard state hash")
         if self.theme is not None and self.theme not in SCREENSHOT_THEMES:
             raise DataLensValidationError(f"Screenshot theme must be one of {SCREENSHOT_THEMES}")
         if not isinstance(self.show_title, bool) or not isinstance(self.show_tabs, bool):
@@ -135,12 +141,15 @@ class ScreenshotRequest:
         params: ScreenshotParams | None = None,
         rev_id: str | None = None,
         tab: str | None = None,
+        state: str | None = None,
         theme: ScreenshotTheme | None = None,
         show_title: bool = True,
         show_tabs: bool = True,
         timeout: float = DEFAULT_SCREENSHOT_TIMEOUT,
     ) -> Self:
-        reserved = frozenset({REVISION_PARAM, TAB_PARAM} if entity_kind == "dashboard" else {REVISION_PARAM})
+        reserved = frozenset(
+            {REVISION_PARAM, TAB_PARAM, STATE_PARAM} if entity_kind == "dashboard" else {REVISION_PARAM}
+        )
         return cls(
             entity_kind=entity_kind,
             entity_id=entity_id or "",
@@ -150,6 +159,7 @@ class ScreenshotRequest:
             params=normalize_params(params, reserved=reserved),
             rev_id=rev_id,
             tab=tab,
+            state=state,
             theme=theme,
             show_title=show_title,
             show_tabs=show_tabs,
@@ -157,7 +167,7 @@ class ScreenshotRequest:
         )
 
     def query_params(self) -> dict[str, str | list[str]]:
-        """Return page query parameters: caller params plus the SDK-owned view, revision and tab.
+        """Return page query parameters: caller params plus the SDK-owned view, revision, tab and state.
 
         The page is always rendered embedded, so the picture holds the entity alone
         and not the DataLens navigation around it.
@@ -178,6 +188,8 @@ class ScreenshotRequest:
             result[REVISION_PARAM] = self.rev_id
         if self.tab is not None:
             result[TAB_PARAM] = self.tab
+        if self.state is not None:
+            result[STATE_PARAM] = self.state
         return result
 
 

@@ -43,6 +43,7 @@ so the DataLens navigation, the entry path, and the chart menu are not in it.
 | `height` | `768` | not set | viewport height in pixels, from 1 through 6000 |
 | `full_page` | not available | on unless `height` is given | capture the whole tab instead of the viewport |
 | `tab` | not available | first tab | dashboard tab id; take it from `dashboard.tabs` |
+| `state` | not available | not set | hash of a saved selector state, from a dashboard link |
 | `theme` | page default | page default | `"light"` or `"dark"` |
 | `show_title` | not available | `True` | keep the dashboard title |
 | `show_tabs` | not available | `True` | keep the dashboard tab bar |
@@ -53,8 +54,9 @@ A chart fills its viewport, so choose `width` and `height` for the shape you
 need. A dashboard without `height` is captured at its full length, and never
 shorter than the server's default viewport, so a short dashboard has empty
 space below its widgets. Pass `height` to cut the picture to a viewport; add
-`full_page=True` to let it grow from that viewport to the full length. A `tab` that is not among `dashboard.tabs` fails with
-`DataLensValidationError` before HTTP; a tab title is not an id.
+`full_page=True` to let it grow from that viewport to the full length. A `tab`
+that is not among `dashboard.tabs` fails with `DataLensValidationError` before
+HTTP; a tab title is not an id.
 
 The result keeps what was requested: `image`, `width`, `height`, `params`, and
 `entity_id`. `width` and `height` are the requested viewport, not the size of
@@ -88,10 +90,11 @@ declared parameter reaches a selector depends on its name:
 - any other name needs an explicit alias that links the dashboard parameter to
   the selector's field; see [dashboards.md](dashboards.md).
 
-DataLens reserves some names for the page itself: `state`, `mode`, `focus`,
-`grid`, `scale`, `tz`, `timezone`, `date`, `datetime`, `report_page`, and
+DataLens reserves some names for the page itself: `mode`, `focus`, `grid`,
+`scale`, `tz`, `timezone`, `date`, `datetime`, `report_page`, and
 `preview_mode`. They cannot be declared as dashboard parameters. The SDK passes
 them through unchanged, and their effect on a screenshot is not guaranteed.
+`state` is reserved too and has its own argument, described below.
 
 The SDK checks the declaration only. A declared parameter that is linked to
 nothing still leaves the picture unfiltered, without an error. The declared
@@ -103,16 +106,35 @@ the
 and the
 [parameter naming rules](https://yandex.cloud/en/docs/datalens/concepts/parameters).
 
-The SDK owns three kinds of page parameters. Passing them in `params` fails
+The SDK owns four kinds of page parameters. Passing them in `params` fails
 with `DataLensValidationError` before HTTP:
 
 - `revId`: the screenshot shows the revision loaded into the object. Load the
   entity with `branch="saved"` or an explicit `rev_id` to capture a draft or an
   older revision.
 - `tab` on dashboards: use the `tab` argument.
+- `state` on dashboards: use the `state` argument.
 - every name that starts with `_`: these are the page view settings from the
   [embedding documentation](https://yandex.cloud/en/docs/datalens/security/embedded-objects).
   Use `theme`, `show_title`, and `show_tabs` instead.
+
+## Saved dashboard state
+
+A dashboard link copied from DataLens with selector values carries them as
+`state=<hash>`. Pass that hash as `state` to render the dashboard with the
+same selector values. It needs no declared parameters and combines with
+`tab`. Charts have no saved state.
+
+```python
+dashboard.screenshot(state="<hash>").save("out/dashboard-south.png")
+```
+
+The API has no method that creates or lists states, so take the hash from a
+link the user gives and do not invent one. The SDK cannot check it. A hash
+that does not exist, or belongs to another dashboard, does not fail the call:
+DataLens renders the dashboard without the state and draws an error notice
+over the picture. What wins when `state` and `params` set the same selector
+is not verified; pass one of them.
 
 ## Temporary link
 

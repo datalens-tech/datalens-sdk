@@ -431,6 +431,7 @@ class Dashboard:
         height: int | None = None,
         full_page: bool | None = None,
         tab: str | None = None,
+        state: str | None = None,
         theme: ScreenshotTheme | None = None,
         show_title: bool = True,
         show_tabs: bool = True,
@@ -441,11 +442,13 @@ class Dashboard:
 
         Without ``height`` the whole tab is captured at full length. With ``height``
         the picture is cut to that viewport unless ``full_page=True`` is passed.
-        ``tab`` is a tab id from ``tabs``. ``params`` are values of parameters
-        declared in the dashboard settings; DataLens ignores any other name, so
-        an undeclared one is rejected here instead of producing an unfiltered picture.
-        Names DataLens reserves for the page itself, such as ``state``, cannot be
-        declared and are passed through unchanged.
+        ``tab`` is a tab id from ``tabs``. ``state`` is the hash of a saved selector
+        state, taken from a dashboard link; the SDK cannot check it, and DataLens
+        draws an error notice into the picture for an unknown one. ``params`` are
+        values of parameters declared in the dashboard settings; DataLens ignores
+        any other name, so an undeclared one is rejected here instead of producing
+        an unfiltered picture. Names DataLens reserves for the page itself, such as
+        ``scale``, cannot be declared and are passed through unchanged.
         """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
@@ -462,6 +465,7 @@ class Dashboard:
             params=params,
             rev_id=self.rev_id,
             tab=tab,
+            state=state,
             theme=theme,
             show_title=show_title,
             show_tabs=show_tabs,

@@ -1267,7 +1267,14 @@ def test_screenshot_surface_is_visible_to_static_tools() -> None:
         assert_type(chart_screenshot.save("chart.png"), Path)
         assert_type(chart_screenshot.get_temp_s3_url(), str)
         dashboard_screenshot = enterprise_client.get.dashboard(by_id="dash-1").screenshot(
-            tab="tab-1", theme=theme, show_title=False, show_tabs=False, full_page=True, params=params, timeout=300.0
+            tab="tab-1",
+            state="a1b2c3",
+            theme=theme,
+            show_title=False,
+            show_tabs=False,
+            full_page=True,
+            params=params,
+            timeout=300.0,
         )
         assert_type(dashboard_screenshot, EntityScreenshot)
 

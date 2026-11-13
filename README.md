@@ -172,8 +172,7 @@ by GUID. Without a saved handle, use an exact GUID through
 
 Loaded charts and dashboards can be rendered on the server and saved as PNG
 files. The picture holds the entity alone, without the DataLens navigation. A
-dashboard screenshot captures the whole tab and accepts a tab id, a theme, and
-selector values:
+dashboard screenshot captures the whole tab:
 
 ```python
 dashboard = client.get.dashboard(by_id="<dashboard-id>")
@@ -184,6 +183,21 @@ screenshot = dashboard.screenshot(
 )
 screenshot.save("dashboard.png")
 ```
+
+`chart.screenshot()` and `dashboard.screenshot()` take keyword arguments only:
+
+| Argument | Chart | Dashboard | Meaning |
+| --- | --- | --- | --- |
+| `width` | `1024` | `1280` | Viewport width in pixels, 1 through 6000 |
+| `height` | `768` | not set | Viewport height in pixels, 1 through 6000 |
+| `full_page` | n/a | on unless `height` is given | Capture the whole tab instead of the viewport |
+| `tab` | n/a | first tab | Tab id from `dashboard.tabs` |
+| `state` | n/a | not set | Hash of a saved selector state, the `state=` value of a dashboard link |
+| `theme` | page default | page default | `"light"` or `"dark"` |
+| `show_title` | n/a | `True` | Keep the dashboard title |
+| `show_tabs` | n/a | `True` | Keep the dashboard tab bar |
+| `params` | optional | optional | Parameter values; a dashboard reads only parameters declared in its settings |
+| `timeout` | `120` | `120` | Seconds for the call, including a wait for the rate limit |
 
 The screenshot API is experimental and accepts 3 chart and 3 dashboard
 screenshots per minute; the SDK waits out that limit when the wait fits in the
