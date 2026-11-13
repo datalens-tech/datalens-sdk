@@ -76,7 +76,10 @@ needs depends on the chart family:
   or the name of a parameter declared in the dataset. A dataset field title
   works too, but prefer the guid: titles can repeat and change.
 - QL: the name of a `QLParam` the chart declares, listed in `chart.params`;
-  the query reads it as `{{name}}`.
+  the query reads it as `{{name}}`. One value is substituted as a single
+  value and several values as a tuple, so pass a sequence only when the query
+  uses the parameter with `in`; see
+  [parameter substitution in QL charts](https://yandex.cloud/en/docs/datalens/operations/chart/create-sql-chart#params-in-select).
 - Editor: a key that the chart's own code reads through `Editor.getParams()`
   in its `Sources` or `Prepare` tab. The `params` tab holds the defaults; a
   key that is absent there still reaches the code. The value changes the
@@ -190,6 +193,10 @@ on the server, so the general advice in
 [troubleshooting.md](troubleshooting.md) to re-run a failed read does not
 apply as is: raise `timeout` after a client-side timeout, re-run at most once
 after a `ServerError`, then report the request id.
+
+A chart that fails inside DataLens does not fail the call: the picture is
+returned with the chart's error drawn in it. A sequence passed for a QL
+parameter that the query uses as a single value ends this way.
 
 Invalid arguments fail locally with `DataLensValidationError`. An entity id
 the server cannot render fails with `BadRequestError`. A malformed response
