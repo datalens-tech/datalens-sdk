@@ -177,6 +177,12 @@ class _FakeOperations:
     def export_dashboard_with_dependencies(self, dashboard: Dashboard, path: object) -> Path:
         raise NotImplementedError
 
+    def get_screenshot(self, request: object) -> object:
+        raise NotImplementedError
+
+    def get_screenshot_url(self, request: object) -> str:
+        raise NotImplementedError
+
 
 def test_fake_operations_satisfy_runtime_checkable_port() -> None:
     assert isinstance(_FakeOperations(), DashboardOperations)

@@ -17,6 +17,7 @@ class APIErrorContext:
     request_id: str | None = None
     request_method: str | None = None
     attempts: int = 1
+    retry_after: float | None = None
 
 
 class DataLensError(Exception):

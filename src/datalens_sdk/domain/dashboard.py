@@ -18,6 +18,15 @@ from datalens_sdk.domain.entry_location import (
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import DashboardOperations
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
+from datalens_sdk.domain.screenshot import (
+    DASHBOARD_PAGE_PARAMS,
+    DASHBOARD_SCREENSHOT_WIDTH,
+    DEFAULT_SCREENSHOT_TIMEOUT,
+    EntityScreenshot,
+    ScreenshotParams,
+    ScreenshotRequest,
+    ScreenshotTheme,
+)
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.artifacts import ArtifactPath, write_dashboard_artifact
 from datalens_sdk.serialization.json_types import JsonValue
@@ -414,6 +423,62 @@ class Dashboard:
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
         return self._operations.export_dashboard_with_dependencies(self, path)
+
+    def screenshot(
+        self,
+        *,
+        width: int = DASHBOARD_SCREENSHOT_WIDTH,
+        height: int | None = None,
+        full_page: bool | None = None,
+        tab: str | None = None,
+        state: str | None = None,
+        theme: ScreenshotTheme | None = None,
+        show_title: bool = True,
+        show_tabs: bool = True,
+        params: ScreenshotParams | None = None,
+        timeout: float = DEFAULT_SCREENSHOT_TIMEOUT,
+    ) -> EntityScreenshot:
+        """Render the revision loaded into this dashboard on the server and return it as a PNG.
+
+        Without ``height`` the whole tab is captured at full length. With ``height``
+        the picture is cut to that viewport unless ``full_page=True`` is passed.
+        ``tab`` is a tab id from ``tabs``. ``state`` is the hash of a saved selector
+        state, taken from a dashboard link; the SDK cannot check it, and DataLens
+        draws an error notice into the picture for an unknown one. ``params`` are
+        values of parameters declared in the dashboard settings; DataLens ignores
+        any other name, so an undeclared one is rejected here instead of producing
+        an unfiltered picture. Names DataLens reserves for the page itself, such as
+        ``scale``, cannot be declared and are passed through unchanged.
+        """
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if tab is not None:
+            tab_ids = [_.id for _ in self.tabs if _.id]
+            if tab not in tab_ids:
+                raise DataLensValidationError(f"Unknown dashboard tab id {tab!r}; available tab ids: {tab_ids}")
+        request = ScreenshotRequest.create(
+            entity_kind="dashboard",
+            entity_id=self.id,
+            width=width,
+            height=height,
+            full_page=height is None if full_page is None else full_page,
+            params=params,
+            rev_id=self.rev_id,
+            tab=tab,
+            state=state,
+            theme=theme,
+            show_title=show_title,
+            show_tabs=show_tabs,
+            timeout=timeout,
+        )
+        declared = sorted(_mapping(_mapping(self.data.get("settings")).get("globalParams")))
+        undeclared = [_ for _ in request.params if _ not in declared and _ not in DASHBOARD_PAGE_PARAMS]
+        if undeclared:
+            raise DataLensValidationError(
+                f"Dashboard settings do not declare parameters {undeclared}, so DataLens would ignore their values; "
+                f"declared parameters: {declared}. Declare a parameter with dashboard.update.global_params(...) first"
+            )
+        return self._operations.get_screenshot(request)
 
     def refresh(self) -> Dashboard:
         """Re-read the current default revision of this dashboard.

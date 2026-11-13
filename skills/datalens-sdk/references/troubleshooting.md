@@ -123,6 +123,8 @@ The entity is locked, typically because a person has it open for editing in the 
 
 **Handling:** wait meaningfully (seconds, not milliseconds), reduce concurrency and `page_size`-driven fan-out, then re-run the failed call once. If you are batch-creating entities, serialize the loop instead of parallelizing.
 
+**Screenshots are the exception:** `screenshot()` and `get_temp_s3_url()` already wait out a 429 by its `Retry-After` inside the call's `timeout`. A `RateLimitError` from them means the wait did not fit; raise `timeout` or space the calls out, and do not add a retry loop. See [screenshots.md](screenshots.md).
+
 **What NOT to do:** do not wrap calls in an unbounded `while: retry` — you will extend the throttling window — and do not raise write retry counts globally via a custom `http_client` just to push through a 429.
 
 ## 7. `DataLensValidationError` — your code is wrong; the server was never asked
@@ -135,9 +137,9 @@ Raised client-side at build/execute time (and sometimes at the offending builder
 
 ## 8. `DataLensTransportError` — the request may or may not have arrived
 
-DNS failure, connection refused, TLS problems, timeouts. There is **no `e.context` and no `request_id`** — use `e.method`, `e.url`, `e.attempts`, `e.reason`. Reads were already retried up to 3 times before this surfaced.
+DNS failure, connection refused, TLS problems, timeouts. There is **no `e.context` and no `request_id`** — use `e.method`, `e.url`, `e.attempts`, `e.reason`. Reads were already retried up to 3 times before this surfaced. A screenshot is the exception: it is sent once, and after a timeout the render may still be running on the server.
 
-**Handling:** verify `e.url` is the endpoint you expect (typos in `DATALENS_BASE_URL` show up here), check VPN/proxy/network, then re-run. For a **write**, remember a timeout is ambiguous — the create may have landed. If the re-run raises `ConflictError`, that is your answer: the first attempt succeeded; switch to the adopt pattern from section 4.
+**Handling:** verify `e.url` is the endpoint you expect (typos in `DATALENS_BASE_URL` show up here), check VPN/proxy/network, then re-run. For a **write**, remember a timeout is ambiguous — the create may have landed. If the re-run raises `ConflictError`, that is your answer: the first attempt succeeded; switch to the adopt pattern from section 4. For a **screenshot** that timed out, raise `timeout` instead of re-running the same call; see [screenshots.md](screenshots.md).
 
 **What NOT to do:** do not blind-loop retries on writes without watching for `ConflictError`, and do not "fix" a wrong base URL by disabling TLS verification or hand-rolling HTTP.
 
@@ -186,6 +188,7 @@ exception raised
 ├─ NotSupportedError          → surface absent on this installation → check client.capabilities
 ├─ DataLensTransportError     → network; no request_id → verify url/VPN, re-run;
 │                                write re-run conflicts? → first attempt landed → adopt (sec. 4)
+│                                screenshot timed out? → sent once → raise timeout, see screenshots.md
 └─ DataLensAPIError           → report e.context.request_id, then branch on type:
    ├─ Spark UserRefreshTokenRequired (grpcCode 9) → complete the Spark cluster auth flow above
    ├─ 400 BadRequestError     → server rejected payload → fix code; never retry
@@ -195,7 +198,9 @@ exception raised
    ├─ 404 NotFoundError       → wrong id OR wrong installation endpoint → verify both
    ├─ 423 LockedError         → locked, no lock API → report and wait for the user
    ├─ 429 RateLimitError      → back off seconds, serialize, retry once
+   │                            screenshot? → already waited by Retry-After → raise timeout, no loop
    ├─ 5xx ServerError         → transient? reads auto-retried already → retry once, then report
+   │                            screenshot? → never auto-retried → retry once at most, then report
    └─ synthetic 502 InvalidResponseError / DTOValidationError
                                → base_url wrong or version drift → check endpoint, report
 ```
@@ -205,4 +210,5 @@ exception raised
 - [setup.md](setup.md) — credentials, `yc` CLI, base URLs, preflight states
 - [core-concepts.md](core-concepts.md) — retries, idempotency, and the adopt-on-conflict contract
 - [serialization.md](serialization.md) — safe export/clone instead of risky raw replace
+- [screenshots.md](screenshots.md) — the single-attempt render and its rate-limit wait
 - [editor-charts/troubleshooting.md](editor-charts/troubleshooting.md) — editor charts that persist but fail to render

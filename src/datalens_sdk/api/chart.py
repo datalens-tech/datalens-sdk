@@ -35,9 +35,10 @@ from datalens_sdk.domain.navigation import (
     Pager,
     RelationOptions,
 )
-from datalens_sdk.domain.ports import ChartOperations, NavigationOperations
+from datalens_sdk.domain.ports import ChartOperations, NavigationOperations, ScreenshotOperations
 from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
+from datalens_sdk.domain.screenshot import EntityScreenshot, ScreenshotRequest
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
 from datalens_sdk.domain.wizard_chart import WizardChart, WizardChartUpdate
 from datalens_sdk.errors import (
@@ -146,12 +147,14 @@ class ChartService(ChartOperations):
         api: ChartAPI,
         entries_service: EntriesService,
         navigation_operations: NavigationOperations,
+        screenshot_operations: ScreenshotOperations,
         dto_module: WizardChartDtoModule | None = None,
     ) -> None:
         self._installation = installation
         self._api = api
         self._entries_service = entries_service
         self._navigation_operations = navigation_operations
+        self._screenshot_operations = screenshot_operations
         self._dto_module = dto_module
         self._wizard_contract = validate_wizard_generated_contract(dto_module)
 
@@ -588,3 +591,9 @@ class ChartService(ChartOperations):
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]:
         return self._navigation_operations.get_entry_relations(entry_id, options)
+
+    def get_screenshot(self, request: ScreenshotRequest) -> EntityScreenshot:
+        return self._screenshot_operations.get_screenshot(request)
+
+    def get_screenshot_url(self, request: ScreenshotRequest) -> str:
+        return self._screenshot_operations.get_screenshot_url(request)

@@ -384,6 +384,34 @@
         {"text": "Distinguishes LakehouseOperation.done from SparkApplication.status; does not invent SparkApplication.wait(), terminal status semantics, or an application ID from opaque operation metadata", "type": "code"},
         {"text": "Does NOT use raw HTTP, hand-built payloads, generated/private imports, or invented environment discovery", "type": "code"}
       ]
+    },
+    {
+      "id": 26,
+      "name": "dashboard-screenshot-save-without-viewing",
+      "prompt": "Save a PNG of the Details tab of dashboard dash-ops-26 filtered to the regions East and West into reports/ops-details.png. The dashboard settings already declare a parameter that is linked to its region selector. I will attach the file to a weekly mail myself.",
+      "expected_output": "Loads the dashboard with client.get.dashboard, finds the Details tab id in dashboard.tabs, reads the declared parameter names from dashboard.data['settings']['globalParams'] and picks the region one, calls dashboard.screenshot(tab=<id>, params={<declared name>: ['East', 'West']}).save('reports/ops-details.png'), and reports the saved path. It does not open the picture, print bytes or base64, or request a temporary link.",
+      "files": [],
+      "assertions": [
+        {"text": "Calls screenshot() on the dashboard loaded through client.get.dashboard(by_id='dash-ops-26')", "type": "code"},
+        {"text": "Passes the Details tab through the tab argument using an id taken from dashboard.tabs, not through params", "type": "code"},
+        {"text": "Takes the params key from the parameter names declared in dashboard.data['settings']['globalParams'] instead of guessing it from the selector title", "type": "code"},
+        {"text": "Passes the region values as a sequence of strings in params under that declared name and saves the result with .save('reports/ops-details.png')", "type": "code"},
+        {"text": "Does NOT open or describe the saved picture, print image bytes or base64, or call get_temp_s3_url()", "type": "workflow"},
+        {"text": "Does NOT use a browser, raw HTTP, or revId/tab keys inside params", "type": "workflow"}
+      ]
+    },
+    {
+      "id": 27,
+      "name": "chart-screenshot-visual-check-on-request",
+      "prompt": "I just updated chart chart-sales-27. Take a screenshot into out/chart-sales-27.png and check that it renders without an error placeholder and that the legend is not cut off.",
+      "expected_output": "Loads the chart with client.get.chart, saves chart.screenshot() to out/chart-sales-27.png, then opens the saved file because the user asked for a visual check, and reports rendering and layout observations without reading out metric values.",
+      "files": [],
+      "assertions": [
+        {"text": "Calls chart.screenshot() on the loaded chart and saves it to out/chart-sales-27.png before any inspection", "type": "code"},
+        {"text": "Opens the saved picture only because the user explicitly asked for a visual check", "type": "workflow"},
+        {"text": "Reports rendering and layout findings and does NOT recite metric values from the picture", "type": "workflow"},
+        {"text": "Does NOT retry a failed render in a loop; raises timeout or reports the failure with request_id instead", "type": "workflow"}
+      ]
     }
   ]
 }
