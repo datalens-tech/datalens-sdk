@@ -75,10 +75,21 @@ needs depends on the chart family:
   created in the chart itself (take it from `chart.fields` or `dataset.fields`),
   or the name of a parameter declared in the dataset. A dataset field title
   works too, but prefer the guid: titles can repeat and change.
-- QL: the name of a `QLParam` the chart declares; the query reads it as
-  `{{name}}`.
-- Editor: a key exported by the chart's `params` tab. An Editor chart has no
-  `chart.fields`.
+- QL: the name of a `QLParam` the chart declares, listed in `chart.params`;
+  the query reads it as `{{name}}`.
+- Editor: a key that the chart's own code reads through `Editor.getParams()`
+  in its `Sources` or `Prepare` tab. The `params` tab holds the defaults; a
+  key that is absent there still reaches the code. The value changes the
+  picture only when that code uses it, so read `chart.data["params"]`,
+  `chart.data["sources"]`, and `chart.data["prepare"]` before choosing a key.
+  An Editor chart has no `chart.fields`.
+
+Names are case-sensitive. A name the chart does not read leaves the picture
+unchanged and raises no error, and the SDK does not check chart names. Without
+`params` a QL or Editor chart is rendered with its own default values, not
+unfiltered; a passed value replaces the default of its own key only. In an
+Editor chart the meaning of a value, such as an empty string or a date
+interval, is decided by the chart's code.
 
 [parameters.md](parameters.md) describes how each family defines its
 parameters.
