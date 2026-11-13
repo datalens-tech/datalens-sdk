@@ -78,7 +78,10 @@ needs depends on the chart family:
 - QL: the name of a `QLParam` the chart declares, listed in `chart.params`;
   the query reads it as `{{name}}`. One value is substituted as a single
   value and several values as a tuple, so pass a sequence only when the query
-  uses the parameter with `in`; see
+  uses the parameter with `in`. After `in`, ClickHouse and PostgreSQL
+  connections turn one value into a tuple too; other connections do not, so
+  there such a query fails for one value, also when it is passed as a
+  one-item sequence (observed on Trino). See
   [parameter substitution in QL charts](https://yandex.cloud/en/docs/datalens/operations/chart/create-sql-chart#params-in-select).
 - Editor: a key that the chart's own code reads through `Editor.getParams()`
   in its `Sources` or `Prepare` tab. The `params` tab holds the defaults; a
@@ -195,8 +198,9 @@ apply as is: raise `timeout` after a client-side timeout, re-run at most once
 after a `ServerError`, then report the request id.
 
 A chart that fails inside DataLens does not fail the call: the picture is
-returned with the chart's error drawn in it. A sequence passed for a QL
-parameter that the query uses as a single value ends this way.
+returned with the chart's error drawn in it. A QL parameter value whose shape
+the query does not expect ends this way: a sequence for a query that compares
+with `=`, or no value for a parameter without a default.
 
 Invalid arguments fail locally with `DataLensValidationError`. An entity id
 the server cannot render fails with `BadRequestError`. A malformed response
