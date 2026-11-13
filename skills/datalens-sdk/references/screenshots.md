@@ -105,9 +105,11 @@ from `params`; DataLens ignores every other name without an error. The SDK
 therefore rejects an undeclared name with `DataLensValidationError` before
 HTTP and lists the declared ones. A dashboard parameter is free-form: a name
 and a list of values, with no type, and the name does not have to match a
-dataset field. A selector does not declare a parameter by itself. How a
-declared parameter reaches a selector depends on its name:
+dataset field. A selector does not declare a parameter by itself. A declared
+parameter reaches its receivers by name:
 
+- a chart on the dashboard that reads a parameter with that name receives the
+  value directly, by the chart rules above; the selectors stay as they were;
 - a name equal to the selector's dataset field id is linked to that selector
   automatically;
 - any other name needs an explicit alias that links the dashboard parameter to
@@ -119,11 +121,12 @@ DataLens reserves some names for the page itself: `mode`, `focus`, `grid`,
 them through unchanged, and their effect on a screenshot is not guaranteed.
 `state` is reserved too and has its own argument, described below.
 
-The SDK checks the declaration only. A declared parameter that is linked to
-nothing still leaves the picture unfiltered, without an error. The declared
-names are in `dashboard.data["settings"]["globalParams"]`. When the needed one
-is missing, declaring it with `dashboard.update.global_params({...})` changes
-the dashboard and needs the user's consent. See [parameters.md](parameters.md),
+The SDK checks the declaration only. A declared parameter that no chart reads
+and no selector is linked to still leaves the picture unfiltered, without an
+error. The declared names are in
+`dashboard.data["settings"]["globalParams"]`. When the needed one is missing,
+declaring it with `dashboard.update.global_params({...})` changes the
+dashboard and needs the user's consent. See [parameters.md](parameters.md),
 the
 [dashboard parameter rules](https://yandex.cloud/en/docs/datalens/dashboard/dashboard_parameters),
 and the
@@ -156,8 +159,12 @@ The API has no method that creates or lists states, so take the hash from a
 link the user gives and do not invent one. The SDK cannot check it. A hash
 that does not exist, or belongs to another dashboard, does not fail the call:
 DataLens renders the dashboard without the state and draws an error notice
-over the picture. What wins when `state` and `params` set the same selector
-is not verified; pass one of them.
+over the picture.
+
+`state` and `params` combine when they set different things, for example a
+state with selector values and a declared parameter that a chart reads. What
+wins when both set the same selector is not verified; do not pass both for
+one selector.
 
 ## Temporary link
 
