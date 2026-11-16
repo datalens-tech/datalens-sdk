@@ -431,17 +431,7 @@ def _schema_ref_name(value: object, *, context: str) -> str:
 
 
 def _schema_refs(value: object) -> set[str]:
-    if isinstance(value, list):
-        return set().union(*(_schema_refs(item) for item in value)) if value else set()
-    if not isinstance(value, dict):
-        return set()
-
-    refs: set[str] = set()
-    if "$ref" in value:
-        refs.add(_schema_ref_name(value, context="schema node"))
-    for child in value.values():
-        refs.update(_schema_refs(child))
-    return refs
+    return {name for name, _ in _schema_refs_with_pointers(value, pointer="")}
 
 
 def _schema_refs_with_pointers(value: object, *, pointer: str) -> list[tuple[str, str]]:
@@ -457,7 +447,12 @@ def _schema_refs_with_pointers(value: object, *, pointer: str) -> list[tuple[str
         [(_schema_ref_name(value, context="schema node"), _schema_pointer(pointer, "$ref"))] if "$ref" in value else []
     )
     for key, child in sorted(value.items()):
-        if key != "$ref":
+        if key in _SCHEMA_NAMED_MAP_KEYS and isinstance(child, dict):
+            for name, schema in sorted(child.items()):
+                refs.extend(
+                    _schema_refs_with_pointers(schema, pointer=_schema_pointer(_schema_pointer(pointer, key), name))
+                )
+        elif key in {"additionalProperties", "allOf", "anyOf", "items", "oneOf", "prefixItems"}:
             refs.extend(_schema_refs_with_pointers(child, pointer=_schema_pointer(pointer, key)))
     return refs
 
@@ -842,7 +837,11 @@ def _audit_pydantic_schema_features(
                     f"Unsupported behavior-bearing {contract} schema feature at "
                     f"{_schema_pointer(pointer, 'enum')}: enum value has an incompatible schema type"
                 )
-    if contract.startswith("tagged RPC ") and isinstance(enum, list) and isinstance(raw_type, list):
+    if (
+        (contract == "Wizard" or contract.startswith("tagged RPC "))
+        and isinstance(enum, list)
+        and isinstance(raw_type, list)
+    ):
         for constraint in ("minLength", "maxLength", "pattern", "minimum", "maximum"):
             if constraint in value:
                 raise ValueError(

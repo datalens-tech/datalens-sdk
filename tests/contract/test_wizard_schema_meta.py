@@ -1146,6 +1146,35 @@ def test_generated_wizard_bounds_preserve_auto_and_omitted_defaults(tmp_path: Pa
                 factory(invalid).to_payload()
 
 
+@pytest.mark.parametrize("reference", ["#/components/schemas/NotAComponent", "literal payload value"])
+def test_wizard_default_reference_values_are_data_not_schema_edges(tmp_path: Path, reference: str) -> None:
+    spec = _wizard_spec()
+    schemas = _raw_object(_raw_object(spec["components"], path="components")["schemas"], path="schemas")
+    config = _raw_object(schemas["WizardV1ConfigSchema"], path="WizardV1ConfigSchema")
+    scalars = _raw_object(_raw_object(config["properties"], path="properties")["scalars"], path="scalars")
+    default = {"$ref": reference, "items": [{"$ref": reference}], "default": {"description": "literal"}}
+    _raw_object(scalars["properties"], path="scalars.properties")["metadata"] = {
+        "type": "object",
+        "additionalProperties": True,
+        "default": default,
+    }
+    manifest = build_wizard_schema_meta(spec)
+    normalized_config = _object(manifest["schemas"]["WizardV1ConfigSchema"], path="config")
+    normalized_properties = _object(normalized_config["properties"], path="config.properties")
+    normalized_scalars = _object(normalized_properties["scalars"], path="scalars")
+    normalized_fields = _object(normalized_scalars["properties"], path="scalar properties")
+    assert _object(normalized_fields["metadata"], path="metadata")["default"] == default
+    assert "NotAComponent" not in manifest["schemas"]
+
+    module = _generated_wizard_dto_module(tmp_path, wizard_spec_value=spec)
+    omitted = _strict_config()
+    assert module.WizardChartCreateDTO(data=omitted).to_payload()["data"] == omitted
+    explicit = _strict_config()
+    cast(dict[str, object], explicit["scalars"])["metadata"] = default
+    assert module.WizardChartCreateDTO(data=explicit).to_payload()["data"] == explicit
+    assert module.WizardChartUpdateDTO(chart_id="chart-1", mode="save", data=explicit).to_payload()["data"] == explicit
+
+
 @pytest.mark.parametrize(
     "schema",
     [
@@ -1153,6 +1182,7 @@ def test_generated_wizard_bounds_preserve_auto_and_omitted_defaults(tmp_path: Pa
         {"type": "null", "maximum": 100},
         {"anyOf": [{"type": "number"}, {"type": "null"}], "minimum": 0},
         {"allOf": [{"type": "number", "minimum": 0}]},
+        {"type": ["number", "null"], "enum": [0, 200, None], "minimum": 1, "maximum": 100},
     ],
 )
 def test_wizard_numeric_constraints_reject_unrepresentable_shapes(schema: dict[str, object]) -> None:

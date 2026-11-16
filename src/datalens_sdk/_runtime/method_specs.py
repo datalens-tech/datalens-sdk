@@ -298,6 +298,7 @@ METHOD_SPECS: dict[str, MethodSpec] = {
     "point_size_range": {
         "kind": "helper",
         "helper": "point_size_range",
+        "visualization_types": frozenset({"scatter"}),
         "required_slot_carrier": "size",
         "required_slot_settings": frozenset({"maxRadius", "minRadius", "radius"}),
     },
