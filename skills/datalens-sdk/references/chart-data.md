@@ -109,6 +109,9 @@ Table indices are not query or block IDs.
 Pivot tables are unsupported. Editor sources must provide raw data through
 `Editor.setRawData()`; a visible chart alone does not establish that raw data
 is available. Do not infer an Editor failure from an empty result alone.
+Editor `module` resources contain reusable JavaScript and never have chart
+data. Where an installation exposes Modules, exclude them from data export;
+adding `Editor.setRawData()` does not turn a Module into a visual chart.
 
 The operation specifies these aggregate response limits: 100,000 rows,
 100,000 cells, 1,000 tables, and 100,000 schema columns, with at most 800 columns
