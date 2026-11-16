@@ -4,6 +4,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from http import HTTPStatus
 import logging
+import math
 import time
 from typing import Protocol, cast
 
@@ -52,6 +53,17 @@ def _api_error_details(value: object) -> dict[str, object] | list[object] | None
     if isinstance(value, list):
         return list(value) or None
     return None
+
+
+def retry_after_seconds(value: str | None) -> float | None:
+    """Parse a Retry-After header given as a number of seconds; other forms are ignored."""
+    if value is None:
+        return None
+    try:
+        seconds = float(value)
+    except ValueError:
+        return None
+    return seconds if math.isfinite(seconds) and seconds >= 0 else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -231,6 +243,7 @@ class DataLensHTTPClient:
                 request_id=response.headers.get("x-request-id"),
                 request_method=exc.request.method,
                 attempts=attempts,
+                retry_after=retry_after_seconds(response.headers.get("retry-after")),
             )
         )
 

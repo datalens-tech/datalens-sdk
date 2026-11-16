@@ -22,6 +22,15 @@ from datalens_sdk.domain.entry_location import (
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
+from datalens_sdk.domain.screenshot import (
+    CHART_SCREENSHOT_HEIGHT,
+    CHART_SCREENSHOT_WIDTH,
+    DEFAULT_SCREENSHOT_TIMEOUT,
+    EntityScreenshot,
+    ScreenshotParams,
+    ScreenshotRequest,
+    ScreenshotTheme,
+)
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.artifacts import ArtifactPath, write_chart_artifact
 from datalens_sdk.serialization.json_types import JsonValue
@@ -163,6 +172,35 @@ class Chart(ABC):
 
     def to_file(self, path: ArtifactPath) -> Path:
         return self._write_artifact(path, split_tabs=False)
+
+    def screenshot(
+        self,
+        *,
+        width: int = CHART_SCREENSHOT_WIDTH,
+        height: int = CHART_SCREENSHOT_HEIGHT,
+        theme: ScreenshotTheme | None = None,
+        params: ScreenshotParams | None = None,
+        timeout: float = DEFAULT_SCREENSHOT_TIMEOUT,
+    ) -> EntityScreenshot:
+        """Render the revision loaded into this chart on the server and return it as a PNG.
+
+        The chart fills the ``width`` x ``height`` viewport. ``params`` are chart
+        parameters, keyed by field or parameter name.
+        """
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        return self._operations.get_screenshot(
+            ScreenshotRequest.create(
+                entity_kind="chart",
+                entity_id=self.id,
+                width=width,
+                height=height,
+                params=params,
+                rev_id=self.rev_id,
+                theme=theme,
+                timeout=timeout,
+            )
+        )
 
     @property
     @abstractmethod

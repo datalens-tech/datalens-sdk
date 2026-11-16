@@ -110,6 +110,10 @@ _HTML_PAGE_ROUTES = {
     "/rpc/getHtmlPagePreviewUrl": ("GetHtmlPagePreviewUrlArgs", "GetHtmlPagePreviewUrlResult"),
     "/rpc/updateHtmlPage": ("UpdateHtmlPageArgs", "UpdateHtmlPageResult"),
 }
+_SCREENSHOT_ROUTES = {
+    "/rpc/getChartScreenshot": ("GetChartScreenshotArgs", "GetScreenshotResult"),
+    "/rpc/getDashScreenshot": ("GetDashScreenshotArgs", "GetScreenshotResult"),
+}
 _DATASET_DATA_ROUTE = "/rpc/getDatasetData"
 _DATASET_DATA_ROOTS = ("DatasetDataArgs", "DatasetData")
 _ENTRY_REVISIONS_ROUTE = "/rpc/getRevisions"
@@ -140,6 +144,7 @@ _DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "maxItems", "minI
 _DATASET_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"maximum", "minItems", "minLength", "minimum"})
 _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS = frozenset({"default", "maximum", "maxItems", "minItems", "minimum"})
 _HTML_PAGE_SCHEMA_SUPPORTED_KEYS = frozenset({"maxLength"})
+_SCREENSHOT_SCHEMA_SUPPORTED_KEYS = frozenset({"exclusiveMinimum", "maximum"})
 _TAGGED_RPC_SCHEMA_SUPPORTED_KEYS = frozenset(
     {"minLength", "maxLength", "pattern", "minimum", "maximum", "minItems", "maxItems"}
 )
@@ -276,6 +281,11 @@ class HtmlPageContractMeta(TypedDict):
     schemas: dict[str, JsonValue]
 
 
+class ScreenshotContractMeta(TypedDict):
+    roots: list[str]
+    schemas: dict[str, JsonValue]
+
+
 class RpcNamespaceConfig(TypedDict):
     tag: str
     namespace: str
@@ -351,6 +361,7 @@ class Metadata(TypedDict):
     entry_move: NotRequired[EntryMoveContractMeta]
     entry_revisions: NotRequired[EntryRevisionsContractMeta]
     html_page: NotRequired[HtmlPageContractMeta]
+    screenshot: NotRequired[ScreenshotContractMeta]
     rpc_namespaces: NotRequired[dict[str, RpcNamespaceContractMeta]]
 
 
@@ -716,6 +727,7 @@ def _audit_pydantic_schema_features(
             or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
             or (contract == "getRevisions" and key in _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS)
             or (contract == "HtmlPages" and key in _HTML_PAGE_SCHEMA_SUPPORTED_KEYS)
+            or (contract == "Screenshots" and key in _SCREENSHOT_SCHEMA_SUPPORTED_KEYS)
             or (contract.startswith("tagged RPC ") and key in _TAGGED_RPC_SCHEMA_SUPPORTED_KEYS)
         )
         if state is _WizardSchemaFeatureState.SEMANTIC_UNSUPPORTED and not contract_extension:
@@ -768,6 +780,7 @@ def _audit_pydantic_schema_features(
             "pattern": {"string", "null"},
             "minimum": {"integer", "number", "null"},
             "maximum": {"integer", "number", "null"},
+            "exclusiveMinimum": {"integer", "number", "null"},
         }
         for constraint, allowed_types in constraints_by_type.items():
             if constraint in value and (
@@ -834,6 +847,13 @@ def _audit_pydantic_schema_features(
     maximum = value.get("maximum")
     if "maximum" in value and (not isinstance(maximum, (int, float)) or isinstance(maximum, bool)):
         raise ValueError(f"{contract} schema feature at {_schema_pointer(pointer, 'maximum')} must be a number")
+    exclusive_minimum = value.get("exclusiveMinimum")
+    if "exclusiveMinimum" in value and (
+        not isinstance(exclusive_minimum, (int, float)) or isinstance(exclusive_minimum, bool)
+    ):
+        raise ValueError(
+            f"{contract} schema feature at {_schema_pointer(pointer, 'exclusiveMinimum')} must be a number"
+        )
 
     discriminator = value.get("discriminator")
     if "discriminator" in value:
@@ -1868,6 +1888,56 @@ def build_html_page_contract_meta(spec: Mapping[str, object]) -> HtmlPageContrac
     return {"roots": sorted(roots), "schemas": dict(sorted(normalized_schemas.items()))}
 
 
+def build_screenshot_contract_meta(spec: Mapping[str, object]) -> ScreenshotContractMeta | None:
+    """Extract the screenshot RPC routes and their schema closure, when the installation has them."""
+
+    paths = _string_object_dict(spec.get("paths"), context="paths")
+    discovered = {path for path in paths if path.endswith("Screenshot")}
+    if not discovered:
+        return None
+    expected = set(_SCREENSHOT_ROUTES)
+    if discovered != expected:
+        raise ValueError(
+            f"Screenshot routes differ from the expected contract: expected {sorted(expected)}, got {sorted(discovered)}"
+        )
+
+    roots: set[str] = set()
+    for route, (expected_request, expected_result) in sorted(_SCREENSHOT_ROUTES.items()):
+        path_item = _string_object_dict(paths.get(route), context=route)
+        operation = _string_object_dict(path_item.get("post"), context=f"{route}.post")
+        request_schema, _ = _route_schema(operation, route=route, request=True)
+        result_schema, _ = _route_schema(operation, route=route, request=False)
+        if (request_schema, result_schema) != (expected_request, expected_result):
+            raise ValueError(
+                f"{route} schema references differ: expected "
+                f"{(expected_request, expected_result)!r}, got {(request_schema, result_schema)!r}"
+            )
+        roots.update((expected_request, expected_result))
+
+    schemas = _schemas(spec)
+    reached: set[str] = set()
+    queue = sorted(roots)
+    normalized_schemas: dict[str, JsonValue] = {}
+    while queue:
+        name = queue.pop(0)
+        if name in reached:
+            continue
+        schema = schemas.get(name)
+        if schema is None:
+            raise ValueError(f"Screenshot schema graph references missing component {name!r}")
+        reached.add(name)
+        _audit_pydantic_schema_features(
+            schema,
+            pointer=f"/schemas/{_json_pointer_token(name)}",
+            contract="Screenshots",
+            require_provably_disjoint_one_of=False,
+        )
+        normalized_schemas[name] = _normalize_wizard_schema(schema)
+        queue.extend(sorted(_schema_refs(schema) - reached - set(queue)))
+
+    return {"roots": sorted(roots), "schemas": dict(sorted(normalized_schemas.items()))}
+
+
 def _dataset_data_route_schema(spec: Mapping[str, object], *, request: bool) -> dict[str, object] | None:
     paths = _string_object_dict(spec.get("paths"), context="paths")
     route_value = paths.get(_DATASET_DATA_ROUTE)
@@ -2768,6 +2838,7 @@ def build_metadata(
     entry_move_missing: list[str] = []
     entry_revisions_contracts: list[tuple[str, EntryRevisionsContractMeta]] = []
     html_page_contracts: list[tuple[str, HtmlPageContractMeta]] = []
+    screenshot_contracts: list[tuple[str, ScreenshotContractMeta]] = []
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
     for installation, spec_path in sorted(installations.items()):
         spec = _load_json(spec_path)
@@ -2796,6 +2867,9 @@ def build_metadata(
             entry_move_contracts.append((installation, entry_move_contract))
         html_page_contract = build_html_page_contract_meta(spec)
         html_page_contracts.append((installation, html_page_contract))
+        screenshot_contract = build_screenshot_contract_meta(spec)
+        if screenshot_contract is not None:
+            screenshot_contracts.append((installation, screenshot_contract))
         dataset_data_contract = build_dataset_data_contract_meta(spec)
         if dataset_data_contract is None:
             dataset_data_missing.append(installation)
@@ -2862,6 +2936,12 @@ def build_metadata(
             if candidate != canonical_html_page:
                 raise ValueError(f"HTML-page schemas differ between {canonical_installation!r} and {installation!r}")
         out["html_page"] = canonical_html_page
+    if screenshot_contracts:
+        canonical_installation, canonical_screenshot = screenshot_contracts[0]
+        for installation, candidate in screenshot_contracts[1:]:
+            if candidate != canonical_screenshot:
+                raise ValueError(f"Screenshot schemas differ between {canonical_installation!r} and {installation!r}")
+        out["screenshot"] = canonical_screenshot
     if dataset_data_contracts and dataset_data_missing:
         raise ValueError(
             "getDatasetData availability differs between installations: "
@@ -3391,6 +3471,8 @@ class _PydanticSchemaEmitter:
             constraints.append(f"max_length={schema[max_length_key]!r}")
         if minimum and isinstance(schema.get("minimum"), (int, float)):
             constraints.append(f"ge={schema['minimum']!r}")
+        if minimum and isinstance(schema.get("exclusiveMinimum"), (int, float)):
+            constraints.append(f"gt={schema['exclusiveMinimum']!r}")
         if minimum and isinstance(schema.get("maximum"), (int, float)):
             constraints.append(f"le={schema['maximum']!r}")
         pattern_validation = None
@@ -4619,6 +4701,25 @@ def _emit_html_page_dto(metadata: Metadata) -> str:
     return f"\n{request_models}\n{result_models}".rstrip() + "\n"
 
 
+def _emit_screenshot_dto(metadata: Metadata) -> str:
+    contract = metadata.get("screenshot")
+    if contract is None:
+        return ""
+    schemas = contract["schemas"]
+    request_models = _PydanticSchemaEmitter(
+        schemas,
+        read=False,
+        contract="Screenshots",
+        payload_methods="roots",
+    ).emit(("GetChartScreenshotArgs", "GetDashScreenshotArgs"))
+    result_models = _PydanticSchemaEmitter(
+        schemas,
+        read=True,
+        contract="Screenshots",
+    ).emit(("GetScreenshotResult",))
+    return f"\n{request_models}\n{result_models}".rstrip() + "\n"
+
+
 def _rpc_result_schema_closure(roots: set[str], schemas: Mapping[str, JsonValue]) -> set[str]:
     reached: set[str] = set()
     pending = list(roots)
@@ -4835,6 +4936,7 @@ def emit_dto(metadata: Metadata) -> str:
     entry_move_result_dto_block = _emit_entry_move_result_dto(metadata)
     entry_revisions_dto_block = _emit_entry_revisions_dto(metadata)
     html_page_dto_block = _emit_html_page_dto(metadata)
+    screenshot_dto_block = _emit_screenshot_dto(metadata)
     navigation_dto_block = _emit_navigation_dto()
     base_dto_module = f"""# AUTOGENERATED by scripts/generate_sdk.py. Do not edit by hand.
 # ruff: noqa
@@ -5370,7 +5472,7 @@ class LicenseSetLimitArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return {{"value": self.value}}
 {chart_dto_block}{dashboard_dto_block}{entry_revisions_dto_block}
-{html_page_dto_block}"""
+{html_page_dto_block}{screenshot_dto_block}"""
     if not metadata.get("rpc_namespaces"):
         return base_dto_module
     reserved_model_names = {

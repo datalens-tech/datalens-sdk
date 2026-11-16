@@ -13,8 +13,9 @@ from datalens_sdk.domain.dashboard_update import DashboardUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.entry_types import EntryBranch
 from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
-from datalens_sdk.domain.ports import DashboardOperations, NavigationOperations
+from datalens_sdk.domain.ports import DashboardOperations, NavigationOperations, ScreenshotOperations
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
+from datalens_sdk.domain.screenshot import EntityScreenshot, ScreenshotRequest
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
 from datalens_sdk.errors import (
     DataLensValidationError,
@@ -60,12 +61,14 @@ class DashboardService(DashboardOperations):
         entries_service: EntriesService,
         navigation_operations: NavigationOperations,
         bundle_exporter: DashboardBundleExporter,
+        screenshot_operations: ScreenshotOperations,
         dto_module: DashboardDtoModule | None = None,
     ) -> None:
         self._installation = installation
         self._api = api
         self._entries_service = entries_service
         self._navigation_operations = navigation_operations
+        self._screenshot_operations = screenshot_operations
         self._bundle_exporter = bundle_exporter
         self._dto_module = dto_module
 
@@ -257,6 +260,12 @@ class DashboardService(DashboardOperations):
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]:
         return self._navigation_operations.get_entry_relations(entry_id, options)
+
+    def get_screenshot(self, request: ScreenshotRequest) -> EntityScreenshot:
+        return self._screenshot_operations.get_screenshot(request)
+
+    def get_screenshot_url(self, request: ScreenshotRequest) -> str:
+        return self._screenshot_operations.get_screenshot_url(request)
 
     def export_dashboard_with_dependencies(
         self,

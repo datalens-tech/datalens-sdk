@@ -26,6 +26,7 @@ from datalens_sdk.api.lakehouse_operation import LakehouseOperationAPI, Lakehous
 from datalens_sdk.api.license import LicenseAPI, LicenseService
 from datalens_sdk.api.navigation import NavigationService
 from datalens_sdk.api.rest_catalog import RestCatalogAPI, RestCatalogService
+from datalens_sdk.api.screenshot import ScreenshotAPI, ScreenshotService
 from datalens_sdk.api.spark_application import SparkApplicationAPI, SparkApplicationService
 from datalens_sdk.api.spark_cluster import SparkClusterAPI, SparkClusterService
 from datalens_sdk.api.sql_query import SqlQueryAPI, SqlQueryService
@@ -51,6 +52,7 @@ from datalens_sdk.converter.html_page import HtmlPageDtoModule
 from datalens_sdk.converter.lakehouse_operation import LakehouseOperationDtoModule
 from datalens_sdk.converter.license import LicenseDtoModule
 from datalens_sdk.converter.rest_catalog import RestCatalogDtoModule
+from datalens_sdk.converter.screenshot import ScreenshotDtoModule
 from datalens_sdk.converter.spark_application import SparkApplicationDtoModule
 from datalens_sdk.converter.spark_cluster import SparkClusterDtoModule
 from datalens_sdk.converter.sql_query import SqlQueryDtoModule
@@ -1244,11 +1246,16 @@ class DataLensClientBase:
             dto_module=cast(DatasetDtoModule, dto_module),
             data_dto_module=cast(DatasetDataDtoModule, dto_module),
         )
+        screenshot_service = ScreenshotService(
+            api=ScreenshotAPI(self._http),
+            dto_module=cast(ScreenshotDtoModule, dto_module),
+        )
         self._chart_service = ChartService(
             installation=self.INSTALLATION,
             api=ChartAPI(self._http),
             entries_service=entries_service,
             navigation_operations=self._navigation_service,
+            screenshot_operations=screenshot_service,
             dto_module=cast(WizardChartDtoModule, dto_module),
         )
         dashboard_bundle_exporter = DashboardBundleExporter(
@@ -1266,6 +1273,7 @@ class DataLensClientBase:
             entries_service=entries_service,
             navigation_operations=self._navigation_service,
             bundle_exporter=dashboard_bundle_exporter,
+            screenshot_operations=screenshot_service,
             dto_module=cast(DashboardDtoModule, dto_module),
         )
         self._folder_service = FolderService(

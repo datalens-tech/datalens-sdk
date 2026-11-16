@@ -12,7 +12,7 @@ from datalens_sdk.api.chart import ChartAPI, ChartService
 from datalens_sdk.api.entries import EntriesService
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
 from datalens_sdk.domain.editor_chart import EditorChart, EditorChartUpdate
-from datalens_sdk.domain.ports import NavigationOperations
+from datalens_sdk.domain.ports import NavigationOperations, ScreenshotOperations
 from datalens_sdk.domain.raw_resource import RawEditorChartCreate, RawEditorChartReplace
 from datalens_sdk.errors import NotSupportedError
 from datalens_sdk.http import DataLensHTTPClient
@@ -80,6 +80,7 @@ def test_editor_mutations_use_their_operation_specific_catalogs() -> None:
         api=ChartAPI(http),
         entries_service=cast(EntriesService, object()),
         navigation_operations=cast(NavigationOperations, object()),
+        screenshot_operations=cast(ScreenshotOperations, object()),
         dto_module=cast(WizardChartDtoModule, _DivergentEditorDtoModule()),
     )
     source = _raw(_editor_snapshot(chart_id="source-chart"))
@@ -141,6 +142,7 @@ def test_chart_update_facade_distinguishes_missing_and_empty_tab_catalog_entries
         api=ChartAPI(http),
         entries_service=cast(EntriesService, object()),
         navigation_operations=cast(NavigationOperations, object()),
+        screenshot_operations=cast(ScreenshotOperations, object()),
         dto_module=cast(WizardChartDtoModule, _TabCatalogDtoModule()),
     )
     chart = EditorChart(

@@ -4935,6 +4935,41 @@ class UpdateHtmlPageResultReadDTO(BaseModel):
     entry: CreateHtmlPageResultEntryReadDTO
     warnings: list[str]
 
+class GetChartScreenshotArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    base64: bool = _UNVALIDATED_NONE_DEFAULT
+    chart_id: str = Field(alias='chartId')
+    full_page: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fullPage')
+    height: Annotated[float, Field(gt=0, le=6000)] = _UNVALIDATED_NONE_DEFAULT
+    query_params: dict[str, JsonValue] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='queryParams')
+    s3: bool = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['jpeg', 'jpg', 'png'] = _UNVALIDATED_NONE_DEFAULT
+    width: Annotated[float, Field(gt=0, le=6000)] = _UNVALIDATED_NONE_DEFAULT
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class GetDashScreenshotArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    base64: bool = _UNVALIDATED_NONE_DEFAULT
+    dash_id: str = Field(alias='dashId')
+    full_page: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fullPage')
+    height: Annotated[float, Field(gt=0, le=6000)] = _UNVALIDATED_NONE_DEFAULT
+    query_params: dict[str, JsonValue] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='queryParams')
+    s3: bool = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['jpeg', 'jpg', 'png'] = _UNVALIDATED_NONE_DEFAULT
+    width: Annotated[float, Field(gt=0, le=6000)] = _UNVALIDATED_NONE_DEFAULT
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class GetScreenshotResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    data: str
+
 from collections.abc import Mapping
 import re
 from functools import partial
