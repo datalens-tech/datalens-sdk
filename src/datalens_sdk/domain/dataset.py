@@ -586,6 +586,11 @@ class Dataset:
         limit: int = 500,
         offset: int | None = None,
     ) -> DatasetData:
+        """Execute by ID without pinning the loaded revision or local dataset state.
+
+        The server chooses the configuration; this does not select a saved or
+        published branch based on the revision loaded into this object.
+        """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
         if not self.id:

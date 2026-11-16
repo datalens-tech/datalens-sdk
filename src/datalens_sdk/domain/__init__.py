@@ -1,4 +1,14 @@
 from datalens_sdk.domain.chart import Chart
+from datalens_sdk.domain.chart_data import (
+    ChartData,
+    ChartDataTable,
+    EditorChartData,
+    EditorChartDataColumn,
+    QLChartData,
+    QLChartDataColumn,
+    WizardChartData,
+    WizardChartDataColumn,
+)
 from datalens_sdk.domain.chart_types import GeoLayerFilter, QLCast, QLParamType
 from datalens_sdk.domain.cloud_environment import (
     CloudEnvironment,
@@ -148,6 +158,7 @@ from datalens_sdk.domain.rest_catalog import (
     RestCatalogSortField,
 )
 from datalens_sdk.domain.revisions import EntryRevision
+from datalens_sdk.domain.runtime_params import RuntimeParams, RuntimeParamValue
 from datalens_sdk.domain.screenshot import EntityScreenshot, ScreenshotParams, ScreenshotParamValue, ScreenshotTheme
 from datalens_sdk.domain.spark_application import (
     SparkApplication,
@@ -226,6 +237,8 @@ __all__ = [
     "CacheInvalidationMode",
     "CacheInvalidationSource",
     "Chart",
+    "ChartData",
+    "ChartDataTable",
     "CloudEnvironment",
     "CloudEnvironmentCreate",
     "CloudEnvironmentListOptions",
@@ -271,6 +284,8 @@ __all__ = [
     "DirectoryPage",
     "DirectoryPager",
     "EditorChart",
+    "EditorChartData",
+    "EditorChartDataColumn",
     "EditorChartUpdate",
     "EntityScreenshot",
     "EntryBranch",
@@ -321,6 +336,8 @@ __all__ = [
     "Position",
     "QLCast",
     "QLChart",
+    "QLChartData",
+    "QLChartDataColumn",
     "QLChartUpdate",
     "QLColumn",
     "QLParam",
@@ -347,6 +364,8 @@ __all__ = [
     "RestCatalogCreate",
     "RestCatalogListOptions",
     "RestCatalogSortField",
+    "RuntimeParamValue",
+    "RuntimeParams",
     "ScreenshotParamValue",
     "ScreenshotParams",
     "ScreenshotTheme",
@@ -414,6 +433,8 @@ __all__ = [
     "WhereOperation",
     "WizardAggregatedMeasure",
     "WizardChart",
+    "WizardChartData",
+    "WizardChartDataColumn",
     "WizardChartUpdate",
     "WizardFieldHandle",
     "WizardFieldLike",

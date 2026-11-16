@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import Protocol, cast
 
 from datalens_sdk._generated import dto as generated_dto
+from datalens_sdk.converter.runtime_params import runtime_params_payload
 from datalens_sdk.domain.screenshot import REVISION_PARAM, STATE_PARAM, TAB_PARAM, ScreenshotRequest
 from datalens_sdk.errors import NotSupportedError
 
@@ -81,9 +82,7 @@ class ScreenshotConverter:
         The page is always rendered embedded, so the picture holds the entity alone
         and not the DataLens navigation around it.
         """
-        result: dict[str, str | list[str]] = {}
-        for key, value in request.params.items():
-            result[key] = value if isinstance(value, str) else list(value)
+        result = runtime_params_payload(request.params)
         result[EMBEDDED_PARAM] = ENABLED
         if request.entity_kind == "chart":
             result[NO_CONTROLS_PARAM] = ENABLED

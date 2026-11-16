@@ -1476,3 +1476,32 @@ def test_create_placement_signatures_use_one_entry_location_type() -> None:
     assert wizard_chart_hints["return"] is LineWizardChartCreate
     assert editor_chart_hints["location"] == EntryLocation
     assert editor_chart_hints["name"] is str
+
+
+if TYPE_CHECKING:
+
+    def _check_chart_data_types(client: DataLensClientYC, chart: sdk.Chart) -> None:
+        params: sdk.RuntimeParams = {"region": ["East", "West"], "year": "2026"}
+        legacy_params: sdk.ScreenshotParams = params
+        current_params: sdk.RuntimeParams = legacy_params
+        value: sdk.RuntimeParamValue = "2026"
+        legacy_value: sdk.ScreenshotParamValue = value
+        current_value: sdk.RuntimeParamValue = legacy_value
+        assert_type(current_params, sdk.RuntimeParams)
+        assert_type(current_value, sdk.RuntimeParamValue)
+        assert_type(client.data.get_chart_data(chart_id="chart-1", params=params), sdk.ChartData)
+        assert_type(chart.get_chart_data(params=params), sdk.ChartData)
+        result = chart.get_chart_data()
+        if result.chart_type == "wizard":
+            assert_type(result, sdk.WizardChartData)
+            assert_type(result.results[0], sdk.ChartDataTable[sdk.WizardChartDataColumn])
+            assert_type(result.results[0].schema[0].type, str)
+            assert_type(result.results[0].schema[0].guid, str | None)
+        elif result.chart_type == "ql":
+            assert_type(result, sdk.QLChartData)
+            assert_type(result.results[0], sdk.ChartDataTable[sdk.QLChartDataColumn])
+            assert_type(result.results[0].schema[0].type, str)
+        else:
+            assert_type(result, sdk.EditorChartData)
+            assert_type(result.results[0], sdk.ChartDataTable[sdk.EditorChartDataColumn])
+            assert_type(result.results[0].schema[0].name, str)

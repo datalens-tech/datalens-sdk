@@ -12,6 +12,7 @@ if TYPE_CHECKING:
         _BaseWizardChartCreate,
     )
     from datalens_sdk.domain.chart import Chart
+    from datalens_sdk.domain.chart_data import ChartData, ChartDataQuery
     from datalens_sdk.domain.cloud_environment import (
         CloudEnvironment,
         CloudEnvironmentCreate,
@@ -295,7 +296,22 @@ class ConnectionOperations(EntryRevisionsOperations, Protocol):
 
 
 @runtime_checkable
-class DatasetOperations(EntryRevisionsOperations, Protocol):
+class DatasetDataOperations(Protocol):
+    def get_dataset_data(self, query: DatasetDataQuery) -> DatasetData: ...
+
+
+@runtime_checkable
+class ChartDataOperations(Protocol):
+    def get_chart_data(self, query: ChartDataQuery) -> ChartData: ...
+
+
+@runtime_checkable
+class DataOperations(DatasetDataOperations, ChartDataOperations, Protocol):
+    pass
+
+
+@runtime_checkable
+class DatasetOperations(EntryRevisionsOperations, DatasetDataOperations, Protocol):
     def create_dataset(self, builder: DatasetCreate) -> Dataset: ...
 
     def create_dataset_from_raw(self, spec: RawCreateSpec) -> Dataset: ...
@@ -307,8 +323,6 @@ class DatasetOperations(EntryRevisionsOperations, Protocol):
         rev_id: str | None = None,
         branch: EntryBranch | None = None,
     ) -> Dataset: ...
-
-    def get_dataset_data(self, query: DatasetDataQuery) -> DatasetData: ...
 
     def update_dataset(self, builder: DatasetUpdate) -> Dataset: ...
 
@@ -538,7 +552,7 @@ class LicenseOperations(Protocol):
 
 
 @runtime_checkable
-class ChartOperations(EntryRevisionsOperations, ScreenshotOperations, Protocol):
+class ChartOperations(EntryRevisionsOperations, ScreenshotOperations, ChartDataOperations, Protocol):
     @property
     def installation(self) -> str: ...
 

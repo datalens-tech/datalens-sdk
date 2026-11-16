@@ -170,6 +170,48 @@ by GUID. Without a saved handle, use an exact GUID through
 `chart.fields.by_guid(...)`; `chart.fields` intentionally returns
 `DatasetField` snapshots and does not reconstruct handles.
 
+## Chart data
+
+Read tables from a saved Wizard, QL, or Editor chart through either entrypoint:
+
+```python
+result = client.data.get_chart_data(
+    chart_id="<saved-chart-id>",
+    params={"region": ["East", "West"], "year": "2026"},
+)
+# Equivalent on an already loaded chart:
+result = chart.get_chart_data(params={"region": ["East", "West"], "year": "2026"})
+```
+
+`ChartData` is a union of `WizardChartData`, `QLChartData`, and `EditorChartData`.
+Narrow on `result.chart_type` to get the corresponding column type. Each item
+in `result.results` is a `ChartDataTable` with an ordered `schema` and positional
+`rows`. The SDK preserves multiple tables, duplicate column names, JSON cells,
+and numeric strings without coercion.
+
+Both methods execute by ID: the loaded revision and local edits are not sent,
+and saved/published selection is unspecified. `dataset.get_dataset_data()`
+also executes by ID. `chart.to_file(...)` exports the definition rather than
+these tables. Runtime params are strings or sequences of strings; `None`
+omits params and `{}` sends an empty object. There is no dataset default limit,
+automatic pagination, or CSV/XLSX export.
+
+The API is experimental. Pivot tables are unsupported, and Editor requires
+`Editor.setRawData()`. Aggregate response limits are 100,000 rows, 100,000
+cells, 1,000 tables, and 100,000 schema columns; a table can have 800 columns.
+Exceeding a limit raises an HTTP 422 API error without retry or local
+truncation. Other transient read failures use the usual SDK retry policy.
+Invalid arguments fail before HTTP with `DataLensValidationError`; malformed
+responses raise `DTOValidationError` or `InvalidResponseError`.
+
+When working through an agent, explicitly choose how returned data should be
+handled before executing a query: show it, save it, keep it in a saved script
+variable, or analyze it. Writing a query does not authorize running it or
+inspecting rows. See the [chart-data reference](skills/datalens-sdk/references/chart-data.md)
+for types, parameters, errors, and limits.
+
+## Screenshots
+
 Loaded charts and dashboards can be rendered on the server and saved as PNG
 files. The picture holds the entity alone, without the DataLens navigation. A
 dashboard screenshot captures the whole tab:

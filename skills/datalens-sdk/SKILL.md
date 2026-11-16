@@ -32,7 +32,8 @@ description: >-
 Operate Yandex DataLens through the official Python SDK. This skill covers
 installation configuration and credentials, the full entity
 lifecycle (connection → dataset → chart → dashboard), standalone HTML pages,
-server-rendered chart and dashboard screenshots, and safe editing practices.
+server-rendered chart and dashboard screenshots, reading dataset and chart
+tables, and safe editing practices.
 Write Python against the SDK — never hand-built HTTP requests.
 For browsing the web UI, business metric interpretation, embedding, or
 raw REST work, state that the request is outside this skill and stop instead of
@@ -176,6 +177,7 @@ One client, action and utility namespaces:
 | `client.create.*`                  | fluent builders                   | `.build()` persists   |
 | `client.list.*`                    | Yandex Cloud resource listing     | lazy `Pager`          |
 | `obj.update...`                    | fluent update on a fetched object | `.execute()` persists |
+| `client.data`                     | read dataset rows or chart tables | typed data result     |
 | `client.navigation` / `client.raw` | listing / snapshot import-export  | —                     |
 
 Forgetting the terminal call is the #1 mistake: a builder chain without
@@ -290,6 +292,8 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
   left to right → persist → re-fetch and verify.
 - **Get/List:** use `client.get.*` for a known id and `client.navigation` for
   discovery or pagination.
+- **Chart data:** after result-handling permission, use `client.data.get_chart_data()`
+  or `chart.get_chart_data()`; follow [chart data](references/chart-data.md).
 - **Revision history:** read [navigation](references/navigation.md#revision-history-on-an-entry)
   for `get_revisions()`, continuation tokens, and the SDK's temporary page-size
   cap of `200` while the published specification's limit is corrected.
@@ -320,6 +324,7 @@ Editor index replaces the public Editor subtree for that installation.
 | Creating, reading, previewing, updating, or deleting a standalone HTML page | [references/html-pages.md](references/html-pages.md)                     |
 | Creating, getting, updating, running, or deleting a saved SQL query         | [references/sql-queries.md](references/sql-queries.md)                   |
 | Datasets: fields, calculations, parameters, joins, RLS                     | [references/datasets.md](references/datasets.md)                         |
+| Reading tables from a saved Wizard, QL, or Editor chart | [references/chart-data.md](references/chart-data.md) |
 | Reading rows from a dataset                                                 | [references/dataset-data.md](references/dataset-data.md)                 |
 | Writing, fixing, or reviewing a calculated field or formula                | [references/formulas/_index.md](references/formulas/_index.md)           |
 | A chart built on a dataset                                                 | [references/wizard-charts/_index.md](references/wizard-charts/_index.md) |
@@ -451,6 +456,7 @@ Use the non-executing allowlisted reader from [references/setup.md](references/s
 | `references/editor-charts/<renderer>.md`        | one minimal working payload, the renderer's SDK contract, and exact runtime-documentation sections  |
 | `references/parameters.md`                      | parameter definitions, override precedence, selectors, global/widget/action params                 |
 | `references/dashboards.md`                      | building or editing dashboards; discovering existing item, selector, and chart-tab ids             |
+| `references/chart-data.md`                      | chart tables, typed results, runtime params, execution by ID, limits, and result-handling permission |
 | `references/screenshots.md`                     | server-rendered PNG of a chart or dashboard, result-handling rule, tab and params, temporary link  |
 | `references/navigation.md`                      | listing/finding/moving entities, revision history; collections, workbooks, folders                                   |
 | `references/rest-catalogs.md`                   | Yandex Cloud REST catalog listing and Trino catalog membership references                                           |

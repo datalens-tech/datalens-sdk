@@ -2,12 +2,12 @@ from collections.abc import Mapping, Sequence
 from typing import Literal, Protocol, cast
 
 from datalens_sdk._generated import dto as generated_dto
+from datalens_sdk.converter._data_rows import normalize_data_rows
 from datalens_sdk.domain.data import (
     DatasetData,
     DatasetDataColumn,
     DatasetDataQuery,
 )
-from datalens_sdk.serialization.json_types import JsonValue, normalize_json_value
 
 
 class DatasetDataWriteDTOProtocol(Protocol):
@@ -99,12 +99,4 @@ class DatasetDataConverter:
     ) -> DatasetData:
         result = _dto_module(dto_module).DatasetDataReadDTO.model_validate(raw)
         columns = tuple(DatasetDataColumn(name=item.name, guid=item.guid, type=item.type) for item in result.columns)
-        rows: list[tuple[JsonValue, ...]] = []
-        for row_index, row in enumerate(result.rows):
-            rows.append(
-                tuple(
-                    normalize_json_value(cell, context=f"Dataset data row {row_index} column {column_index}")
-                    for column_index, cell in enumerate(row)
-                )
-            )
-        return DatasetData(schema=columns, rows=tuple(rows))
+        return DatasetData(schema=columns, rows=normalize_data_rows(result.rows, context="Dataset data"))

@@ -15,6 +15,14 @@
 
 ### Added
 
+- Add experimental chart tables through `client.data.get_chart_data()` and
+  `chart.get_chart_data()` for Wizard, QL, and Editor, with typed ordered
+  tables, positional JSON rows, and caller runtime parameters. Both entrypoints
+  execute by chart ID without selecting the loaded revision; no automatic
+  pagination or file export is provided.
+- Expose shared `RuntimeParams` and `RuntimeParamValue` types while retaining
+  the existing screenshot parameter aliases and validation policy.
+
 - Expose `has_more_rows` on successful SQL statements so callers can detect
   omitted rows.
 

@@ -18,6 +18,12 @@ permission to inspect its screenshot. When looking is permitted, describe
 layout and rendering problems; do not read metric values out of the picture
 unless the user asked for them.
 
+For tables instead of an image, use [chart data](chart-data.md). Runtime
+parameter values share the `RuntimeParams`/`RuntimeParamValue` types;
+`ScreenshotParams`/`ScreenshotParamValue` remain compatible aliases. Screenshot
+policy and loaded-revision requests remain separate from chart data, which
+executes by ID and does not send the loaded revision.
+
 ## Take and save a screenshot
 
 `screenshot()` lives on the loaded resource. It returns an `EntityScreenshot`
