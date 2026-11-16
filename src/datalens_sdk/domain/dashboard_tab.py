@@ -52,7 +52,6 @@ from datalens_sdk.domain.dashboard_types import (
     ThemedColor,
     validate_border_radius,
     validate_dashboard_color,
-    validate_hidden_on_mobile,
     validate_optional_text,
 )
 from datalens_sdk.domain.dataset import Dataset
@@ -197,7 +196,6 @@ class DashboardTab(TabLayoutFlow):
         border_radius: int | None = None,
         pinned: bool | PinZone = False,
         enable_action_params: bool = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         explicit_id = self._validated_item_id(item_id)
         resolved = _resolved_chart_tab(
@@ -216,7 +214,6 @@ class DashboardTab(TabLayoutFlow):
             show_title=show_title,
             background=_validated_color(background, field_name="background"),
             border_radius=validate_border_radius(border_radius),
-            hidden_on_mobile=validate_hidden_on_mobile(hidden_on_mobile),
         )
         placement = resolve_placement(self._cursors, at, item_type="widget", pinned=pinned, size=size)
         return self._append(
@@ -239,7 +236,6 @@ class DashboardTab(TabLayoutFlow):
         background: str | ThemedColor | None = None,
         border_radius: int | None = None,
         pinned: bool | PinZone = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         entries = tuple(charts)
         if not entries:
@@ -268,7 +264,6 @@ class DashboardTab(TabLayoutFlow):
             show_title=show_title,
             background=_validated_color(background, field_name="background"),
             border_radius=validate_border_radius(border_radius),
-            hidden_on_mobile=validate_hidden_on_mobile(hidden_on_mobile),
         )
         placement = resolve_placement(self._cursors, at, item_type="widget", pinned=pinned, size=size)
         return self._append(
@@ -294,7 +289,6 @@ class DashboardTab(TabLayoutFlow):
         auto_height: bool = True,
         border_radius: int | None = None,
         pinned: bool | PinZone = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         """``size`` is the heading size ("xs".."l") — the name predates the
         layout ``size=(w, h)`` the other adders take, so custom title geometry
@@ -314,7 +308,6 @@ class DashboardTab(TabLayoutFlow):
             hint=validate_optional_text(hint, field="hint"),
             auto_height=auto_height,
             border_radius=validate_border_radius(border_radius),
-            hidden_on_mobile=validate_hidden_on_mobile(hidden_on_mobile),
         )
         placement = resolve_placement(self._cursors, at, item_type="title", pinned=pinned)
         return self._append(item, explicit_id=explicit_id, placement=placement, pinned=pinned, auto=at is None)
@@ -330,7 +323,6 @@ class DashboardTab(TabLayoutFlow):
         auto_height: bool = True,
         border_radius: int | None = None,
         pinned: bool | PinZone = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         if not text:
             raise DataLensValidationError("Text must not be an empty string")
@@ -341,7 +333,6 @@ class DashboardTab(TabLayoutFlow):
             auto_height=auto_height,
             background=_validated_color(background, field_name="background"),
             border_radius=validate_border_radius(border_radius),
-            hidden_on_mobile=validate_hidden_on_mobile(hidden_on_mobile),
         )
         placement = resolve_placement(self._cursors, at, item_type="text", pinned=pinned, size=size)
         return self._append(item, explicit_id=explicit_id, placement=placement, pinned=pinned, auto=at is None)
@@ -358,7 +349,6 @@ class DashboardTab(TabLayoutFlow):
         background: str | ThemedColor | None = None,
         border_radius: int | None = None,
         pinned: bool | PinZone = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         if not src:
             raise DataLensValidationError("Image src must not be an empty string")
@@ -370,7 +360,6 @@ class DashboardTab(TabLayoutFlow):
             preserve_aspect_ratio=preserve_aspect_ratio,
             background=_validated_color(background, field_name="background"),
             border_radius=validate_border_radius(border_radius),
-            hidden_on_mobile=validate_hidden_on_mobile(hidden_on_mobile),
         )
         placement = resolve_placement(self._cursors, at, item_type="image", pinned=pinned, size=size)
         return self._append(item, explicit_id=explicit_id, placement=placement, pinned=pinned, auto=at is None)
@@ -383,7 +372,6 @@ class DashboardTab(TabLayoutFlow):
         at: Position | tuple[int, int, int, int] | None = None,
         background: str | ThemedColor | None = None,
         pinned: bool | PinZone = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         self.add_title(
             text,
@@ -393,7 +381,6 @@ class DashboardTab(TabLayoutFlow):
             show_in_toc=True,
             background=background,
             pinned=pinned,
-            hidden_on_mobile=hidden_on_mobile,
         )
         self._register_divider_flow(self._pending[-1], pinned=pinned)
         return self
@@ -426,7 +413,6 @@ class DashboardTab(TabLayoutFlow):
         at: Position | tuple[int, int, int, int] | None = None,
         size: tuple[int, int] | None = None,
         auto_height: bool = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         """Add one selector; without ``group=`` it lands as a single-member
         group_control, with ``group=`` it registers for :meth:`add_group_selector`.
@@ -464,7 +450,6 @@ class DashboardTab(TabLayoutFlow):
                     "affects": affects if affects != "as_group" else None,
                 },
                 show_on_tabs=show_on_tabs,
-                hidden_on_mobile=hidden_on_mobile,
             )
         effective_element: ControlElementType = element if element is not None else "select"
         source, auto_title = _resolved_selector_source(
@@ -486,8 +471,6 @@ class DashboardTab(TabLayoutFlow):
         if group is not None:
             if at is not None or size is not None:
                 raise DataLensValidationError("at=/size= belong to add_group_selector when group= is used")
-            if hidden_on_mobile is not None:
-                raise DataLensValidationError("hidden_on_mobile belongs to add_group_selector when group= is used")
             if auto_height:
                 raise DataLensValidationError("auto_height belongs to add_group_selector when group= is used")
         member = SelectorMemberSpec(
@@ -513,7 +496,6 @@ class DashboardTab(TabLayoutFlow):
             members=(member,),
             show_on_tabs=member_show_on_tabs,
             auto_height=auto_height,
-            hidden_on_mobile=validate_hidden_on_mobile(hidden_on_mobile),
         )
         self._append(wrapper, explicit_id=None, placement=placement, pinned=False, auto=at is None)
         if member_id is not None:
@@ -534,7 +516,6 @@ class DashboardTab(TabLayoutFlow):
         show_on_tabs: ShowOnTabs = "current",
         auto_height: bool | None = None,
         border_radius: int | None = None,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         """Assemble the selectors registered via ``add_selector(group=...)`` into
         one group_control. ``item_id`` names the WRAPPER; members keep their
@@ -563,7 +544,6 @@ class DashboardTab(TabLayoutFlow):
             show_on_tabs=group_show_on_tabs,
             auto_height=effective_auto_height,
             border_radius=validate_border_radius(border_radius),
-            hidden_on_mobile=validate_hidden_on_mobile(hidden_on_mobile),
         )
         placement = resolve_placement(self._cursors, at, item_type="group_control", pinned=False, size=size)
         self._append(wrapper, explicit_id=wrapper_id, placement=placement, pinned=False, auto=at is None)
@@ -580,7 +560,6 @@ class DashboardTab(TabLayoutFlow):
         size: tuple[int, int] | None,
         forbidden: Mapping[str, object],
         show_on_tabs: ShowOnTabs,
-        hidden_on_mobile: bool | None,
     ) -> Self:
         offending = sorted(name for name, value in forbidden.items() if value is not None)
         if offending:
@@ -588,12 +567,7 @@ class DashboardTab(TabLayoutFlow):
         if show_on_tabs != "current":
             raise DataLensValidationError("show_on_tabs sharing is not supported for external selectors")
         chart_id, resolved_title, installation = _resolve_chart_ref(chart, title=title)
-        item = ExternalControlItem(
-            id=_PENDING_ID,
-            title=resolved_title,
-            chart_id=chart_id,
-            hidden_on_mobile=validate_hidden_on_mobile(hidden_on_mobile),
-        )
+        item = ExternalControlItem(id=_PENDING_ID, title=resolved_title, chart_id=chart_id)
         placement = resolve_placement(self._cursors, at, item_type="control", pinned=False, size=size)
         return self._append(
             item,

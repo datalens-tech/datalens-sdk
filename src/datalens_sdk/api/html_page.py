@@ -125,10 +125,10 @@ class HtmlPageService(HtmlPageOperations):
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="getHtmlPagePreviewUrl", reason=str(exc)) from exc
 
-    def update_html_page(self, builder: HtmlPageUpdate, *, lock_token: str | None = None) -> HtmlPage:
+    def update_html_page(self, builder: HtmlPageUpdate) -> HtmlPage:
         spec = builder.to_spec()
         try:
-            dto = HtmlPageConverter.from_domain_update(spec, lock_token=lock_token, dto_module=self._dto_module)
+            dto = HtmlPageConverter.from_domain_update(spec, dto_module=self._dto_module)
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="updateHtmlPage", reason=str(exc)) from exc
         return self._to_domain(

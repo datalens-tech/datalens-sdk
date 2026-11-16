@@ -321,29 +321,3 @@ def test_html_page_rejects_responses_for_other_entry_types(operation: str, field
             page = client.get.html_page(by_id="page-1")
             with pytest.raises(dl.DTOValidationError):
                 page.update.content("<p>x</p>").execute()
-
-
-@pytest.mark.parametrize("client_type", [dl.DataLensClientEnterprise, dl.DataLensClientYC])
-def test_html_content_update_passes_lock_token_without_changing_revision_branch(
-    client_type: type[dl.DataLensClientEnterprise] | type[dl.DataLensClientYC],
-) -> None:
-    recorder = RecordedTransport(
-        {
-            "/rpc/getHtmlPage": httpx.Response(200, json=_entry()),
-            "/rpc/updateHtmlPage": [
-                httpx.Response(200, json={"entry": _entry(rev_id="rev-2"), "warnings": []}),
-                httpx.Response(200, json={"entry": _entry(rev_id="rev-3"), "warnings": []}),
-            ],
-        }
-    )
-    with client_type(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)) as client:
-        page = client.get.html_page(by_id="page-1")
-        page.update.content("<p>Locked edit</p>").mode("publish").execute(lock_token="lock-1")
-        page.update.revision("rev-1").mode("publish").execute()
-        with pytest.raises(dl.DataLensValidationError, match="revision update cannot include lock_token"):
-            page.update.revision("rev-1").mode("publish").execute(lock_token="lock-1")
-
-    assert recorder.bodies("/rpc/updateHtmlPage") == [
-        {"entryId": "page-1", "content": "<p>Locked edit</p>", "mode": "publish", "lockToken": "lock-1"},
-        {"entryId": "page-1", "revId": "rev-1", "mode": "publish"},
-    ]

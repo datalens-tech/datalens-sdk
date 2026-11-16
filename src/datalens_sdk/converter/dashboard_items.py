@@ -123,16 +123,10 @@ def _wire_item(tab: TabSpec, item: DashboardItemSpec) -> dict[str, object]:
         wire_type, data = "group_control", _group_control_data(item)
     elif isinstance(item, ExternalControlItem):
         # standalone control format: defaults live at item level (P017)
-        wire = _external_control_wire(item, namespace=_ITEM_NAMESPACE_VALUE)
-        if item.hidden_on_mobile is not None:
-            wire["hiddenOnMobile"] = item.hidden_on_mobile
-        return wire
+        return _external_control_wire(item, namespace=_ITEM_NAMESPACE_VALUE)
     else:
         raise DataLensValidationError(f"Tab {tab.id!r} carries an unsupported item spec {type(item).__name__!r}")
-    wire = {"id": item.id, "type": wire_type, "namespace": _ITEM_NAMESPACE_VALUE, "data": data}
-    if item.hidden_on_mobile is not None:
-        wire["hiddenOnMobile"] = item.hidden_on_mobile
-    return wire
+    return {"id": item.id, "type": wire_type, "namespace": _ITEM_NAMESPACE_VALUE, "data": data}
 
 
 def _concrete_layout(entry: LayoutItemSpec | AutoLayoutItemSpec, tab_id: str) -> LayoutItemSpec:

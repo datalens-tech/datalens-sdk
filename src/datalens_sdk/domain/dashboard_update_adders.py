@@ -41,7 +41,6 @@ from datalens_sdk.domain.dashboard_types import (
     ShowOnTabs,
     ThemedColor,
     validate_border_radius,
-    validate_hidden_on_mobile,
 )
 from datalens_sdk.domain.dashboard_update_support import (
     _GLOBAL_ITEMS_FIELD,
@@ -224,7 +223,6 @@ class _StructuralAddersMixin:
         border_radius: int | None = None,
         pinned: bool | PinZone = False,
         enable_action_params: bool = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         staged = DashboardTab(_STAGED_TAB_TITLE)
         staged.add_chart(
@@ -242,7 +240,6 @@ class _StructuralAddersMixin:
             border_radius=border_radius,
             pinned=pinned,
             enable_action_params=enable_action_params,
-            hidden_on_mobile=hidden_on_mobile,
         )
         return self._add_staged_items(tab, staged)
 
@@ -258,7 +255,6 @@ class _StructuralAddersMixin:
         background: str | ThemedColor | None = None,
         border_radius: int | None = None,
         pinned: bool | PinZone = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         staged = DashboardTab(_STAGED_TAB_TITLE)
         staged.add_chart_group(
@@ -270,7 +266,6 @@ class _StructuralAddersMixin:
             background=background,
             border_radius=border_radius,
             pinned=pinned,
-            hidden_on_mobile=hidden_on_mobile,
         )
         return self._add_staged_items(tab, staged)
 
@@ -289,7 +284,6 @@ class _StructuralAddersMixin:
         auto_height: bool = True,
         border_radius: int | None = None,
         pinned: bool | PinZone = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         staged = DashboardTab(_STAGED_TAB_TITLE)
         staged.add_title(
@@ -304,7 +298,6 @@ class _StructuralAddersMixin:
             auto_height=auto_height,
             border_radius=border_radius,
             pinned=pinned,
-            hidden_on_mobile=hidden_on_mobile,
         )
         return self._add_staged_items(tab, staged)
 
@@ -320,7 +313,6 @@ class _StructuralAddersMixin:
         auto_height: bool = True,
         border_radius: int | None = None,
         pinned: bool | PinZone = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         staged = DashboardTab(_STAGED_TAB_TITLE)
         staged.add_text(
@@ -332,7 +324,6 @@ class _StructuralAddersMixin:
             auto_height=auto_height,
             border_radius=border_radius,
             pinned=pinned,
-            hidden_on_mobile=hidden_on_mobile,
         )
         return self._add_staged_items(tab, staged)
 
@@ -349,7 +340,6 @@ class _StructuralAddersMixin:
         background: str | ThemedColor | None = None,
         border_radius: int | None = None,
         pinned: bool | PinZone = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         staged = DashboardTab(_STAGED_TAB_TITLE)
         staged.add_image(
@@ -362,7 +352,6 @@ class _StructuralAddersMixin:
             background=background,
             border_radius=border_radius,
             pinned=pinned,
-            hidden_on_mobile=hidden_on_mobile,
         )
         return self._add_staged_items(tab, staged)
 
@@ -375,12 +364,9 @@ class _StructuralAddersMixin:
         item_id: str | None = None,
         background: str | ThemedColor | None = None,
         pinned: bool | PinZone = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         staged = DashboardTab(_STAGED_TAB_TITLE)
-        staged.add_section_divider(
-            text, item_id=item_id, at=at, background=background, pinned=pinned, hidden_on_mobile=hidden_on_mobile
-        )
+        staged.add_section_divider(text, item_id=item_id, at=at, background=background, pinned=pinned)
         return self._add_staged_items(tab, staged)
 
     # -- selectors (epic D4) -----------------------------------------------------
@@ -412,7 +398,6 @@ class _StructuralAddersMixin:
         at: Position | tuple[int, int, int, int] | None = None,
         size: tuple[int, int] | None = None,
         auto_height: bool = False,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         """Update mirror of :meth:`DashboardTab.add_selector`: without ``group=``
         the selector lands immediately on ``tab`` as a single-member
@@ -443,7 +428,6 @@ class _StructuralAddersMixin:
             at=at,
             size=size,
             auto_height=auto_height,
-            hidden_on_mobile=hidden_on_mobile,
         )
         if group is not None:
             if tab is not None:
@@ -483,7 +467,6 @@ class _StructuralAddersMixin:
         show_on_tabs: ShowOnTabs = "current",
         auto_height: bool | None = None,
         border_radius: int | None = None,
-        hidden_on_mobile: bool | None = None,
     ) -> Self:
         """Assemble a group_control on update from builder-registered members
         and/or EXISTING selectors of the dashboard (``include`` item ids).
@@ -526,7 +509,6 @@ class _StructuralAddersMixin:
                 show_on_tabs=show_on_tabs,
                 auto_height=auto_height if auto_height is not None else (at is None),
                 border_radius=resolved_border_radius,
-                hidden_on_mobile=validate_hidden_on_mobile(hidden_on_mobile),
             )
             entry: LayoutItemSpec | AutoLayoutItemSpec
             if at is None:
@@ -553,7 +535,6 @@ class _StructuralAddersMixin:
                 show_on_tabs=show_on_tabs,
                 auto_height=auto_height,
                 border_radius=border_radius,
-                hidden_on_mobile=hidden_on_mobile,
             )
             # defer_auto keeps an at=None group as an AutoLayoutItemSpec so the
             # applier flows it below the target tab's content, like every adder

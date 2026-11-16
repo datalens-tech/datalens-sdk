@@ -15,9 +15,8 @@
 
 ### Added
 
-- Expose `has_more_rows` on successful SQL statements, dashboard switch
-  selectors and mobile visibility, and an optional `lock_token` for HTML-page
-  content updates.
+- Expose `has_more_rows` on successful SQL statements so callers can detect
+  omitted rows.
 
 - Add experimental server-rendered screenshots: `screenshot()` on loaded charts
   and dashboards returns an `EntityScreenshot` with PNG bytes, `save(path)`, and

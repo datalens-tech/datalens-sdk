@@ -176,14 +176,14 @@ def _validated_selector_default(
     *,
     element: ControlElementType,
 ) -> SelectorDefaultValue | None:
-    if element in {"checkbox", "switch"}:
+    if element == "checkbox":
         if not isinstance(default_value, bool):
-            raise DataLensValidationError(f"A {element} selector requires a bool default_value")
+            raise DataLensValidationError("A checkbox selector requires a bool default_value")
         return default_value
     if default_value is None:
         return None
     if isinstance(default_value, bool):
-        raise DataLensValidationError("A bool default_value applies to checkbox and switch selectors only")
+        raise DataLensValidationError("A bool default_value applies to element='checkbox' only")
     if isinstance(default_value, (DateInterval, RelativeDateInterval)):
         if element != "date":
             raise DataLensValidationError("Interval defaults apply to element='date' only")

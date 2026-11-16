@@ -129,7 +129,6 @@ class WidgetItem:
     show_title: bool = True
     background: str | ThemedColor | None = None
     border_radius: int | None = None
-    hidden_on_mobile: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,7 +138,6 @@ class TextItem:
     auto_height: bool = True
     background: str | ThemedColor | None = None
     border_radius: int | None = None
-    hidden_on_mobile: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,7 +151,6 @@ class TitleItem:
     hint: str | None = None
     auto_height: bool = True
     border_radius: int | None = None
-    hidden_on_mobile: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,7 +161,6 @@ class ImageItem:
     preserve_aspect_ratio: bool = True
     background: str | ThemedColor | None = None
     border_radius: int | None = None
-    hidden_on_mobile: bool | None = None
 
 
 # -- selector specs (epic D4) -----------------------------------------------
@@ -235,7 +231,6 @@ class ExternalControlItem:
     id: str
     title: str
     chart_id: str
-    hidden_on_mobile: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -254,7 +249,6 @@ class GroupControlItem:
     show_on_tabs: ShowOnTabs = "current"
     auto_height: bool = False
     border_radius: int | None = None
-    hidden_on_mobile: bool | None = None
 
 
 DashboardItemSpec: TypeAlias = "WidgetItem | TextItem | TitleItem | ImageItem | GroupControlItem | ExternalControlItem"
