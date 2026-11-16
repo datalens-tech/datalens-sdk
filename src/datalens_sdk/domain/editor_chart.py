@@ -88,7 +88,7 @@ class EditorChartUpdate:
     def prepare(self, value: str) -> Self:
         return self._set_tab("prepare", value)
 
-    def config(self, value: str) -> Self:
+    def config(self, value: str | None) -> Self:
         return self._set_tab("config", value)
 
     def graph(self, value: str) -> Self:

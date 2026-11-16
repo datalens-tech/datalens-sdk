@@ -34,6 +34,8 @@
 
 ### Fixed
 
+- Allow `EditorChartUpdate.config(None)` for renderers with an optional config
+  tab while rejecting missing config for renderers that require it.
 - Accept boolean OpenAPI `deprecated` annotations and current Wizard numeric
   bounds and defaults during generation without filling omitted write fields.
 - Read Trino and Spark cluster identities from `id` when API responses omit
