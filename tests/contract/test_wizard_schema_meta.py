@@ -547,7 +547,9 @@ def test_manifest_normalizes_non_structural_noise() -> None:
     )
     wizard = _raw_object(schemas["WizardV1"], path="components.schemas.WizardV1")
     wizard["description"] = "Changed documentation."
+    wizard["deprecated"] = True
     properties = _raw_object(wizard["properties"], path="components.schemas.WizardV1.properties")
+    _raw_object(properties["version"], path="version")["deprecated"] = False
     wizard["properties"] = dict(reversed(properties.items()))
 
     actual = build_wizard_schema_meta(spec)
@@ -1083,14 +1085,92 @@ def test_generated_wizard_models_consume_current_object_openness(tmp_path: Path)
         module.WizardChartUpdateDTO(chart_id="chart-1", mode="save", data=invalid)
 
 
+def test_generated_wizard_bounds_preserve_auto_and_omitted_defaults(tmp_path: Path) -> None:
+    spec = _wizard_spec()
+    schemas = _raw_object(_raw_object(spec["components"], path="components")["schemas"], path="schemas")
+    config = _raw_object(schemas["WizardV1ConfigSchema"], path="WizardV1ConfigSchema")
+    scalars = _raw_object(_raw_object(config["properties"], path="properties")["scalars"], path="scalars")
+    properties = _raw_object(scalars["properties"], path="scalars.properties")
+    literal_default = {"enabled": False, "description": "literal value", "deprecated": False}
+    properties.update(
+        {
+            "default": {"type": "number", "default": 5, "description": "metadata", "deprecated": False},
+            "spacing": {
+                "anyOf": [
+                    {"type": "number", "minimum": 0, "maximum": 100},
+                    {"type": "string", "enum": ["auto"]},
+                ],
+                "default": "auto",
+            },
+            "opacity": {
+                "anyOf": [
+                    {"type": "number", "minimum": 1, "maximum": 100},
+                    {"type": "string", "enum": ["auto"]},
+                ],
+                "default": "auto",
+            },
+            "layout": {
+                "type": "object",
+                "properties": {
+                    "enabled": {"type": "boolean", "default": False},
+                    "description": {"type": "string"},
+                    "deprecated": {"type": "boolean"},
+                },
+                "default": literal_default,
+            },
+        }
+    )
+    manifest = build_wizard_schema_meta(spec)
+    normalized_config = _object(manifest["schemas"]["WizardV1ConfigSchema"], path="config")
+    normalized_properties = _object(normalized_config["properties"], path="config.properties")
+    normalized_scalars = _object(normalized_properties["scalars"], path="scalars")
+    normalized_fields = _object(normalized_scalars["properties"], path="scalar properties")
+    assert normalized_fields["default"] == {"type": "number", "default": 5}
+    assert _object(normalized_fields["layout"], path="layout")["default"] == literal_default
+    module = _generated_wizard_dto_module(tmp_path, wizard_spec_value=spec)
+    factories: tuple[Callable[[dict[str, object]], _PayloadDTO], ...] = (
+        lambda data: module.WizardChartCreateDTO(data=data),
+        lambda data: module.WizardChartUpdateDTO(chart_id="chart-1", mode="save", data=data),
+    )
+    for factory in factories:
+        omitted = _strict_config()
+        assert factory(omitted).to_payload()["data"] == omitted
+        for spacing, opacity in ((0, 1), (100, 100), (12.5, 33.5), ("auto", "auto")):
+            valid = _strict_config()
+            cast(dict[str, object], valid["scalars"]).update({"spacing": spacing, "opacity": opacity, "layout": {}})
+            assert factory(valid).to_payload()["data"] == valid
+        for field, value in (("spacing", -1), ("spacing", 101), ("opacity", 0), ("opacity", 101), ("spacing", None)):
+            invalid = _strict_config()
+            cast(dict[str, object], invalid["scalars"])[field] = value
+            with pytest.raises(ValidationError):
+                factory(invalid).to_payload()
+
+
+@pytest.mark.parametrize(
+    "schema",
+    [
+        {"type": "string", "minimum": 0},
+        {"type": "null", "maximum": 100},
+        {"anyOf": [{"type": "number"}, {"type": "null"}], "minimum": 0},
+        {"allOf": [{"type": "number", "minimum": 0}]},
+    ],
+)
+def test_wizard_numeric_constraints_reject_unrepresentable_shapes(schema: dict[str, object]) -> None:
+    spec = _wizard_spec()
+    schemas = _raw_object(_raw_object(spec["components"], path="components")["schemas"], path="schemas")
+    config = _raw_object(schemas["WizardV1ConfigSchema"], path="WizardV1ConfigSchema")
+    scalars = _raw_object(_raw_object(config["properties"], path="properties")["scalars"], path="scalars")
+    _raw_object(scalars["properties"], path="scalars.properties")["count"] = schema
+
+    with pytest.raises(ValueError, match=r"/schemas/WizardV1ConfigSchema/properties/scalars/properties/count/"):
+        build_wizard_schema_meta(spec)
+
+
 @pytest.mark.parametrize(
     ("keyword", "value"),
     [
         ("const", 1),
-        ("default", 1),
-        ("deprecated", True),
         ("format", "uuid"),
-        ("minimum", 0),
         ("minItems", 1),
         ("minLength", 1),
         ("multipleOf", 2),
@@ -1125,6 +1205,9 @@ def test_wizard_schema_rejects_unsupported_semantic_features_with_exact_pointer(
         ("properties", None),
         ("required", None),
         ("type", None),
+        ("deprecated", "true"),
+        ("minimum", True),
+        ("maximum", "100"),
     ],
 )
 def test_wizard_schema_rejects_malformed_supported_features_with_exact_pointer(

@@ -33,7 +33,7 @@ from datalens_sdk._runtime.wizard_structure import (
     WizardVisualizationStructure,
 )
 from datalens_sdk.api_version import API_VERSION
-from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object
+from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object, normalize_json_value
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC_DIR = ROOT / "spec"
@@ -121,7 +121,7 @@ _ENTRY_REVISIONS_ROOTS = ("GetRevisionsArgs", "GetRevisionsResult")
 _ENTRY_MOVE_ROUTE = "/rpc/moveFolderEntry"
 _ENTRY_MOVE_ROOTS = ("MoveEntryArgs", "MoveEntryResult", "MoveEntryResultEntry")
 _SCHEMA_REF_PREFIX = "#/components/schemas/"
-_SCHEMA_DOCUMENTATION_KEYS = frozenset({"$comment", "description", "example", "examples", "title"})
+_SCHEMA_DOCUMENTATION_KEYS = frozenset({"$comment", "deprecated", "description", "example", "examples", "title"})
 _SCHEMA_NAMED_MAP_KEYS = frozenset({"properties"})
 _SCHEMA_SET_LIKE_KEYS = frozenset({"allOf", "anyOf", "enum", "required", "type"})
 _SCHEMA_MULTISET_KEYS = frozenset({"oneOf"})
@@ -140,6 +140,7 @@ _SCHEMA_SUPPORTED_KEYS = frozenset(
         "type",
     }
 )
+_WIZARD_SCHEMA_SUPPORTED_KEYS = frozenset({"default", "maximum", "minimum"})
 _DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "maxItems", "minItems", "minLength", "minimum"})
 _DATASET_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"maximum", "minItems", "minLength", "minimum"})
 _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS = frozenset({"default", "maximum", "maxItems", "minItems", "minimum"})
@@ -723,7 +724,8 @@ def _audit_pydantic_schema_features(
             raise TypeError(f"{contract} schema node at {pointer} contains a non-string key")
         state = _wizard_schema_feature_state(key)
         contract_extension = (
-            (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS)
+            (contract == "Wizard" and key in _WIZARD_SCHEMA_SUPPORTED_KEYS)
+            or (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS)
             or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
             or (contract == "getRevisions" and key in _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS)
             or (contract == "HtmlPages" and key in _HTML_PAGE_SCHEMA_SUPPORTED_KEYS)
@@ -734,6 +736,9 @@ def _audit_pydantic_schema_features(
             raise ValueError(
                 f"Unsupported behavior-bearing {contract} schema feature at {_schema_pointer(pointer, key)}: {key}"
             )
+
+    if "deprecated" in value and not isinstance(value["deprecated"], bool):
+        raise ValueError(f"{contract} schema feature at {_schema_pointer(pointer, 'deprecated')} must be a boolean")
 
     ref = value.get("$ref")
     if "$ref" in value and not isinstance(ref, str):
@@ -751,6 +756,18 @@ def _audit_pydantic_schema_features(
         raise ValueError(
             f"{contract} schema feature at {_schema_pointer(pointer, 'type')} must contain supported JSON Schema types"
         )
+    if contract == "Wizard":
+        for constraint in ("minimum", "maximum"):
+            if constraint in value and (
+                "type" not in value
+                or not set(schema_types) <= {"integer", "number", "null"}
+                or set(schema_types) == {"null"}
+                or any(key in value for key in ("$ref", "allOf", "anyOf", "oneOf"))
+            ):
+                raise ValueError(
+                    f"Unsupported behavior-bearing {contract} schema feature at "
+                    f"{_schema_pointer(pointer, constraint)}: incompatible schema type or composition"
+                )
     if contract.startswith("tagged RPC "):
         for composition_key in ("$ref", "anyOf", "oneOf"):
             if composition_key not in value:
@@ -1055,6 +1072,7 @@ def _audit_pydantic_schema_features(
                     for key in child
                     if (
                         _wizard_schema_feature_state(str(key)) is _WizardSchemaFeatureState.SUPPORTED
+                        or (contract == "Wizard" and key in _WIZARD_SCHEMA_SUPPORTED_KEYS)
                         or (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS)
                         or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
                         or (contract == "getRevisions" and key in _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS)
@@ -1117,7 +1135,10 @@ def _normalize_wizard_schema(value: object, *, parent_key: str | None = None) ->
             _wizard_schema_feature_state(key) is _WizardSchemaFeatureState.DOCUMENTATION_ONLY
         ):
             continue
-        normalized_object[key] = _normalize_wizard_schema(child, parent_key=key)
+        if key == "default" and parent_key not in _SCHEMA_NAMED_MAP_KEYS:
+            normalized_object[key] = normalize_json_value(child, context="schema default")
+        else:
+            normalized_object[key] = _normalize_wizard_schema(child, parent_key=key)
     return normalized_object
 
 
@@ -1872,11 +1893,23 @@ def build_html_page_contract_meta(spec: Mapping[str, object]) -> HtmlPageContrac
         for index, branch in enumerate(branches)
         if isinstance(branch, dict)
     ]
-    if branch_fields != [
-        {"annotation", "content", "entryId", "mode"},
-        {"entryId", "mode", "revId"},
-    ]:
+    content_fields = {"annotation", "content", "entryId", "mode"}
+    if (
+        len(branch_fields) != 2
+        or branch_fields[0] not in (content_fields, content_fields | {"lockToken"})
+        or branch_fields[1] != {"entryId", "mode", "revId"}
+    ):
         raise ValueError(f"UpdateHtmlPageArgs branches differ from content/revision contract: {branch_fields!r}")
+    content_branch = _string_object_dict(branches[0], context="UpdateHtmlPageArgs.anyOf[0]")
+    content_properties = _string_object_dict(
+        content_branch.get("properties"), context="UpdateHtmlPageArgs.anyOf[0].properties"
+    )
+    if "lockToken" in content_properties and (
+        content_properties["lockToken"] != {"type": "string"}
+        or "lockToken"
+        in _string_list(content_branch.get("required", []), context="UpdateHtmlPageArgs.anyOf[0].required")
+    ):
+        raise ValueError("UpdateHtmlPageArgs content lockToken must be an optional string")
 
     for root_name in ("CreateHtmlPageResult", "GetHtmlPageResult", "UpdateHtmlPageResult"):
         normalized_schemas[root_name] = _allow_nullable_html_page_version(

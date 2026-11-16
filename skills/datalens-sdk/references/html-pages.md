@@ -111,7 +111,9 @@ restored = revised.publish_revision(rev_id=historical_revision_id)
 Revision-only updates remain available through `.update.revision(...)` for
 explicit revision selection. Do not mix `content` and `rev_id` in one update.
 A content update can also change the entry description with `.description(text)`;
-a revision update cannot change the description. Inspect update warnings and re-fetch
+a revision update cannot change the description. Content updates also accept
+`.execute(lock_token=token)` for a lock token obtained elsewhere; revision-only
+updates do not accept a lock token. Inspect update warnings and re-fetch
 the branch you changed. The metadata response can confirm revision ids
 and `object_id`; it cannot prove how the page rendered. Follow the linked
 authoring skill's validator and arrange a render check through an authorized

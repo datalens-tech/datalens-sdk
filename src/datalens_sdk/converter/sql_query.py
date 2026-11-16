@@ -105,8 +105,12 @@ def _run_value_payload(value: SqlQueryRunValue) -> object:
     return value
 
 
-def _statement_result(raw: Mapping[str, object]) -> SqlQueryStatementResult:
+def _statement_result(raw: Mapping[str, object], *, operation: Literal["runSqlQuery"]) -> SqlQueryStatementResult:
     if raw["status"] == "success":
+        if "hasMoreRows" not in raw:
+            raise translate_invalid_response_error(
+                operation=operation, reason="successful statement is missing hasMoreRows"
+            )
         columns = cast(Sequence[Mapping[str, object]], raw["columns"])
         rows = cast(Sequence[Sequence[SqlQueryCell]], raw["rows"])
         return SqlQueryStatementSuccess(
@@ -114,6 +118,7 @@ def _statement_result(raw: Mapping[str, object]) -> SqlQueryStatementResult:
             columns=tuple(SqlQueryRunColumn(name=cast(str, column["name"])) for column in columns),
             rows=tuple(tuple(row) for row in rows),
             affected_rows=cast(int | float | None, raw.get("affectedRows")),
+            has_more_rows=cast(bool, raw["hasMoreRows"]),
         )
     return SqlQueryStatementError(
         status="error",
@@ -217,7 +222,7 @@ class SqlQueryConverter:
             status=cast(SqlQueryRunStatus, raw["status"]),
             query=cast(str, raw["query"]),
             statement_positions=_statement_positions(raw["statementPositions"], operation=operation),
-            results=tuple(_statement_result(result) for result in results),
+            results=tuple(_statement_result(result, operation=operation) for result in results),
             created_by=cast(str, raw["createdBy"]),
             created_at=cast(str, raw["createdAt"]),
             updated_at=cast(str, raw["updatedAt"]),

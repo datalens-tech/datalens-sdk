@@ -251,7 +251,7 @@ class HtmlPageUpdate:
             description=self._description,
         )
 
-    def execute(self) -> HtmlPage:
+    def execute(self, *, lock_token: str | None = None) -> HtmlPage:
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
-        return self._operations.update_html_page(self)
+        return self._operations.update_html_page(self, lock_token=lock_token)

@@ -104,7 +104,6 @@ class _ClusterDTO(Protocol):
     health: TrinoClusterHealth
     status: TrinoClusterStatus
     coordinator_url: str
-    entry_id: str
 
 
 class _PresetDTO(Protocol):
@@ -293,7 +292,7 @@ class TrinoClusterConverter:
                 health=dto.health,
                 status=dto.status,
                 coordinator_url=dto.coordinator_url,
-                entry_id=dto.entry_id,
+                entry_id=dto.id,
                 raw=dict(raw),
                 _operations=operations,
             )

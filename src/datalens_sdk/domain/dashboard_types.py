@@ -10,7 +10,7 @@ from datalens_sdk.errors import DataLensValidationError
 DashboardItemType = Literal["text", "title", "widget", "image", "neuro_widget", "control", "group_control"]
 """Wire ``type`` of a dashboard item; also keys :data:`DEFAULT_ITEM_SIZES`."""
 ImpactType = Literal["allTabs", "currentTab", "selectedTabs", "asGroup"]
-ControlElementType = Literal["select", "date", "input", "checkbox"]
+ControlElementType = Literal["select", "date", "input", "checkbox", "switch"]
 DashboardTitleSize = Literal["xs", "s", "m", "l", "xl"]
 DashboardLoadPriority = Literal["charts", "selectors"]
 
@@ -241,4 +241,10 @@ def validate_optional_text(value: str | None, *, field: str) -> str | None:
         return None
     if not value:
         raise DataLensValidationError(f"{field} must not be an empty string")
+    return value
+
+
+def validate_hidden_on_mobile(value: bool | None) -> bool | None:
+    if value is not None and not isinstance(value, bool):
+        raise DataLensValidationError("hidden_on_mobile must be a bool")
     return value

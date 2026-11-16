@@ -41,6 +41,15 @@ All `add_*` methods return `Self` and chain. Content methods:
 | `add_connection(*, from_item, to_item, mutual=False)` | an **ignore** edge             | see [Connections and aliases](#connections-and-aliases)                                                                                                                                                  |
 | `add_alias(*fields)`                                  | one alias group                | ≥2 dataset field **guids** declared equivalent                                                                                                                                                           |
 
+All item-producing methods also accept `hidden_on_mobile=True` or `False`,
+including the corresponding `dash.update.add_*` methods. Omit it (or pass
+`None`) to leave the optional setting absent. For grouped selectors, set it
+on `add_group_selector`, where it applies to the wrapper; passing it to a
+registered `add_selector(group=...)` member raises a validation error. The
+read property `DashboardItemView.hidden_on_mobile` is `True` only when the
+item is explicitly hidden on mobile. Updates preserve existing visibility
+settings on items they do not replace.
+
 `DashboardChartTab` is a dataclass for `add_chart_group` entries:
 
 ```python
@@ -172,8 +181,15 @@ Frequently used keywords: `title=`, `show_title=`, `title_placement=`
 (`"left"`/`"top"`), `inner_title=`, `multiselect=`, `is_range=`, `required=`,
 `operation=` (comparison such as `"IN"`, `"NE"`, `"GT"`, `"BETWEEN"`; note
 `"NE"`, not `"NEQ"`), `element=` (`"select"`, `"date"`, `"input"`,
-`"checkbox"`), `default_value=` (str, sequence, bool, `DateInterval`,
+`"checkbox"`, `"switch"`), `default_value=` (str, sequence, bool, `DateInterval`,
 `RelativeDateInterval`).
+
+Checkbox and switch selectors require a boolean `default_value`, including
+when patching their default with `update_selector`. For example:
+
+```python
+tab.add_selector(item_id="flt_enabled", param_name="enabled", element="switch", default_value=True)
+```
 
 Manual `options=` accepts strings, `(value, title)` pairs, or
 `{"value": ..., "title": ...}` mappings. `DateInterval` accepts ISO dates or
@@ -351,6 +367,7 @@ searching the full `dashboard.raw` payload:
 | `tab.id`, `tab.title`, `tab.hidden` | stable tab identity and display state |
 | `tab.items` / `tab.global_items` | local / shared `DashboardItemView` objects |
 | `item.id`, `item.item_type`, `item.data`, `item.defaults` | update handle and tolerant item payload |
+| `item.hidden_on_mobile` | whether this item is explicitly hidden on mobile |
 | `tab.controls` | normalized local + shared `ControlView` wrappers |
 | `control.id`, `control.members`, `control.member(id)` | wrapper and selector-member discovery |
 | `member.id`, `member.source`, `member.defaults` | selector update/connection handle and source |

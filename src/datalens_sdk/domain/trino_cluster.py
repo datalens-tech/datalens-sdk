@@ -88,7 +88,7 @@ class TrinoClusterConfig:
 class TrinoCluster:
     """A cluster whose ``id`` is its DataLens entry ID for all actions.
 
-    ``entry_id`` is the entry ID returned by the API; ``cluster_id`` is the
+    ``entry_id`` is a compatibility alias of ``id``; ``cluster_id`` is the
     managed cloud cluster ID, which is not used for DataLens actions.
     """
 

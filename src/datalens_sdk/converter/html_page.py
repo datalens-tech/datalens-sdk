@@ -23,7 +23,7 @@ from datalens_sdk.domain.specs.html_page import (
     HtmlPageCreateSpec,
     HtmlPageRevisionUpdateSpec,
 )
-from datalens_sdk.errors import translate_invalid_response_error
+from datalens_sdk.errors import DataLensValidationError, translate_invalid_response_error
 
 
 class HtmlPageWriteDTOProtocol(Protocol):
@@ -181,14 +181,19 @@ class HtmlPageConverter:
     def from_domain_update(
         spec: HtmlPageContentUpdateSpec | HtmlPageRevisionUpdateSpec,
         *,
+        lock_token: str | None = None,
         dto_module: HtmlPageDtoModule | None = None,
     ) -> HtmlPageWriteDTOProtocol:
         generated = _dto_module(dto_module)
         if isinstance(spec, HtmlPageRevisionUpdateSpec):
+            if lock_token is not None:
+                raise DataLensValidationError("HTML page revision update cannot include lock_token")
             return generated.UpdateHtmlPageArgsAnyOf1DTO.model_validate(
                 {"entry_id": spec.entry_id, "rev_id": spec.rev_id, "mode": spec.mode}
             )
         payload: dict[str, object] = {"entry_id": spec.entry_id, "content": spec.content, "mode": spec.mode}
+        if lock_token is not None:
+            payload["lock_token"] = lock_token
         if spec.description is not None:
             payload["annotation"] = {"description": spec.description}
         return generated.UpdateHtmlPageArgsAnyOf0DTO.model_validate(payload)

@@ -915,6 +915,9 @@ class GeolayerWizardChartCreate(_GeolayerWizardChartCreate):
     def measure_format(self, field: WizardFieldRef, *, format: Literal['number', 'percent'] | None = None, precision: int | None = None, unit: Literal['auto', 'k', 'm', 'b', 't'] | None = None, prefix: str | None = None, postfix: str | None = None, show_rank_delimiter: bool | None = None) -> Self:
         return self._measure_format(field, format=format, precision=precision, unit=unit, prefix=prefix, postfix=postfix, show_rank_delimiter=show_rank_delimiter)
 
+    def point_size_range(self, *, min_radius: float = 4.5, max_radius: float = 9.0) -> Self:
+        return self._point_size_range(min_radius=min_radius, max_radius=max_radius)
+
 class LineWizardChartCreate(_BaseWizardChartCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
         super().__init__(

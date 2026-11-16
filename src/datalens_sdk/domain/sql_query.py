@@ -115,10 +115,17 @@ class SqlQueryRunColumn:
 
 @dataclass(frozen=True, slots=True)
 class SqlQueryStatementSuccess:
+    """A successful statement and whether more rows were omitted.
+
+    ``has_more_rows`` is always provided by API responses. Its default keeps
+    manually constructed results compatible when that information is unknown.
+    """
+
     status: Literal["success"]
     columns: tuple[SqlQueryRunColumn, ...]
     rows: tuple[tuple[SqlQueryCell, ...], ...]
     affected_rows: int | float | None = None
+    has_more_rows: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)

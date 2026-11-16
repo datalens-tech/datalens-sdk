@@ -98,6 +98,10 @@ class DashboardItemView:
         return _optional_number(self.raw.get("defaultOrderId"))
 
     @property
+    def hidden_on_mobile(self) -> bool:
+        return self.raw.get("hiddenOnMobile") is True
+
+    @property
     def is_known_type(self) -> bool:
         return self.item_type in KNOWN_DASHBOARD_ITEM_TYPES
 

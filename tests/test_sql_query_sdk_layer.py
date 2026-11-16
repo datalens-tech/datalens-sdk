@@ -765,6 +765,7 @@ def _sql_query_run_result(status: SqlQueryRunStatus = "partial_success") -> dict
         "results": [
             {
                 "status": "success",
+                "hasMoreRows": False,
                 "columns": [{"name": "value"}, {"name": "missing"}],
                 "rows": [["text", None], [1.5, True], [0, False]],
             },
@@ -927,6 +928,7 @@ def test_sql_query_run_preserves_status_and_ordered_statement_results_without_po
                 status="success",
                 columns=(SqlQueryRunColumn("value"), SqlQueryRunColumn("missing")),
                 rows=(("text", None), (1.5, True), (0, False)),
+                has_more_rows=False,
             ),
             SqlQueryStatementError(
                 status="error", code="INVALID_SQL", message="Invalid SQL", database_message="syntax error"
@@ -940,10 +942,72 @@ def test_sql_query_run_preserves_status_and_ordered_statement_results_without_po
     assert [request.url.path for request in recorder.requests] == ["/rpc/runSqlQuery"]
 
 
+@pytest.mark.parametrize("has_more_rows", [False, True])
+def test_sql_query_run_exposes_whether_statement_rows_were_truncated(has_more_rows: bool) -> None:
+    raw = _sql_query_run_result()
+    statement = cast(list[dict[str, object]], raw["results"])[0]
+    statement["hasMoreRows"] = has_more_rows
+    recorder = RecordedTransport({"/rpc/runSqlQuery": httpx.Response(200, json=raw)})
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://datalens.test",
+        transport=httpx.MockTransport(recorder.handler),
+    ) as http_client:
+        result = _query(operations=_sql_query_service(http_client)).run()
+
+    success = result.results[0]
+    assert isinstance(success, SqlQueryStatementSuccess)
+    assert success.has_more_rows is has_more_rows
+    assert result.raw == raw
+
+
+@pytest.mark.parametrize("defect", ["missing", "wrong_type"])
+def test_sql_query_run_rejects_missing_or_invalid_truncation_flag(defect: str) -> None:
+    raw = _sql_query_run_result()
+    statement = cast(list[dict[str, object]], raw["results"])[0]
+    if defect == "missing":
+        del statement["hasMoreRows"]
+    else:
+        statement["hasMoreRows"] = "false"
+    recorder = RecordedTransport({"/rpc/runSqlQuery": httpx.Response(200, json=raw)})
+    with (
+        DataLensHTTPClient(
+            installation="yacloud",
+            sdk_version="test",
+            base_url="https://datalens.test",
+            transport=httpx.MockTransport(recorder.handler),
+        ) as http_client,
+        pytest.raises(DTOValidationError, match="runSqlQuery") as exc_info,
+    ):
+        _query(operations=_sql_query_service(http_client)).run()
+
+    assert "hasMoreRows" in exc_info.value.context.message
+
+
+def test_sql_query_run_requires_wire_spelling_of_truncation_flag() -> None:
+    raw = _sql_query_run_result()
+    statement = cast(list[dict[str, object]], raw["results"])[0]
+    statement["has_more_rows"] = statement.pop("hasMoreRows")
+    recorder = RecordedTransport({"/rpc/runSqlQuery": httpx.Response(200, json=raw)})
+    with (
+        DataLensHTTPClient(
+            installation="yacloud",
+            sdk_version="test",
+            base_url="https://datalens.test",
+            transport=httpx.MockTransport(recorder.handler),
+        ) as http_client,
+        pytest.raises(InvalidResponseError, match="runSqlQuery") as exc_info,
+    ):
+        _query(operations=_sql_query_service(http_client)).run()
+
+    assert "hasMoreRows" in exc_info.value.context.message
+
+
 def test_sql_query_run_preserves_affected_rows_and_absent_database_message() -> None:
     raw = _sql_query_run_result()
     raw["results"] = [
-        {"status": "success", "columns": [], "rows": [], "affectedRows": 2.5},
+        {"status": "success", "columns": [], "rows": [], "affectedRows": 2.5, "hasMoreRows": False},
         {"status": "error", "code": "FAILED", "message": "Failed"},
     ]
     recorder = RecordedTransport({"/rpc/runSqlQuery": httpx.Response(200, json=raw)})
@@ -956,7 +1020,7 @@ def test_sql_query_run_preserves_affected_rows_and_absent_database_message() -> 
         result = _query(operations=_sql_query_service(http_client)).run()
 
     assert result.results == (
-        SqlQueryStatementSuccess(status="success", columns=(), rows=(), affected_rows=2.5),
+        SqlQueryStatementSuccess(status="success", columns=(), rows=(), affected_rows=2.5, has_more_rows=False),
         SqlQueryStatementError(status="error", code="FAILED", message="Failed"),
     )
 
@@ -1110,6 +1174,7 @@ def test_sql_query_read_ignores_unknown_fields() -> None:
             status="success",
             columns=(SqlQueryRunColumn("value"), SqlQueryRunColumn("missing")),
             rows=(("text", None), (1.5, True), (0, False)),
+            has_more_rows=False,
         ),
         SqlQueryStatementError(
             status="error", code="INVALID_SQL", message="Invalid SQL", database_message="syntax error"

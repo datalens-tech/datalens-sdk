@@ -4643,7 +4643,8 @@
                 "type": "boolean"
               },
               "isFavorite": {
-                "description": "Whether the HTML page is a favorite.",
+                "deprecated": true,
+                "description": "Whether the HTML page is a favorite. Deprecated: the field will be removed in a future API version.",
                 "type": "boolean"
               },
               "key": {
@@ -5775,6 +5776,47 @@
         ],
         "type": "object"
       },
+      "CreateStateArgs": {
+        "properties": {
+          "data": {
+            "additionalProperties": {},
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DashboardState"
+              },
+              {
+                "additionalProperties": true,
+                "title": "Arbitrary entry state",
+                "type": "object"
+              }
+            ],
+            "description": "JSON object representing the entry state. For dashboards (scope: dash), use the DashboardState format. Any JSON object is accepted regardless of the entry scope.",
+            "type": "object"
+          },
+          "entryId": {
+            "description": "ID of the DataLens entry of any scope. Must contain exactly 13 lowercase Latin letters or digits.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entryId",
+          "data"
+        ],
+        "type": "object"
+      },
+      "CreateStateResult": {
+        "properties": {
+          "hash": {
+            "description": "Identifier returned by createEntryState. To restore a dashboard state, open its URL with ?tab=<dashboard-tab-id>&state=<hash>. The tab parameter selects the dashboard tab; chart widget tabs are specified in DashboardState.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "hash"
+        ],
+        "type": "object"
+      },
       "CreateTrinoClusterArgs": {
         "additionalProperties": false,
         "properties": {
@@ -6499,6 +6541,100 @@
               "defaultValue"
             ],
             "type": "object"
+          },
+          {
+            "properties": {
+              "accentType": {
+                "description": "Control accent style.",
+                "enum": [
+                  "info"
+                ],
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "defaultValue": {
+                "description": "Default checkbox value.",
+                "type": "string"
+              },
+              "elementType": {
+                "description": "Switch control type.",
+                "enum": [
+                  "switch"
+                ],
+                "type": "string"
+              },
+              "hint": {
+                "description": "Control hint text.",
+                "type": "string"
+              },
+              "innerTitle": {
+                "description": "Title displayed inside the control.",
+                "type": "string"
+              },
+              "operation": {
+                "description": "Filtering operation.",
+                "enum": [
+                  "IN",
+                  "NIN",
+                  "EQ",
+                  "NE",
+                  "GT",
+                  "LT",
+                  "GTE",
+                  "LTE",
+                  "ISNULL",
+                  "ISNOTNULL",
+                  "ISTARTSWITH",
+                  "STARTSWITH",
+                  "IENDSWITH",
+                  "ENDSWITH",
+                  "ICONTAINS",
+                  "CONTAINS",
+                  "NOTICONTAINS",
+                  "NOTCONTAINS",
+                  "BETWEEN",
+                  "LENEQ",
+                  "LENGT",
+                  "LENGTE",
+                  "LENLT",
+                  "LENLTE",
+                  "NO_SELECTED_VALUES"
+                ],
+                "type": "string"
+              },
+              "required": {
+                "description": "Whether the control value is required.",
+                "type": "boolean"
+              },
+              "showHint": {
+                "description": "Whether to show the control hint.",
+                "type": "boolean"
+              },
+              "showInnerTitle": {
+                "description": "Whether to show the title inside the control.",
+                "type": "boolean"
+              },
+              "showTitle": {
+                "description": "Whether to show the control title.",
+                "type": "boolean"
+              },
+              "titlePlacement": {
+                "description": "Control title placement.",
+                "enum": [
+                  "hide",
+                  "left",
+                  "top"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "elementType",
+              "defaultValue"
+            ],
+            "type": "object"
           }
         ]
       },
@@ -7092,7 +7228,7 @@
                 "additionalProperties": {
                   "$ref": "#/components/schemas/DashStringDefaultValueV2"
                 },
-                "description": "Default control values.",
+                "description": "Selected values keyed by source.datasetFieldId for dataset controls or source.fieldName for manual controls. For a date or date range control with no selected value, keep the field key with an empty string value (e.g. {\"fieldId\": \"\"}); do not omit the key or use an empty defaults object. Prefix nonempty values with __<lowercase operation>_ when source.operation is set; leave empty values unprefixed.",
                 "type": "object"
               },
               "id": {
@@ -7171,7 +7307,7 @@
                 "additionalProperties": {
                   "$ref": "#/components/schemas/DashStringDefaultValueV2"
                 },
-                "description": "Default control values.",
+                "description": "Selected values keyed by source.datasetFieldId for dataset controls or source.fieldName for manual controls. For a date or date range control with no selected value, keep the field key with an empty string value (e.g. {\"fieldId\": \"\"}); do not omit the key or use an empty defaults object. Prefix nonempty values with __<lowercase operation>_ when source.operation is set; leave empty values unprefixed.",
                 "type": "object"
               },
               "id": {
@@ -7397,6 +7533,13 @@
         ],
         "description": "A dashboard parameter value represented by one or multiple strings."
       },
+      "DashStringDefaultsV2": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/DashStringDefaultValueV2"
+        },
+        "description": "Dashboard parameter names mapped to their string values.",
+        "type": "object"
+      },
       "DashTabControlItemV2": {
         "properties": {
           "data": {
@@ -7410,8 +7553,12 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/DashStringDefaultValueV2"
             },
-            "description": "Default control values.",
+            "description": "Selected values keyed by source.datasetFieldId for dataset controls or source.fieldName for manual controls. For a date or date range control with no selected value, keep the field key with an empty string value (e.g. {\"fieldId\": \"\"}); do not omit the key or use an empty defaults object. Prefix nonempty values with __<lowercase operation>_ when source.operation is set; leave empty values unprefixed.",
             "type": "object"
+          },
+          "hiddenOnMobile": {
+            "description": "Hide the item in the mobile dashboard.",
+            "type": "boolean"
           },
           "id": {
             "description": "Dashboard item identifier.",
@@ -7454,6 +7601,10 @@
           "defaultOrderId": {
             "description": "Default item order.",
             "type": "number"
+          },
+          "hiddenOnMobile": {
+            "description": "Hide the item in the mobile dashboard.",
+            "type": "boolean"
           },
           "id": {
             "description": "Dashboard item identifier.",
@@ -7535,6 +7686,10 @@
               "defaultOrderId": {
                 "description": "Default item order.",
                 "type": "number"
+              },
+              "hiddenOnMobile": {
+                "description": "Hide the item in the mobile dashboard.",
+                "type": "boolean"
               },
               "id": {
                 "description": "Dashboard item identifier.",
@@ -7689,6 +7844,10 @@
                 "description": "Default item order.",
                 "type": "number"
               },
+              "hiddenOnMobile": {
+                "description": "Hide the item in the mobile dashboard.",
+                "type": "boolean"
+              },
               "id": {
                 "description": "Dashboard item identifier.",
                 "minLength": 1,
@@ -7830,6 +7989,10 @@
                 "description": "Default item order.",
                 "type": "number"
               },
+              "hiddenOnMobile": {
+                "description": "Hide the item in the mobile dashboard.",
+                "type": "boolean"
+              },
               "id": {
                 "description": "Dashboard item identifier.",
                 "minLength": 1,
@@ -7912,6 +8075,10 @@
               "defaultOrderId": {
                 "description": "Default item order.",
                 "type": "number"
+              },
+              "hiddenOnMobile": {
+                "description": "Hide the item in the mobile dashboard.",
+                "type": "boolean"
               },
               "id": {
                 "description": "Dashboard item identifier.",
@@ -8012,6 +8179,10 @@
               "defaultOrderId": {
                 "description": "Default item order.",
                 "type": "number"
+              },
+              "hiddenOnMobile": {
+                "description": "Hide the item in the mobile dashboard.",
+                "type": "boolean"
               },
               "id": {
                 "description": "Dashboard item identifier.",
@@ -8139,6 +8310,141 @@
           "layout",
           "connections",
           "aliases"
+        ],
+        "type": "object"
+      },
+      "DashboardState": {
+        "additionalProperties": {
+          "additionalProperties": {},
+          "properties": {
+            "params": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DashStringDefaultsV2"
+                },
+                {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/DashStringDefaultsV2"
+                  },
+                  "description": "For selector groups, map each selector ID to its parameters.",
+                  "type": "object"
+                }
+              ],
+              "description": "Parameter names mapped to string values or arrays of strings. For dataset selectors, use source.datasetFieldId as the parameter name; for manual selectors, use source.fieldName. Read these fields from the selector configuration returned by getDashboard and follow the value format of its defaults, including operation prefixes. For a selector group, nest this map under each selector ID: params[selectorId][parameterName]."
+            },
+            "state": {
+              "additionalProperties": {},
+              "description": "Widget settings. Additional fields depend on the widget type.",
+              "properties": {
+                "tabId": {
+                  "description": "Active tab ID inside a chart widget. Use the same tabId in its queue item. This is distinct from the dashboard tab selected in the URL.",
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "description": "State format used by dashboard entries (scope: dash). Except for __meta__, keys are widget IDs from getDashboard, not entry IDs of the displayed charts. Replace IDs and parameter names in the example with values from your dashboard configuration.",
+        "examples": [
+          {
+            "__meta__": {
+              "queue": [
+                {
+                  "id": "selector-widget-id"
+                },
+                {
+                  "groupItemId": "selector-id",
+                  "id": "group-widget-id"
+                },
+                {
+                  "id": "chart-widget-id",
+                  "tabId": "chart-tab-id"
+                }
+              ],
+              "version": 2
+            },
+            "chart-widget-id": {
+              "params": {
+                "region": [
+                  "Moscow"
+                ]
+              },
+              "state": {
+                "tabId": "chart-tab-id"
+              }
+            },
+            "group-widget-id": {
+              "params": {
+                "selector-id": {
+                  "year": "2026"
+                }
+              }
+            },
+            "selector-widget-id": {
+              "params": {
+                "region": [
+                  "Moscow"
+                ]
+              }
+            }
+          }
+        ],
+        "properties": {
+          "__meta__": {
+            "additionalProperties": {},
+            "description": "Required format version and parameter application queue for version 2 states.",
+            "properties": {
+              "queue": {
+                "description": "Widget parameters are applied in array order. When multiple queue items affect the same parameter, later items take precedence. Include each widget whose parameters should be applied. For selector groups, add a separate queue item for each selector and specify groupItemId. Widgets omitted from the queue do not contribute parameters.",
+                "items": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "groupItemId": {
+                      "description": "For selector groups, the selector ID within the group identified by id.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Widget ID from the configuration returned by getDashboard.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "tabId": {
+                      "description": "For chart widgets with tabs, the chart tab ID matching the widget state.tabId.",
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "version": {
+                "description": "Dashboard state format version.",
+                "enum": [
+                  2
+                ],
+                "type": "number"
+              }
+            },
+            "required": [
+              "version",
+              "queue"
+            ],
+            "type": "object"
+          }
+        },
+        "propertyNames": {
+          "minLength": 1
+        },
+        "required": [
+          "__meta__"
         ],
         "type": "object"
       },
@@ -12298,6 +12604,58 @@
         },
         "type": "object"
       },
+      "GetChartDataArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "chartId": {
+            "description": "Saved chart ID.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "description": "Chart parameters, including table pagination. Saved chart settings apply.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "chartId"
+        ],
+        "type": "object"
+      },
+      "GetChartDataResult": {
+        "discriminator": {
+          "mapping": {
+            "editor": "#/components/schemas/GetEditorChartDataResult",
+            "ql": "#/components/schemas/GetQLChartDataResult",
+            "wizard": "#/components/schemas/GetWizardChartDataResult"
+          },
+          "propertyName": "chartType"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/GetWizardChartDataResult"
+          },
+          {
+            "$ref": "#/components/schemas/GetQLChartDataResult"
+          },
+          {
+            "$ref": "#/components/schemas/GetEditorChartDataResult"
+          }
+        ]
+      },
       "GetCollectionArgs": {
         "properties": {
           "collectionId": {
@@ -12623,6 +12981,8 @@
             "type": "string"
           },
           "includeFavorite": {
+            "deprecated": true,
+            "description": "Deprecated: the parameter will be removed in a future API version.",
             "type": "boolean"
           },
           "includeLinks": {
@@ -12649,6 +13009,8 @@
             "$ref": "#/components/schemas/DashboardV2"
           },
           "isFavorite": {
+            "deprecated": true,
+            "description": "Deprecated: the field will be removed in a future API version.",
             "type": "boolean"
           },
           "permissions": {
@@ -12695,6 +13057,60 @@
         },
         "required": [
           "chartId"
+        ],
+        "type": "object"
+      },
+      "GetEditorChartDataResult": {
+        "additionalProperties": false,
+        "properties": {
+          "chartType": {
+            "enum": [
+              "editor"
+            ],
+            "type": "string"
+          },
+          "results": {
+            "description": "Tables in query and block order. Results with different schemas are returned separately.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "rows": {
+                  "description": "Values ordered according to schema.",
+                  "items": {
+                    "items": {},
+                    "type": "array"
+                  },
+                  "type": "array"
+                },
+                "schema": {
+                  "description": "Columns in row value order.",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "schema",
+                "rows"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "chartType",
+          "results"
         ],
         "type": "object"
       },
@@ -13427,7 +13843,8 @@
             "type": "string"
           },
           "includeFavorite": {
-            "description": "Whether to include the favorite status.",
+            "deprecated": true,
+            "description": "Whether to include the favorite status. Deprecated: the parameter will be removed in a future API version.",
             "type": "boolean"
           },
           "includePermissions": {
@@ -13543,7 +13960,8 @@
             "type": "boolean"
           },
           "isFavorite": {
-            "description": "Whether the HTML page is a favorite.",
+            "deprecated": true,
+            "description": "Whether the HTML page is a favorite. Deprecated: the field will be removed in a future API version.",
             "type": "boolean"
           },
           "key": {
@@ -14250,6 +14668,65 @@
         ],
         "type": "object"
       },
+      "GetQLChartDataResult": {
+        "additionalProperties": false,
+        "properties": {
+          "chartType": {
+            "enum": [
+              "ql"
+            ],
+            "type": "string"
+          },
+          "results": {
+            "description": "Tables in query and block order. Results with different schemas are returned separately.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "rows": {
+                  "description": "Values ordered according to schema.",
+                  "items": {
+                    "items": {},
+                    "type": "array"
+                  },
+                  "type": "array"
+                },
+                "schema": {
+                  "description": "Columns in row value order.",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "description": "QL value type, for example \"number\" or \"string\". Numeric values may be returned as strings.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "type"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "schema",
+                "rows"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "chartType",
+          "results"
+        ],
+        "type": "object"
+      },
       "GetReportV2Args": {
         "properties": {
           "entryId": {
@@ -14424,7 +14901,8 @@
       "GetSqlQueryArgs": {
         "properties": {
           "includeFavorite": {
-            "description": "Whether to include the favorite status.",
+            "deprecated": true,
+            "description": "Whether to include the favorite status. Deprecated: the parameter will be removed in a future API version.",
             "type": "boolean"
           },
           "includePermissions": {
@@ -14451,7 +14929,8 @@
             "$ref": "#/components/schemas/SqlQuery"
           },
           "isFavorite": {
-            "description": "Whether the SQL query is a favorite.",
+            "deprecated": true,
+            "description": "Whether the SQL query is a favorite. Deprecated: the field will be removed in a future API version.",
             "type": "boolean"
           },
           "permissions": {
@@ -14485,6 +14964,69 @@
         },
         "required": [
           "entry"
+        ],
+        "type": "object"
+      },
+      "GetStateArgs": {
+        "properties": {
+          "entryId": {
+            "description": "ID of the DataLens entry of any scope. Must contain exactly 13 lowercase Latin letters or digits.",
+            "type": "string"
+          },
+          "hash": {
+            "description": "Identifier returned by createEntryState. To restore a dashboard state, open its URL with ?tab=<dashboard-tab-id>&state=<hash>. The tab parameter selects the dashboard tab; chart widget tabs are specified in DashboardState.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "entryId",
+          "hash"
+        ],
+        "type": "object"
+      },
+      "GetStateResult": {
+        "properties": {
+          "createdAt": {
+            "description": "Date and time when the state was first saved.",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": {},
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DashboardState"
+              },
+              {
+                "additionalProperties": true,
+                "title": "Arbitrary entry state",
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "JSON object representing the entry state. For dashboards (scope: dash), use the DashboardState format. Any JSON object is accepted regardless of the entry scope.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "entryId": {
+            "description": "ID of the DataLens entry of any scope. Must contain exactly 13 lowercase Latin letters or digits.",
+            "type": "string"
+          },
+          "hash": {
+            "description": "Identifier returned by createEntryState. To restore a dashboard state, open its URL with ?tab=<dashboard-tab-id>&state=<hash>. The tab parameter selects the dashboard tab; chart widget tabs are specified in DashboardState.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "entryId",
+          "hash",
+          "data",
+          "createdAt"
         ],
         "type": "object"
       },
@@ -14887,6 +15429,90 @@
         ],
         "type": "object"
       },
+      "GetWizardChartDataResult": {
+        "additionalProperties": false,
+        "properties": {
+          "chartType": {
+            "enum": [
+              "wizard"
+            ],
+            "type": "string"
+          },
+          "results": {
+            "description": "Tables in query and block order. Results with different schemas are returned separately.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "rows": {
+                  "description": "Values ordered according to schema.",
+                  "items": {
+                    "items": {},
+                    "type": "array"
+                  },
+                  "type": "array"
+                },
+                "schema": {
+                  "description": "Columns in row value order.",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "guid": {
+                        "description": "Field GUID, when provided by the source.",
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "enum": [
+                          "date",
+                          "genericdatetime",
+                          "datetimetz",
+                          "integer",
+                          "uinteger",
+                          "string",
+                          "float",
+                          "boolean",
+                          "geopoint",
+                          "geopolygon",
+                          "markup",
+                          "heatmap",
+                          "array_int",
+                          "array_float",
+                          "array_str",
+                          "unsupported",
+                          "hierarchy",
+                          "tree_str",
+                          "tree_int",
+                          "tree_float"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "type"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "schema",
+                "rows"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "chartType",
+          "results"
+        ],
+        "type": "object"
+      },
       "GetWizardChartV1Args": {
         "additionalProperties": false,
         "properties": {
@@ -14898,7 +15524,8 @@
             "type": "string"
           },
           "includeFavorite": {
-            "description": "Include favorite status in the response.",
+            "deprecated": true,
+            "description": "Include favorite status in the response. Deprecated: the parameter will be removed in a future API version.",
             "type": "boolean"
           },
           "includeLinks": {
@@ -14932,7 +15559,8 @@
             "$ref": "#/components/schemas/WizardV1"
           },
           "isFavorite": {
-            "description": "Indicates if the chart is marked as favorite.",
+            "deprecated": true,
+            "description": "Indicates if the chart is marked as favorite. Deprecated: the field will be removed in a future API version.",
             "type": "boolean"
           },
           "permissions": {
@@ -21477,6 +22105,10 @@
                       },
                       "type": "array"
                     },
+                    "hasMoreRows": {
+                      "description": "Whether the statement returned more rows than included in `rows`.",
+                      "type": "boolean"
+                    },
                     "rows": {
                       "description": "Rows of the statement result, with values in the order of the columns.",
                       "items": {
@@ -21514,7 +22146,8 @@
                   "required": [
                     "status",
                     "columns",
-                    "rows"
+                    "rows",
+                    "hasMoreRows"
                   ],
                   "type": "object"
                 },
@@ -25171,6 +25804,9 @@
                 "description": "ID of the HTML page to update.",
                 "type": "string"
               },
+              "lockToken": {
+                "type": "string"
+              },
               "mode": {
                 "description": "HTML page update mode.",
                 "enum": [
@@ -25261,7 +25897,8 @@
                 "type": "boolean"
               },
               "isFavorite": {
-                "description": "Whether the HTML page is a favorite.",
+                "deprecated": true,
+                "description": "Whether the HTML page is a favorite. Deprecated: the field will be removed in a future API version.",
                 "type": "boolean"
               },
               "key": {
@@ -25965,6 +26602,13 @@
                           "palette": {
                             "description": "Color palette identifier.",
                             "type": "string"
+                          },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
                           }
                         },
                         "type": "object"
@@ -26422,6 +27066,13 @@
                                 "palette": {
                                   "description": "Color palette identifier.",
                                   "type": "string"
+                                },
+                                "paletteManualValues": {
+                                  "description": "Manually added field values for discrete coloring.",
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
                                 }
                               },
                               "type": "object"
@@ -27098,6 +27749,13 @@
                           "palette": {
                             "description": "Color palette identifier.",
                             "type": "string"
+                          },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
                           }
                         },
                         "type": "object"
@@ -27658,6 +28316,13 @@
                           "palette": {
                             "description": "Color palette identifier.",
                             "type": "string"
+                          },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
                           }
                         },
                         "type": "object"
@@ -28232,6 +28897,13 @@
                           "palette": {
                             "description": "Color palette identifier.",
                             "type": "string"
+                          },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
                           }
                         },
                         "type": "object"
@@ -28831,6 +29503,13 @@
                           "palette": {
                             "description": "Color palette identifier.",
                             "type": "string"
+                          },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
                           }
                         },
                         "type": "object"
@@ -29405,6 +30084,13 @@
                           "palette": {
                             "description": "Color palette identifier.",
                             "type": "string"
+                          },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
                           }
                         },
                         "type": "object"
@@ -30198,6 +30884,13 @@
                         "description": "Color palette identifier.",
                         "type": "string"
                       },
+                      "paletteManualValues": {
+                        "description": "Manually added field values for discrete coloring.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
                       "polygonBorders": {
                         "description": "Whether polygon borders are displayed.",
                         "enum": [
@@ -30241,6 +30934,27 @@
                   "settings": {
                     "description": "Data label settings.",
                     "properties": {
+                      "labelsDisplayMode": {
+                        "description": "Display labels for all points (default) or only points matching selection rules.",
+                        "enum": [
+                          "all",
+                          "selective"
+                        ],
+                        "type": "string"
+                      },
+                      "labelsSelectionRules": {
+                        "description": "Rules for selective mode: first, last, min or max in each series, combined with OR. At least one rule is required when labelsDisplayMode is selective.",
+                        "items": {
+                          "enum": [
+                            "first",
+                            "last",
+                            "min",
+                            "max"
+                          ],
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
                       "overlap": {
                         "description": "Whether data labels may overlap.",
                         "enum": [
@@ -30544,7 +31258,7 @@
                 "description": "Primary Y-axis configuration.",
                 "properties": {
                   "items": {
-                    "description": "Fields placed on the primary Y-axis.",
+                    "description": "Fields placed on the primary Y-axis. Measures only: a dimension placed here needs an aggregation.",
                     "items": {
                       "$ref": "#/components/schemas/WizardFieldSchema"
                     },
@@ -30737,7 +31451,7 @@
                 "description": "Secondary Y-axis configuration.",
                 "properties": {
                   "items": {
-                    "description": "Fields placed on the secondary Y-axis.",
+                    "description": "Fields placed on the secondary Y-axis. Measures only: a dimension placed here needs an aggregation.",
                     "items": {
                       "$ref": "#/components/schemas/WizardFieldSchema"
                     },
@@ -31004,6 +31718,13 @@
                         "description": "Color palette identifier.",
                         "type": "string"
                       },
+                      "paletteManualValues": {
+                        "description": "Manually added field values for discrete coloring.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
                       "polygonBorders": {
                         "description": "Whether polygon borders are displayed.",
                         "enum": [
@@ -31047,6 +31768,14 @@
                   "settings": {
                     "description": "Data label settings.",
                     "properties": {
+                      "labelsDisplayMode": {
+                        "description": "Display labels for all points (default) or only points matching selection rules.",
+                        "enum": [
+                          "all",
+                          "selective"
+                        ],
+                        "type": "string"
+                      },
                       "labelsPosition": {
                         "description": "Position of data labels relative to columns.",
                         "enum": [
@@ -31054,6 +31783,19 @@
                           "inside"
                         ],
                         "type": "string"
+                      },
+                      "labelsSelectionRules": {
+                        "description": "Rules for selective mode: first, last, min or max in each series, combined with OR. At least one rule is required when labelsDisplayMode is selective.",
+                        "items": {
+                          "enum": [
+                            "first",
+                            "last",
+                            "min",
+                            "max"
+                          ],
+                          "type": "string"
+                        },
+                        "type": "array"
                       },
                       "overlap": {
                         "description": "Whether data labels may overlap.",
@@ -31281,7 +32023,7 @@
                 "description": "Y-axis configuration.",
                 "properties": {
                   "items": {
-                    "description": "Fields placed on the Y-axis.",
+                    "description": "Fields placed on the Y-axis. Measures only: a dimension placed here needs an aggregation.",
                     "items": {
                       "$ref": "#/components/schemas/WizardFieldSchema"
                     },
@@ -31548,6 +32290,13 @@
                         "description": "Color palette identifier.",
                         "type": "string"
                       },
+                      "paletteManualValues": {
+                        "description": "Manually added field values for discrete coloring.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
                       "polygonBorders": {
                         "description": "Whether polygon borders are displayed.",
                         "enum": [
@@ -31591,6 +32340,27 @@
                   "settings": {
                     "description": "Data label settings.",
                     "properties": {
+                      "labelsDisplayMode": {
+                        "description": "Display labels for all points (default) or only points matching selection rules.",
+                        "enum": [
+                          "all",
+                          "selective"
+                        ],
+                        "type": "string"
+                      },
+                      "labelsSelectionRules": {
+                        "description": "Rules for selective mode: first, last, min or max in each series, combined with OR. At least one rule is required when labelsDisplayMode is selective.",
+                        "items": {
+                          "enum": [
+                            "first",
+                            "last",
+                            "min",
+                            "max"
+                          ],
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
                       "overlap": {
                         "description": "Whether data labels may overlap.",
                         "enum": [
@@ -31817,7 +32587,7 @@
                 "description": "Y-axis configuration.",
                 "properties": {
                   "items": {
-                    "description": "Fields placed on the Y-axis.",
+                    "description": "Fields placed on the Y-axis. Measures only: a dimension placed here needs an aggregation.",
                     "items": {
                       "$ref": "#/components/schemas/WizardFieldSchema"
                     },
@@ -32381,6 +33151,17 @@
                         ],
                         "type": "string"
                       },
+                      "legendPosition": {
+                        "description": "Position of the chart legend. Auto preserves the current bottom position.",
+                        "enum": [
+                          "auto",
+                          "top",
+                          "bottom",
+                          "left",
+                          "right"
+                        ],
+                        "type": "string"
+                      },
                       "navigatorSettings": {
                         "description": "Chart navigator settings.",
                         "properties": {
@@ -32568,6 +33349,13 @@
                             "description": "Color palette identifier.",
                             "type": "string"
                           },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
                             "enum": [
@@ -32611,6 +33399,27 @@
                       "settings": {
                         "description": "Data label settings.",
                         "properties": {
+                          "labelsDisplayMode": {
+                            "description": "Display labels for all points (default) or only points matching selection rules.",
+                            "enum": [
+                              "all",
+                              "selective"
+                            ],
+                            "type": "string"
+                          },
+                          "labelsSelectionRules": {
+                            "description": "Rules for selective mode: first, last, min or max in each series, combined with OR. At least one rule is required when labelsDisplayMode is selective.",
+                            "items": {
+                              "enum": [
+                                "first",
+                                "last",
+                                "min",
+                                "max"
+                              ],
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
                           "overlap": {
                             "description": "Whether data labels may overlap.",
                             "enum": [
@@ -32909,7 +33718,7 @@
                     "description": "Primary Y-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the primary Y-axis.",
+                        "description": "Fields placed on the primary Y-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -33102,7 +33911,7 @@
                     "description": "Secondary Y-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the secondary Y-axis.",
+                        "description": "Fields placed on the secondary Y-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -33303,6 +34112,95 @@
                   "chartSettings": {
                     "description": "Chart configuration.",
                     "properties": {
+                      "barSettings": {
+                        "description": "Bar spacing and overlap settings.",
+                        "properties": {
+                          "barPadding": {
+                            "anyOf": [
+                              {
+                                "maximum": 100,
+                                "minimum": 0,
+                                "type": "number"
+                              },
+                              {
+                                "enum": [
+                                  "auto"
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "default": "auto",
+                            "description": "Gap between bars within a category group, in percent."
+                          },
+                          "groupPadding": {
+                            "anyOf": [
+                              {
+                                "maximum": 100,
+                                "minimum": 0,
+                                "type": "number"
+                              },
+                              {
+                                "enum": [
+                                  "auto"
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "default": "auto",
+                            "description": "Gap between category groups, in percent."
+                          },
+                          "overlap": {
+                            "default": {
+                              "enabled": false,
+                              "opacity": "auto",
+                              "width": "auto"
+                            },
+                            "properties": {
+                              "enabled": {
+                                "default": false,
+                                "description": "Overlay bars instead of stacking them.",
+                                "type": "boolean"
+                              },
+                              "opacity": {
+                                "anyOf": [
+                                  {
+                                    "maximum": 100,
+                                    "minimum": 1,
+                                    "type": "number"
+                                  },
+                                  {
+                                    "enum": [
+                                      "auto"
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "default": "auto",
+                                "description": "Background opacity, in percent (100 means fully opaque)."
+                              },
+                              "width": {
+                                "anyOf": [
+                                  {
+                                    "maximum": 100,
+                                    "minimum": 0,
+                                    "type": "number"
+                                  },
+                                  {
+                                    "enum": [
+                                      "auto"
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "default": "auto",
+                                "description": "Foreground width relative to background, in percent."
+                              }
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "type": "object"
+                      },
                       "feed": {
                         "description": "Comment feed identifier.",
                         "type": "string"
@@ -33312,6 +34210,17 @@
                         "enum": [
                           "show",
                           "hide"
+                        ],
+                        "type": "string"
+                      },
+                      "legendPosition": {
+                        "description": "Position of the chart legend. Auto preserves the current bottom position.",
+                        "enum": [
+                          "auto",
+                          "top",
+                          "bottom",
+                          "left",
+                          "right"
                         ],
                         "type": "string"
                       },
@@ -33502,6 +34411,13 @@
                             "description": "Color palette identifier.",
                             "type": "string"
                           },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
                             "enum": [
@@ -33545,6 +34461,14 @@
                       "settings": {
                         "description": "Data label settings.",
                         "properties": {
+                          "labelsDisplayMode": {
+                            "description": "Display labels for all points (default) or only points matching selection rules.",
+                            "enum": [
+                              "all",
+                              "selective"
+                            ],
+                            "type": "string"
+                          },
                           "labelsPosition": {
                             "description": "Position of data labels relative to columns.",
                             "enum": [
@@ -33552,6 +34476,19 @@
                               "inside"
                             ],
                             "type": "string"
+                          },
+                          "labelsSelectionRules": {
+                            "description": "Rules for selective mode: first, last, min or max in each series, combined with OR. At least one rule is required when labelsDisplayMode is selective.",
+                            "items": {
+                              "enum": [
+                                "first",
+                                "last",
+                                "min",
+                                "max"
+                              ],
+                              "type": "string"
+                            },
+                            "type": "array"
                           },
                           "overlap": {
                             "description": "Whether data labels may overlap.",
@@ -33774,7 +34711,7 @@
                     "description": "Y-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the Y-axis.",
+                        "description": "Fields placed on the Y-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -33975,6 +34912,46 @@
                   "chartSettings": {
                     "description": "Chart configuration.",
                     "properties": {
+                      "barSettings": {
+                        "description": "Bar spacing settings.",
+                        "properties": {
+                          "barPadding": {
+                            "anyOf": [
+                              {
+                                "maximum": 100,
+                                "minimum": 0,
+                                "type": "number"
+                              },
+                              {
+                                "enum": [
+                                  "auto"
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "default": "auto",
+                            "description": "Gap between bars within a category group, in percent."
+                          },
+                          "groupPadding": {
+                            "anyOf": [
+                              {
+                                "maximum": 100,
+                                "minimum": 0,
+                                "type": "number"
+                              },
+                              {
+                                "enum": [
+                                  "auto"
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "default": "auto",
+                            "description": "Gap between category groups, in percent."
+                          }
+                        },
+                        "type": "object"
+                      },
                       "feed": {
                         "description": "Comment feed identifier.",
                         "type": "string"
@@ -33984,6 +34961,17 @@
                         "enum": [
                           "show",
                           "hide"
+                        ],
+                        "type": "string"
+                      },
+                      "legendPosition": {
+                        "description": "Position of the chart legend. Auto preserves the current bottom position.",
+                        "enum": [
+                          "auto",
+                          "top",
+                          "bottom",
+                          "left",
+                          "right"
                         ],
                         "type": "string"
                       },
@@ -34173,6 +35161,13 @@
                           "palette": {
                             "description": "Color palette identifier.",
                             "type": "string"
+                          },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
                           },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
@@ -34438,7 +35433,7 @@
                     "description": "Y-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the Y-axis.",
+                        "description": "Fields placed on the Y-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -34651,6 +35646,17 @@
                         ],
                         "type": "string"
                       },
+                      "legendPosition": {
+                        "description": "Position of the chart legend. Auto preserves the current bottom position.",
+                        "enum": [
+                          "auto",
+                          "top",
+                          "bottom",
+                          "left",
+                          "right"
+                        ],
+                        "type": "string"
+                      },
                       "navigatorSettings": {
                         "description": "Chart navigator settings.",
                         "properties": {
@@ -34846,6 +35852,13 @@
                             "description": "Color palette identifier.",
                             "type": "string"
                           },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
                             "enum": [
@@ -34889,6 +35902,27 @@
                       "settings": {
                         "description": "Data label settings.",
                         "properties": {
+                          "labelsDisplayMode": {
+                            "description": "Display labels for all points (default) or only points matching selection rules.",
+                            "enum": [
+                              "all",
+                              "selective"
+                            ],
+                            "type": "string"
+                          },
+                          "labelsSelectionRules": {
+                            "description": "Rules for selective mode: first, last, min or max in each series, combined with OR. At least one rule is required when labelsDisplayMode is selective.",
+                            "items": {
+                              "enum": [
+                                "first",
+                                "last",
+                                "min",
+                                "max"
+                              ],
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
                           "overlap": {
                             "description": "Whether data labels may overlap.",
                             "enum": [
@@ -35110,7 +36144,7 @@
                     "description": "Y-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the Y-axis.",
+                        "description": "Fields placed on the Y-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -35323,6 +36357,17 @@
                         ],
                         "type": "string"
                       },
+                      "legendPosition": {
+                        "description": "Position of the chart legend. Auto preserves the current bottom position.",
+                        "enum": [
+                          "auto",
+                          "top",
+                          "bottom",
+                          "left",
+                          "right"
+                        ],
+                        "type": "string"
+                      },
                       "navigatorSettings": {
                         "description": "Chart navigator settings.",
                         "properties": {
@@ -35509,6 +36554,13 @@
                           "palette": {
                             "description": "Color palette identifier.",
                             "type": "string"
+                          },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
                           },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
@@ -35774,7 +36826,7 @@
                     "description": "Y-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the Y-axis.",
+                        "description": "Fields placed on the Y-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -35975,6 +37027,95 @@
                   "chartSettings": {
                     "description": "Chart configuration.",
                     "properties": {
+                      "barSettings": {
+                        "description": "Bar spacing and overlap settings.",
+                        "properties": {
+                          "barPadding": {
+                            "anyOf": [
+                              {
+                                "maximum": 100,
+                                "minimum": 0,
+                                "type": "number"
+                              },
+                              {
+                                "enum": [
+                                  "auto"
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "default": "auto",
+                            "description": "Gap between bars within a category group, in percent."
+                          },
+                          "groupPadding": {
+                            "anyOf": [
+                              {
+                                "maximum": 100,
+                                "minimum": 0,
+                                "type": "number"
+                              },
+                              {
+                                "enum": [
+                                  "auto"
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "default": "auto",
+                            "description": "Gap between category groups, in percent."
+                          },
+                          "overlap": {
+                            "default": {
+                              "enabled": false,
+                              "opacity": "auto",
+                              "width": "auto"
+                            },
+                            "properties": {
+                              "enabled": {
+                                "default": false,
+                                "description": "Overlay bars instead of stacking them.",
+                                "type": "boolean"
+                              },
+                              "opacity": {
+                                "anyOf": [
+                                  {
+                                    "maximum": 100,
+                                    "minimum": 1,
+                                    "type": "number"
+                                  },
+                                  {
+                                    "enum": [
+                                      "auto"
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "default": "auto",
+                                "description": "Background opacity, in percent (100 means fully opaque)."
+                              },
+                              "width": {
+                                "anyOf": [
+                                  {
+                                    "maximum": 100,
+                                    "minimum": 0,
+                                    "type": "number"
+                                  },
+                                  {
+                                    "enum": [
+                                      "auto"
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "default": "auto",
+                                "description": "Foreground width relative to background, in percent."
+                              }
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "type": "object"
+                      },
                       "feed": {
                         "description": "Comment feed identifier.",
                         "type": "string"
@@ -35984,6 +37125,17 @@
                         "enum": [
                           "show",
                           "hide"
+                        ],
+                        "type": "string"
+                      },
+                      "legendPosition": {
+                        "description": "Position of the chart legend. Auto preserves the current bottom position.",
+                        "enum": [
+                          "auto",
+                          "top",
+                          "bottom",
+                          "left",
+                          "right"
                         ],
                         "type": "string"
                       },
@@ -36086,6 +37238,13 @@
                             "description": "Color palette identifier.",
                             "type": "string"
                           },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
                             "enum": [
@@ -36129,6 +37288,14 @@
                       "settings": {
                         "description": "Data label settings.",
                         "properties": {
+                          "labelsDisplayMode": {
+                            "description": "Display labels for all points (default) or only points matching selection rules.",
+                            "enum": [
+                              "all",
+                              "selective"
+                            ],
+                            "type": "string"
+                          },
                           "labelsPosition": {
                             "description": "Position of data labels relative to bars.",
                             "enum": [
@@ -36136,6 +37303,19 @@
                               "inside"
                             ],
                             "type": "string"
+                          },
+                          "labelsSelectionRules": {
+                            "description": "Rules for selective mode: first, last, min or max in each series, combined with OR. At least one rule is required when labelsDisplayMode is selective.",
+                            "items": {
+                              "enum": [
+                                "first",
+                                "last",
+                                "min",
+                                "max"
+                              ],
+                              "type": "string"
+                            },
+                            "type": "array"
                           },
                           "overlap": {
                             "description": "Whether data labels may overlap.",
@@ -36175,7 +37355,7 @@
                     "description": "X-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the X-axis.",
+                        "description": "Fields placed on the X-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -36546,6 +37726,46 @@
                   "chartSettings": {
                     "description": "Chart configuration.",
                     "properties": {
+                      "barSettings": {
+                        "description": "Bar spacing settings.",
+                        "properties": {
+                          "barPadding": {
+                            "anyOf": [
+                              {
+                                "maximum": 100,
+                                "minimum": 0,
+                                "type": "number"
+                              },
+                              {
+                                "enum": [
+                                  "auto"
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "default": "auto",
+                            "description": "Gap between bars within a category group, in percent."
+                          },
+                          "groupPadding": {
+                            "anyOf": [
+                              {
+                                "maximum": 100,
+                                "minimum": 0,
+                                "type": "number"
+                              },
+                              {
+                                "enum": [
+                                  "auto"
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "default": "auto",
+                            "description": "Gap between category groups, in percent."
+                          }
+                        },
+                        "type": "object"
+                      },
                       "feed": {
                         "description": "Comment feed identifier.",
                         "type": "string"
@@ -36555,6 +37775,17 @@
                         "enum": [
                           "show",
                           "hide"
+                        ],
+                        "type": "string"
+                      },
+                      "legendPosition": {
+                        "description": "Position of the chart legend. Auto preserves the current bottom position.",
+                        "enum": [
+                          "auto",
+                          "top",
+                          "bottom",
+                          "left",
+                          "right"
                         ],
                         "type": "string"
                       },
@@ -36657,6 +37888,13 @@
                             "description": "Color palette identifier.",
                             "type": "string"
                           },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
                             "enum": [
@@ -36738,7 +37976,7 @@
                     "description": "X-axis configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields placed on the X-axis.",
+                        "description": "Fields placed on the X-axis. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -37128,6 +38366,17 @@
                         ],
                         "type": "string"
                       },
+                      "legendPosition": {
+                        "description": "Position of the chart legend. Auto preserves the current bottom position.",
+                        "enum": [
+                          "auto",
+                          "top",
+                          "bottom",
+                          "left",
+                          "right"
+                        ],
+                        "type": "string"
+                      },
                       "shape": {
                         "description": "Funnel segment shape.",
                         "enum": [
@@ -37236,6 +38485,13 @@
                           "palette": {
                             "description": "Color palette identifier.",
                             "type": "string"
+                          },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
                           },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
@@ -37353,7 +38609,7 @@
                     "description": "Measure configuration.",
                     "properties": {
                       "items": {
-                        "description": "Measures used to size funnel stages.",
+                        "description": "Measures used to size funnel stages. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -37407,6 +38663,17 @@
                         "enum": [
                           "show",
                           "hide"
+                        ],
+                        "type": "string"
+                      },
+                      "legendPosition": {
+                        "description": "Position of the chart legend. Auto preserves the current bottom position.",
+                        "enum": [
+                          "auto",
+                          "top",
+                          "bottom",
+                          "left",
+                          "right"
                         ],
                         "type": "string"
                       },
@@ -37501,6 +38768,13 @@
                             "description": "Color palette identifier.",
                             "type": "string"
                           },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
                             "enum": [
@@ -37578,7 +38852,7 @@
                     "description": "Point size configuration.",
                     "properties": {
                       "items": {
-                        "description": "Fields used to determine point sizes.",
+                        "description": "Fields used to determine point sizes. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -38038,6 +39312,17 @@
                         ],
                         "type": "string"
                       },
+                      "legendPosition": {
+                        "description": "Position of the chart legend. Auto preserves the current bottom position.",
+                        "enum": [
+                          "auto",
+                          "top",
+                          "bottom",
+                          "left",
+                          "right"
+                        ],
+                        "type": "string"
+                      },
                       "title": {
                         "description": "Chart title.",
                         "type": "string"
@@ -38129,6 +39414,13 @@
                             "description": "Color palette identifier.",
                             "type": "string"
                           },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
                             "enum": [
@@ -38192,7 +39484,7 @@
                     "description": "Measure configuration.",
                     "properties": {
                       "items": {
-                        "description": "Measures used to determine slice sizes.",
+                        "description": "Measures used to determine slice sizes. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -38241,6 +39533,17 @@
                         "enum": [
                           "show",
                           "hide"
+                        ],
+                        "type": "string"
+                      },
+                      "legendPosition": {
+                        "description": "Position of the chart legend. Auto preserves the current bottom position.",
+                        "enum": [
+                          "auto",
+                          "top",
+                          "bottom",
+                          "left",
+                          "right"
                         ],
                         "type": "string"
                       },
@@ -38343,6 +39646,13 @@
                             "description": "Color palette identifier.",
                             "type": "string"
                           },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
                             "enum": [
@@ -38406,7 +39716,7 @@
                     "description": "Measure configuration.",
                     "properties": {
                       "items": {
-                        "description": "Measures used to determine slice sizes.",
+                        "description": "Measures used to determine slice sizes. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -38549,6 +39859,13 @@
                             "description": "Color palette identifier.",
                             "type": "string"
                           },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
                             "enum": [
@@ -38587,7 +39904,7 @@
                     "description": "Measure configuration.",
                     "properties": {
                       "items": {
-                        "description": "Measures displayed by the metric.",
+                        "description": "Measures displayed by the metric. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -38709,6 +40026,13 @@
                             "description": "Color palette identifier.",
                             "type": "string"
                           },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
                             "enum": [
@@ -38762,7 +40086,7 @@
                     "description": "Measure configuration.",
                     "properties": {
                       "items": {
-                        "description": "Measures used to size treemap nodes.",
+                        "description": "Measures used to size treemap nodes. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -38922,6 +40246,13 @@
                           "palette": {
                             "description": "Color palette identifier.",
                             "type": "string"
+                          },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
                           },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
@@ -39132,6 +40463,13 @@
                             "description": "Color palette identifier.",
                             "type": "string"
                           },
+                          "paletteManualValues": {
+                            "description": "Manually added field values for discrete coloring.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
                           "polygonBorders": {
                             "description": "Whether polygon borders are displayed.",
                             "enum": [
@@ -39185,7 +40523,7 @@
                     "description": "Measure configuration.",
                     "properties": {
                       "items": {
-                        "description": "Measures displayed in pivot cells.",
+                        "description": "Measures displayed in pivot cells. Measures only: a dimension placed here needs an aggregation.",
                         "items": {
                           "$ref": "#/components/schemas/WizardFieldSchema"
                         },
@@ -39353,6 +40691,17 @@
                         "enum": [
                           "show",
                           "hide"
+                        ],
+                        "type": "string"
+                      },
+                      "legendPosition": {
+                        "description": "Position of the chart legend. Auto preserves the current bottom position.",
+                        "enum": [
+                          "auto",
+                          "top",
+                          "bottom",
+                          "left",
+                          "right"
                         ],
                         "type": "string"
                       },
@@ -39543,6 +40892,13 @@
                         "description": "Color palette identifier.",
                         "type": "string"
                       },
+                      "paletteManualValues": {
+                        "description": "Manually added field values for discrete coloring.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
                       "polygonBorders": {
                         "description": "Whether polygon borders are displayed.",
                         "enum": [
@@ -39650,6 +41006,14 @@
                   "settings": {
                     "description": "Map point size settings.",
                     "properties": {
+                      "maxRadius": {
+                        "description": "Maximum map point radius in pixels.",
+                        "type": "number"
+                      },
+                      "minRadius": {
+                        "description": "Minimum map point radius in pixels.",
+                        "type": "number"
+                      },
                       "radius": {
                         "description": "Radius of map points in pixels.",
                         "type": "number"
@@ -39783,6 +41147,13 @@
                         "description": "Color palette identifier.",
                         "type": "string"
                       },
+                      "paletteManualValues": {
+                        "description": "Manually added field values for discrete coloring.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
                       "polygonBorders": {
                         "description": "Whether polygon borders are displayed.",
                         "enum": [
@@ -39890,6 +41261,14 @@
                   "settings": {
                     "description": "Map point size settings.",
                     "properties": {
+                      "maxRadius": {
+                        "description": "Maximum map point radius in pixels.",
+                        "type": "number"
+                      },
+                      "minRadius": {
+                        "description": "Minimum map point radius in pixels.",
+                        "type": "number"
+                      },
                       "radius": {
                         "description": "Radius of map points in pixels.",
                         "type": "number"
@@ -40022,6 +41401,13 @@
                       "palette": {
                         "description": "Color palette identifier.",
                         "type": "string"
+                      },
+                      "paletteManualValues": {
+                        "description": "Manually added field values for discrete coloring.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
                       },
                       "polygonBorders": {
                         "description": "Whether polygon borders are displayed.",
@@ -40242,6 +41628,13 @@
                         "description": "Color palette identifier.",
                         "type": "string"
                       },
+                      "paletteManualValues": {
+                        "description": "Manually added field values for discrete coloring.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
                       "polygonBorders": {
                         "description": "Whether polygon borders are displayed.",
                         "enum": [
@@ -40445,6 +41838,13 @@
                       "palette": {
                         "description": "Color palette identifier.",
                         "type": "string"
+                      },
+                      "paletteManualValues": {
+                        "description": "Manually added field values for discrete coloring.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
                       },
                       "polygonBorders": {
                         "description": "Whether polygon borders are displayed.",
@@ -52071,6 +53471,50 @@
         "x-mcp-scope": "write"
       }
     },
+    "/rpc/createEntryState": {
+      "post": {
+        "description": "Saves a JSON object for the specified DataLens entry and returns its state identifier (hash). A dashboard state captures selected filter values and widget settings, such as active chart tabs, so that view can be restored or shared using a URL. Use getEntryState to retrieve the saved object.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStateArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateStateResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "Create entry state",
+        "tags": [
+          "Entries"
+        ],
+        "x-mcp-scope": "write"
+      }
+    },
     "/rpc/createFolder": {
       "post": {
         "description": "Creates a new folder.",
@@ -53603,6 +55047,50 @@
         "x-mcp-scope": "privileged"
       }
     },
+    "/rpc/getChartData": {
+      "post": {
+        "description": "Runs a saved Wizard, QL, or Editor chart with the supplied parameters and returns flat tables. Pivot tables are not supported. Editor charts require Editor.setRawData(). Large integers in Wizard results may lose precision. Limits across all results: 100000 rows, 100000 cells, 1000 tables and 100000 schema columns; up to 800 columns per table. Exceeding a limit returns HTTP 422; results are not truncated.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetChartDataArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetChartDataResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Get chart data",
+        "tags": [
+          "Data"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
     "/rpc/getCollection": {
       "post": {
         "description": "Returns the specified collection.",
@@ -54540,12 +56028,67 @@
         "x-mcp-scope": "read"
       }
     },
+    "/rpc/getEntryState": {
+      "post": {
+        "description": "Returns a previously saved JSON object and its creation time. Requires an existing state hash for the same DataLens entry, obtained via createEntryState or the DataLens interface.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetStateArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetStateResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "Get entry state",
+        "tags": [
+          "Entries"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
     "/rpc/getHtmlPage": {
       "post": {
         "description": "Returns the specified HTML page.",
         "parameters": [
           {
             "$ref": "#/components/parameters/ApiVersionHeader"
+          },
+          {
+            "in": "header",
+            "name": "x-dl-audit-mode",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true"
+              ],
+              "type": "string"
+            }
           }
         ],
         "requestBody": {

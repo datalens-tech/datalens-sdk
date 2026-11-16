@@ -387,7 +387,6 @@ def _cluster_response(
     *,
     id: str = "public-1",
     cluster_id: str = "managed-1",
-    entry_id: str = "",
     dependencies: object = None,
     logging: object = None,
 ) -> dict[str, object]:
@@ -401,7 +400,6 @@ def _cluster_response(
         "labels": {},
         "health": "ALIVE",
         "status": "CREATING",
-        "entryId": entry_id,
         "futureResource": 7,
         "config": {
             "sparkVersion": "",
@@ -593,7 +591,7 @@ def test_spark_start_stop_delete_use_distinct_identifiers_and_bound_operations()
         [
             httpx.Response(200, json=raw)
             for raw in (
-                _cluster_response(id="entry-1", entry_id="entry-1"),
+                _cluster_response(id="entry-1"),
                 operation,
                 stopped,
                 operation,
@@ -949,6 +947,28 @@ def test_spark_lifecycle_surface_is_yc_only(monkeypatch: pytest.MonkeyPatch) -> 
     assert enterprise_transport.requests == []
 
 
+@pytest.mark.parametrize("legacy_entry_id", [None, "obsolete-entry-id"])
+def test_spark_get_and_list_derive_entry_id_from_id(legacy_entry_id: str | None) -> None:
+    raw = _cluster_response()
+    if legacy_entry_id is not None:
+        raw["entryId"] = legacy_entry_id
+    transport = _Transport(
+        [
+            httpx.Response(200, json=raw),
+            httpx.Response(200, json={"sparkClusters": [raw], "nextPageToken": ""}),
+        ]
+    )
+    client, service = _service(transport)
+    with client:
+        fetched = service.get_spark_cluster("public-1")
+        listed = list(service.list_spark_clusters(SparkClusterListOptions.create(installation="yacloud")))
+
+    for cluster in [fetched, *listed]:
+        assert cluster.entry_id == cluster.id == "public-1"
+        assert cluster.cluster_id == "managed-1"
+        assert cluster.raw == raw
+
+
 def test_spark_get_and_refresh_map_complete_cluster_and_retry_reads(monkeypatch: pytest.MonkeyPatch) -> None:
     first = _cluster_response(cluster_id="")
     second = _cluster_response(
@@ -992,7 +1012,7 @@ def test_spark_get_and_refresh_map_complete_cluster_and_retry_reads(monkeypatch:
         ),
         health="ALIVE",
         status="CREATING",
-        entry_id="",
+        entry_id="public-1",
         raw=first,
     )
     assert cluster == expected
