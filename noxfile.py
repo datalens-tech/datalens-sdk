@@ -142,8 +142,6 @@ def check_artifact_contract(
         "datalens_sdk/skills/datalens-sdk/scripts/preflight.sh",
         "--required-wheel-member",
         "datalens_sdk/skills/env-specific.yaml",
-        "--required-wheel-member",
-        "datalens_sdk/skills/datalens-sdk/references/chart-data.md",
         "--required-sdist-path",
         "LICENSE",
         "--required-sdist-path",
@@ -166,8 +164,6 @@ def check_artifact_contract(
         "skills/datalens-sdk/SKILL.md",
         "--required-sdist-path",
         "skills/datalens-sdk/scripts/preflight.sh",
-        "--required-sdist-path",
-        "skills/datalens-sdk/references/chart-data.md",
         "--forbidden-text",
         "datalens" + "_sdk_ya",
         "--forbidden-text",
@@ -206,24 +202,17 @@ def validate_artifacts(session: nox.Session, wheel: Path, sdist: Path, temp_dir:
         "-c",
         (
             "import importlib.metadata as m; import importlib.resources as r; "
-            "import inspect; import pathlib; "
+            "import pathlib; "
             "import datalens_sdk as sdk; "
             "skill = pathlib.Path(sdk.__file__).resolve().parent / 'skills' / 'datalens-sdk'; "
             "assert sdk.__version__ == m.version('datalens-sdk'); "
             "assert sdk.DataLensClientYC; "
             "assert sdk.DataLensClientEnterprise; "
-            "assert sdk.ChartData; assert sdk.ChartDataTable; "
-            "assert sdk.WizardChartDataColumn; assert sdk.QLChartDataColumn; assert sdk.EditorChartDataColumn; "
-            "assert sdk.WizardChartData; assert sdk.QLChartData; assert sdk.EditorChartData; "
-            "assert sdk.RuntimeParams == sdk.ScreenshotParams; "
-            "assert sdk.RuntimeParamValue == sdk.ScreenshotParamValue; "
-            "assert set(inspect.signature(sdk.Chart.get_chart_data).parameters) == {'self', 'params'}; "
             "assert sdk.EnterpriseServiceAccountCredentialsAuthProvider; "
             "assert r.files('datalens_sdk._generated').joinpath('installations.json').is_file(); "
             "assert sdk.agent_skill_paths() == [str(skill)]; "
             "assert skill.parent.joinpath('env-specific.yaml').is_file(); "
             "assert skill.joinpath('SKILL.md').is_file(); "
-            "assert skill.joinpath('references', 'chart-data.md').is_file(); "
             "assert skill.joinpath('scripts', 'preflight.sh').is_file()"
         ),
     )
@@ -236,18 +225,6 @@ def validate_artifacts(session: nox.Session, wheel: Path, sdist: Path, temp_dir:
         "enterprise_auth: type[EnterpriseServiceAccountCredentialsAuthProvider] = "
         "EnterpriseServiceAccountCredentialsAuthProvider\n"
         "skills: list[str] = agent_skill_paths()\n"
-        "from datalens_sdk import Chart, ChartData, ChartDataTable, QLChartDataColumn, RuntimeParams, ScreenshotParams\n"
-        "from datalens_sdk.domain import RuntimeParamValue, ScreenshotParamValue\n"
-        "params: RuntimeParams = {'region': ['East', 'West']}\n"
-        "legacy_params: ScreenshotParams = params\n"
-        "value: RuntimeParamValue = 'East'\n"
-        "legacy_value: ScreenshotParamValue = value\n"
-        "def read_chart(client: DataLensClientYC, chart: Chart) -> ChartData:\n"
-        "    assert chart.id is not None\n"
-        "    result = client.data.get_chart_data(chart_id=chart.id, params=params)\n"
-        "    if result.chart_type == 'ql':\n"
-        "        table: ChartDataTable[QLChartDataColumn] = result.results[0]\n"
-        "    return chart.get_chart_data(params=params)\n"
     )
     session.run("mypy", "--strict", str(typing_fixture))
 
