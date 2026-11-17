@@ -37,8 +37,8 @@
   tab while rejecting missing config for renderers that require it.
 - Accept boolean OpenAPI `deprecated` annotations and current Wizard numeric
   bounds and defaults during generation without filling omitted write fields.
-- Read Trino and Spark cluster identities from `id` when API responses omit
-  `entryId`; retain `entry_id` as a compatibility alias.
+- Always derive Trino and Spark `entry_id` from `id` as a compatibility
+  alias; ignore a returned legacy `entryId`.
 
 ## 3.2.0 - 2026-10-07
 

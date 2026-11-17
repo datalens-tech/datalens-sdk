@@ -21,8 +21,9 @@ There is no cluster update, rename, or move action.
 
 Use the ordinary DataLens entry ID for all cluster actions and UI links.
 `TrinoCluster.id` contains this entry ID; `TrinoCluster.entry_id` is a
-compatibility alias of `id` and does not require a separate response field. `TrinoCluster.cluster_id` is the
-managed cloud cluster ID and is not an argument to DataLens cluster actions.
+compatibility alias of `id` and does not require a separate response field.
+`TrinoCluster.cluster_id` is the managed cloud cluster ID and is not an
+argument to DataLens cluster actions.
 Use an entry ID from navigation or a known cluster link directly, even when
 entry `data` is null. No separate identifier lookup is needed.
 
