@@ -20,9 +20,10 @@ There is no cluster update, rename, or move action.
 ## Cluster identifiers
 
 Use the ordinary DataLens entry ID for all cluster actions and UI links.
-`TrinoCluster.id` contains this entry ID; `TrinoCluster.entry_id` exposes
-the same identity from the API response. `TrinoCluster.cluster_id` is the
-managed cloud cluster ID and is not an argument to DataLens cluster actions.
+`TrinoCluster.id` contains this entry ID; `TrinoCluster.entry_id` is a
+compatibility alias of `id` and does not require a separate response field.
+`TrinoCluster.cluster_id` is the managed cloud cluster ID and is not an
+argument to DataLens cluster actions.
 Use an entry ID from navigation or a known cluster link directly, even when
 entry `data` is null. No separate identifier lookup is needed.
 

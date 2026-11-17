@@ -949,8 +949,8 @@ INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE: dict[str, dict[str, frozenset[str]
 INSTALLATION_EDITOR_NODE_TYPES = INSTALLATION_EDITOR_CREATE_NODE_TYPES
 
 
-WIZARD_SCHEMA_FINGERPRINT: str | None = 'cd8ba590fdd6b6b14d05801dbe47b2630ab0108b01cd42ba1f6e86fc69bdafe4'
-WIZARD_VISUALIZATION_STRUCTURE: WizardVisualizationRegistry = {'area': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'navigatorSettings': {}, 'stacking': {'enum': ['off', 'on']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'area100p': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'navigatorSettings': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'bar': {'properties': ['chartSettings', 'colors', 'labels', 'sort', 'type', 'x', 'y'], 'required': ['type', 'y'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'labelsPosition': {'enum': ['inside', 'outside']}, 'overlap': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'bar100p': {'properties': ['chartSettings', 'colors', 'labels', 'sort', 'type', 'x', 'y'], 'required': ['type', 'y'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'column': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'labelsPosition': {'enum': ['inside', 'outside']}, 'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'navigatorSettings': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'column100p': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'navigatorSettings': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'combined-chart': {'properties': ['chartSettings', 'layers', 'selectedLayerId', 'type'], 'required': ['layers', 'type'], 'slots': {}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}}, 'layers': {'area': {'properties': ['colors', 'labels', 'layerSettings', 'sort', 'type', 'x', 'y'], 'required': ['layerSettings', 'type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'layer_settings': {'id': {}, 'name': {}}}, 'column': {'properties': ['colors', 'labels', 'layerSettings', 'sort', 'type', 'x', 'y'], 'required': ['layerSettings', 'type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'labelsPosition': {'enum': ['inside', 'outside']}, 'overlap': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'layer_settings': {'id': {}, 'name': {}}}, 'line': {'properties': ['colors', 'labels', 'layerSettings', 'shapes', 'sort', 'type', 'x', 'y', 'y2'], 'required': ['layerSettings', 'type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'shapes': {'required': False, 'items_required': False, 'settings': {'commonLineSettings': {}, 'fieldGuid': {}, 'lineSettings': {}, 'mountedShapes': {}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y2': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'layer_settings': {'id': {}, 'name': {}}}}}, 'donut': {'properties': ['chartSettings', 'colors', 'dimensions', 'labels', 'measures', 'sort', 'type'], 'required': ['measures', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'dimensions': {'required': False, 'items_required': True, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'legendMode': {'enum': ['hide', 'show']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'totals': {'enum': ['off', 'on']}}, 'layers': {}}, 'flatTable': {'properties': ['chartSettings', 'colors', 'columns', 'sort', 'type'], 'required': ['columns', 'type'], 'slots': {'colors': {'required': False, 'items_required': True, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'columns': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'grouping': {'enum': ['disabled', 'off', 'on']}, 'limit': {}, 'pagination': {'enum': ['off', 'on']}, 'pinnedColumns': {}, 'preserveWhiteSpace': {}, 'size': {'enum': ['l', 'm', 's']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'totals': {'enum': ['off', 'on']}}, 'layers': {}}, 'funnel': {'properties': ['chartSettings', 'colors', 'dimensions', 'labels', 'measures', 'sort', 'type'], 'required': ['dimensions', 'measures', 'type'], 'slots': {'colors': {'required': False, 'items_required': True, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'dimensions': {'required': True, 'items_required': True, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {'align': {'enum': ['auto', 'center', 'left', 'right']}, 'overlap': {'enum': ['off', 'on']}, 'position': {'enum': ['inside', 'outside']}, 'reserveSpace': {'enum': ['auto', 'off', 'on']}, 'separator': {'enum': ['auto', 'line-break', 'space']}}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'barGap': {'enum': ['auto', 'l', 'm', 'none', 's']}, 'legendMode': {'enum': ['hide', 'show']}, 'shape': {'enum': ['auto', 'rectangle', 'trapezoid']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipPercentageBase': {'enum': ['auto', 'first', 'previous']}}, 'layers': {}}, 'geolayer': {'properties': ['chartSettings', 'layers', 'selectedLayerId', 'type'], 'required': ['layers', 'type'], 'slots': {}, 'chart_settings': {'legendMode': {'enum': ['hide', 'show']}, 'mapCenterMode': {'enum': ['auto', 'manual']}, 'mapCenterValue': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'zoomMode': {'enum': ['auto', 'manual']}, 'zoomValue': {}}, 'layers': {'geopoint': {'properties': ['colors', 'filters', 'labels', 'layerSettings', 'points', 'size', 'tooltip', 'type'], 'required': ['layerSettings', 'points', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {}}, 'points': {'required': True, 'items_required': True, 'settings': {}}, 'size': {'required': False, 'items_required': False, 'settings': {'radius': {}}}, 'tooltip': {'required': False, 'items_required': True, 'settings': {'color': {'enum': ['off', 'on']}, 'fieldTitle': {'enum': ['off', 'on']}}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}, 'geopoint-with-cluster': {'properties': ['colors', 'filters', 'labels', 'layerSettings', 'points', 'size', 'tooltip', 'type'], 'required': ['layerSettings', 'points', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {}}, 'points': {'required': True, 'items_required': True, 'settings': {}}, 'size': {'required': False, 'items_required': False, 'settings': {'radius': {}}}, 'tooltip': {'required': False, 'items_required': True, 'settings': {'color': {'enum': ['off', 'on']}, 'fieldTitle': {'enum': ['off', 'on']}}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}, 'geopolygon': {'properties': ['colors', 'filters', 'layerSettings', 'polygons', 'tooltip', 'type'], 'required': ['layerSettings', 'polygons', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'polygons': {'required': True, 'items_required': True, 'settings': {}}, 'tooltip': {'required': False, 'items_required': True, 'settings': {'color': {'enum': ['off', 'on']}, 'fieldTitle': {'enum': ['off', 'on']}}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}, 'heatmap': {'properties': ['colors', 'filters', 'layerSettings', 'points', 'type'], 'required': ['layerSettings', 'points', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'points': {'required': True, 'items_required': True, 'settings': {}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}, 'polyline': {'properties': ['colors', 'filters', 'grouping', 'layerSettings', 'measures', 'polylines', 'sort', 'type'], 'required': ['layerSettings', 'polylines', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'grouping': {'required': False, 'items_required': False, 'settings': {}}, 'measures': {'required': False, 'items_required': False, 'settings': {}}, 'polylines': {'required': True, 'items_required': True, 'settings': {'polylinePoints': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}}}, 'line': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'shapes', 'sort', 'type', 'x', 'y', 'y2'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'shapes': {'required': False, 'items_required': False, 'settings': {'commonLineSettings': {}, 'fieldGuid': {}, 'lineSettings': {}, 'mountedShapes': {}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y2': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'navigatorSettings': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'metric': {'properties': ['chartSettings', 'colors', 'isMarkup', 'measures', 'type'], 'required': ['measures', 'type'], 'slots': {'measures': {'required': True, 'items_required': True, 'settings': {}}}, 'chart_settings': {'metricFontColor': {}, 'metricFontColorIndex': {}, 'metricFontColorPalette': {}, 'metricFontSize': {'enum': ['l', 'm', 's', 'xl']}, 'title': {}, 'titleMode': {'enum': ['by-field', 'hide', 'manual']}}, 'layers': {}}, 'pie': {'properties': ['chartSettings', 'colors', 'dimensions', 'labels', 'measures', 'sort', 'type'], 'required': ['measures', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'dimensions': {'required': False, 'items_required': True, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'legendMode': {'enum': ['hide', 'show']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}}, 'layers': {}}, 'pivotTable': {'properties': ['chartSettings', 'colors', 'columns', 'measures', 'rows', 'sort', 'type'], 'required': ['columns', 'measures', 'rows', 'type'], 'slots': {'colors': {'required': False, 'items_required': True, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'columns': {'required': True, 'items_required': True, 'settings': {}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}, 'rows': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'limit': {}, 'pagination': {'enum': ['off', 'on']}, 'pinnedColumns': {}, 'pivotFallback': {'enum': ['off', 'on']}, 'pivotInlineSort': {'enum': ['off', 'on']}, 'preserveWhiteSpace': {}, 'size': {'enum': ['l', 'm', 's']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}}, 'layers': {}}, 'scatter': {'properties': ['chartSettings', 'colors', 'points', 'shapes', 'size', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'points': {'required': False, 'items_required': False, 'settings': {}}, 'shapes': {'required': False, 'items_required': False, 'settings': {'fieldGuid': {}, 'mountedShapes': {}}}, 'size': {'required': False, 'items_required': False, 'settings': {'maxRadius': {}, 'minRadius': {}, 'radius': {}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': False, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}}, 'layers': {}}, 'treemap': {'properties': ['chartSettings', 'colors', 'dimensions', 'measures', 'type'], 'required': ['dimensions', 'measures', 'type'], 'slots': {'colors': {'required': False, 'items_required': True, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'dimensions': {'required': True, 'items_required': True, 'settings': {}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}}, 'chart_settings': {'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}}, 'layers': {}}}
+WIZARD_SCHEMA_FINGERPRINT: str | None = '06f9f3bda94af5b2fcd2e21b33516816698591352cb9d6e90b1588587787ba07'
+WIZARD_VISUALIZATION_STRUCTURE: WizardVisualizationRegistry = {'area': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'labelsDisplayMode': {'enum': ['all', 'selective']}, 'labelsSelectionRules': {}, 'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'legendPosition': {'enum': ['auto', 'bottom', 'left', 'right', 'top']}, 'navigatorSettings': {}, 'stacking': {'enum': ['off', 'on']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'area100p': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'legendPosition': {'enum': ['auto', 'bottom', 'left', 'right', 'top']}, 'navigatorSettings': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'bar': {'properties': ['chartSettings', 'colors', 'labels', 'sort', 'type', 'x', 'y'], 'required': ['type', 'y'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'labelsDisplayMode': {'enum': ['all', 'selective']}, 'labelsPosition': {'enum': ['inside', 'outside']}, 'labelsSelectionRules': {}, 'overlap': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'barSettings': {}, 'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'legendPosition': {'enum': ['auto', 'bottom', 'left', 'right', 'top']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'bar100p': {'properties': ['chartSettings', 'colors', 'labels', 'sort', 'type', 'x', 'y'], 'required': ['type', 'y'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'barSettings': {}, 'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'legendPosition': {'enum': ['auto', 'bottom', 'left', 'right', 'top']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'column': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'labelsDisplayMode': {'enum': ['all', 'selective']}, 'labelsPosition': {'enum': ['inside', 'outside']}, 'labelsSelectionRules': {}, 'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'barSettings': {}, 'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'legendPosition': {'enum': ['auto', 'bottom', 'left', 'right', 'top']}, 'navigatorSettings': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'column100p': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'barSettings': {}, 'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'legendPosition': {'enum': ['auto', 'bottom', 'left', 'right', 'top']}, 'navigatorSettings': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'combined-chart': {'properties': ['chartSettings', 'layers', 'selectedLayerId', 'type'], 'required': ['layers', 'type'], 'slots': {}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'legendPosition': {'enum': ['auto', 'bottom', 'left', 'right', 'top']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}}, 'layers': {'area': {'properties': ['colors', 'labels', 'layerSettings', 'sort', 'type', 'x', 'y'], 'required': ['layerSettings', 'type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'labelsDisplayMode': {'enum': ['all', 'selective']}, 'labelsSelectionRules': {}, 'overlap': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'layer_settings': {'id': {}, 'name': {}}}, 'column': {'properties': ['colors', 'labels', 'layerSettings', 'sort', 'type', 'x', 'y'], 'required': ['layerSettings', 'type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'labelsDisplayMode': {'enum': ['all', 'selective']}, 'labelsPosition': {'enum': ['inside', 'outside']}, 'labelsSelectionRules': {}, 'overlap': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'layer_settings': {'id': {}, 'name': {}}}, 'line': {'properties': ['colors', 'labels', 'layerSettings', 'shapes', 'sort', 'type', 'x', 'y', 'y2'], 'required': ['layerSettings', 'type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'labelsDisplayMode': {'enum': ['all', 'selective']}, 'labelsSelectionRules': {}, 'overlap': {'enum': ['off', 'on']}}}, 'shapes': {'required': False, 'items_required': False, 'settings': {'commonLineSettings': {}, 'fieldGuid': {}, 'lineSettings': {}, 'mountedShapes': {}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y2': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'layer_settings': {'id': {}, 'name': {}}}}}, 'donut': {'properties': ['chartSettings', 'colors', 'dimensions', 'labels', 'measures', 'sort', 'type'], 'required': ['measures', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'dimensions': {'required': False, 'items_required': True, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'legendMode': {'enum': ['hide', 'show']}, 'legendPosition': {'enum': ['auto', 'bottom', 'left', 'right', 'top']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'totals': {'enum': ['off', 'on']}}, 'layers': {}}, 'flatTable': {'properties': ['chartSettings', 'colors', 'columns', 'sort', 'type'], 'required': ['columns', 'type'], 'slots': {'colors': {'required': False, 'items_required': True, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'columns': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'grouping': {'enum': ['disabled', 'off', 'on']}, 'limit': {}, 'pagination': {'enum': ['off', 'on']}, 'pinnedColumns': {}, 'preserveWhiteSpace': {}, 'size': {'enum': ['l', 'm', 's']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'totals': {'enum': ['off', 'on']}}, 'layers': {}}, 'funnel': {'properties': ['chartSettings', 'colors', 'dimensions', 'labels', 'measures', 'sort', 'type'], 'required': ['dimensions', 'measures', 'type'], 'slots': {'colors': {'required': False, 'items_required': True, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'dimensions': {'required': True, 'items_required': True, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {'align': {'enum': ['auto', 'center', 'left', 'right']}, 'overlap': {'enum': ['off', 'on']}, 'position': {'enum': ['inside', 'outside']}, 'reserveSpace': {'enum': ['auto', 'off', 'on']}, 'separator': {'enum': ['auto', 'line-break', 'space']}}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'barGap': {'enum': ['auto', 'l', 'm', 'none', 's']}, 'legendMode': {'enum': ['hide', 'show']}, 'legendPosition': {'enum': ['auto', 'bottom', 'left', 'right', 'top']}, 'shape': {'enum': ['auto', 'rectangle', 'trapezoid']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipPercentageBase': {'enum': ['auto', 'first', 'previous']}}, 'layers': {}}, 'geolayer': {'properties': ['chartSettings', 'layers', 'selectedLayerId', 'type'], 'required': ['layers', 'type'], 'slots': {}, 'chart_settings': {'legendMode': {'enum': ['hide', 'show']}, 'mapCenterMode': {'enum': ['auto', 'manual']}, 'mapCenterValue': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'zoomMode': {'enum': ['auto', 'manual']}, 'zoomValue': {}}, 'layers': {'geopoint': {'properties': ['colors', 'filters', 'labels', 'layerSettings', 'points', 'size', 'tooltip', 'type'], 'required': ['layerSettings', 'points', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {}}, 'points': {'required': True, 'items_required': True, 'settings': {}}, 'size': {'required': False, 'items_required': False, 'settings': {'maxRadius': {}, 'minRadius': {}, 'radius': {}}}, 'tooltip': {'required': False, 'items_required': True, 'settings': {'color': {'enum': ['off', 'on']}, 'fieldTitle': {'enum': ['off', 'on']}}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}, 'geopoint-with-cluster': {'properties': ['colors', 'filters', 'labels', 'layerSettings', 'points', 'size', 'tooltip', 'type'], 'required': ['layerSettings', 'points', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {}}, 'points': {'required': True, 'items_required': True, 'settings': {}}, 'size': {'required': False, 'items_required': False, 'settings': {'maxRadius': {}, 'minRadius': {}, 'radius': {}}}, 'tooltip': {'required': False, 'items_required': True, 'settings': {'color': {'enum': ['off', 'on']}, 'fieldTitle': {'enum': ['off', 'on']}}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}, 'geopolygon': {'properties': ['colors', 'filters', 'layerSettings', 'polygons', 'tooltip', 'type'], 'required': ['layerSettings', 'polygons', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'polygons': {'required': True, 'items_required': True, 'settings': {}}, 'tooltip': {'required': False, 'items_required': True, 'settings': {'color': {'enum': ['off', 'on']}, 'fieldTitle': {'enum': ['off', 'on']}}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}, 'heatmap': {'properties': ['colors', 'filters', 'layerSettings', 'points', 'type'], 'required': ['layerSettings', 'points', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'points': {'required': True, 'items_required': True, 'settings': {}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}, 'polyline': {'properties': ['colors', 'filters', 'grouping', 'layerSettings', 'measures', 'polylines', 'sort', 'type'], 'required': ['layerSettings', 'polylines', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'filters': {'required': False, 'items_required': False, 'settings': {}}, 'grouping': {'required': False, 'items_required': False, 'settings': {}}, 'measures': {'required': False, 'items_required': False, 'settings': {}}, 'polylines': {'required': True, 'items_required': True, 'settings': {'polylinePoints': {'enum': ['off', 'on']}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'layer_settings': {'alpha': {}, 'id': {}, 'name': {}}}}}, 'line': {'properties': ['chartSettings', 'colors', 'labels', 'segments', 'shapes', 'sort', 'type', 'x', 'y', 'y2'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'labels': {'required': False, 'items_required': False, 'settings': {'labelsDisplayMode': {'enum': ['all', 'selective']}, 'labelsSelectionRules': {}, 'overlap': {'enum': ['off', 'on']}}}, 'segments': {'required': False, 'items_required': False, 'settings': {}}, 'shapes': {'required': False, 'items_required': False, 'settings': {'commonLineSettings': {}, 'fieldGuid': {}, 'lineSettings': {}, 'mountedShapes': {}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y2': {'required': False, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'nulls': {'enum': ['as-0', 'connect', 'ignore', 'use-previous']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'legendPosition': {'enum': ['auto', 'bottom', 'left', 'right', 'top']}, 'navigatorSettings': {}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}, 'tooltipSum': {'enum': ['off', 'on']}}, 'layers': {}}, 'metric': {'properties': ['chartSettings', 'colors', 'isMarkup', 'measures', 'type'], 'required': ['measures', 'type'], 'slots': {'measures': {'required': True, 'items_required': True, 'settings': {}}}, 'chart_settings': {'metricFontColor': {}, 'metricFontColorIndex': {}, 'metricFontColorPalette': {}, 'metricFontSize': {'enum': ['l', 'm', 's', 'xl']}, 'title': {}, 'titleMode': {'enum': ['by-field', 'hide', 'manual']}}, 'layers': {}}, 'pie': {'properties': ['chartSettings', 'colors', 'dimensions', 'labels', 'measures', 'sort', 'type'], 'required': ['measures', 'type'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'dimensions': {'required': False, 'items_required': True, 'settings': {}}, 'labels': {'required': False, 'items_required': False, 'settings': {}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'legendMode': {'enum': ['hide', 'show']}, 'legendPosition': {'enum': ['auto', 'bottom', 'left', 'right', 'top']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}}, 'layers': {}}, 'pivotTable': {'properties': ['chartSettings', 'colors', 'columns', 'measures', 'rows', 'sort', 'type'], 'required': ['columns', 'measures', 'rows', 'type'], 'slots': {'colors': {'required': False, 'items_required': True, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'columns': {'required': True, 'items_required': True, 'settings': {}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}, 'rows': {'required': True, 'items_required': True, 'settings': {}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}}, 'chart_settings': {'limit': {}, 'pagination': {'enum': ['off', 'on']}, 'pinnedColumns': {}, 'pivotFallback': {'enum': ['off', 'on']}, 'pivotInlineSort': {'enum': ['off', 'on']}, 'preserveWhiteSpace': {}, 'size': {'enum': ['l', 'm', 's']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}}, 'layers': {}}, 'scatter': {'properties': ['chartSettings', 'colors', 'points', 'shapes', 'size', 'sort', 'type', 'x', 'y'], 'required': ['type', 'x'], 'slots': {'colors': {'required': False, 'items_required': False, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'points': {'required': False, 'items_required': False, 'settings': {}}, 'shapes': {'required': False, 'items_required': False, 'settings': {'fieldGuid': {}, 'mountedShapes': {}}}, 'size': {'required': False, 'items_required': False, 'settings': {'maxRadius': {}, 'minRadius': {}, 'radius': {}}}, 'sort': {'required': False, 'items_required': False, 'settings': {}}, 'x': {'required': True, 'items_required': True, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'holidays': {'enum': ['off', 'on']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}, 'y': {'required': False, 'items_required': False, 'settings': {'axisFormatMode': {'enum': ['auto', 'by-field', 'manual']}, 'axisLabelDateFormat': {}, 'axisLabelFormatting': {}, 'axisModeMap': {}, 'axisVisibility': {'enum': ['hide', 'show']}, 'grid': {'enum': ['off', 'on']}, 'gridStep': {'enum': ['auto', 'manual']}, 'gridStepValue': {}, 'hideLabels': {'enum': ['no', 'yes']}, 'labelsView': {'enum': ['angle', 'auto', 'horizontal', 'vertical']}, 'scale': {'enum': ['auto', 'manual']}, 'scaleValue': {}, 'title': {'enum': ['auto', 'manual', 'off']}, 'titleValue': {}, 'type': {'enum': ['linear', 'logarithmic']}}}}, 'chart_settings': {'feed': {}, 'legendMode': {'enum': ['hide', 'show']}, 'legendPosition': {'enum': ['auto', 'bottom', 'left', 'right', 'top']}, 'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}}, 'layers': {}}, 'treemap': {'properties': ['chartSettings', 'colors', 'dimensions', 'measures', 'type'], 'required': ['dimensions', 'measures', 'type'], 'slots': {'colors': {'required': False, 'items_required': True, 'settings': {'colorMode': {'enum': ['gradient', 'palette']}, 'coloredByMeasure': {}, 'fieldGuid': {}, 'gradientMode': {'enum': ['2-point', '3-point']}, 'gradientPalette': {}, 'leftThreshold': {}, 'middleThreshold': {}, 'mountedColors': {}, 'nullMode': {'enum': ['as-0', 'ignore']}, 'palette': {}, 'paletteManualValues': {}, 'polygonBorders': {'enum': ['hide', 'show']}, 'reversed': {}, 'rightThreshold': {}, 'thresholdsMode': {'enum': ['auto', 'manual']}}}, 'dimensions': {'required': True, 'items_required': True, 'settings': {}}, 'measures': {'required': True, 'items_required': True, 'settings': {}}}, 'chart_settings': {'title': {}, 'titleMode': {'enum': ['hide', 'show']}, 'tooltip': {'enum': ['hide', 'show']}}, 'layers': {}}}
 WIZARD_FIELD_STRUCTURE: WizardFieldStructure = {
     'direct_properties': ('backgroundSettings', 'barsSettings', 'columnSettings', 'fakeTitle', 'format', 'formatting', 'hideLabelMode', 'hintSettings', 'markupType', 'subTotalsSettings'),
     'nullable_update_properties': ('default_value', 'originalDateCast'),
@@ -1066,6 +1066,7 @@ class WizardV1ConfigSchemaVisualizationOneOf0ChartSettingsDTO(BaseModel):
 
     bar_gap: Literal['auto', 'l', 'm', 'none', 's'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barGap')
     legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
     shape: Literal['auto', 'rectangle', 'trapezoid'] = _UNVALIDATED_NONE_DEFAULT
     title: str = _UNVALIDATED_NONE_DEFAULT
     title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
@@ -1089,6 +1090,7 @@ class WizardFieldSchemaAnyOf0BackgroundSettingsSettingsPaletteStateDTO(BaseModel
 
     mounted_colors: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedColors')
     palette: str = _UNVALIDATED_NONE_DEFAULT
+    palette_manual_values: list[str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='paletteManualValues')
 
 class WizardFieldSchemaAnyOf0BackgroundSettingsSettingsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
@@ -1305,6 +1307,7 @@ class WizardV1ConfigSchemaVisualizationOneOf0ColorsSettingsDTO(BaseModel):
     mounted_colors: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedColors')
     null_mode: Literal['as-0', 'ignore'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='nullMode')
     palette: str = _UNVALIDATED_NONE_DEFAULT
+    palette_manual_values: list[str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='paletteManualValues')
     polygon_borders: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='polygonBorders')
     reversed: bool = _UNVALIDATED_NONE_DEFAULT
     right_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='rightThreshold')
@@ -1473,6 +1476,20 @@ class WizardV1ConfigSchemaVisualizationOneOf0DTO(BaseModel):
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['funnel']
 
+class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsBarSettingsOverlapDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    enabled: bool = _UNVALIDATED_NONE_DEFAULT
+    opacity: Literal['auto'] | Annotated[float, Field(ge=1, le=100)] = _UNVALIDATED_NONE_DEFAULT
+    width: Literal['auto'] | Annotated[float, Field(ge=0, le=100)] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsBarSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    bar_padding: Literal['auto'] | Annotated[float, Field(ge=0, le=100)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barPadding')
+    group_padding: Literal['auto'] | Annotated[float, Field(ge=0, le=100)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='groupPadding')
+    overlap: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsBarSettingsOverlapDTO = _UNVALIDATED_NONE_DEFAULT
+
 class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsPeriodSettingsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -1491,10 +1508,11 @@ class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsDTO(B
 class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
+    bar_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsBarSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barSettings')
     feed: str = _UNVALIDATED_NONE_DEFAULT
     legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
     navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
-    stacking: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
     title: str = _UNVALIDATED_NONE_DEFAULT
     title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
     tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
@@ -1509,6 +1527,9 @@ class WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO(BaseModel):
 class WizardV1ConfigSchemaVisualizationOneOf1LabelsSettingsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
+    labels_display_mode: Literal['all', 'selective'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsDisplayMode')
+    labels_position: Literal['inside', 'outside'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsPosition')
+    labels_selection_rules: list[Literal['first', 'last', 'max', 'min']] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsSelectionRules')
     overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
 
 class WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO(BaseModel):
@@ -1579,122 +1600,23 @@ class WizardV1ConfigSchemaVisualizationOneOf1DTO(BaseModel):
     labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
     segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['area']
+    type: Literal['column']
     x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
     y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
 
 class WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
+    bar_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsBarSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barSettings')
     feed: str = _UNVALIDATED_NONE_DEFAULT
     legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
-    navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
     title: str = _UNVALIDATED_NONE_DEFAULT
     title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
     tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
     tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
 
-class WizardV1ConfigSchemaVisualizationOneOf2LabelsSettingsDTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    labels_position: Literal['inside', 'outside'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsPosition')
-    overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf2LabelsDTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    items: list[WizardLabelsItemSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
-    settings: WizardV1ConfigSchemaVisualizationOneOf2LabelsSettingsDTO = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf2DTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf2LabelsDTO = _UNVALIDATED_NONE_DEFAULT
-    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
-    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['column']
-    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
-    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsCommonLineSettingsDTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    line_width: Literal['auto'] | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineWidth')
-    linecap: Literal['butt', 'none', 'round', 'square'] = _UNVALIDATED_NONE_DEFAULT
-    linejoin: Literal['bevel', 'miter', 'round', 'unset'] = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1LineShapeSettingsSchemaDTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    line_width: Literal['auto'] | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineWidth')
-    linecap: Literal['butt', 'none', 'round', 'square'] = _UNVALIDATED_NONE_DEFAULT
-    linejoin: Literal['bevel', 'miter', 'round', 'unset'] = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsDTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    common_line_settings: WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsCommonLineSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='commonLineSettings')
-    field_guid: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldGuid')
-    line_settings: dict[str, WizardV1LineShapeSettingsSchemaDTO] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineSettings')
-    mounted_shapes: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedShapes')
-
-class WizardV1ConfigSchemaVisualizationOneOf3ShapesDTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    items: list[WizardFieldSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
-    settings: WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsDTO = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf3DTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
-    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
-    shapes: WizardV1ConfigSchemaVisualizationOneOf3ShapesDTO = _UNVALIDATED_NONE_DEFAULT
-    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['line']
-    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
-    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
-    y2: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf4DTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
-    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
-    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['area100p']
-    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
-    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf5DTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
-    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
-    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['column100p']
-    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
-    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsDTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    feed: str = _UNVALIDATED_NONE_DEFAULT
-    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
-    title: str = _UNVALIDATED_NONE_DEFAULT
-    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
-    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
-    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
-
-class WizardV1ConfigSchemaVisualizationOneOf6XSettingsDTO(BaseModel):
+class WizardV1ConfigSchemaVisualizationOneOf2XSettingsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
@@ -1714,13 +1636,13 @@ class WizardV1ConfigSchemaVisualizationOneOf6XSettingsDTO(BaseModel):
     title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
     type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
 
-class WizardV1ConfigSchemaVisualizationOneOf6XDTO(BaseModel):
+class WizardV1ConfigSchemaVisualizationOneOf2XDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     items: list[WizardFieldSchemaDTO]
-    settings: WizardV1ConfigSchemaVisualizationOneOf6XSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf2XSettingsDTO = _UNVALIDATED_NONE_DEFAULT
 
-class WizardV1ConfigSchemaVisualizationOneOf6YSettingsDTO(BaseModel):
+class WizardV1ConfigSchemaVisualizationOneOf2YSettingsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
@@ -1737,39 +1659,198 @@ class WizardV1ConfigSchemaVisualizationOneOf6YSettingsDTO(BaseModel):
     title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
     type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
 
-class WizardV1ConfigSchemaVisualizationOneOf6YDTO(BaseModel):
+class WizardV1ConfigSchemaVisualizationOneOf2YDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     items: list[WizardFieldSchemaDTO]
-    settings: WizardV1ConfigSchemaVisualizationOneOf6YSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf2YSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf2DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['bar']
+    x: WizardV1ConfigSchemaVisualizationOneOf2XDTO = _UNVALIDATED_NONE_DEFAULT
+    y: WizardV1ConfigSchemaVisualizationOneOf2YDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf3ChartSettingsBarSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    bar_padding: Literal['auto'] | Annotated[float, Field(ge=0, le=100)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barPadding')
+    group_padding: Literal['auto'] | Annotated[float, Field(ge=0, le=100)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='groupPadding')
+
+class WizardV1ConfigSchemaVisualizationOneOf3ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    bar_settings: WizardV1ConfigSchemaVisualizationOneOf3ChartSettingsBarSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barSettings')
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
+    navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf3LabelsSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf3LabelsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf3LabelsSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf3DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf3ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf3LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['column100p']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf4ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    bar_settings: WizardV1ConfigSchemaVisualizationOneOf3ChartSettingsBarSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barSettings')
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf4DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf4ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf3LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['bar100p']
+    x: WizardV1ConfigSchemaVisualizationOneOf2XDTO = _UNVALIDATED_NONE_DEFAULT
+    y: WizardV1ConfigSchemaVisualizationOneOf2YDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf5ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
+    navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
+    stacking: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf5LabelsSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    labels_display_mode: Literal['all', 'selective'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsDisplayMode')
+    labels_selection_rules: list[Literal['first', 'last', 'max', 'min']] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsSelectionRules')
+    overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf5LabelsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf5LabelsSettingsDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf5DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf5ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf5LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['area']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
+    navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf6ShapesSettingsCommonLineSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    line_width: Literal['auto'] | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineWidth')
+    linecap: Literal['butt', 'none', 'round', 'square'] = _UNVALIDATED_NONE_DEFAULT
+    linejoin: Literal['bevel', 'miter', 'round', 'unset'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1LineShapeSettingsSchemaDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    line_width: Literal['auto'] | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineWidth')
+    linecap: Literal['butt', 'none', 'round', 'square'] = _UNVALIDATED_NONE_DEFAULT
+    linejoin: Literal['bevel', 'miter', 'round', 'unset'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6ShapesSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    common_line_settings: WizardV1ConfigSchemaVisualizationOneOf6ShapesSettingsCommonLineSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='commonLineSettings')
+    field_guid: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldGuid')
+    line_settings: dict[str, WizardV1LineShapeSettingsSchemaDTO] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineSettings')
+    mounted_shapes: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedShapes')
+
+class WizardV1ConfigSchemaVisualizationOneOf6ShapesDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf6ShapesSettingsDTO = _UNVALIDATED_NONE_DEFAULT
 
 class WizardV1ConfigSchemaVisualizationOneOf6DTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     chart_settings: WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf2LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf5LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
+    shapes: WizardV1ConfigSchemaVisualizationOneOf6ShapesDTO = _UNVALIDATED_NONE_DEFAULT
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['bar']
-    x: WizardV1ConfigSchemaVisualizationOneOf6XDTO = _UNVALIDATED_NONE_DEFAULT
-    y: WizardV1ConfigSchemaVisualizationOneOf6YDTO
+    type: Literal['line']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
+    y2: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
 
 class WizardV1ConfigSchemaVisualizationOneOf7DTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     chart_settings: WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf3LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsDTO = _UNVALIDATED_NONE_DEFAULT
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['bar100p']
-    x: WizardV1ConfigSchemaVisualizationOneOf6XDTO = _UNVALIDATED_NONE_DEFAULT
-    y: WizardV1ConfigSchemaVisualizationOneOf6YDTO
+    type: Literal['area100p']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YDTO = _UNVALIDATED_NONE_DEFAULT
 
 class WizardV1ConfigSchemaVisualizationOneOf8ChartSettingsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     feed: str = _UNVALIDATED_NONE_DEFAULT
     legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
     title: str = _UNVALIDATED_NONE_DEFAULT
     title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
     tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
@@ -1873,7 +1954,7 @@ class WizardV1CombinedChartLayerSchemaOneOf0DTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf2LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
     layer_settings: WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsDTO = Field(alias='layerSettings')
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['column']
@@ -1884,9 +1965,9 @@ class WizardV1CombinedChartLayerSchemaOneOf1DTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf5LabelsDTO = _UNVALIDATED_NONE_DEFAULT
     layer_settings: WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsDTO = Field(alias='layerSettings')
-    shapes: WizardV1ConfigSchemaVisualizationOneOf3ShapesDTO = _UNVALIDATED_NONE_DEFAULT
+    shapes: WizardV1ConfigSchemaVisualizationOneOf6ShapesDTO = _UNVALIDATED_NONE_DEFAULT
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['line']
     x: WizardV1ConfigSchemaVisualizationOneOf1XDTO
@@ -1897,7 +1978,7 @@ class WizardV1CombinedChartLayerSchemaOneOf2DTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf5LabelsDTO = _UNVALIDATED_NONE_DEFAULT
     layer_settings: WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsDTO = Field(alias='layerSettings')
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['area']
@@ -1937,6 +2018,52 @@ class WizardV1ConfigSchemaVisualizationOneOf10DTO(BaseModel):
     type: Literal['flatTable']
 
 class WizardV1ConfigSchemaVisualizationOneOf11ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    totals: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf11LabelsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf11DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf11ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf11LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['donut']
+
+class WizardV1ConfigSchemaVisualizationOneOf12ChartSettingsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf12DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf12ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
+    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf11LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['pie']
+
+class WizardV1ConfigSchemaVisualizationOneOf13ChartSettingsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
@@ -1982,22 +2109,6 @@ class WizardV1GeolayerLayerSchemaOneOf0DTO(BaseModel):
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['polyline']
 
-class WizardV1GeolayerLayerSchemaOneOf1LabelsDTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    items: list[WizardLabelsItemSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1GeolayerLayerSchemaOneOf1SizeSettingsDTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    radius: float = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1GeolayerLayerSchemaOneOf1SizeDTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    items: list[WizardFieldSchemaDTO] = _UNVALIDATED_NONE_DEFAULT
-    settings: WizardV1GeolayerLayerSchemaOneOf1SizeSettingsDTO = _UNVALIDATED_NONE_DEFAULT
-
 class WizardV1GeolayerLayerSchemaOneOf1TooltipSettingsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -2015,10 +2126,10 @@ class WizardV1GeolayerLayerSchemaOneOf1DTO(BaseModel):
 
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
     filters: WizardV1GeolayerLayerSchemaOneOf0FiltersDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf11LabelsDTO = _UNVALIDATED_NONE_DEFAULT
     layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsDTO = Field(alias='layerSettings')
     points: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
-    size: WizardV1GeolayerLayerSchemaOneOf1SizeDTO = _UNVALIDATED_NONE_DEFAULT
+    size: WizardV1ConfigSchemaVisualizationOneOf8SizeDTO = _UNVALIDATED_NONE_DEFAULT
     tooltip: WizardV1GeolayerLayerSchemaOneOf1TooltipDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['geopoint']
 
@@ -2027,10 +2138,10 @@ class WizardV1GeolayerLayerSchemaOneOf2DTO(BaseModel):
 
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
     filters: WizardV1GeolayerLayerSchemaOneOf0FiltersDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf11LabelsDTO = _UNVALIDATED_NONE_DEFAULT
     layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsDTO = Field(alias='layerSettings')
     points: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
-    size: WizardV1GeolayerLayerSchemaOneOf1SizeDTO = _UNVALIDATED_NONE_DEFAULT
+    size: WizardV1ConfigSchemaVisualizationOneOf8SizeDTO = _UNVALIDATED_NONE_DEFAULT
     tooltip: WizardV1GeolayerLayerSchemaOneOf1TooltipDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['geopoint-with-cluster']
 
@@ -2055,52 +2166,13 @@ class WizardV1GeolayerLayerSchemaOneOf4DTO(BaseModel):
 
 WizardV1GeolayerLayerSchemaDTO = WizardV1GeolayerLayerSchemaOneOf0DTO | WizardV1GeolayerLayerSchemaOneOf1DTO | WizardV1GeolayerLayerSchemaOneOf2DTO | WizardV1GeolayerLayerSchemaOneOf3DTO | WizardV1GeolayerLayerSchemaOneOf4DTO
 
-class WizardV1ConfigSchemaVisualizationOneOf11DTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    chart_settings: WizardV1ConfigSchemaVisualizationOneOf11ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    layers: list[WizardV1GeolayerLayerSchemaDTO]
-    selected_layer_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='selectedLayerId')
-    type: Literal['geolayer']
-
-class WizardV1ConfigSchemaVisualizationOneOf12ChartSettingsDTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
-    title: str = _UNVALIDATED_NONE_DEFAULT
-    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
-    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
-    totals: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf12DTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    chart_settings: WizardV1ConfigSchemaVisualizationOneOf12ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
-    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
-    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
-    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['donut']
-
-class WizardV1ConfigSchemaVisualizationOneOf13ChartSettingsDTO(BaseModel):
-    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
-
-    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
-    title: str = _UNVALIDATED_NONE_DEFAULT
-    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
-    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
-
 class WizardV1ConfigSchemaVisualizationOneOf13DTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
     chart_settings: WizardV1ConfigSchemaVisualizationOneOf13ChartSettingsDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsDTO = _UNVALIDATED_NONE_DEFAULT
-    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsDTO = _UNVALIDATED_NONE_DEFAULT
-    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsDTO
-    sort: WizardV1ConfigSchemaVisualizationOneOf0SortDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['pie']
+    layers: list[WizardV1GeolayerLayerSchemaDTO]
+    selected_layer_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='selectedLayerId')
+    type: Literal['geolayer']
 
 class WizardV1ConfigSchemaVisualizationOneOf14ChartSettingsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
@@ -2384,6 +2456,7 @@ class WizardV1ConfigSchemaVisualizationOneOf0ChartSettingsReadDTO(BaseModel):
 
     bar_gap: Literal['auto', 'l', 'm', 'none', 's'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barGap')
     legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
     shape: Literal['auto', 'rectangle', 'trapezoid'] = _UNVALIDATED_NONE_DEFAULT
     title: str = _UNVALIDATED_NONE_DEFAULT
     title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
@@ -2407,6 +2480,7 @@ class WizardFieldSchemaAnyOf0BackgroundSettingsSettingsPaletteStateReadDTO(BaseM
 
     mounted_colors: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedColors')
     palette: str = _UNVALIDATED_NONE_DEFAULT
+    palette_manual_values: list[str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='paletteManualValues')
 
 class WizardFieldSchemaAnyOf0BackgroundSettingsSettingsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
@@ -2623,6 +2697,7 @@ class WizardV1ConfigSchemaVisualizationOneOf0ColorsSettingsReadDTO(BaseModel):
     mounted_colors: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedColors')
     null_mode: Literal['as-0', 'ignore'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='nullMode')
     palette: str = _UNVALIDATED_NONE_DEFAULT
+    palette_manual_values: list[str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='paletteManualValues')
     polygon_borders: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='polygonBorders')
     reversed: bool = _UNVALIDATED_NONE_DEFAULT
     right_threshold: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='rightThreshold')
@@ -2791,6 +2866,20 @@ class WizardV1ConfigSchemaVisualizationOneOf0ReadDTO(BaseModel):
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['funnel']
 
+class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsBarSettingsOverlapReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    enabled: bool = _UNVALIDATED_NONE_DEFAULT
+    opacity: Literal['auto'] | Annotated[float, Field(ge=1, le=100)] = _UNVALIDATED_NONE_DEFAULT
+    width: Literal['auto'] | Annotated[float, Field(ge=0, le=100)] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsBarSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    bar_padding: Literal['auto'] | Annotated[float, Field(ge=0, le=100)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barPadding')
+    group_padding: Literal['auto'] | Annotated[float, Field(ge=0, le=100)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='groupPadding')
+    overlap: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsBarSettingsOverlapReadDTO = _UNVALIDATED_NONE_DEFAULT
+
 class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsPeriodSettingsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
@@ -2809,10 +2898,11 @@ class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsReadD
 class WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
+    bar_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsBarSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barSettings')
     feed: str = _UNVALIDATED_NONE_DEFAULT
     legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
     navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
-    stacking: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
     title: str = _UNVALIDATED_NONE_DEFAULT
     title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
     tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
@@ -2827,6 +2917,9 @@ class WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO(BaseModel):
 class WizardV1ConfigSchemaVisualizationOneOf1LabelsSettingsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
+    labels_display_mode: Literal['all', 'selective'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsDisplayMode')
+    labels_position: Literal['inside', 'outside'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsPosition')
+    labels_selection_rules: list[Literal['first', 'last', 'max', 'min']] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsSelectionRules')
     overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
 
 class WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO(BaseModel):
@@ -2897,122 +2990,23 @@ class WizardV1ConfigSchemaVisualizationOneOf1ReadDTO(BaseModel):
     labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
     segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['area']
+    type: Literal['column']
     x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
     y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
 
 class WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
+    bar_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsBarSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barSettings')
     feed: str = _UNVALIDATED_NONE_DEFAULT
     legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
-    navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
     title: str = _UNVALIDATED_NONE_DEFAULT
     title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
     tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
     tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
 
-class WizardV1ConfigSchemaVisualizationOneOf2LabelsSettingsReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    labels_position: Literal['inside', 'outside'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsPosition')
-    overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf2LabelsReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    items: list[WizardLabelsItemSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
-    settings: WizardV1ConfigSchemaVisualizationOneOf2LabelsSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf2ReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf2LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['column']
-    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
-    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsCommonLineSettingsReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    line_width: Literal['auto'] | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineWidth')
-    linecap: Literal['butt', 'none', 'round', 'square'] = _UNVALIDATED_NONE_DEFAULT
-    linejoin: Literal['bevel', 'miter', 'round', 'unset'] = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1LineShapeSettingsSchemaReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    line_width: Literal['auto'] | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineWidth')
-    linecap: Literal['butt', 'none', 'round', 'square'] = _UNVALIDATED_NONE_DEFAULT
-    linejoin: Literal['bevel', 'miter', 'round', 'unset'] = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    common_line_settings: WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsCommonLineSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='commonLineSettings')
-    field_guid: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldGuid')
-    line_settings: dict[str, WizardV1LineShapeSettingsSchemaReadDTO] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineSettings')
-    mounted_shapes: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedShapes')
-
-class WizardV1ConfigSchemaVisualizationOneOf3ShapesReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    items: list[WizardFieldSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
-    settings: WizardV1ConfigSchemaVisualizationOneOf3ShapesSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf3ReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    shapes: WizardV1ConfigSchemaVisualizationOneOf3ShapesReadDTO = _UNVALIDATED_NONE_DEFAULT
-    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['line']
-    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
-    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
-    y2: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf4ReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['area100p']
-    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
-    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf5ReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['column100p']
-    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
-    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    feed: str = _UNVALIDATED_NONE_DEFAULT
-    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
-    title: str = _UNVALIDATED_NONE_DEFAULT
-    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
-    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
-    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
-
-class WizardV1ConfigSchemaVisualizationOneOf6XSettingsReadDTO(BaseModel):
+class WizardV1ConfigSchemaVisualizationOneOf2XSettingsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
@@ -3032,13 +3026,13 @@ class WizardV1ConfigSchemaVisualizationOneOf6XSettingsReadDTO(BaseModel):
     title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
     type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
 
-class WizardV1ConfigSchemaVisualizationOneOf6XReadDTO(BaseModel):
+class WizardV1ConfigSchemaVisualizationOneOf2XReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     items: list[WizardFieldSchemaReadDTO]
-    settings: WizardV1ConfigSchemaVisualizationOneOf6XSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf2XSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
 
-class WizardV1ConfigSchemaVisualizationOneOf6YSettingsReadDTO(BaseModel):
+class WizardV1ConfigSchemaVisualizationOneOf2YSettingsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     axis_format_mode: Literal['auto', 'by-field', 'manual'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='axisFormatMode')
@@ -3055,39 +3049,198 @@ class WizardV1ConfigSchemaVisualizationOneOf6YSettingsReadDTO(BaseModel):
     title_value: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleValue')
     type: Literal['linear', 'logarithmic'] = _UNVALIDATED_NONE_DEFAULT
 
-class WizardV1ConfigSchemaVisualizationOneOf6YReadDTO(BaseModel):
+class WizardV1ConfigSchemaVisualizationOneOf2YReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     items: list[WizardFieldSchemaReadDTO]
-    settings: WizardV1ConfigSchemaVisualizationOneOf6YSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf2YSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf2ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf2ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['bar']
+    x: WizardV1ConfigSchemaVisualizationOneOf2XReadDTO = _UNVALIDATED_NONE_DEFAULT
+    y: WizardV1ConfigSchemaVisualizationOneOf2YReadDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf3ChartSettingsBarSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    bar_padding: Literal['auto'] | Annotated[float, Field(ge=0, le=100)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barPadding')
+    group_padding: Literal['auto'] | Annotated[float, Field(ge=0, le=100)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='groupPadding')
+
+class WizardV1ConfigSchemaVisualizationOneOf3ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    bar_settings: WizardV1ConfigSchemaVisualizationOneOf3ChartSettingsBarSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barSettings')
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
+    navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf3LabelsSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf3LabelsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf3LabelsSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf3ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf3ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf3LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['column100p']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf4ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    bar_settings: WizardV1ConfigSchemaVisualizationOneOf3ChartSettingsBarSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='barSettings')
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf4ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf4ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf3LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['bar100p']
+    x: WizardV1ConfigSchemaVisualizationOneOf2XReadDTO = _UNVALIDATED_NONE_DEFAULT
+    y: WizardV1ConfigSchemaVisualizationOneOf2YReadDTO
+
+class WizardV1ConfigSchemaVisualizationOneOf5ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
+    navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
+    stacking: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf5LabelsSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    labels_display_mode: Literal['all', 'selective'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsDisplayMode')
+    labels_selection_rules: list[Literal['first', 'last', 'max', 'min']] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='labelsSelectionRules')
+    overlap: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf5LabelsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf5LabelsSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf5ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf5ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf5LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['area']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    feed: str = _UNVALIDATED_NONE_DEFAULT
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
+    navigator_settings: WizardV1ConfigSchemaVisualizationOneOf1ChartSettingsNavigatorSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='navigatorSettings')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    tooltip_sum: Literal['off', 'on'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='tooltipSum')
+
+class WizardV1ConfigSchemaVisualizationOneOf6ShapesSettingsCommonLineSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    line_width: Literal['auto'] | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineWidth')
+    linecap: Literal['butt', 'none', 'round', 'square'] = _UNVALIDATED_NONE_DEFAULT
+    linejoin: Literal['bevel', 'miter', 'round', 'unset'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1LineShapeSettingsSchemaReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    line_width: Literal['auto'] | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineWidth')
+    linecap: Literal['butt', 'none', 'round', 'square'] = _UNVALIDATED_NONE_DEFAULT
+    linejoin: Literal['bevel', 'miter', 'round', 'unset'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf6ShapesSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    common_line_settings: WizardV1ConfigSchemaVisualizationOneOf6ShapesSettingsCommonLineSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='commonLineSettings')
+    field_guid: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldGuid')
+    line_settings: dict[str, WizardV1LineShapeSettingsSchemaReadDTO] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lineSettings')
+    mounted_shapes: dict[str, str] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='mountedShapes')
+
+class WizardV1ConfigSchemaVisualizationOneOf6ShapesReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardFieldSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+    settings: WizardV1ConfigSchemaVisualizationOneOf6ShapesSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
 
 class WizardV1ConfigSchemaVisualizationOneOf6ReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     chart_settings: WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf2LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf5LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    shapes: WizardV1ConfigSchemaVisualizationOneOf6ShapesReadDTO = _UNVALIDATED_NONE_DEFAULT
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['bar']
-    x: WizardV1ConfigSchemaVisualizationOneOf6XReadDTO = _UNVALIDATED_NONE_DEFAULT
-    y: WizardV1ConfigSchemaVisualizationOneOf6YReadDTO
+    type: Literal['line']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
+    y2: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
 
 class WizardV1ConfigSchemaVisualizationOneOf7ReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     chart_settings: WizardV1ConfigSchemaVisualizationOneOf6ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf3LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    segments: WizardV1ConfigSchemaVisualizationOneOf1SegmentsReadDTO = _UNVALIDATED_NONE_DEFAULT
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['bar100p']
-    x: WizardV1ConfigSchemaVisualizationOneOf6XReadDTO = _UNVALIDATED_NONE_DEFAULT
-    y: WizardV1ConfigSchemaVisualizationOneOf6YReadDTO
+    type: Literal['area100p']
+    x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
+    y: WizardV1ConfigSchemaVisualizationOneOf1YReadDTO = _UNVALIDATED_NONE_DEFAULT
 
 class WizardV1ConfigSchemaVisualizationOneOf8ChartSettingsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     feed: str = _UNVALIDATED_NONE_DEFAULT
     legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
     title: str = _UNVALIDATED_NONE_DEFAULT
     title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
     tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
@@ -3191,7 +3344,7 @@ class WizardV1CombinedChartLayerSchemaOneOf0ReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf2LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
     layer_settings: WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsReadDTO = Field(alias='layerSettings')
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['column']
@@ -3202,9 +3355,9 @@ class WizardV1CombinedChartLayerSchemaOneOf1ReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf5LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
     layer_settings: WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsReadDTO = Field(alias='layerSettings')
-    shapes: WizardV1ConfigSchemaVisualizationOneOf3ShapesReadDTO = _UNVALIDATED_NONE_DEFAULT
+    shapes: WizardV1ConfigSchemaVisualizationOneOf6ShapesReadDTO = _UNVALIDATED_NONE_DEFAULT
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['line']
     x: WizardV1ConfigSchemaVisualizationOneOf1XReadDTO
@@ -3215,7 +3368,7 @@ class WizardV1CombinedChartLayerSchemaOneOf2ReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1ConfigSchemaVisualizationOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf5LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
     layer_settings: WizardV1CombinedChartLayerSchemaOneOf0LayerSettingsReadDTO = Field(alias='layerSettings')
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['area']
@@ -3255,6 +3408,52 @@ class WizardV1ConfigSchemaVisualizationOneOf10ReadDTO(BaseModel):
     type: Literal['flatTable']
 
 class WizardV1ConfigSchemaVisualizationOneOf11ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+    totals: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf11LabelsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[WizardLabelsItemSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf11ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf11ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf11LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['donut']
+
+class WizardV1ConfigSchemaVisualizationOneOf12ChartSettingsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
+    legend_position: Literal['auto', 'bottom', 'left', 'right', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendPosition')
+    title: str = _UNVALIDATED_NONE_DEFAULT
+    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
+    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
+
+class WizardV1ConfigSchemaVisualizationOneOf12ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_settings: WizardV1ConfigSchemaVisualizationOneOf12ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
+    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf11LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
+    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
+    type: Literal['pie']
+
+class WizardV1ConfigSchemaVisualizationOneOf13ChartSettingsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
@@ -3300,22 +3499,6 @@ class WizardV1GeolayerLayerSchemaOneOf0ReadDTO(BaseModel):
     sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['polyline']
 
-class WizardV1GeolayerLayerSchemaOneOf1LabelsReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    items: list[WizardLabelsItemSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1GeolayerLayerSchemaOneOf1SizeSettingsReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    radius: float = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1GeolayerLayerSchemaOneOf1SizeReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    items: list[WizardFieldSchemaReadDTO] = _UNVALIDATED_NONE_DEFAULT
-    settings: WizardV1GeolayerLayerSchemaOneOf1SizeSettingsReadDTO = _UNVALIDATED_NONE_DEFAULT
-
 class WizardV1GeolayerLayerSchemaOneOf1TooltipSettingsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
@@ -3333,10 +3516,10 @@ class WizardV1GeolayerLayerSchemaOneOf1ReadDTO(BaseModel):
 
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
     filters: WizardV1GeolayerLayerSchemaOneOf0FiltersReadDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf11LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
     layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsReadDTO = Field(alias='layerSettings')
     points: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
-    size: WizardV1GeolayerLayerSchemaOneOf1SizeReadDTO = _UNVALIDATED_NONE_DEFAULT
+    size: WizardV1ConfigSchemaVisualizationOneOf8SizeReadDTO = _UNVALIDATED_NONE_DEFAULT
     tooltip: WizardV1GeolayerLayerSchemaOneOf1TooltipReadDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['geopoint']
 
@@ -3345,10 +3528,10 @@ class WizardV1GeolayerLayerSchemaOneOf2ReadDTO(BaseModel):
 
     colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
     filters: WizardV1GeolayerLayerSchemaOneOf0FiltersReadDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    labels: WizardV1ConfigSchemaVisualizationOneOf11LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
     layer_settings: WizardV1GeolayerLayerSchemaOneOf0LayerSettingsReadDTO = Field(alias='layerSettings')
     points: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
-    size: WizardV1GeolayerLayerSchemaOneOf1SizeReadDTO = _UNVALIDATED_NONE_DEFAULT
+    size: WizardV1ConfigSchemaVisualizationOneOf8SizeReadDTO = _UNVALIDATED_NONE_DEFAULT
     tooltip: WizardV1GeolayerLayerSchemaOneOf1TooltipReadDTO = _UNVALIDATED_NONE_DEFAULT
     type: Literal['geopoint-with-cluster']
 
@@ -3373,52 +3556,13 @@ class WizardV1GeolayerLayerSchemaOneOf4ReadDTO(BaseModel):
 
 WizardV1GeolayerLayerSchemaReadDTO = WizardV1GeolayerLayerSchemaOneOf0ReadDTO | WizardV1GeolayerLayerSchemaOneOf1ReadDTO | WizardV1GeolayerLayerSchemaOneOf2ReadDTO | WizardV1GeolayerLayerSchemaOneOf3ReadDTO | WizardV1GeolayerLayerSchemaOneOf4ReadDTO
 
-class WizardV1ConfigSchemaVisualizationOneOf11ReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    chart_settings: WizardV1ConfigSchemaVisualizationOneOf11ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    layers: list[WizardV1GeolayerLayerSchemaReadDTO]
-    selected_layer_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='selectedLayerId')
-    type: Literal['geolayer']
-
-class WizardV1ConfigSchemaVisualizationOneOf12ChartSettingsReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
-    title: str = _UNVALIDATED_NONE_DEFAULT
-    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
-    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
-    totals: Literal['off', 'on'] = _UNVALIDATED_NONE_DEFAULT
-
-class WizardV1ConfigSchemaVisualizationOneOf12ReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    chart_settings: WizardV1ConfigSchemaVisualizationOneOf12ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
-    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['donut']
-
-class WizardV1ConfigSchemaVisualizationOneOf13ChartSettingsReadDTO(BaseModel):
-    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
-
-    legend_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='legendMode')
-    title: str = _UNVALIDATED_NONE_DEFAULT
-    title_mode: Literal['hide', 'show'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titleMode')
-    tooltip: Literal['hide', 'show'] = _UNVALIDATED_NONE_DEFAULT
-
 class WizardV1ConfigSchemaVisualizationOneOf13ReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
     chart_settings: WizardV1ConfigSchemaVisualizationOneOf13ChartSettingsReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='chartSettings')
-    colors: WizardV1ConfigSchemaVisualizationOneOf1ColorsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    dimensions: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    labels: WizardV1GeolayerLayerSchemaOneOf1LabelsReadDTO = _UNVALIDATED_NONE_DEFAULT
-    measures: WizardV1ConfigSchemaVisualizationOneOf0DimensionsReadDTO
-    sort: WizardV1ConfigSchemaVisualizationOneOf0SortReadDTO = _UNVALIDATED_NONE_DEFAULT
-    type: Literal['pie']
+    layers: list[WizardV1GeolayerLayerSchemaReadDTO]
+    selected_layer_id: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='selectedLayerId')
+    type: Literal['geolayer']
 
 class WizardV1ConfigSchemaVisualizationOneOf14ChartSettingsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
@@ -4209,7 +4353,26 @@ class DashControlSourceDatasetV2AllOf3DTO(BaseModel):
     show_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showTitle')
     title_placement: Literal['hide', 'left', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titlePlacement')
 
-DashControlSourceDatasetV2DTO = DashControlSourceDatasetV2AllOf0DTO | DashControlSourceDatasetV2AllOf1DTO | DashControlSourceDatasetV2AllOf2DTO | DashControlSourceDatasetV2AllOf3DTO
+class DashControlSourceDatasetV2AllOf4DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    accent_type: Literal['info'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='accentType')
+    dataset_field_id: Annotated[str, Field(min_length=1, alias='datasetFieldId')]
+    dataset_field_type: Literal['DIMENSION', 'MEASURE', 'PARAMETER', 'PSEUDO'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='datasetFieldType')
+    dataset_id: Annotated[str, Field(min_length=1, alias='datasetId')]
+    default_value: str = Field(alias='defaultValue')
+    element_type: Literal['switch'] = Field(alias='elementType')
+    field_type: Literal['array_float', 'array_int', 'array_str', 'boolean', 'date', 'datetimetz', 'float', 'genericdatetime', 'geopoint', 'geopolygon', 'heatmap', 'hierarchy', 'integer', 'markup', 'string', 'tree_float', 'tree_int', 'tree_str', 'uinteger', 'unsupported'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='fieldType')
+    hint: str = _UNVALIDATED_NONE_DEFAULT
+    inner_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='innerTitle')
+    operation: Literal['BETWEEN', 'CONTAINS', 'ENDSWITH', 'EQ', 'GT', 'GTE', 'ICONTAINS', 'IENDSWITH', 'IN', 'ISNOTNULL', 'ISNULL', 'ISTARTSWITH', 'LENEQ', 'LENGT', 'LENGTE', 'LENLT', 'LENLTE', 'LT', 'LTE', 'NE', 'NIN', 'NOTCONTAINS', 'NOTICONTAINS', 'NO_SELECTED_VALUES', 'STARTSWITH'] = _UNVALIDATED_NONE_DEFAULT
+    required: bool = _UNVALIDATED_NONE_DEFAULT
+    show_hint: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showHint')
+    show_inner_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showInnerTitle')
+    show_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showTitle')
+    title_placement: Literal['hide', 'left', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titlePlacement')
+
+DashControlSourceDatasetV2DTO = DashControlSourceDatasetV2AllOf0DTO | DashControlSourceDatasetV2AllOf1DTO | DashControlSourceDatasetV2AllOf2DTO | DashControlSourceDatasetV2AllOf3DTO | DashControlSourceDatasetV2AllOf4DTO
 
 class DashControlV2OneOf0DTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
@@ -4323,7 +4486,24 @@ class DashControlSourceManualV2AllOf3DTO(BaseModel):
     show_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showTitle')
     title_placement: Literal['hide', 'left', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titlePlacement')
 
-DashControlSourceManualV2DTO = DashControlSourceManualV2AllOf0DTO | DashControlSourceManualV2AllOf1DTO | DashControlSourceManualV2AllOf2DTO | DashControlSourceManualV2AllOf3DTO
+class DashControlSourceManualV2AllOf4DTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    accent_type: Literal['info'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='accentType')
+    acceptable_values: list[DashControlSourceManualV2AllOf0AcceptableValuesAnyOf0ItemDTO] | DashControlSourceManualV2AllOf0AcceptableValuesAnyOf1DTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='acceptableValues')
+    default_value: str = Field(alias='defaultValue')
+    element_type: Literal['switch'] = Field(alias='elementType')
+    field_name: Annotated[str, Field(min_length=1, alias='fieldName')]
+    hint: str = _UNVALIDATED_NONE_DEFAULT
+    inner_title: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='innerTitle')
+    operation: Literal['BETWEEN', 'CONTAINS', 'ENDSWITH', 'EQ', 'GT', 'GTE', 'ICONTAINS', 'IENDSWITH', 'IN', 'ISNOTNULL', 'ISNULL', 'ISTARTSWITH', 'LENEQ', 'LENGT', 'LENGTE', 'LENLT', 'LENLTE', 'LT', 'LTE', 'NE', 'NIN', 'NOTCONTAINS', 'NOTICONTAINS', 'NO_SELECTED_VALUES', 'STARTSWITH'] = _UNVALIDATED_NONE_DEFAULT
+    required: bool = _UNVALIDATED_NONE_DEFAULT
+    show_hint: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showHint')
+    show_inner_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showInnerTitle')
+    show_title: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='showTitle')
+    title_placement: Literal['hide', 'left', 'top'] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='titlePlacement')
+
+DashControlSourceManualV2DTO = DashControlSourceManualV2AllOf0DTO | DashControlSourceManualV2AllOf1DTO | DashControlSourceManualV2AllOf2DTO | DashControlSourceManualV2AllOf3DTO | DashControlSourceManualV2AllOf4DTO
 
 class DashControlV2OneOf2DTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
@@ -4347,6 +4527,7 @@ class DashTabControlItemV2DTO(BaseModel):
     data: DashControlV2DTO
     default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
     defaults: dict[str, DashStringDefaultValueV2DTO]
+    hidden_on_mobile: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hiddenOnMobile')
     id: Annotated[str, Field(min_length=1)]
     namespace: Literal['default']
     order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
@@ -4402,6 +4583,7 @@ class DashTabGroupControlItemV2DTO(BaseModel):
 
     data: DashGroupControlV2DTO
     default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
+    hidden_on_mobile: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hiddenOnMobile')
     id: Annotated[str, Field(min_length=1)]
     namespace: Literal['default']
     order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
@@ -4428,6 +4610,7 @@ class DashTabItemV2OneOf2DTO(BaseModel):
 
     data: DashTabItemV2OneOf2DataDTO
     default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
+    hidden_on_mobile: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hiddenOnMobile')
     id: Annotated[str, Field(min_length=1)]
     namespace: Literal['default']
     order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
@@ -4463,6 +4646,7 @@ class DashTabItemV2OneOf3DTO(BaseModel):
 
     data: DashTabItemV2OneOf3DataDTO
     default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
+    hidden_on_mobile: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hiddenOnMobile')
     id: Annotated[str, Field(min_length=1)]
     namespace: Literal['default']
     order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
@@ -4481,6 +4665,7 @@ class DashTabItemV2OneOf4DTO(BaseModel):
 
     data: DashTabItemV2OneOf4DataDTO
     default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
+    hidden_on_mobile: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hiddenOnMobile')
     id: Annotated[str, Field(min_length=1)]
     namespace: Literal['default']
     order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
@@ -4502,6 +4687,7 @@ class DashTabItemV2OneOf5DTO(BaseModel):
 
     data: DashTabItemV2OneOf5DataDTO
     default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
+    hidden_on_mobile: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hiddenOnMobile')
     id: Annotated[str, Field(min_length=1)]
     namespace: Literal['default']
     order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
@@ -4535,6 +4721,7 @@ class DashTabItemV2OneOf6DTO(BaseModel):
 
     data: DashTabItemV2OneOf6DataDTO
     default_order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='defaultOrderId')
+    hidden_on_mobile: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='hiddenOnMobile')
     id: Annotated[str, Field(min_length=1)]
     namespace: Literal['default']
     order_id: float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='orderId')
@@ -4824,6 +5011,7 @@ class UpdateHtmlPageArgsAnyOf0DTO(BaseModel):
     annotation: CreateHtmlPageArgsAnnotationDTO = _UNVALIDATED_NONE_DEFAULT
     content: Annotated[str, Field(max_length=10485760)]
     entry_id: str = Field(alias='entryId')
+    lock_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lockToken')
     mode: Literal['publish', 'save'] = _UNVALIDATED_NONE_DEFAULT
 
     def to_payload(self) -> dict[str, object]:
@@ -5343,6 +5531,14 @@ class CreateSqlQueryArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class CreateTrinoClusterArgsRetryPolicyDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    policy: Literal['QUERY', 'TASK']
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class CreateTrinoClusterArgsWorkerConfigResourcesDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -5386,6 +5582,7 @@ class CreateTrinoClusterArgsDTO(BaseModel):
     description: Annotated[str, Field(max_length=256)] = _UNVALIDATED_NONE_DEFAULT
     labels: dict[str, Annotated[str, Field(max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[-_0-9a-z]*\\Z'))]] = _UNVALIDATED_NONE_DEFAULT
     name: Annotated[str, Field(min_length=1, max_length=63), AfterValidator(partial(_validate_tagged_rpc_pattern, pattern='^[a-zA-Z0-9_-]+\\Z'))]
+    retry_policy: CreateTrinoClusterArgsRetryPolicyDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='retryPolicy')
     trino_version: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='trinoVersion')
     worker_config: CreateTrinoClusterArgsWorkerConfigDTO = Field(alias='workerConfig')
 
@@ -5675,6 +5872,27 @@ class UpdateSqlQueryArgsDTO(BaseModel):
     params: list[CreateSqlQueryArgsParamsItemAllOf0DTO | CreateSqlQueryArgsParamsItemAllOf1DTO | CreateSqlQueryArgsParamsItemAllOf2DTO] = _UNVALIDATED_NONE_DEFAULT
     query: str
     sql_query_id: str = Field(alias='sqlQueryId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class UpdateTrinoClusterArgsUpdateMaskDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    paths: Annotated[list[Literal['catalogs_config', 'retry_policy', 'trino_version', 'worker_config']], Field(min_length=1)]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class UpdateTrinoClusterArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    catalogs_config: Annotated[list[CreateSparkApplicationArgsAnyOf0CatalogsItemDTO], Field(max_length=100, alias='catalogsConfig')] = _UNVALIDATED_NONE_DEFAULT
+    id: Annotated[str, Field(min_length=1, max_length=50)]
+    retry_policy: CreateTrinoClusterArgsRetryPolicyDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='retryPolicy')
+    trino_version: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='trinoVersion')
+    update_mask: UpdateTrinoClusterArgsUpdateMaskDTO = Field(alias='updateMask')
+    worker_config: CreateTrinoClusterArgsWorkerConfigDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='workerConfig')
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
@@ -6079,7 +6297,6 @@ class SparkClusterReadDTO(BaseModel):
     collection_id: Annotated[str, Field(min_length=1, alias='collectionId')]
     config: SparkClusterConfigReadDTO
     description: str
-    entry_id: str = Field(alias='entryId')
     health: Literal['ALIVE', 'DEAD', 'DEGRADED', 'HEALTH_UNKNOWN']
     id: Annotated[str, Field(min_length=1)]
     labels: dict[str, str]
@@ -6115,6 +6332,11 @@ class TrinoClusterConfigCoordinatorConfigReadDTO(BaseModel):
 
     resources: TrinoClusterConfigCoordinatorConfigResourcesReadDTO
 
+class TrinoClusterConfigRetryPolicyObjectReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
+
+    policy: Literal['POLICY_UNSPECIFIED', 'QUERY', 'TASK']
+
 class TrinoClusterConfigWorkerConfigScalePolicyAutoScaleReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=False, strict=True)
 
@@ -6138,6 +6360,7 @@ class TrinoClusterConfigReadDTO(BaseModel):
 
     catalogs_config: list[SparkApplicationAnyOf0CatalogsItemReadDTO] = Field(alias='catalogsConfig')
     coordinator_config: TrinoClusterConfigCoordinatorConfigReadDTO = Field(alias='coordinatorConfig')
+    retry_policy: None | TrinoClusterConfigRetryPolicyObjectReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='retryPolicy')
     trino_version: str = Field(alias='trinoVersion')
     worker_config: TrinoClusterConfigWorkerConfigReadDTO = Field(alias='workerConfig')
 
@@ -6150,7 +6373,6 @@ class TrinoClusterReadDTO(BaseModel):
     config: TrinoClusterConfigReadDTO
     coordinator_url: str = Field(alias='coordinatorUrl')
     description: str
-    entry_id: str = Field(alias='entryId')
     health: Literal['ALIVE', 'DEAD', 'DEGRADED', 'HEALTH_UNKNOWN']
     id: Annotated[str, Field(min_length=1)]
     labels: dict[str, str]
@@ -6186,6 +6408,7 @@ class RunSqlQueryResultResultsItemAnyOf0ReadDTO(BaseModel):
 
     affected_rows: int | float = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='affectedRows')
     columns: list[RunSqlQueryResultResultsItemAnyOf0ColumnsItemReadDTO]
+    has_more_rows: bool = Field(alias='hasMoreRows')
     rows: list[list[bool | None | int | float | str]]
     status: Literal['success']
 

@@ -117,13 +117,14 @@ def _widget_models(
 
 @pytest.fixture(scope="module")
 def subscriptions_models() -> dict[str, object]:
-    metadata = codegen.build_metadata(
-        {
-            "enterprise": ROOT / "spec" / "enterprise.json",
-            "yacloud": ROOT / "spec" / "yacloud.json",
-        },
-        rpc_namespace_configs=({"tag": "Subscriptions", "namespace": "subscriptions"},),
+    spec = cast(dict[str, object], json.loads((ROOT / "spec" / "yacloud.json").read_text()))
+    paths = cast(dict[str, object], spec["paths"])
+    spec["paths"] = {"/rpc/deleteSubscription": paths["/rpc/deleteSubscription"]}
+    contract = codegen.build_rpc_namespace_contract_meta(
+        spec, config={"tag": "Subscriptions", "namespace": "subscriptions"}
     )
+    assert contract is not None
+    metadata = cast(codegen.Metadata, {"installations": {}, "rpc_namespaces": {"subscriptions": contract}})
     scope: dict[str, object] = {}
     exec(codegen.emit_dto(metadata), scope)
     for value in scope.values():
@@ -2326,3 +2327,31 @@ def test_tagged_rpc_shared_result_uses_strict_wire_alias_for_read_and_mutation()
     assert shared_result.model_validate({"clusterId": "managed-1"}).model_dump()["cluster_id"] == "managed-1"
     with pytest.raises(ValidationError, match="clusterId"):
         shared_result.model_validate({"cluster_id": "managed-1"})
+
+
+@pytest.mark.parametrize("deprecated", [False, True])
+def test_tagged_rpc_deprecated_annotations_preserve_wire_contract(deprecated: bool) -> None:
+    spec = _spec({"/rpc/createWidget": {"post": _operation()}})
+    expected = _contract(spec)
+    schemas = cast(dict[str, dict[str, object]], cast(dict[str, object], spec["components"])["schemas"])
+    schemas["WidgetArgs"]["deprecated"] = deprecated
+    properties = cast(dict[str, dict[str, object]], schemas["WidgetArgs"]["properties"])
+    properties["id"]["deprecated"] = deprecated
+    schemas["WidgetResult"]["deprecated"] = deprecated
+
+    contract = _contract(spec)
+    assert contract == expected
+    models = _models(contract)
+    assert _model(models, "WidgetArgsDTO")(id="widget-1").to_payload() == {"id": "widget-1"}  # type: ignore[attr-defined]
+    assert _model(models, "WidgetResultReadDTO").model_validate({"accepted": True}).model_dump() == {"accepted": True}
+
+
+@pytest.mark.parametrize("deprecated", [None, 0, "true", {}])
+def test_tagged_rpc_deprecated_annotation_must_be_boolean(deprecated: object) -> None:
+    spec = _spec({"/rpc/createWidget": {"post": _operation()}})
+    schemas = cast(dict[str, dict[str, object]], cast(dict[str, object], spec["components"])["schemas"])
+    properties = cast(dict[str, dict[str, object]], schemas["WidgetArgs"]["properties"])
+    properties["id"]["deprecated"] = deprecated
+
+    with pytest.raises(ValueError, match=r"/schemas/WidgetArgs/properties/id/deprecated.*must be a boolean"):
+        _contract(spec)

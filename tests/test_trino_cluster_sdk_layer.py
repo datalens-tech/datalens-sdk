@@ -66,7 +66,6 @@ def _cluster_response(*, name: str = "Analytics") -> dict[str, object]:
         "health": "ALIVE",
         "status": "RUNNING",
         "coordinatorUrl": "",
-        "entryId": "trino-1",
     }
 
 
@@ -1112,6 +1111,31 @@ def test_bound_trino_cluster_refresh_requires_operations_and_public_id() -> None
     assert refreshed is not bound
     assert refreshed.name == "Refreshed"
     assert bound.name == "Original"
+
+
+@pytest.mark.parametrize("legacy_entry_id", [None, "obsolete-entry-id"])
+def test_trino_get_and_list_derive_entry_id_from_id(legacy_entry_id: str | None) -> None:
+    raw = _cluster_response()
+    if legacy_entry_id is not None:
+        raw["entryId"] = legacy_entry_id
+    recorder = RecordedTrinoTransport(
+        httpx.Response(200, json=raw),
+        httpx.Response(200, json={"clusters": [raw], "nextPageToken": ""}),
+    )
+    with DataLensHTTPClient(
+        installation="yacloud",
+        sdk_version="test",
+        base_url="https://trino.test",
+        transport=httpx.MockTransport(recorder.handle),
+    ) as http_client:
+        service = _service(http_client)
+        fetched = service.get_trino_cluster("trino-1")
+        listed = list(service.list_trino_clusters(TrinoClusterListOptions.create(installation="yacloud")))
+
+    for cluster in [fetched, *listed]:
+        assert cluster.entry_id == cluster.id == "trino-1"
+        assert cluster.cluster_id == "managed-2"
+        assert cluster.raw == raw
 
 
 def test_trino_get_and_refresh_map_complete_cluster_and_retry_reads() -> None:

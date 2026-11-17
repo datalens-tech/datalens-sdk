@@ -261,7 +261,7 @@ class SparkClusterConverter:
                     ],
                     data["status"],
                 ),
-                entry_id=cast(str, data["entryId"]),
+                entry_id=cast(str, data["id"]),
                 raw=dict(raw),
                 _operations=operations,
             )

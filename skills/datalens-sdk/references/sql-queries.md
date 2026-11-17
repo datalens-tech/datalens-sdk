@@ -155,7 +155,10 @@ result = query.run(
 mapping. The call returns one `SqlQueryRun` immediately. Its `status` is
 `success`, `error`, `pending`, or `partial_success`. Its ordered `results`
 contain `SqlQueryStatementSuccess` (columns, rows, optional affected-row
-count) or `SqlQueryStatementError` (code, message, optional database message).
+count, and `has_more_rows`) or `SqlQueryStatementError` (code, message, optional
+database message). API success results always supply a boolean `has_more_rows`;
+`True` means additional rows were omitted. Manually constructed results default
+to `None` when that information is unknown.
 Statement errors and run-level error statuses are result data, not SDK
 exceptions. Transport, API, and malformed-response failures raise SDK errors;
 report an API error's request id per [troubleshooting](troubleshooting.md).

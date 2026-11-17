@@ -479,11 +479,12 @@ def test_from_domain_update_merges_description_into_existing_annotation() -> Non
     }
 
 
-def test_nullable_update_tabs_preserve_explicit_none() -> None:
+@pytest.mark.parametrize("tab", ["activities", "config", "documentation_en", "documentation_ru"])
+def test_nullable_update_tabs_preserve_explicit_none(tab: str) -> None:
     ops = cast(ChartOperations, _FakeOps())
     update = EditorChart(id="e1", wire_type="advanced-chart_node", _operations=ops).update
 
-    assert update.activities(None).tab_edits == {"activities": None}
+    assert getattr(update, tab)(None).tab_edits == {tab: None}
 
 
 def test_editor_update_has_no_writable_secrets_surface() -> None:
@@ -741,3 +742,20 @@ def test_public_activities_create_update_contract(
     assert [payload["data"].get("activities") for payload in payloads] == [source, source, changed, None]
     assert "activities" not in payloads[-1]["data"]
     assert payloads[-1]["data"]["params"] == "module.exports = {p: ['1']};"
+
+
+@pytest.mark.parametrize("client_type", [dl.DataLensClientYC, dl.DataLensClientEnterprise])
+@pytest.mark.parametrize("wire_type", ["d3_node", "table_node"])
+def test_required_editor_config_cannot_be_cleared(
+    client_type: type[dl.DataLensClientYC] | type[dl.DataLensClientEnterprise],
+    wire_type: str,
+) -> None:
+    recorder = RecordedTransport({})
+    with client_type(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)) as client:
+        chart = EditorChart(
+            id="config-1", wire_type=wire_type, data={"config": "module.exports = {};"}, _operations=client.chart_ops
+        )
+        with pytest.raises(DTOValidationError, match="config"):
+            chart.update.config(None).execute()
+
+    assert recorder.requests == []

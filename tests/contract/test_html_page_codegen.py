@@ -85,3 +85,45 @@ def test_html_page_contract_rejects_misbound_result_schema() -> None:
 
     with pytest.raises(ValueError, match="schema references differ"):
         build_html_page_contract_meta(spec)
+
+
+@pytest.mark.parametrize("with_token", [False, True])
+def test_html_page_content_lock_token_remains_optional(with_token: bool) -> None:
+    spec = _spec()
+    components = cast(dict[str, object], spec["components"])
+    schemas = cast(dict[str, object], components["schemas"])
+    update = cast(dict[str, object], schemas["UpdateHtmlPageArgs"])
+    branches = cast(list[dict[str, object]], update["anyOf"])
+    properties = cast(dict[str, object], branches[0]["properties"])
+    properties.pop("lockToken", None)
+    if with_token:
+        properties["lockToken"] = {"type": "string"}
+
+    contract = build_html_page_contract_meta(spec)
+    normalized = cast(dict[str, object], contract["schemas"]["UpdateHtmlPageArgs"])
+    normalized_branches = cast(list[dict[str, object]], normalized["anyOf"])
+    assert ("lockToken" in cast(dict[str, object], normalized_branches[0]["properties"])) is with_token
+
+
+@pytest.mark.parametrize("shape", ["required", "wrong_type", "nullable", "revision", "unknown_content_field"])
+def test_html_page_content_lock_token_rejects_contract_drift(shape: str) -> None:
+    spec = _spec()
+    components = cast(dict[str, object], spec["components"])
+    schemas = cast(dict[str, object], components["schemas"])
+    update = cast(dict[str, object], schemas["UpdateHtmlPageArgs"])
+    branches = cast(list[dict[str, object]], update["anyOf"])
+    content = cast(dict[str, object], branches[0]["properties"])
+    content["lockToken"] = {"type": "string"}
+    if shape == "required":
+        cast(list[str], branches[0]["required"]).append("lockToken")
+    elif shape == "wrong_type":
+        content["lockToken"] = {"type": "integer"}
+    elif shape == "nullable":
+        content["lockToken"] = {"type": ["string", "null"]}
+    elif shape == "revision":
+        cast(dict[str, object], branches[1]["properties"])["lockToken"] = {"type": "string"}
+    else:
+        content["futureField"] = {"type": "string"}
+
+    with pytest.raises(ValueError, match="UpdateHtmlPageArgs"):
+        build_html_page_contract_meta(spec)

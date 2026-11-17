@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Refresh shared Enterprise and Yandex Cloud SQL, Dashboard, HTML-page, and
+  Wizard contracts while preserving the Enterprise connector and source catalogs.
+
 - Use ordinary DataLens entry IDs for Trino and Spark cluster actions,
   Spark applications and logs, and Trino catalog membership. Pass the same
   `cluster.id` to Trino connection `cluster_entry_id` and UI links. Separate
@@ -11,6 +14,9 @@
   cloud cluster ID.
 
 ### Added
+
+- Expose `has_more_rows` on successful SQL statements so callers can detect
+  omitted rows.
 
 - Add experimental server-rendered screenshots: `screenshot()` on loaded charts
   and dashboards returns an `EntityScreenshot` with PNG bytes, `save(path)`, and
@@ -24,6 +30,15 @@
   the server's `Retry-After` when that wait fits in `timeout`.
 - Add `APIErrorContext.retry_after` with the seconds from a numeric
   `Retry-After` response header.
+
+### Fixed
+
+- Allow `EditorChartUpdate.config(None)` for renderers with an optional config
+  tab while rejecting missing config for renderers that require it.
+- Accept boolean OpenAPI `deprecated` annotations and current Wizard numeric
+  bounds and defaults during generation without filling omitted write fields.
+- Always derive Trino and Spark `entry_id` from `id` as a compatibility
+  alias; ignore a returned legacy `entryId`.
 
 ## 3.2.0 - 2026-10-07
 

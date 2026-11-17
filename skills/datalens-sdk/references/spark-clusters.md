@@ -23,9 +23,10 @@ application submission method in this reference.
 ## Cluster identifiers
 
 Use the ordinary DataLens entry ID for all cluster actions and UI links.
-`SparkCluster.id` contains this entry ID; `SparkCluster.entry_id` exposes
-the same identity from the API response. `SparkCluster.cluster_id` is the
-managed cloud cluster ID and is not an argument to DataLens cluster actions.
+`SparkCluster.id` contains this entry ID; `SparkCluster.entry_id` is a
+compatibility alias of `id` and does not require a separate response field.
+`SparkCluster.cluster_id` is the managed cloud cluster ID and is not an
+argument to DataLens cluster actions.
 Use an entry ID from navigation or a known cluster link directly, even when
 entry `data` is null. No separate identifier lookup is needed.
 

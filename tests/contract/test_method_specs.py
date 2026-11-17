@@ -385,6 +385,9 @@ def test_shape_helpers_have_explicit_dimension_and_measure_scopes() -> None:
 def test_point_size_range_scoped_to_scatter() -> None:
     assert "point_size_range" in _supported_method_specs("scatter")
     assert "point_size_range" not in _supported_method_specs("line")
+    assert "point_size_range" not in _supported_method_specs("geolayer")
+    assert hasattr(ScatterWizardChartCreate, "point_size_range")
+    assert not hasattr(GeolayerWizardChartCreate, "point_size_range")
 
 
 def test_color_helpers_are_scoped_to_explicit_encoding_capabilities() -> None:
