@@ -41,6 +41,10 @@
 
 ### Fixed
 
+- Reject chart-data `params` named `revId`, `branch`, `tab`, or `state` with
+  `DataLensValidationError` before HTTP instead of forwarding them. Remove
+  these names from `params`: chart-data reads execute by chart ID and cannot
+  select a draft or historical revision, dashboard tab, or saved selector state.
 - Allow `EditorChartUpdate.config(None)` for renderers with an optional config
   tab while rejecting missing config for renderers that require it.
 - Accept boolean OpenAPI `deprecated` annotations and current Wizard numeric

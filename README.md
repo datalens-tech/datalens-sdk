@@ -190,16 +190,25 @@ in `result.results` is a `ChartDataTable` with an ordered `schema` and positiona
 and numeric strings without coercion.
 
 Both methods execute by ID: the loaded revision and local edits are not sent,
-and saved/published selection is unspecified. `dataset.get_dataset_data()`
-also executes by ID. `chart.to_file(...)` exports the definition rather than
-these tables. Runtime params are strings or sequences of strings; `None`
+and saved/published selection is unspecified. Revision selection is unsupported:
+`revId` and `branch` in `params` raise `DataLensValidationError` before HTTP.
+`tab` and `state` are also rejected because dashboard controls are not chart-data
+parameters. Remove these names from `params`; a loaded draft or historical
+revision does not pin the returned data. `dataset.get_dataset_data()` also
+executes by ID. `chart.to_file(...)` exports the definition rather than these
+tables. Runtime params are strings or sequences of strings; `None`
 omits params and `{}` sends an empty object. There is no dataset default limit,
-automatic pagination, or CSV/XLSX export.
+automatic pagination, or CSV/XLSX export. The example names `region` and
+`year` assume that the chart reads those keys; see the [runtime parameter guidance](skills/datalens-sdk/references/parameters.md#runtime-chart-parameters)
+for the keys each chart family uses.
 
 The API is experimental. Pivot tables are unsupported, and Editor requires
 `Editor.setRawData()`. Aggregate response limits are 100,000 rows, 100,000
 cells, 1,000 tables, and 100,000 schema columns; a table can have 800 columns.
-Exceeding a limit raises an HTTP 422 API error without retry or local
+These limits apply simultaneously: if every row has two cells, the response
+can contain at most 50,000 rows in total. The [Yandex Cloud limits page](https://yandex.cloud/ru/docs/datalens/concepts/limits#datalens-chart-data-limits)
+separately documents chart display limits and Cloud API rate limits.
+Exceeding a response limit raises an HTTP 422 API error without retry or local
 truncation. Other transient read failures use the usual SDK retry policy.
 Invalid arguments fail before HTTP with `DataLensValidationError`; malformed
 responses raise `DTOValidationError` or `InvalidResponseError`.

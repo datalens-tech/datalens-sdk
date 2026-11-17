@@ -180,6 +180,8 @@ class Chart(ABC):
 
         The loaded revision and local chart content are not sent. The server
         selects the saved configuration; no saved/published revision is promised.
+        ``params`` rejects revision selectors ``branch``/``revId`` and dashboard
+        controls ``tab``/``state``; other names retain their chart-specific meaning.
         """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)

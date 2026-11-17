@@ -1,9 +1,49 @@
 # Parameters across datasets, charts, and dashboards
 
-Read this for any task where a selector, URL, chart click, or dashboard
-setting must supply a named value to a Dataset, Wizard, QL, or Editor chart.
+Read this for any task where chart data, a screenshot, a selector, a URL,
+a chart click, or a dashboard setting must supply a named value to a Dataset,
+Wizard, QL, or Editor chart.
 The same parameter key can appear on several SDK surfaces, but those surfaces
 have different scopes and precedence.
+
+## Runtime chart parameters
+
+For `get_chart_data(params=...)` and chart `screenshot(params=...)`, choose
+keys from the chart's configuration:
+
+- Wizard: the guid of a field, whether the field lives in the dataset or was
+  created in the chart itself (take it from `chart.fields` or `dataset.fields`),
+  or the name of a parameter declared in the dataset. A dataset field title
+  works too, but prefer the guid: titles can repeat and change.
+- QL: the name of a `QLParam` the chart declares, listed in `chart.params`;
+  the query reads it as `{{name}}`. One value is substituted as a single
+  value and several values as a tuple, so pass a sequence only when the query
+  uses the parameter with `in`. After `in`, ClickHouse and PostgreSQL
+  connections turn one value into a tuple too; other connections do not.
+  On Trino, this query form was observed to fail for a single value, including
+  a one-item sequence. See
+  [parameter substitution in QL charts](https://yandex.cloud/en/docs/datalens/operations/chart/create-sql-chart#params-in-select).
+- Editor: a key that the chart's own code reads through `Editor.getParams()`
+  in its `Sources` or `Prepare` tab. The `params` tab holds the defaults; a
+  key that is absent there still reaches the code. The value changes the
+  output only when that code uses it, so read `chart.data["params"]`,
+  `chart.data["sources"]`, and `chart.data["prepare"]` before choosing a key.
+  An Editor chart has no `chart.fields`.
+
+Names are case-sensitive. An unused key can leave the output unchanged
+without an error. The SDK validates parameter shapes and operation-specific
+reserved names, not whether a chart reads a key. A successful call does not
+prove that a requested filter took effect.
+
+Without `params`, QL and Editor charts use their own defaults; omitting params
+does not mean the result is unfiltered. A supplied value replaces the default
+of its own key only. In an Editor chart, the meaning of a value, such as an
+empty string or a date interval, is decided by the chart's code.
+
+`DatasetDataFilter` belongs to `get_dataset_data(filters=...)`, which accepts
+explicit field comparisons. It is not a chart runtime parameter and cannot
+be passed in chart `params`; the SDK does not translate between them. See
+[dataset data](dataset-data.md) for that separate query contract.
 
 ## Flow and precedence
 

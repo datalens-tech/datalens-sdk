@@ -297,7 +297,11 @@ class DataNamespace:
         self._operations = operations
 
     def get_chart_data(self, *, chart_id: str, params: RuntimeParams | None = None) -> ChartData:
-        """Execute a saved chart by ID, without a revision selector or automatic pagination."""
+        """Execute a saved chart by ID, without a revision selector or automatic pagination.
+
+        ``params`` rejects revision selectors ``branch``/``revId`` and dashboard
+        controls ``tab``/``state``; other names retain their chart-specific meaning.
+        """
         return self._operations.get_chart_data(ChartDataQuery(chart_id=chart_id, params=params))
 
     def get_dataset_data(

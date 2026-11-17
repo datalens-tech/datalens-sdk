@@ -142,7 +142,15 @@ def test_runtime_parameters_snapshot_values_and_share_screenshot_serialization()
 
 def test_chart_data_accepts_names_without_screenshot_policy() -> None:
     # This is a synthetic name; it is not a documented pagination parameter.
-    params = {"": "value", "_synthetic": ["x"], "revId": "caller-value", "tab": "a", "state": "b"}
+    params = {
+        "": "value",
+        "_synthetic": ["x"],
+        "_branch": "published",
+        "revId_parameter": "caller-value",
+        "branch_name": "a",
+        "tab_name": "b",
+        "state_name": "c",
+    }
     assert ChartDataConverter.request_payload(ChartDataQuery(chart_id="chart-1", params=params)) == {
         "chartId": "chart-1",
         "params": params,
@@ -175,6 +183,40 @@ def test_chart_data_invalid_params_fail_before_http(params: object) -> None:
     with pytest.raises(dl.DataLensValidationError):
         make_client(recorder).data.get_chart_data(chart_id="chart-1", params=cast(dl.RuntimeParams, params))
     assert recorder.requests == []
+
+
+@pytest.mark.parametrize("client_cls", [dl.DataLensClientYC, dl.DataLensClientEnterprise])
+@pytest.mark.parametrize("chart_class", [None, dl.WizardChart, dl.QLChart, dl.EditorChart])
+@pytest.mark.parametrize(
+    ("name", "reason"),
+    [("branch", "revision selection"), ("revId", "revision selection"), ("tab", "dashboard"), ("state", "dashboard")],
+)
+@pytest.mark.parametrize("as_sequence", [False, True])
+def test_chart_data_rejects_control_parameters_before_http_without_mutating_inputs(
+    client_cls: ClientClass,
+    chart_class: type[dl.Chart] | None,
+    name: str,
+    reason: str,
+    as_sequence: bool,
+) -> None:
+    recorder = RecordedTransport([])
+    client = make_client(recorder, client_cls)
+    value: str | list[str] = ["selected"] if as_sequence else "selected"
+    region = ["East", "West"]
+    params: dict[str, str | list[str]] = {"region": region, name: value}
+
+    if chart_class is None:
+        with pytest.raises(dl.DataLensValidationError, match=rf"{name!r}.*{reason}"):
+            client.data.get_chart_data(chart_id="chart-1", params=params)
+    else:
+        chart = chart_class(id="chart-1", raw={"revId": "loaded"}, _operations=client.chart_ops)
+        with pytest.raises(dl.DataLensValidationError, match=rf"{name!r}.*{reason}"):
+            chart.get_chart_data(params=params)
+
+    assert recorder.requests == []
+    assert params == {"region": ["East", "West"], name: ["selected"] if as_sequence else "selected"}
+    assert params[name] is value
+    assert params["region"] is region
 
 
 @pytest.mark.parametrize("chart_id", ["", None, 1, True])

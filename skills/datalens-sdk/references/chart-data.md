@@ -7,6 +7,8 @@ not modify the chart. Availability on a server follows its API contract.
 
 ## Result-handling permission is mandatory
 
+Returned tables contain the user's data.
+
 Never call a data-returning method or inspect its returned values unless the
 user explicitly requested or permitted how the result will be handled. A
 request to build or save code is not permission to run it or read its result.
@@ -41,10 +43,12 @@ Both entrypoints execute **by ID**. A loaded chart's `rev_id`, branch pointers,
 and local content are not sent. Loading a historical revision does not pin the
 subsequent data query to that revision. The API does not specify which
 saved/published revision is selected. There is no `rev_id` or `branch`
-argument, and a parameter named `revId` does not promise revision selection.
-This differs from [screenshots](screenshots.md), whose SDK request includes
-the loaded revision for rendering. `dataset.get_dataset_data()` also executes
-by ID; see [dataset data](dataset-data.md).
+argument. The SDK rejects `revId` and `branch` in `params` before HTTP because
+revision selection is unsupported. The SDK cannot select a draft or historical
+revision for export. Do not claim that returned rows belong to the loaded or
+requested revision. This differs from [screenshots](screenshots.md), whose SDK
+request includes the loaded revision for rendering. `dataset.get_dataset_data()`
+also executes by ID; see [dataset data](dataset-data.md).
 
 `chart.to_file(...)` serializes the chart definition, not its returned data.
 This operation returns tables in memory. It does not provide CSV/XLSX, pandas,
@@ -61,16 +65,25 @@ values as strings yourself; numbers, booleans, `None`, bytes, nested mappings,
 and sequences containing non-string items fail locally.
 
 Only caller parameters are sent under `params`. The SDK does not add page,
-theme, dashboard state, or revision parameters. It does not apply the
-screenshot restrictions on empty names, `revId`, or names beginning with `_`.
-It does not check names against QL or Editor defaults: chart code may read a
-key absent from its declared defaults. A valid parameter shape does not prove
-that the chart reads the key or that a value changes its output.
+theme, dashboard state, or revision parameters. It rejects `revId` and `branch`
+for unsupported revision selection, and rejects `tab` and `state` because
+dashboard tabs and saved selector states are not chart-data parameters. All
+four names fail with `DataLensValidationError` before HTTP; remove them from
+`params`. Empty names and names beginning with `_` remain accepted, unlike
+screenshots. The SDK does not check names against QL or Editor defaults:
+chart code may read a key absent from its declared defaults. A valid parameter
+shape does not prove that the chart reads the key or that a value changes its
+output.
 
 Chart data and screenshots share value types, copying, and serialization.
 `ScreenshotParams` and `ScreenshotParamValue` remain compatible aliases;
 screenshot-specific validation and `queryParams` payloads are unchanged.
-Parameter meanings remain specific to the chart and operation.
+Choose keys using the shared [runtime chart parameter guidance](parameters.md#runtime-chart-parameters):
+Wizard field GUIDs or dataset parameter names, QL parameters read by SQL, and
+Editor keys read by chart code. It covers defaults, unused keys, the QL
+scalar/tuple caveat, and how these params differ from `DatasetDataFilter`.
+The `region` and `year` names in the examples assume that the chart reads
+those exact keys; they are not universal filter names.
 
 There are no separate `columns`, `filters`, `sort`, `limit`, or `offset`
 arguments. The dataset default `limit=500` does not apply. Pagination can be
@@ -115,8 +128,17 @@ adding `Editor.setRawData()` does not turn a Module into a visual chart.
 
 The operation specifies these aggregate response limits: 100,000 rows,
 100,000 cells, 1,000 tables, and 100,000 schema columns, with at most 800 columns
-per table. Exceeding a limit returns HTTP 422. The API does not promise a
-partial response. The SDK neither truncates results nor bypasses the limits.
+per table. All limits apply simultaneously across the response: if every row
+has two cells, the cell limit allows at most 50,000 rows in total. Exceeding a
+limit returns HTTP 422. The API does not promise a partial response. The SDK
+neither truncates results nor bypasses the limits.
+
+The [Yandex Cloud limits page](https://yandex.cloud/ru/docs/datalens/concepts/limits#datalens-chart-data-limits)
+also documents limits for displaying each chart type and API rates of 60
+requests per minute per user and 200 per minute per DataLens instance. Those
+are Yandex Cloud service limits; the per-type display limits are not a
+universal `getChartData` response contract for Enterprise and Yandex Cloud.
+Account for repeated attempts under the retry policy when planning call rates.
 
 Invalid chart arguments raise `DataLensValidationError` before HTTP.
 Malformed responses raise `DTOValidationError` or `InvalidResponseError`.

@@ -21,6 +21,7 @@ def test_skill_routes_chart_table_tasks_and_keeps_exports_separate() -> None:
     assert "chart.get_chart_data()" in skill
     for name in ("dataset-data.md", "screenshots.md"):
         assert "[chart data](chart-data.md)" in (SKILL_DIR / "references" / name).read_text()
+    assert "(parameters.md#runtime-chart-parameters)" in REFERENCE.read_text()
 
 
 def test_chart_data_reference_covers_the_actual_api_and_result_contract() -> None:
@@ -78,7 +79,11 @@ def test_chart_data_reference_requires_result_permission_and_executes_by_id() ->
         "Loading a historical revision does not pin",
         "does not specify which",
         "saved/published revision is selected",
-        "parameter named `revId` does not promise revision selection",
+        "rejects `revId` and `branch`",
+        "rejects `tab` and `state`",
+        "DataLensValidationError` before HTTP",
+        "Do not claim that returned rows belong to the loaded or",
+        "Empty names and names beginning with `_` remain accepted",
         "chart.to_file(...)` serializes the chart definition",
         "not its returned data",
     ):

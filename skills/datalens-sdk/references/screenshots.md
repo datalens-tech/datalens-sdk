@@ -74,37 +74,9 @@ the produced picture, and `height` is `None` when it was not sent.
 by several values. Format numbers and dates as strings yourself. The name a
 value needs depends on the entity.
 
-**Chart.** Nothing has to be declared for the screenshot. The name a value
-needs depends on the chart family:
-
-- Wizard: the guid of a field, whether the field lives in the dataset or was
-  created in the chart itself (take it from `chart.fields` or `dataset.fields`),
-  or the name of a parameter declared in the dataset. A dataset field title
-  works too, but prefer the guid: titles can repeat and change.
-- QL: the name of a `QLParam` the chart declares, listed in `chart.params`;
-  the query reads it as `{{name}}`. One value is substituted as a single
-  value and several values as a tuple, so pass a sequence only when the query
-  uses the parameter with `in`. After `in`, ClickHouse and PostgreSQL
-  connections turn one value into a tuple too; other connections do not, so
-  there such a query fails for one value, also when it is passed as a
-  one-item sequence (observed on Trino). See
-  [parameter substitution in QL charts](https://yandex.cloud/en/docs/datalens/operations/chart/create-sql-chart#params-in-select).
-- Editor: a key that the chart's own code reads through `Editor.getParams()`
-  in its `Sources` or `Prepare` tab. The `params` tab holds the defaults; a
-  key that is absent there still reaches the code. The value changes the
-  picture only when that code uses it, so read `chart.data["params"]`,
-  `chart.data["sources"]`, and `chart.data["prepare"]` before choosing a key.
-  An Editor chart has no `chart.fields`.
-
-Names are case-sensitive. A name the chart does not read leaves the picture
-unchanged and raises no error, and the SDK does not check chart names. Without
-`params` a QL or Editor chart is rendered with its own default values, not
-unfiltered; a passed value replaces the default of its own key only. In an
-Editor chart the meaning of a value, such as an empty string or a date
-interval, is decided by the chart's code.
-
-[parameters.md](parameters.md) describes how each family defines its
-parameters.
+**Chart.** Nothing has to be declared for the screenshot. For the keys each
+chart family reads, defaults, and QL scalar/tuple behavior, see the shared
+[runtime chart parameters](parameters.md#runtime-chart-parameters).
 
 **Dashboard.** Only parameters declared in the dashboard settings are read
 from `params`; DataLens ignores every other name without an error. The SDK

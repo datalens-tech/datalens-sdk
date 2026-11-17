@@ -64,4 +64,15 @@ class ChartDataQuery:
         if not isinstance(self.chart_id, str) or not self.chart_id:
             raise DataLensValidationError("chart_id must be a non-empty string")
         if self.params is not None:
-            object.__setattr__(self, "params", normalize_params(self.params, context="Chart data"))
+            params = normalize_params(self.params, context="Chart data")
+            for key in params:
+                if key in {"branch", "revId"}:
+                    raise DataLensValidationError(
+                        f"Chart data parameter {key!r} is a revision selector; "
+                        "get_chart_data does not support revision selection"
+                    )
+                if key in {"tab", "state"}:
+                    raise DataLensValidationError(
+                        f"Chart data parameter {key!r} is a dashboard control and cannot be passed in params"
+                    )
+            object.__setattr__(self, "params", params)

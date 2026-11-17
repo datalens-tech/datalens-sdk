@@ -42,14 +42,20 @@ def test_screenshot_reference_documents_the_public_surface() -> None:
         "reserves some names for the page itself",
         "is linked to that selector",
         "explicit alias",
-        "the guid of a field",
-        "the name of a parameter declared in the dataset",
+        "(parameters.md#runtime-chart-parameters)",
         "global_params",
         "BadRequestError",
         "DataLensTransportError",
         "https://yandex.cloud/en/docs/datalens/security/embedded-objects",
     ):
         assert fragment in reference
+    parameters = (SKILL_DIR / "references" / "parameters.md").read_text()
+    for fragment in (
+        "## Runtime chart parameters",
+        "the guid of a field",
+        "the name of a parameter declared in the dataset",
+    ):
+        assert fragment in parameters
     for method in (dl.Dashboard.screenshot, dl.Chart.screenshot):
         for argument in inspect.signature(method).parameters:
             if argument != "self":
