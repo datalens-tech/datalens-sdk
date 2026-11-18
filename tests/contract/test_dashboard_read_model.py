@@ -191,11 +191,11 @@ class _FakeOperations:
 
     @property
     def chart_operations(self) -> object:
-        raise NotImplementedError
+        return None
 
     @property
     def dataset_operations(self) -> object:
-        raise NotImplementedError
+        return None
 
     @property
     def ui_base_url(self) -> str | None:
