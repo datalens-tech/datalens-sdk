@@ -130,6 +130,11 @@ _ENTRY_STATE_CREATE_ROUTE = "/rpc/createEntryState"
 _ENTRY_STATE_GET_ROOTS = ("GetStateArgs", "GetStateResult")
 _ENTRY_STATE_CREATE_ROOTS = ("CreateStateArgs", "CreateStateResult")
 _ENTRY_STATE_OPAQUE_DATA_SCHEMAS = ("CreateStateArgs", "GetStateResult")
+_DASHBOARD_STATE_SCHEMA = "DashboardState"
+_DASHBOARD_STATE_META_KEY = "__meta__"
+_DASHBOARD_STATE_META_SCHEMA = "DashboardStateMeta"
+_DASHBOARD_STATE_WIDGET_SCHEMA = "DashboardStateWidget"
+_DASHBOARD_STATE_ROOTS = (_DASHBOARD_STATE_META_SCHEMA, _DASHBOARD_STATE_WIDGET_SCHEMA)
 _ENTRY_MOVE_ROUTE = "/rpc/moveFolderEntry"
 _ENTRY_MOVE_ROOTS = ("MoveEntryArgs", "MoveEntryResult", "MoveEntryResultEntry")
 _SCHEMA_REF_PREFIX = "#/components/schemas/"
@@ -1753,7 +1758,7 @@ def build_entry_revisions_contract_meta(spec: Mapping[str, object]) -> EntryRevi
     }
 
 
-def opaque_entry_state_data_schema(schema: JsonValue, *, schema_name: str) -> JsonValue:
+def _opaque_entry_state_data_schema(schema: JsonValue, *, schema_name: str) -> JsonValue:
     if not isinstance(schema, dict):
         raise ValueError(f"entryState schema {schema_name!r} must be an object")
     properties = schema.get("properties")
@@ -1769,10 +1774,53 @@ def opaque_entry_state_data_schema(schema: JsonValue, *, schema_name: str) -> Js
     return {**schema, "properties": {**properties, "data": opaque}}
 
 
-def build_entry_state_contract_meta(spec: Mapping[str, object]) -> EntryStateContractMeta | None:
-    """Build the getEntryState/createEntryState contract with the state payload kept opaque.
+def _open_schema_extras(value: JsonValue) -> JsonValue:
+    """Spell ``additionalProperties: {}`` (any value) as ``true`` so open objects keep their named fields."""
+    if isinstance(value, dict):
+        return {
+            key: True if key == "additionalProperties" and child == {} else _open_schema_extras(child)
+            for key, child in value.items()
+        }
+    if isinstance(value, list):
+        return [_open_schema_extras(_) for _ in value]
+    return value
 
-    The dashboard state semantics live in the domain layer, so the ``data`` field is emitted as a plain JSON object.
+
+def _dashboard_state_components(schemas: Mapping[str, dict[str, object]]) -> dict[str, JsonValue]:
+    """Split ``DashboardState`` into its ``__meta__`` object and the per-widget entry schema.
+
+    The root mixes the reserved ``__meta__`` key with widget ids as free-form keys; the converter dispatches the
+    keys, and each part is validated by a generated model.
+    """
+    schema = schemas.get(_DASHBOARD_STATE_SCHEMA)
+    if schema is None:
+        raise ValueError(f"entryState schema graph references missing component {_DASHBOARD_STATE_SCHEMA!r}")
+    properties = schema.get("properties")
+    meta = properties.get(_DASHBOARD_STATE_META_KEY) if isinstance(properties, Mapping) else None
+    widget = schema.get("additionalProperties")
+    if (
+        schema.get("type") != "object"
+        or not isinstance(properties, Mapping)
+        or set(properties) != {_DASHBOARD_STATE_META_KEY}
+        or not isinstance(meta, Mapping)
+        or not isinstance(widget, Mapping)
+        or schema.get("required") != [_DASHBOARD_STATE_META_KEY]
+    ):
+        raise ValueError(
+            f"{_DASHBOARD_STATE_SCHEMA} must be an object with a required {_DASHBOARD_STATE_META_KEY!r} property "
+            "and widget entries in additionalProperties"
+        )
+    return {
+        _DASHBOARD_STATE_META_SCHEMA: _open_schema_extras(_normalize_wizard_schema(meta)),
+        _DASHBOARD_STATE_WIDGET_SCHEMA: _open_schema_extras(_normalize_wizard_schema(widget)),
+    }
+
+
+def build_entry_state_contract_meta(spec: Mapping[str, object]) -> EntryStateContractMeta | None:
+    """Build the getEntryState/createEntryState contract.
+
+    The RPC ``data`` field stays an opaque object (any entry scope may store a state); the dashboard format comes
+    from the ``DashboardState`` component as ``DashboardStateMeta`` and ``DashboardStateWidget`` roots.
     """
     paths = _string_object_dict(spec.get("paths"), context="paths")
     routes = {_ENTRY_STATE_GET_ROUTE: _ENTRY_STATE_GET_ROOTS, _ENTRY_STATE_CREATE_ROUTE: _ENTRY_STATE_CREATE_ROOTS}
@@ -1792,7 +1840,8 @@ def build_entry_state_contract_meta(spec: Mapping[str, object]) -> EntryStateCon
             raise ValueError(f"{route} must use {expected_roots!r}, got {(request_schema, result_schema)!r}")
 
     schemas = _schemas(spec)
-    roots = (*_ENTRY_STATE_GET_ROOTS, *_ENTRY_STATE_CREATE_ROOTS)
+    derived = _dashboard_state_components(schemas)
+    roots = (*_ENTRY_STATE_GET_ROOTS, *_ENTRY_STATE_CREATE_ROOTS, *_DASHBOARD_STATE_ROOTS)
     reached: set[str] = set()
     queue = list(roots)
     normalized_schemas: dict[str, JsonValue] = {}
@@ -1800,12 +1849,15 @@ def build_entry_state_contract_meta(spec: Mapping[str, object]) -> EntryStateCon
         name = queue.pop(0)
         if name in reached:
             continue
-        schema = schemas.get(name)
-        if schema is None:
-            raise ValueError(f"entryState schema graph references missing component {name!r}")
-        normalized = _normalize_wizard_schema(schema)
+        if name in derived:
+            normalized = derived[name]
+        else:
+            schema = schemas.get(name)
+            if schema is None:
+                raise ValueError(f"entryState schema graph references missing component {name!r}")
+            normalized = _open_schema_extras(_normalize_wizard_schema(schema))
         if name in _ENTRY_STATE_OPAQUE_DATA_SCHEMAS:
-            normalized = opaque_entry_state_data_schema(normalized, schema_name=name)
+            normalized = _opaque_entry_state_data_schema(normalized, schema_name=name)
         _audit_pydantic_schema_features(
             normalized,
             pointer=f"/schemas/{_json_pointer_token(name)}",
@@ -5212,7 +5264,7 @@ def _emit_entry_revisions_dto(metadata: Metadata) -> str:
     return f"\n{request_models}\n{response_models}"
 
 
-def emit_entry_state_dto(metadata: Metadata) -> str:
+def _emit_entry_state_dto(metadata: Metadata) -> str:
     contract = metadata.get("entry_state")
     if contract is None:
         return ""
@@ -5222,7 +5274,9 @@ def emit_entry_state_dto(metadata: Metadata) -> str:
         contract="entryState",
         model_name_overrides={(name,): f"{name}DTO" for name in ("GetStateArgs", "CreateStateArgs")},
         payload_methods="roots",
-    ).emit(("GetStateArgs", "CreateStateArgs"))
+        # The dashboard contract already emits this alias; spell it inline to keep one definition.
+        open_schema_refs={"DashStringDefaultValueV2": "list[str] | str"},
+    ).emit(("GetStateArgs", "CreateStateArgs", *_DASHBOARD_STATE_ROOTS))
     response_models = _PydanticSchemaEmitter(
         contract["schemas"],
         read=True,
@@ -5260,7 +5314,7 @@ def emit_dto(metadata: Metadata) -> str:
     chart_data_dto_block = _emit_chart_data_dto(metadata)
     entry_move_result_dto_block = _emit_entry_move_result_dto(metadata)
     entry_revisions_dto_block = _emit_entry_revisions_dto(metadata)
-    entry_state_dto_block = emit_entry_state_dto(metadata)
+    entry_state_dto_block = _emit_entry_state_dto(metadata)
     html_page_dto_block = _emit_html_page_dto(metadata)
     screenshot_dto_block = _emit_screenshot_dto(metadata)
     navigation_dto_block = _emit_navigation_dto()

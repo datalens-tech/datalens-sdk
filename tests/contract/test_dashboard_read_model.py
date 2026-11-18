@@ -183,10 +183,10 @@ class _FakeOperations:
     def get_screenshot_url(self, request: object) -> str:
         raise NotImplementedError
 
-    def get_entry_state(self, entry_id: str, hash: str) -> object:
+    def get_dashboard_state(self, entry_id: str, hash: str) -> object:
         raise NotImplementedError
 
-    def create_entry_state(self, entry_id: str, data: object) -> str:
+    def create_dashboard_state(self, entry_id: str, data: object) -> object:
         raise NotImplementedError
 
     @property

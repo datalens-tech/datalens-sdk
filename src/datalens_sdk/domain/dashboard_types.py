@@ -173,17 +173,18 @@ def _signed_offset(value: str) -> str:
     return value if value.startswith(("+", "-")) else f"+{value}"
 
 
-RELATIVE_DATE_OFFSET_RE = re.compile(r"[+-]?\d+(?:ms|[yQMwdhms])\Z")
-RELATIVE_DATE_UNIT_RE = re.compile(r"[A-Za-z]+\Z")
-RELATIVE_DATE_PREFIX = "__relative_"
+_RELATIVE_DATE_OFFSET_RE = re.compile(r"[+-]?\d+(?:ms|[yQMwdhms])\Z")
+_RELATIVE_DATE_UNITS = frozenset("yQMwdhms")
+_RELATIVE_DATE_PREFIX = "__relative_"
 
 
 @dataclass(frozen=True, slots=True)
 class RelativeDate:
-    """A relative date on the wire: ``__relative_<offset>[_<cast>_<unit>]``.
+    """A relative date on the wire: ``__relative_<offset>[_<cast><unit>]``, as the DataLens UI parses it.
 
     ``offset`` is ``[+-]N`` with unit y/Q/M/w/d/h/m/s/ms; ``cast`` rounds the result to the start (``"s"``) or the
-    end (``"e"``) of ``unit`` (for example ``RelativeDate("-7d", cast="s", unit="day")``).
+    end (``"e"``) of ``unit``, one of y/Q/M/w/d/h/m/s. ``RelativeDate("-7d", cast="s", unit="d")`` is
+    ``__relative_-7d_sd``: seven days ago, from the start of that day.
     """
 
     offset: str
@@ -191,7 +192,7 @@ class RelativeDate:
     unit: str | None = None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.offset, str) or not RELATIVE_DATE_OFFSET_RE.fullmatch(self.offset):
+        if not isinstance(self.offset, str) or not _RELATIVE_DATE_OFFSET_RE.fullmatch(self.offset):
             raise DataLensValidationError(
                 f"offset must look like '-7d'/'+0d' (units y/Q/M/w/d/h/m/s/ms), got {self.offset!r}"
             )
@@ -200,12 +201,12 @@ class RelativeDate:
             raise DataLensValidationError("cast and unit must be set together")
         if self.cast is not None and self.cast not in ("s", "e"):
             raise DataLensValidationError(f"cast must be 's' or 'e', got {self.cast!r}")
-        if self.unit is not None and (not isinstance(self.unit, str) or not RELATIVE_DATE_UNIT_RE.fullmatch(self.unit)):
-            raise DataLensValidationError(f"unit must be a word like 'day', got {self.unit!r}")
+        if self.unit is not None and self.unit not in _RELATIVE_DATE_UNITS:
+            raise DataLensValidationError(f"unit must be one of y/Q/M/w/d/h/m/s, got {self.unit!r}")
 
     def to_wire(self) -> str:
-        suffix = "" if self.cast is None else f"_{self.cast}_{self.unit}"
-        return f"{RELATIVE_DATE_PREFIX}{self.offset}{suffix}"
+        suffix = "" if self.cast is None else f"_{self.cast}{self.unit}"
+        return f"{_RELATIVE_DATE_PREFIX}{self.offset}{suffix}"
 
 
 def _validated_interval_edge(value: str | datetime.date | RelativeDate, *, field: str) -> str | RelativeDate:

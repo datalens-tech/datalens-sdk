@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 import json
-from typing import cast
+from typing import Any, cast
 
 import httpx
 import pytest
 
 import datalens_sdk as dl
+from datalens_sdk.converter.dashboard_state import DashboardStateConverter
 from datalens_sdk.domain.dashboard_state import DashboardState
+
+
+def _from_json(dashboard: dl.Dashboard, data: Mapping[str, object] | None, **kwargs: Any) -> DashboardState:
+    return DashboardState.from_data(dashboard, DashboardStateConverter.to_domain(data), raw=data or {}, **kwargs)
+
 
 WIRE_TYPES = {"wiz1": "d3_wizard_node", "ql1": "d3_ql_node", "ed1": "advanced-chart_node", "ed2": "advanced-chart_node"}
 DATASET_FIELDS = {
@@ -78,7 +85,11 @@ class ChartsTransport:
         self.requests.append((path, body))
         if path == "/rpc/getEntries":
             ids = cast(list[str], body["ids"])
-            entries = [{"entryId": _, "scope": "widget", "type": WIRE_TYPES[_], "key": f"/Charts/{_}"} for _ in ids]
+            entries = [
+                {"entryId": _, "scope": "widget", "type": WIRE_TYPES[_], "key": f"/Charts/{_}"}
+                for _ in ids
+                if _ in WIRE_TYPES
+            ]
             return httpx.Response(200, json={"entries": entries})
         if path == "/rpc/getWizardChart":
             return httpx.Response(200, json=_wizard(cast(str, body["chartId"])))
@@ -118,6 +129,7 @@ def _dashboard_data() -> dict[str, object]:
         _selector("C", {"datasetFieldId": "guid-region", "datasetId": "ds1"}, "dataset", {"guid-region": ""}),
         _selector("M", {"fieldName": "Region"}, "manual", {"Region": ""}),
         _selector("Q", {"fieldName": "interval_from"}, "manual", {"interval_from": ""}),
+        _selector("QI", {"fieldName": "interval"}, "manual", {"interval": ""}),
         _selector("S2", {"datasetFieldId": "guid-region", "datasetId": "ds2"}, "dataset", {"guid-region": ""}),
         _widget("WZ", "wiz1"),
         _widget("WZ2", "wiz1"),
@@ -136,7 +148,7 @@ def _state(queue_ids: list[str], params: dict[str, dict[str, object]]) -> tuple[
     dashboard = dl.Dashboard(id="dash", data=_dashboard_data(), rev_id="rev", _operations=client._dashboard_service)
     data: dict[str, object] = {item_id: {"params": params[item_id]} for item_id in queue_ids}
     data["__meta__"] = {"queue": [{"id": _} for _ in queue_ids], "version": 2}
-    return DashboardState.from_data(dashboard, data, tab="T"), transport
+    return _from_json(dashboard, data, tab="T"), transport
 
 
 def _summary(state: DashboardState, **kwargs: object) -> list[tuple[str, str | None, tuple[str, ...], str, str | None]]:
@@ -150,7 +162,7 @@ def test_dataset_selector_matches_wizard_by_guid_across_datasets_and_selectors_b
     state, transport = _state(["C"], {"C": {"guid-region": ["EU"]}})
 
     assert _summary(state) == [
-        ("C", "S2", ("guid-region",), "exact", "guid"),
+        ("C", "S2", ("guid-region",), "exact", None),
         ("C", "WZ", ("guid-region",), "exact", "guid"),
         ("C", "WZ2", ("guid-region",), "exact", "guid"),
         ("C", "ED", ("guid-region",), "declared", None),
@@ -165,12 +177,35 @@ def test_manual_selector_matches_wizard_field_by_title() -> None:
     assert ("M", "WZ", ("Region",), "exact", "title") in _summary(state)
 
 
-def test_ql_interval_parameter_matches_by_from_name() -> None:
+def test_ql_interval_parameter_is_exact_and_its_bounds_are_declared() -> None:
+    state, _ = _state(["QI"], {"QI": {"interval": "__interval_2026-01-01_2026-01-31"}})
+
+    assert ("QI", "QL", ("interval",), "exact", None) in _summary(state)
+
+
+def test_chart_missing_from_get_entries_is_unknown_and_not_read() -> None:
+    data = _dashboard_data()
+    cast(list[object], cast(list[dict[str, object]], data["tabs"])[0]["items"]).append(_widget("GONE", "missing1"))
+    transport = ChartsTransport()
+    client = dl.DataLensClientYC(
+        auth=None, base_url="https://datalens.test", transport=httpx.MockTransport(transport.handler)
+    )
+    dashboard = dl.Dashboard(id="dash", data=data, rev_id="rev", _operations=client._dashboard_service)
+    raw = {"Q": {"params": {"interval_from": "x"}}, "__meta__": {"queue": [{"id": "Q"}], "version": 2}}
+    state = _from_json(dashboard, raw, tab="T")
+
+    summary = _summary(state, items=["GONE"])
+
+    assert summary == [("Q", "GONE", ("interval_from",), "unknown", None)]
+    assert transport.paths() == ["/rpc/getEntries"]
+
+
+def test_ql_interval_bound_is_declared_not_exact() -> None:
     state, _ = _state(["Q"], {"Q": {"interval_from": "__relative_-7d"}})
 
     summary = _summary(state)
 
-    assert ("Q", "QL", ("interval_from",), "exact", None) in summary
+    assert ("Q", "QL", ("interval_from",), "declared", None) in summary
     assert not any(receiver == "WZ" for _, receiver, *_rest in summary)
 
 
@@ -207,7 +242,7 @@ def test_each_chart_and_dataset_is_read_once() -> None:
 def test_items_limit_loaded_charts() -> None:
     state, transport = _state(["Q"], {"Q": {"interval_from": "x"}})
 
-    assert _summary(state, items=["QL"]) == [("Q", "QL", ("interval_from",), "exact", None)]
+    assert _summary(state, items=["QL"]) == [("Q", "QL", ("interval_from",), "declared", None)]
     assert transport.paths() == ["/rpc/getEntries", "/rpc/getQLChart"]
 
 
@@ -223,7 +258,7 @@ def test_without_resolve_charts_no_http_is_made() -> None:
 def test_resolve_charts_requires_bound_dashboard() -> None:
     dashboard = dl.Dashboard(id="dash", data=_dashboard_data(), rev_id="rev")
     data = {"C": {"params": {"guid-region": ["EU"]}}, "__meta__": {"queue": [{"id": "C"}], "version": 2}}
-    state = DashboardState.from_data(dashboard, data, tab="T")
+    state = _from_json(dashboard, data, tab="T")
 
     with pytest.raises(dl.DataLensConfigurationError, match="not bound"):
         state.effects(resolve_charts=True)

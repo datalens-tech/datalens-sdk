@@ -64,11 +64,11 @@ def test_absolute_interval_round_trips() -> None:
 
 
 def test_relative_interval_round_trips() -> None:
-    raw = "__interval___relative_-7d_s_day___relative_+0d_e_day"
+    raw = "__interval___relative_-7d_sd___relative_+0d_ed"
 
     decoded = decode_param_value("dt", raw)
 
-    interval = DateInterval(RelativeDate("-7d", cast="s", unit="day"), RelativeDate("+0d", cast="e", unit="day"))
+    interval = DateInterval(RelativeDate("-7d", cast="s", unit="d"), RelativeDate("+0d", cast="e", unit="d"))
     assert decoded.values == (interval,)
     assert encode_param_value(interval, None, multiselect=False, is_range=True) == raw
 
@@ -94,14 +94,22 @@ def test_interval_encoding_accepts_dates_and_legacy_relative_interval() -> None:
 
 
 def test_single_relative_date_round_trips() -> None:
-    decoded = decode_param_value("dt", "__relative_-7d_s_day", "GTE")
+    raw = encode_param_value(
+        RelativeDate("-7d", cast="s", unit="d"), None, multiselect=False, is_range=False, default_operation="GTE"
+    )
+    decoded = decode_param_value("dt", raw, "GTE")
 
+    assert raw == "__gte___relative_-7d_sd"
     assert decoded.operation == "GTE"
-    assert decoded.values == (RelativeDate("-7d", cast="s", unit="day"),)
-    assert encode_param_value(decoded.values[0], None, multiselect=False, is_range=False) == "__relative_-7d_s_day"
+    assert decoded.values == (RelativeDate("-7d", cast="s", unit="d"),)
 
 
-@pytest.mark.parametrize("raw", ["__isnull", "__isnull_", "__ISNULL_"])
+def test_unprefixed_relative_date_is_in_like_the_ui() -> None:
+    # resolveOperation reads "__relative" as an unknown operation and falls back to IN without the selector's one.
+    assert decode_param_value("dt", "__relative_-7d_sd", "GTE").operation == "IN"
+
+
+@pytest.mark.parametrize("raw", ["__isnull_", "__ISNULL_"])
 def test_isnull_has_no_values(raw: str) -> None:
     decoded = decode_param_value("city", raw)
 
@@ -119,11 +127,14 @@ def test_values_without_prefix_use_default_operation(
     assert decode_param_value("p", raw, default).operation == operation
 
 
-@pytest.mark.parametrize("raw", ["__foo_bar", "__interval_broken", "__relative_-7x", "plain_value"])
-def test_unknown_prefixes_stay_plain_strings(raw: str) -> None:
+@pytest.mark.parametrize(
+    ("raw", "operation"),
+    [("__foo_bar", "IN"), ("__interval_broken", "BETWEEN"), ("__relative_-7x", "IN"), ("plain_value", "IN")],
+)
+def test_unknown_prefixes_stay_plain_strings(raw: str, operation: str) -> None:
     decoded = decode_param_value("p", raw)
 
-    assert decoded.operation == "IN"
+    assert decoded.operation == operation
     assert decoded.values == (raw,)
 
 
@@ -177,7 +188,7 @@ def test_valueless_operation_rejects_values() -> None:
         ({"offset": "7x"}, "offset must look like"),
         ({"offset": "-7d", "cast": "s"}, "set together"),
         ({"offset": "-7d", "cast": "x", "unit": "day"}, "cast must be"),
-        ({"offset": "-7d", "cast": "s", "unit": "d-1"}, "unit must be"),
+        ({"offset": "-7d", "cast": "s", "unit": "day"}, "unit must be one of"),
     ],
 )
 def test_relative_date_validation(kwargs: dict[str, str], match: str) -> None:
@@ -191,12 +202,12 @@ def test_relative_date_normalizes_sign_and_supports_time_units() -> None:
 
 
 def test_selector_defaults_encode_relative_date_edges_and_exclusive_end() -> None:
-    interval = DateInterval("2024-01-01", RelativeDate("-0d", cast="e", unit="day"))
+    interval = DateInterval("2024-01-01", RelativeDate("-0d", cast="e", unit="d"))
     exclusive = DateInterval("2024-01-01", "2024-01-31", inclusive_end=False)
 
     assert (
         encode_selector_default(interval, field_type="genericdatetime", operation=None)
-        == "__interval_2024-01-01T00:00:00.000Z___relative_-0d_e_day"
+        == "__interval_2024-01-01T00:00:00.000Z___relative_-0d_ed"
     )
     assert (
         encode_selector_default(exclusive, field_type="genericdatetime", operation=None)
@@ -208,3 +219,41 @@ def test_selector_defaults_encode_relative_date_edges_and_exclusive_end() -> Non
 def test_date_interval_rejects_non_boolean_inclusive_end() -> None:
     with pytest.raises(dl.DataLensValidationError, match="inclusive_end"):
         DateInterval("2024-01-01", "2024-01-02", inclusive_end="yes")  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("operation", "default_operation", "expected"),
+    [
+        (None, "NE", "__ne_EU"),
+        ("IN", "NE", "__in_EU"),
+        (None, "IN", "__in_EU"),
+        ("IN", None, "EU"),
+        ("EQ", None, "__eq_EU"),
+    ],
+)
+def test_selector_operation_is_written_like_the_ui(
+    operation: ParamOperation | None, default_operation: ParamOperation | None, expected: str
+) -> None:
+    raw = encode_param_value("EU", operation, multiselect=False, is_range=False, default_operation=default_operation)
+
+    assert raw == expected
+    assert decode_param_value("region", raw, default_operation).operation == (operation or default_operation or "IN")
+
+
+def test_empty_values_are_not_prefixed() -> None:
+    assert encode_param_value(["", "EU"], None, multiselect=True, is_range=False, default_operation="NE") == [
+        "",
+        "__ne_EU",
+    ]
+
+
+@pytest.mark.parametrize(("raw", "operation"), [("__foo_bar", "IN"), ("__isnull", "NE"), ("__ne_", "IN")])
+def test_unrecognized_prefixes_follow_the_ui_fallback(raw: str, operation: str) -> None:
+    decoded = decode_param_value("p", raw, "NE")
+
+    assert decoded.operation == operation
+    assert decoded.values == (raw,)
+
+
+def test_interval_without_prefix_is_between_even_with_a_selector_operation() -> None:
+    assert decode_param_value("dt", "__interval_2026-01-01_2026-01-02", "EQ").operation == "BETWEEN"

@@ -262,7 +262,7 @@ chosen chart tabs for one dashboard tab. Read it, change it, and get a new link:
 
 ```python
 dashboard = client.get.dashboard(by_id="<dashboard-id>")
-state = dashboard.get_state("<hash>")
+state = dashboard.get_state("<hash>", tab="<tab id from ?tab=>")
 for selection in state.selections:
     print(selection.item_id, [(_.param, _.operation, _.values) for _ in selection.values])
 

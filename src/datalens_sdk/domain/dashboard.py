@@ -603,10 +603,11 @@ class Dashboard:
             raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
             raise DataLensValidationError("Cannot read a state of a dashboard without an id")
-        record = self._operations.get_entry_state(self.id, hash)
+        record = self._operations.get_dashboard_state(self.id, hash)
         return DashboardState.from_data(
             self,
             record.data,
+            raw=record.raw,
             tab=tab,
             hash=record.hash,
             created_at=record.created_at,

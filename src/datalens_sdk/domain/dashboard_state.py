@@ -1,8 +1,8 @@
-"""Read model of a saved dashboard state (``getEntryState`` data).
+"""Read model of a saved dashboard state, checked against the loaded dashboard revision.
 
-A v2 state is ``{item_id: {"params": ...}, "__meta__": {"version": 2, "queue": [...]}}``. Group selectors nest params
-under the member id (``params[groupItemId]``); queue ``tabId`` is a tab inside a chart widget, not a dashboard tab.
-The queue order is the order in which the UI applies the selections.
+The state format is the ``DashboardState`` schema (see :class:`~datalens_sdk.domain.entry_state.DashboardStateData`).
+Only sources listed in ``__meta__.queue`` contribute parameters, in queue order. A chart source applies only while
+its queue ``tabId`` is the active tab of the widget (``state.tabId``, else ``isDefault``, else the first tab).
 """
 
 from __future__ import annotations
@@ -14,22 +14,18 @@ from typing import TYPE_CHECKING, Literal, cast
 from urllib.parse import urlencode
 import warnings
 
-from datalens_sdk.domain.dashboard_state_effects import StateEffect, params_for, receivers, resolve_usage
-from datalens_sdk.domain.dashboard_state_items import (
-    find_item,
-    optional_str,
-    tab_item_ids,
-    widget_tab_ids,
-    widget_tab_params,
+from datalens_sdk.domain.dashboard_state_effects import StateEffect, _params_for, _receivers, _resolve_usage
+from datalens_sdk.domain.dashboard_state_support import (
+    _active_inner_tab_id,
+    _find_item,
+    _has_inner_tabs,
+    _inner_tab_ids,
+    _inner_tab_params,
+    _tab_item_ids,
 )
 from datalens_sdk.domain.dashboard_types import ValidationIssue
-from datalens_sdk.domain.param_values import (
-    ACTION_PARAM_PREFIX,
-    PARAM_OPERATIONS,
-    ParamOperation,
-    StateValue,
-    decode_param_value,
-)
+from datalens_sdk.domain.param_values import _PARAM_OPERATIONS as _PARAM_OPERATIONS
+from datalens_sdk.domain.param_values import ParamOperation, StateValue, decode_param_value
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 if TYPE_CHECKING:
@@ -41,21 +37,21 @@ if TYPE_CHECKING:
         DashboardTabView,
     )
     from datalens_sdk.domain.dashboard_state_builder import DashboardStateBuilder
+    from datalens_sdk.domain.entry_state import DashboardStateData, StateWireValue
     from datalens_sdk.domain.runtime_params import NormalizedRuntimeParams
 
-STATE_META_KEY = "__meta__"
-STATE_VERSION = 2
-
 StateSelectionKind = Literal["selector", "group_selector", "chart", "unknown"]
+
+_UNBOUND = "Object is not bound to client operations. Use a client namespace."
 
 
 @dataclass(frozen=True, slots=True)
 class StateSelection:
-    """One source in the state queue: a selector, a group selector member or a chart with action params.
+    """One queued source: a selector, a selector of a group, or a chart with action params.
 
-    ``item`` is the matching view of the loaded revision (``ControlView`` for a standalone selector,
-    ``ControlMemberView`` for a group member, ``DashboardItemView`` for a chart) and ``None`` for an orphan whose
-    item, group member or widget tab is missing from that revision.
+    ``item`` is the matching view of the loaded revision (``ControlView`` for a selector, ``ControlMemberView`` for
+    a selector of a group, ``DashboardItemView`` for a chart) and ``None`` for an orphan. ``applied`` is ``False``
+    when DashKit skips the source: an orphan, or a chart tab that is not the active tab of its widget.
     """
 
     item_id: str
@@ -64,31 +60,32 @@ class StateSelection:
     kind: StateSelectionKind
     item: ControlView | ControlMemberView | DashboardItemView | None
     values: tuple[StateValue, ...]
+    applied: bool = True
 
     @property
     def is_orphan(self) -> bool:
         return self.item is None
 
     @property
-    def params(self) -> dict[str, str | list[str]]:
-        """The wire params of this source, as stored in the state."""
-        return {value.param: value.raw if isinstance(value.raw, str) else list(value.raw) for value in self.values}
+    def params(self) -> dict[str, str | tuple[str, ...]]:
+        """The params of this source, as stored in the state."""
+        return {value.param: value.raw for value in self.values}
 
 
 @dataclass(frozen=True, slots=True)
-class QueueEntry:
+class _QueueEntry:
     item_id: str
     group_item_id: str | None
     widget_tab_id: str | None
-    params: Mapping[str, object]
+    params: Mapping[str, StateWireValue]
 
 
 @dataclass(frozen=True, slots=True)
 class DashboardState:
     """Immutable snapshot of a dashboard state applied to one dashboard tab.
 
-    ``selections`` follow the queue order; ``issues`` describe what does not match the loaded revision (the state
-    itself is not bound to a revision). ``raw`` keeps the stored JSON verbatim.
+    ``selections`` follow the queue; ``issues`` describe what does not match the loaded revision (the state itself
+    is not bound to a revision). ``data`` is the typed state and ``raw`` the JSON it was read from or sent as.
     """
 
     hash: str | None
@@ -99,73 +96,70 @@ class DashboardState:
     created_at: datetime | None
     selections: tuple[StateSelection, ...]
     issues: tuple[ValidationIssue, ...]
-    raw: Mapping[str, object]
+    data: DashboardStateData
+    raw: Mapping[str, object] = field(default_factory=dict)
     _dashboard: Dashboard | None = field(default=None, repr=False, compare=False)
 
     @classmethod
     def from_data(
         cls,
         dashboard: Dashboard,
-        data: Mapping[str, object] | None,
+        data: DashboardStateData,
         *,
+        raw: Mapping[str, object] | None = None,
         tab: str | DashboardTabView | None = None,
         hash: str | None = None,
         created_at: datetime | None = None,
         strict: bool = False,
     ) -> DashboardState:
-        """Parse stored state data against the loaded dashboard revision.
+        """Check typed state data against the loaded dashboard revision.
 
         Without ``tab`` the first tab that contains every queued item is used. Problems are collected into
         ``issues`` and reported with one warning; ``strict=True`` raises :class:`DataLensValidationError` instead.
         """
-        raw: Mapping[str, object] = data if data is not None else {}
-        if not isinstance(raw, Mapping):
-            raise DataLensValidationError(f"Dashboard state data must be an object, got {type(raw).__name__}")
-        meta = raw.get(STATE_META_KEY)
-        version: Literal[1, 2] = 2 if isinstance(meta, Mapping) or not has_legacy_params(raw) else 1
-        entries = queue_entries(raw) if version == 2 else legacy_entries(raw)
-        resolved_tab = resolve_state_tab(dashboard, tab, [entry.item_id for entry in entries])
+        entries = _state_entries(data)
+        resolved_tab = _resolve_state_tab(dashboard, tab, [entry.item_id for entry in entries])
         tab_id = resolved_tab.id or ""
         issues: list[ValidationIssue] = []
-        if version == 1:
+        if data.version == 1:
             issues.append(
                 ValidationIssue(
                     "legacy_state_version",
                     tab_id,
                     None,
-                    "State has no __meta__ queue (version 1); selections follow the stored key order",
+                    "State has no __meta__ queue (version 1); every widget keeps only its own stored params",
                 )
             )
-        selections = tuple(resolve_selection(resolved_tab, entry, issues) for entry in entries)
+        selections = tuple(_resolve_selection(resolved_tab, entry, data, issues) for entry in entries)
         state = cls(
             hash=hash,
             dashboard_id=dashboard.id,
             tab_id=tab_id,
             rev_id=dashboard.rev_id,
-            version=version,
+            version=data.version,
             created_at=created_at,
             selections=selections,
             issues=tuple(issues),
-            raw=raw,
+            data=data,
+            raw=raw or {},
             _dashboard=dashboard,
         )
-        report_issues(state, strict=strict)
+        _report_issues(state, strict=strict)
         return state
 
     def edit(self) -> DashboardStateBuilder:
-        """Start a builder with a copy of this queue on the same tab; ``create()`` stores a new state."""
-        builder = self.dashboard.new_state(self.tab_id)
-        for selection in self.selections:
-            builder.add(selection)
-        return builder
+        """Start a builder with a copy of this state on the same tab; ``create()`` stores a new state."""
+        return self.dashboard.new_state(self.tab_id)._load(self)
 
     def params_for(self, item: str | ControlView | ControlMemberView | DashboardItemView) -> NormalizedRuntimeParams:
         """Parameters the item receives under this state, ready for ``get_chart_data(params=...)``.
 
-        Applied in order: dashboard ``globalParams``, defaults of the namespace, then the queue; connections with
-        ``kind="ignore"``, ``aliases`` and the ``_ap_`` prefix of foreign action parameters are honoured.
+        Follows DashKit: the active chart tab params < dashboard ``globalParams`` < selector defaults (the first
+        selector in the dashboard wins) < the queue (later sources win). Sources and receivers meet within one
+        ``namespace``, ``kind="ignore"`` connections between active endpoints stop delivery, ``aliases`` copy
+        values, and a foreign ``_ap_<guid>`` arrives as ``<guid>``. Pass a group selector by its member id.
         """
-        return params_for(self, item)
+        return _params_for(self, item)
 
     def effects(
         self,
@@ -173,21 +167,22 @@ class DashboardState:
         resolve_charts: bool = False,
         items: Sequence[str | ControlView | ControlMemberView | DashboardItemView] | None = None,
     ) -> tuple[StateEffect, ...]:
-        """Receivers of each source of this state; ``items`` limits the receivers.
+        """Receivers of each applied source of this state; ``items`` limits the receivers.
 
         By default only delivery is computed (``certainty="received"``), without HTTP. ``resolve_charts=True`` keeps
         the receivers that use the parameters: selectors by their defaults, Wizard charts by dataset field guid or
-        title, QL charts by parameter names (``exact``), Editor charts by the chart tab params (``declared``, or
-        ``unknown`` when none are declared: the public API exposes no ``usedParams``). It sends one ``getEntries``
-        for the chart kinds, one request per distinct chart and one per distinct dataset of the Wizard charts.
+        title, QL charts by parameter name (``exact``); QL ``<name>_from``/``<name>_to`` and Editor chart tab
+        params are ``declared``, and an Editor tab without params is ``unknown`` (the public API exposes no
+        ``usedParams``). It sends one ``getEntries`` for the chart kinds, one request per distinct chart and one per
+        distinct dataset of the Wizard charts.
         """
-        effects = receivers(self, items)
+        effects = _receivers(self, items)
         if not resolve_charts:
             return effects
         operations = self.dashboard._operations
         if operations is None:
-            raise DataLensConfigurationError("Object is not bound to client operations. Use a client namespace.")
-        return resolve_usage(self, effects, operations)
+            raise DataLensConfigurationError(_UNBOUND)
+        return _resolve_usage(self, effects, operations)
 
     def url(self, base: str | None = None) -> str:
         """Link that opens this state: ``{base}/{dashboard_id}?tab={tab_id}&state={hash}``.
@@ -213,8 +208,13 @@ class DashboardState:
             raise DataLensValidationError("This state is not attached to a dashboard; read it with get_state()")
         return self._dashboard
 
+    @property
+    def tab(self) -> DashboardTabView:
+        """The dashboard tab of this state in the loaded revision."""
+        return _resolve_state_tab(self.dashboard, self.tab_id, [])
 
-def report_issues(state: DashboardState, *, strict: bool) -> None:
+
+def _report_issues(state: DashboardState, *, strict: bool) -> None:
     if not state.issues:
         return
     details = "; ".join(f"[{issue.kind}] {issue.message}" for issue in state.issues)
@@ -227,52 +227,30 @@ def report_issues(state: DashboardState, *, strict: bool) -> None:
     warnings.warn(summary, UserWarning, stacklevel=4)
 
 
-def has_legacy_params(raw: Mapping[str, object]) -> bool:
-    return any(key != STATE_META_KEY and isinstance(value, Mapping) and "params" in value for key, value in raw.items())
+def _flat_params(params: object) -> Mapping[str, StateWireValue]:
+    if not isinstance(params, Mapping):
+        return {}
+    return {key: value for key, value in params.items() if isinstance(value, (str, tuple))}
 
 
-def item_params(raw: Mapping[str, object], item_id: str) -> Mapping[str, object]:
-    entry = raw.get(item_id)
-    params = entry.get("params") if isinstance(entry, Mapping) else None
-    return params if isinstance(params, Mapping) else {}
-
-
-def queue_entries(raw: Mapping[str, object]) -> list[QueueEntry]:
-    meta = raw.get(STATE_META_KEY)
-    queue = meta.get("queue") if isinstance(meta, Mapping) else None
-    entries: list[QueueEntry] = []
-    queued: set[tuple[str, str | None]] = set()
-    for record in queue if isinstance(queue, Sequence) and not isinstance(queue, str) else ():
-        if not isinstance(record, Mapping) or optional_str(record.get("id")) is None:
-            continue
-        item_id = cast(str, record["id"])
-        group_item_id = optional_str(record.get("groupItemId"))
-        params = item_params(raw, item_id)
-        if group_item_id is not None:
-            group_params = params.get(group_item_id)
-            params = group_params if isinstance(group_params, Mapping) else {}
-        entries.append(QueueEntry(item_id, group_item_id, optional_str(record.get("tabId")), params))
-        queued.add((item_id, group_item_id))
-    queued_items = {item_id for item_id, _ in queued}
-    for item_id in raw:
-        if item_id == STATE_META_KEY or item_id in queued_items:
-            continue
-        params = item_params(raw, item_id)
-        if params and all(isinstance(value, Mapping) for value in params.values()):
-            entries.extend(
-                QueueEntry(item_id, group_item_id, None, cast("Mapping[str, object]", group_params))
-                for group_item_id, group_params in params.items()
-            )
-        else:
-            entries.append(QueueEntry(item_id, None, None, params))
+def _state_entries(data: DashboardStateData) -> list[_QueueEntry]:
+    if data.version == 1:
+        return [
+            _QueueEntry(widget_id, None, None, _flat_params(widget.params))
+            for widget_id, widget in data.widgets.items()
+            if widget.params
+        ]
+    entries: list[_QueueEntry] = []
+    for item in data.queue:
+        widget = data.widgets.get(item.id)
+        params: object = widget.params if widget is not None else None
+        if item.group_item_id is not None:
+            params = params.get(item.group_item_id) if isinstance(params, Mapping) else None
+        entries.append(_QueueEntry(item.id, item.group_item_id, item.tab_id, _flat_params(params)))
     return entries
 
 
-def legacy_entries(raw: Mapping[str, object]) -> list[QueueEntry]:
-    return [QueueEntry(item_id, None, None, item_params(raw, item_id)) for item_id in raw if item_id != STATE_META_KEY]
-
-
-def resolve_state_tab(
+def _resolve_state_tab(
     dashboard: Dashboard,
     tab: str | DashboardTabView | None,
     item_ids: Sequence[str],
@@ -297,7 +275,7 @@ def resolve_state_tab(
             raise DataLensValidationError(f"Unknown tab {reference!r}; known tab ids: {known!r}")
         return titled[0]
     wanted = set(item_ids)
-    candidates = [candidate for candidate in tabs if wanted <= tab_item_ids(candidate)]
+    candidates = [candidate for candidate in tabs if wanted <= _tab_item_ids(candidate)]
     if not candidates:
         raise DataLensValidationError(
             f"No dashboard tab contains every state item {sorted(wanted)!r}; pass tab= explicitly "
@@ -307,36 +285,24 @@ def resolve_state_tab(
     return candidates[0]
 
 
-def default_operation(member: ControlMemberView | None) -> ParamOperation | None:
+def _default_operation(member: ControlMemberView | None) -> ParamOperation | None:
     operation = member.source.operation if member is not None else None
-    return cast(ParamOperation, operation) if operation in PARAM_OPERATIONS else None
+    return cast(ParamOperation, operation) if operation in _PARAM_OPERATIONS else None
 
 
-def decode_values(
-    params: Mapping[str, object],
+def _decode_values(
+    params: Mapping[str, StateWireValue],
     member: ControlMemberView | None = None,
 ) -> tuple[StateValue, ...]:
     dataset_field = member is not None and member.source_type == "dataset"
-    operation = default_operation(member)
+    operation = _default_operation(member)
     return tuple(
-        decode_param_value(key, wire_value(value), operation, dataset_field=dataset_field and not is_action(key))
+        decode_param_value(key, value, operation, dataset_field=dataset_field and not key.startswith("_ap_"))
         for key, value in params.items()
     )
 
 
-def wire_value(value: object) -> str | list[str]:
-    if isinstance(value, str):
-        return value
-    if isinstance(value, Sequence):
-        return [item if isinstance(item, str) else str(item) for item in value]
-    return str(value)
-
-
-def is_action(key: str) -> bool:
-    return key.startswith(ACTION_PARAM_PREFIX)
-
-
-def check_params(
+def _check_params(
     values: tuple[StateValue, ...],
     allowed: set[str],
     *,
@@ -353,15 +319,32 @@ def check_params(
                 "unknown_state_param",
                 tab_id,
                 item_id,
-                f"Parameter {value.param!r} of {owner} is not declared in the loaded revision",
+                f"Parameter {value.param!r} of {owner} is not declared in the loaded revision and is not applied",
                 tuple(sorted(allowed)),
             )
         )
 
 
-def resolve_selection(tab: DashboardTabView, entry: QueueEntry, issues: list[ValidationIssue]) -> StateSelection:
+def _orphan(entry: _QueueEntry, kind: StateSelectionKind) -> StateSelection:
+    return StateSelection(
+        entry.item_id,
+        entry.group_item_id,
+        entry.widget_tab_id,
+        kind,
+        None,
+        _decode_values(entry.params),
+        applied=False,
+    )
+
+
+def _resolve_selection(
+    tab: DashboardTabView,
+    entry: _QueueEntry,
+    data: DashboardStateData,
+    issues: list[ValidationIssue],
+) -> StateSelection:
     tab_id = tab.id or ""
-    item = find_item(tab, entry.item_id)
+    item = _find_item(tab, entry.item_id)
     if item is None:
         issues.append(
             ValidationIssue(
@@ -369,33 +352,33 @@ def resolve_selection(tab: DashboardTabView, entry: QueueEntry, issues: list[Val
                 tab_id,
                 entry.item_id,
                 f"Item {entry.item_id!r} is not on tab {tab_id!r}",
-                tuple(sorted(tab_item_ids(tab))),
+                tuple(sorted(_tab_item_ids(tab))),
             )
         )
-        return StateSelection(
-            entry.item_id, entry.group_item_id, entry.widget_tab_id, "unknown", None, decode_values(entry.params)
-        )
+        return _orphan(entry, "unknown")
     if item.item_type == "group_control":
-        return resolve_group_selection(tab, item, entry, issues)
+        return _resolve_group_selection(tab, entry, issues)
+    if _has_inner_tabs(item) and data.version == 2:
+        return _resolve_tabbed_selection(tab, item, entry, data, issues)
     if item.item_type == "control":
-        return resolve_control_selection(tab, item, entry, issues)
-    if item.item_type == "widget":
-        return resolve_chart_selection(tab, item, entry, issues)
-    return StateSelection(
-        entry.item_id, entry.group_item_id, entry.widget_tab_id, "unknown", item, decode_values(entry.params)
-    )
+        control = next(_ for _ in tab.controls if _.id == entry.item_id)
+        member = control.members[0] if control.members else None
+        values = _decode_values(entry.params, member)
+        owner = f"selector {entry.item_id!r}"
+        _check_params(values, set(item.defaults), tab_id=tab_id, item_id=entry.item_id, owner=owner, issues=issues)
+        return StateSelection(entry.item_id, None, entry.widget_tab_id, "selector", control, values)
+    kind: StateSelectionKind = "chart" if item.item_type == "widget" else "unknown"
+    return StateSelection(entry.item_id, None, entry.widget_tab_id, kind, item, _decode_values(entry.params))
 
 
-def resolve_group_selection(
+def _resolve_group_selection(
     tab: DashboardTabView,
-    item: DashboardItemView,
-    entry: QueueEntry,
+    entry: _QueueEntry,
     issues: list[ValidationIssue],
 ) -> StateSelection:
     tab_id = tab.id or ""
     control = next(_ for _ in tab.controls if _.id == entry.item_id)
     member = control.member(entry.group_item_id) if entry.group_item_id is not None else None
-    values = decode_values(entry.params, member)
     if member is None:
         issues.append(
             ValidationIssue(
@@ -406,49 +389,41 @@ def resolve_group_selection(
                 tuple(_.id for _ in control.members if _.id),
             )
         )
-        return StateSelection(entry.item_id, entry.group_item_id, entry.widget_tab_id, "group_selector", None, values)
+        return _orphan(entry, "group_selector")
+    values = _decode_values(entry.params, member)
     owner = f"group selector {entry.item_id!r} member {entry.group_item_id!r}"
-    check_params(values, set(member.defaults), tab_id=tab_id, item_id=entry.item_id, owner=owner, issues=issues)
-    return StateSelection(entry.item_id, entry.group_item_id, entry.widget_tab_id, "group_selector", member, values)
+    _check_params(values, set(member.defaults), tab_id=tab_id, item_id=entry.item_id, owner=owner, issues=issues)
+    return StateSelection(entry.item_id, entry.group_item_id, None, "group_selector", member, values)
 
 
-def resolve_control_selection(
+def _resolve_tabbed_selection(
     tab: DashboardTabView,
     item: DashboardItemView,
-    entry: QueueEntry,
-    issues: list[ValidationIssue],
-) -> StateSelection:
-    control = next(_ for _ in tab.controls if _.id == entry.item_id)
-    members = control.members
-    member = members[0] if len(members) == 1 else control.member(entry.widget_tab_id or "")
-    values = decode_values(entry.params, member)
-    allowed = set(member.defaults) if member is not None else {key for _ in members for key in _.defaults}
-    owner = f"selector {entry.item_id!r}"
-    check_params(values, allowed, tab_id=tab.id or "", item_id=entry.item_id, owner=owner, issues=issues)
-    return StateSelection(entry.item_id, entry.group_item_id, entry.widget_tab_id, "selector", control, values)
-
-
-def resolve_chart_selection(
-    tab: DashboardTabView,
-    item: DashboardItemView,
-    entry: QueueEntry,
+    entry: _QueueEntry,
+    data: DashboardStateData,
     issues: list[ValidationIssue],
 ) -> StateSelection:
     tab_id = tab.id or ""
-    values = decode_values(entry.params)
-    known_tabs = widget_tab_ids(item)
-    if entry.widget_tab_id is not None and entry.widget_tab_id not in known_tabs:
+    kind: StateSelectionKind = "selector" if item.item_type == "control" else "chart"
+    known_tabs = _inner_tab_ids(item)
+    if entry.widget_tab_id is None or entry.widget_tab_id not in known_tabs:
         issues.append(
             ValidationIssue(
                 "unknown_widget_tab",
                 tab_id,
                 entry.item_id,
-                f"Chart widget {entry.item_id!r} has no tab {entry.widget_tab_id!r}",
+                f"{'Selector' if kind == 'selector' else 'Chart widget'} {entry.item_id!r} has no tab "
+                f"{entry.widget_tab_id!r}",
                 tuple(known_tabs),
             )
         )
-        return StateSelection(entry.item_id, entry.group_item_id, entry.widget_tab_id, "chart", None, values)
-    allowed = widget_tab_params(item, entry.widget_tab_id)
-    owner = f"chart widget {entry.item_id!r}"
-    check_params(values, allowed, tab_id=tab_id, item_id=entry.item_id, owner=owner, issues=issues)
-    return StateSelection(entry.item_id, entry.group_item_id, entry.widget_tab_id, "chart", item, values)
+        return _orphan(entry, kind)
+    control = next((_ for _ in tab.controls if _.id == entry.item_id), None) if kind == "selector" else None
+    member = control.member(entry.widget_tab_id) if control is not None else None
+    values = _decode_values(entry.params, member)
+    allowed = set(_inner_tab_params(item, entry.widget_tab_id))
+    owner = f"{'selector' if kind == 'selector' else 'chart widget'} {entry.item_id!r} tab {entry.widget_tab_id!r}"
+    _check_params(values, allowed, tab_id=tab_id, item_id=entry.item_id, owner=owner, issues=issues)
+    view: ControlView | DashboardItemView = control if control is not None else item
+    applied = _active_inner_tab_id(item, data) == entry.widget_tab_id
+    return StateSelection(entry.item_id, None, entry.widget_tab_id, kind, view, values, applied=applied)

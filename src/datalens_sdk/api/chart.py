@@ -321,16 +321,23 @@ class ChartService(ChartOperations):
         return self.get_wizard_chart(chart_id, workbook_id=workbook_id, branch=branch, rev_id=rev_id)
 
     def get_charts(self, chart_ids: Sequence[str]) -> dict[str, WizardChart | EditorChart | QLChart]:
-        """Read several charts of any kind: one ``getEntries`` for their types, then one typed read per chart."""
+        """Read several charts of any kind: one ``getEntries`` for their types, then one typed read per chart.
+
+        Charts that ``getEntries`` does not return (deleted or not visible) are left out of the result.
+        """
         unique_ids = tuple(dict.fromkeys(chart_ids))
         if not unique_ids:
             return {}
-        wire_types: dict[str, str | None] = {}
+        wire_types: dict[str, str] = {}
         for start in range(0, len(unique_ids), GET_ENTRIES_MAX_IDS):
             batch = unique_ids[start : start + GET_ENTRIES_MAX_IDS]
             options = GetEntriesOptions(ids=batch, page_size=min(len(batch), GET_ENTRIES_MAX_PAGE_SIZE))
             wire_types.update((entry.id, entry.type) for entry in self._navigation_operations.get_entries(options))
-        return {chart_id: self.get_chart_of_type(chart_id, wire_types.get(chart_id)) for chart_id in unique_ids}
+        return {
+            chart_id: self.get_chart_of_type(chart_id, wire_types[chart_id])
+            for chart_id in unique_ids
+            if chart_id in wire_types
+        }
 
     def create_editor_chart(self, builder: _BaseEditorNodeCreate) -> EditorChart:
         spec = builder.to_spec()

@@ -90,6 +90,7 @@ from datalens_sdk.domain.dataset_types import (
 from datalens_sdk.domain.dataset_update import DatasetUpdate
 from datalens_sdk.domain.editor_chart import EditorChart, EditorChartUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
+from datalens_sdk.domain.entry_state import DashboardStateData, StateQueueItem, StateWidget, StateWidgetState
 from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
 from datalens_sdk.domain.fields import (
     DatasetField,
@@ -271,6 +272,7 @@ __all__ = [
     "DashboardLoadPriority",
     "DashboardState",
     "DashboardStateBuilder",
+    "DashboardStateData",
     "DashboardTab",
     "DashboardTabView",
     "DashboardTitleSize",
@@ -422,8 +424,11 @@ __all__ = [
     "SqlQueryStatementSuccess",
     "SqlQueryUpdate",
     "StateEffect",
+    "StateQueueItem",
     "StateSelection",
     "StateValue",
+    "StateWidget",
+    "StateWidgetState",
     "StructureOrderField",
     "StructureSummary",
     "ThemedColor",

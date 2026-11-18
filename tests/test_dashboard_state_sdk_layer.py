@@ -1,15 +1,23 @@
 from __future__ import annotations
 
 import base64
+from collections.abc import Mapping
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import httpx
 import pytest
 
 import datalens_sdk as dl
+from datalens_sdk.converter.dashboard_state import DashboardStateConverter
+from datalens_sdk.domain.dashboard_state import DashboardState
+
+
+def _from_json(dashboard: dl.Dashboard, data: Mapping[str, object] | None, **kwargs: Any) -> DashboardState:
+    return DashboardState.from_data(dashboard, DashboardStateConverter.to_domain(data), raw=data or {}, **kwargs)
+
 
 FIXTURES = Path(__file__).parent / "contract" / "fixtures" / "dashboard_state"
 ClientClass = type[dl.DataLensClientYC] | type[dl.DataLensClientEnterprise]
@@ -190,7 +198,7 @@ def test_enterprise_url_requires_ui_base_url() -> None:
 
 def test_url_requires_hash() -> None:
     dashboard, _ = _state_client()
-    state = dl.DashboardState.from_data(dashboard, cast(dict[str, object], _load("state_action_params")["data"]))
+    state = _from_json(dashboard, cast(dict[str, object], _load("state_action_params")["data"]))
 
     with pytest.raises(dl.DataLensValidationError, match="no hash"):
         state.url()
@@ -229,7 +237,7 @@ def test_screenshot_rejects_conflicting_tab_and_foreign_state() -> None:
 
 def test_screenshot_rejects_state_without_hash() -> None:
     dashboard, _ = _state_client()
-    state = dl.DashboardState.from_data(dashboard, cast(dict[str, object], _load("state_action_params")["data"]))
+    state = _from_json(dashboard, cast(dict[str, object], _load("state_action_params")["data"]))
 
     with pytest.raises(dl.DataLensValidationError, match="no hash"):
         dashboard.screenshot(state=state)

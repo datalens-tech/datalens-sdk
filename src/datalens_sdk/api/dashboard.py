@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
@@ -8,11 +7,16 @@ from pydantic import ValidationError
 
 from datalens_sdk.api.entries import EntriesService
 from datalens_sdk.converter.dashboard import DashboardConverter, DashboardDtoModule
+from datalens_sdk.converter.dashboard_state import (
+    MAX_STATE_DATA_SYMBOLS,
+    DashboardStateConverter,
+    DashboardStateDtoModule,
+)
 from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.dashboard_create import DashboardCreate
 from datalens_sdk.domain.dashboard_update import DashboardUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
-from datalens_sdk.domain.entry_state import EntryStateRecord
+from datalens_sdk.domain.entry_state import DashboardStateData, DashboardStateRecord
 from datalens_sdk.domain.entry_types import EntryBranch
 from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
 from datalens_sdk.domain.ports import (
@@ -284,11 +288,31 @@ class DashboardService(DashboardOperations):
     def get_entry_revisions(self, entry_id: str, options: EntryRevisionsOptions) -> Pager[EntryRevision]:
         return self._entries_service.get_entry_revisions(entry_id, options)
 
-    def get_entry_state(self, entry_id: str, hash: str) -> EntryStateRecord:
-        return self._entries_service.get_entry_state(entry_id, hash)
+    def get_dashboard_state(self, entry_id: str, hash: str) -> DashboardStateRecord:
+        record = self._entries_service.get_entry_state(entry_id, hash)
+        raw = record.data or {}
+        try:
+            data = DashboardStateConverter.to_domain(raw, dto_module=self._state_dto_module())
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="getEntryState", reason=str(exc)) from exc
+        return DashboardStateRecord(hash=record.hash, data=data, raw=raw, created_at=record.created_at)
 
-    def create_entry_state(self, entry_id: str, data: Mapping[str, object]) -> str:
-        return self._entries_service.create_entry_state(entry_id, data)
+    def create_dashboard_state(self, entry_id: str, data: DashboardStateData) -> DashboardStateRecord:
+        try:
+            payload = DashboardStateConverter.to_payload(data, dto_module=self._state_dto_module())
+        except ValidationError as exc:
+            raise DataLensValidationError(str(exc)) from exc
+        size = DashboardStateConverter.symbols(payload)
+        if size > MAX_STATE_DATA_SYMBOLS:
+            raise DataLensValidationError(
+                f"Cannot create the dashboard state: state data has {size} characters, "
+                f"the limit is {MAX_STATE_DATA_SYMBOLS}"
+            )
+        hash_value = self._entries_service.create_entry_state(entry_id, payload)
+        return DashboardStateRecord(hash=hash_value, data=data, raw=payload)
+
+    def _state_dto_module(self) -> DashboardStateDtoModule | None:
+        return cast(DashboardStateDtoModule | None, self._dto_module)
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]:
         return self._navigation_operations.get_entry_relations(entry_id, options)

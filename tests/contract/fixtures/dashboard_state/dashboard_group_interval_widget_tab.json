@@ -126,6 +126,7 @@
                   "autoHeight": false,
                   "chartId": "qlchart000001",
                   "id": "dM3",
+                  "isDefault": true,
                   "params": {
                     "date_scale": "week"
                   },

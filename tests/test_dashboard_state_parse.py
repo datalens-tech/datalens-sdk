@@ -1,19 +1,26 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 import copy
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 import warnings
 
 import httpx
 import pytest
 
 import datalens_sdk as dl
+from datalens_sdk.converter.dashboard_state import DashboardStateConverter
 from datalens_sdk.domain.dashboard import ControlMemberView, ControlView, DashboardItemView
 from datalens_sdk.domain.dashboard_state import DashboardState
 from datalens_sdk.domain.dashboard_types import DateInterval
+
+
+def _from_json(dashboard: dl.Dashboard, data: Mapping[str, object] | None, **kwargs: Any) -> DashboardState:
+    return DashboardState.from_data(dashboard, DashboardStateConverter.to_domain(data), raw=data or {}, **kwargs)
+
 
 FIXTURES = Path(__file__).parent / "contract" / "fixtures" / "dashboard_state"
 
@@ -46,7 +53,7 @@ def _parse(
     dashboard = _dashboard(_load(dashboard_name))
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        return DashboardState.from_data(
+        return _from_json(
             dashboard,
             _state_data(state_name) if data is None else data,
             tab=tab,
@@ -128,7 +135,7 @@ def test_standalone_selector_uses_control_view_and_default_operation() -> None:
 
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        state = DashboardState.from_data(_dashboard(entry), data)
+        state = _from_json(_dashboard(entry), data)
 
     selection = state.selections[0]
     assert selection.kind == "selector"
@@ -154,7 +161,7 @@ def test_orphans_of_every_kind_become_issues_and_one_warning() -> None:
     dashboard = _dashboard(_load("dashboard_group_interval_widget_tab"))
 
     with pytest.warns(UserWarning, match="does not fully match") as record:
-        state = DashboardState.from_data(dashboard, data, tab="Mk", hash="h1")
+        state = _from_json(dashboard, data, tab="Mk", hash="h1")
 
     assert len(record) == 1
     assert "h1" in str(record[0].message)
@@ -180,7 +187,7 @@ def test_strict_mode_raises_instead_of_warning() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         with pytest.raises(dl.DataLensValidationError, match="unknown_state_item"):
-            DashboardState.from_data(_dashboard(_load("dashboard_action_params")), data, tab="Ab", strict=True)
+            _from_json(_dashboard(_load("dashboard_action_params")), data, tab="Ab", strict=True)
 
 
 def test_unknown_chart_param_is_reported_but_action_params_are_not() -> None:
@@ -190,7 +197,7 @@ def test_unknown_chart_param_is_reported_but_action_params_are_not() -> None:
     }
 
     with pytest.warns(UserWarning, match="unknown_state_param"):
-        state = DashboardState.from_data(_dashboard(_load("dashboard_group_interval_widget_tab")), data)
+        state = _from_json(_dashboard(_load("dashboard_group_interval_widget_tab")), data)
 
     assert [(_.kind, _.item_id) for _ in state.issues] == [("unknown_state_param", "LEN")]
     assert "'other'" in state.issues[0].message
@@ -200,32 +207,58 @@ def test_legacy_v1_state_follows_key_order() -> None:
     data: dict[str, object] = {"Lj": {"params": {"_ap_a": ["1"]}}, "Rnn": {"params": {"_ap_b": ["2"]}}}
 
     with pytest.warns(UserWarning, match="legacy_state_version"):
-        state = DashboardState.from_data(_dashboard(_load("dashboard_action_params")), data)
+        state = _from_json(_dashboard(_load("dashboard_action_params")), data)
 
     assert state.version == 1
     assert [_.item_id for _ in state.selections] == ["Lj", "Rnn"]
     assert [_.kind for _ in state.issues] == ["legacy_state_version"]
 
 
-def test_unqueued_data_entries_follow_the_queue() -> None:
+def test_data_entries_outside_the_queue_are_not_sources() -> None:
     data = copy.deepcopy(_state_data("state_group_interval_widget_tab"))
     data["__meta__"] = {"queue": [{"id": "LEN", "tabId": "dM3"}], "version": 2}
 
     state = _parse("dashboard_group_interval_widget_tab", "state_group_interval_widget_tab", data=data)
 
-    assert [(_.item_id, _.group_item_id) for _ in state.selections] == [
-        ("LEN", None),
-        ("6n", "E7Z"),
-        ("6n", "e3G"),
-        ("Wyk", "78A"),
+    assert [(_.item_id, _.group_item_id) for _ in state.selections] == [("LEN", None)]
+    assert state.params_for("78A")["department_param"] == ""
+    assert state.raw == data
+
+
+def test_chart_source_applies_only_on_the_active_widget_tab() -> None:
+    data = copy.deepcopy(_state_data("state_group_interval_widget_tab"))
+    data["LEN"] = {"params": {"date_scale": "month"}, "state": {"tabId": "kQ1"}}
+
+    state = _parse("dashboard_group_interval_widget_tab", "state_group_interval_widget_tab", data=data)
+
+    chart = state.selections[-1]
+    assert (chart.item_id, chart.widget_tab_id, chart.applied) == ("LEN", "dM3", False)
+    assert state.issues == ()
+    assert not any(_.selection is chart for _ in state.effects())
+
+
+def test_spec_example_round_trips_with_the_widget_state() -> None:
+    spec = json.loads((Path(__file__).parents[1] / "spec" / "yacloud.json").read_text())
+    example = cast(dict[str, object], spec["components"]["schemas"]["DashboardState"]["examples"][0])
+    dashboard = _dashboard(_load("dashboard_spec_example"))
+
+    state = _from_json(dashboard, example)
+    payload = DashboardStateConverter.to_payload(state.edit().to_data())
+
+    assert payload == example
+    assert cast(dict[str, dict[str, object]], payload)["chart-widget-id"]["state"] == {"tabId": "chart-tab-id"}
+    assert [(_.item_id, _.applied) for _ in state.selections] == [
+        ("selector-widget-id", True),
+        ("group-widget-id", True),
+        ("chart-widget-id", True),
     ]
 
 
 def test_empty_or_null_state_has_no_selections() -> None:
     dashboard = _dashboard(_load("dashboard_action_params"))
 
-    assert DashboardState.from_data(dashboard, None).selections == ()
-    assert DashboardState.from_data(dashboard, {}).version == 2
+    assert _from_json(dashboard, None).selections == ()
+    assert _from_json(dashboard, {}).version == 2
 
 
 def test_tab_is_inferred_from_queue_items() -> None:
@@ -239,34 +272,32 @@ def test_state_of_global_items_uses_the_first_fitting_tab_unless_tab_is_passed()
     shared = _dashboard(entry)
     data = _state_data("state_group_interval_widget_tab")
 
-    assert DashboardState.from_data(shared, data).tab_id == "Mk"
-    assert DashboardState.from_data(shared, data, tab="Details").tab_id == "Qa"
+    assert _from_json(shared, data).tab_id == "Mk"
+    assert _from_json(shared, data, tab="Details").tab_id == "Qa"
 
 
 def test_tab_inference_rejects_states_that_fit_no_tab() -> None:
     data = _state_data("state_group_interval_widget_tab")
 
     with pytest.raises(dl.DataLensValidationError, match="No dashboard tab contains"):
-        DashboardState.from_data(_dashboard(_load("dashboard_action_params")), data)
+        _from_json(_dashboard(_load("dashboard_action_params")), data)
 
 
 def test_explicit_tab_by_id_title_or_view() -> None:
     dashboard = _dashboard(_load("dashboard_group_interval_widget_tab"))
     data = _state_data("state_group_interval_widget_tab")
 
-    assert DashboardState.from_data(dashboard, data, tab="Overview").tab_id == "Mk"
-    assert DashboardState.from_data(dashboard, data, tab=dashboard.tabs[0]).tab_id == "Mk"
+    assert _from_json(dashboard, data, tab="Overview").tab_id == "Mk"
+    assert _from_json(dashboard, data, tab=dashboard.tabs[0]).tab_id == "Mk"
     with pytest.raises(dl.DataLensValidationError, match="Unknown tab 'Nope'"):
-        DashboardState.from_data(dashboard, data, tab="Nope")
+        _from_json(dashboard, data, tab="Nope")
 
 
 def test_created_at_and_hash_are_kept() -> None:
     created_at = datetime(2026, 11, 16, 9, 31, tzinfo=timezone.utc)
     dashboard = _dashboard(_load("dashboard_action_params"))
 
-    state = DashboardState.from_data(
-        dashboard, _state_data("state_action_params"), hash="298725dd251", created_at=created_at
-    )
+    state = _from_json(dashboard, _state_data("state_action_params"), hash="298725dd251", created_at=created_at)
 
     assert state.hash == "298725dd251"
     assert state.created_at == created_at

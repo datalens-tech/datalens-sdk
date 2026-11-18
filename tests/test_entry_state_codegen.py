@@ -62,12 +62,39 @@ def test_entry_state_contract_is_built_for_public_installations(name: str) -> No
     contract = codegen.build_entry_state_contract_meta(_load_spec(name))
 
     assert contract is not None
-    assert contract["roots"] == ["GetStateArgs", "GetStateResult", "CreateStateArgs", "CreateStateResult"]
-    assert sorted(contract["schemas"]) == sorted(contract["roots"])
+    assert contract["roots"] == [
+        "GetStateArgs",
+        "GetStateResult",
+        "CreateStateArgs",
+        "CreateStateResult",
+        "DashboardStateMeta",
+        "DashboardStateWidget",
+    ]
+    assert sorted(contract["schemas"]) == sorted(
+        [*contract["roots"], "DashStringDefaultValueV2", "DashStringDefaultsV2"]
+    )
     result = cast(dict[str, object], contract["schemas"]["GetStateResult"])
     assert _properties(result)["data"] == {"additionalProperties": True, "type": ["null", "object"]}
     create = cast(dict[str, object], contract["schemas"]["CreateStateArgs"])
     assert _properties(create)["data"] == {"additionalProperties": True, "type": "object"}
+    widget = cast(dict[str, object], contract["schemas"]["DashboardStateWidget"])
+    assert set(_properties(widget)) == {"params", "state"}
+    assert "tabId" in _properties(_properties(widget)["state"])
+
+
+@pytest.mark.parametrize("drift", ["no-widget-schema", "meta-optional", "extra-property"])
+def test_entry_state_contract_rejects_dashboard_state_drift(drift: str) -> None:
+    spec = _load_spec()
+    schema = _schemas(spec)["DashboardState"]
+    if drift == "no-widget-schema":
+        del schema["additionalProperties"]
+    elif drift == "meta-optional":
+        schema["required"] = []
+    else:
+        _properties(schema)["extra"] = {"type": "string"}
+
+    with pytest.raises(ValueError, match="DashboardState must be an object"):
+        codegen.build_entry_state_contract_meta(spec)
 
 
 def test_entry_state_contract_matches_between_installations() -> None:
@@ -179,3 +206,36 @@ def test_get_state_args_dto_rejects_invalid_payloads(state_dto_module: ModuleTyp
 def test_create_state_result_dto_requires_hash(state_dto_module: ModuleType, payload: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         state_dto_module.CreateStateResultDTO.model_validate(payload)
+
+
+def test_dashboard_state_dtos_round_trip_the_spec_example(state_dto_module: ModuleType) -> None:
+    example = cast(
+        dict[str, dict[str, object]],
+        cast(list[object], _schemas(_load_spec())["DashboardState"]["examples"])[0],
+    )
+
+    meta = state_dto_module.DashboardStateMetaDTO.model_validate(example["__meta__"])
+    widgets = {
+        key: state_dto_module.DashboardStateWidgetDTO.model_validate(value)
+        for key, value in example.items()
+        if key != "__meta__"
+    }
+
+    assert meta.queue[2].tab_id == "chart-tab-id"
+    assert widgets["chart-widget-id"].state.tab_id == "chart-tab-id"
+    assert {"__meta__": meta.to_payload(), **{key: _.to_payload() for key, _ in widgets.items()}} == example
+
+
+def test_dashboard_state_widget_dto_keeps_unknown_state_fields(state_dto_module: ModuleType) -> None:
+    widget = {"params": {}, "state": {"tabId": "t1", "scroll": 10}, "future": True}
+
+    assert state_dto_module.DashboardStateWidgetDTO.model_validate(widget).to_payload() == widget
+
+
+@pytest.mark.parametrize(
+    "meta",
+    [{"queue": []}, {"version": 1, "queue": []}, {"version": 2}, {"version": 2, "queue": [{"tabId": "t"}]}],
+)
+def test_dashboard_state_meta_dto_rejects_invalid_meta(state_dto_module: ModuleType, meta: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        state_dto_module.DashboardStateMetaDTO.model_validate(meta)
