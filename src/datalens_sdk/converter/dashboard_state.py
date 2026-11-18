@@ -19,11 +19,13 @@ from datalens_sdk.domain.dashboard_state import (
     _PARAM_OPERATIONS,
     DashboardStateData,
     ParamOperation,
+    StateOperand,
     StateParamValue,
     StateQueueItem,
     StateValue,
     StateWidget,
     StateWidgetState,
+    _thaw,
 )
 from datalens_sdk.domain.dashboard_types import DateInterval, RelativeDate, RelativeDateInterval
 from datalens_sdk.errors import DataLensValidationError
@@ -117,28 +119,24 @@ def _decode_item(raw: str) -> StateParamValue:
     return raw
 
 
-def _resolve_operation(raw: str) -> tuple[ParamOperation | None, str | None]:
-    """``resolveOperation`` without the selector: ``None`` means the selector's operation applies."""
+def _decode_operand(raw: str) -> StateOperand:
+    """``resolveOperation`` as charts apply it: an unprefixed value is IN (BETWEEN for an interval)."""
     match = _OPERATION_RE.fullmatch(raw)
     if match is not None:
         operation, value = match.group(1).upper(), match.group(2)
         if operation in _PARAM_OPERATIONS and (value is not None or operation in _VALUELESS_OPERATIONS):
-            return cast(ParamOperation, operation), value
-        return ("BETWEEN" if _INTERVAL_MARKER in raw else "IN"), raw
-    return ("BETWEEN" if _INTERVAL_MARKER in raw else None), raw
+            return StateOperand(cast(ParamOperation, operation), None if value is None else _decode_item(value))
+    fallback: ParamOperation = "BETWEEN" if _INTERVAL_MARKER in raw else "IN"
+    return StateOperand(fallback, _decode_item(raw), prefixed=False)
 
 
 def _decode_value(param: str, wire: object) -> StateValue:
     raw: str | tuple[str, ...] = wire if isinstance(wire, str) else tuple(cast("Sequence[str]", wire))
     items = (raw,) if isinstance(raw, str) else raw
-    resolved = [_resolve_operation(item) for item in items]
-    operation = resolved[0][0] if resolved else None
     return StateValue(
         param=param,
-        operation=operation or "IN",
-        values=tuple(_decode_item(value) for _, value in resolved if value is not None),
+        operands=tuple(_decode_operand(item) for item in items),
         multiple=not isinstance(raw, str),
-        inherits_operation=operation is None,
         raw=raw,
     )
 
@@ -162,14 +160,17 @@ def _encode_item(value: StateParamValue | RelativeDateInterval) -> str:
     return value
 
 
+def _encode_operand(operand: StateOperand) -> str:
+    if operand.value is None:
+        return f"__{operand.operation.lower()}_"
+    wire = _encode_item(operand.value)
+    return f"__{operand.operation.lower()}_{wire}" if operand.prefixed and wire else wire
+
+
 def _encode_value(value: StateValue) -> str | list[str]:
     if value.raw is not None:
         return value.raw if isinstance(value.raw, str) else list(value.raw)
-    prefix = "" if value.inherits_operation else f"__{value.operation.lower()}_"
-    if value.operation in _VALUELESS_OPERATIONS and not value.values:
-        encoded = [f"__{value.operation.lower()}_"]
-    else:
-        encoded = [f"{prefix}{wire}" if wire else wire for wire in (_encode_item(_) for _ in value.values)]
+    encoded = [_encode_operand(operand) for operand in value.operands]
     return encoded if value.multiple else encoded[0]
 
 
@@ -243,11 +244,11 @@ class DashboardStateConverter:
         generated = _dto_module(dto_module)
         payload: dict[str, object] = {}
         for widget_id, widget in data.widgets.items():
-            body: dict[str, object] = dict(widget.extra)
+            body = cast("dict[str, object]", _thaw(widget.extra))
             if widget.params is not None:
                 body["params"] = _encode_params(widget.params)
             if widget.state is not None:
-                state = dict(widget.state.extra)
+                state = cast("dict[str, object]", _thaw(widget.state.extra))
                 if widget.state.tab_id is not None:
                     state["tabId"] = widget.state.tab_id
                 body["state"] = state
@@ -255,12 +256,12 @@ class DashboardStateConverter:
         if data.version == _STATE_VERSION:
             queue = []
             for item in data.queue:
-                record: dict[str, object] = {**item.extra, "id": item.id}
+                record = cast("dict[str, object]", _thaw(item.extra)) | {"id": item.id}
                 if item.group_item_id is not None:
                     record["groupItemId"] = item.group_item_id
                 if item.tab_id is not None:
                     record["tabId"] = item.tab_id
                 queue.append(record)
-            meta = {**data.meta_extra, "queue": queue, "version": _STATE_VERSION}
+            meta = cast("dict[str, object]", _thaw(data.meta_extra)) | {"queue": queue, "version": _STATE_VERSION}
             payload[_META_KEY] = generated.DashboardStateMetaDTO.model_validate(meta).to_payload()
         return payload

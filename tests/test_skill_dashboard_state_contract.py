@@ -25,6 +25,7 @@ METHODS: dict[str, Callable[..., object]] = {
     "to_data": dl.DashboardStateBuilder.to_data,
     "create": dl.DashboardStateBuilder.create,
     "edit": dl.DashboardState.edit,
+    "active_chart_id": dl.DashboardState.active_chart_id,
     "url": dl.DashboardState.url,
     "params_for": dl.DashboardState.params_for,
     "effects": dl.DashboardState.effects,
@@ -49,9 +50,10 @@ def test_reference_examples_use_public_names_and_real_signatures() -> None:
     for tree in _examples():
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
-                assert node.module == "datalens_sdk"
-                for alias in node.names:
-                    assert hasattr(dl, alias.name), alias.name
+                assert node.module in ("datalens_sdk", "urllib.parse")
+                if node.module == "datalens_sdk":
+                    for alias in node.names:
+                        assert hasattr(dl, alias.name), alias.name
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id[0].isupper():
                 assert hasattr(dl, node.func.id), node.func.id
             if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):

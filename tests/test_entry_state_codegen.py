@@ -239,3 +239,30 @@ def test_dashboard_state_widget_dto_keeps_unknown_state_fields(state_dto_module:
 def test_dashboard_state_meta_dto_rejects_invalid_meta(state_dto_module: ModuleType, meta: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         state_dto_module.DashboardStateMetaDTO.model_validate(meta)
+
+
+@pytest.mark.parametrize(
+    ("schema_name", "data_schema"),
+    [
+        ("GetStateResult", {"type": ["null", "string"], "anyOf": [{"type": "string"}, {"type": "null"}]}),
+        ("CreateStateArgs", {"type": "array", "items": {"type": "string"}}),
+        (
+            "CreateStateArgs",
+            {
+                "type": ["null", "object"],
+                "anyOf": [
+                    {"$ref": "#/components/schemas/DashboardState"},
+                    {"type": "object", "additionalProperties": True},
+                    {"type": "null"},
+                ],
+            },
+        ),
+    ],
+    ids=["nullable-string-result", "array-request", "nullable-request"],
+)
+def test_entry_state_contract_rejects_data_envelope_drift(schema_name: str, data_schema: dict[str, object]) -> None:
+    spec = _load_spec()
+    _properties(_schemas(spec)[schema_name])["data"] = data_schema
+
+    with pytest.raises(ValueError, match=f"entryState schema '{schema_name}' 'data' must be"):
+        codegen.build_entry_state_contract_meta(spec)

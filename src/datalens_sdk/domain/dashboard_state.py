@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Literal, TypeAlias, cast, get_args
 from urllib.parse import urlencode
 import warnings
@@ -23,6 +24,7 @@ from datalens_sdk.domain.dashboard_state_effects import (
     _has_inner_tabs,
     _inner_tab_ids,
     _inner_tab_params,
+    _inner_tabs,
     _params_for,
     _receivers,
     _resolve_usage,
@@ -64,22 +66,64 @@ _PARAM_OPERATIONS: frozenset[str] = frozenset(get_args(ParamOperation))
 _UNBOUND = "Object is not bound to client operations. Use a client namespace."
 
 
+def _freeze(value: object) -> object:
+    """Deep read-only copy of JSON-shaped data: mappings become proxies, lists become tuples."""
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: _freeze(item) for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze(item) for item in value)
+    return value
+
+
+def _thaw(value: object) -> object:
+    """Independent JSON-shaped copy of frozen data."""
+    if isinstance(value, Mapping):
+        return {key: _thaw(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw(item) for item in value]
+    return value
+
+
+def _frozen_mapping(value: Mapping[str, object]) -> Mapping[str, object]:
+    return cast("Mapping[str, object]", _freeze(value))
+
+
+@dataclass(frozen=True, slots=True)
+class StateOperand:
+    """One value of a parameter with the operation charts apply to it.
+
+    ``prefixed`` is ``True`` when the value is written as ``__<op>_<value>``; an unprefixed value is IN (BETWEEN
+    for an interval), whatever operation its selector is configured with. ``value`` is ``None`` for ISNULL and
+    ISNOTNULL.
+    """
+
+    operation: ParamOperation
+    value: StateParamValue | None
+    prefixed: bool = True
+
+
 @dataclass(frozen=True, slots=True)
 class StateValue:
-    """One parameter of a state source.
+    """One parameter of a state source: its operands in wire order.
 
-    ``values`` holds strings, :class:`DateInterval` ranges and :class:`RelativeDate` values; ``multiple`` keeps a
-    list on the wire. ``inherits_operation`` means the value carries no ``__<op>_`` prefix, so the selector's own
-    operation (else IN) applies. ``raw`` is the stored wire value of a state that was read or created.
+    ``multiple`` keeps a list on the wire; ``raw`` is the stored wire value of a state that was read or created.
     """
 
     param: str
-    operation: ParamOperation
-    values: tuple[StateParamValue, ...]
+    operands: tuple[StateOperand, ...]
     multiple: bool = False
-    inherits_operation: bool = False
     raw: str | tuple[str, ...] | None = None
     dataset_field: bool = False
+
+    @property
+    def values(self) -> tuple[StateParamValue, ...]:
+        return tuple(operand.value for operand in self.operands if operand.value is not None)
+
+    @property
+    def operation(self) -> ParamOperation | None:
+        """The operation shared by every operand, or ``None`` when they differ or there are none."""
+        operations = {operand.operation for operand in self.operands}
+        return next(iter(operations)) if len(operations) == 1 else None
 
     @property
     def is_action_param(self) -> bool:
@@ -104,6 +148,9 @@ class StateQueueItem:
     tab_id: str | None = None
     extra: Mapping[str, object] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "extra", _frozen_mapping(self.extra))
+
 
 @dataclass(frozen=True, slots=True)
 class StateWidgetState:
@@ -111,6 +158,9 @@ class StateWidgetState:
 
     tab_id: str | None = None
     extra: Mapping[str, object] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "extra", _frozen_mapping(self.extra))
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,15 +171,25 @@ class StateWidget:
     state: StateWidgetState | None = None
     extra: Mapping[str, object] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        if self.params is not None:
+            object.__setattr__(self, "params", _freeze(self.params))
+        object.__setattr__(self, "extra", _frozen_mapping(self.extra))
+
 
 @dataclass(frozen=True, slots=True)
 class DashboardStateData:
-    """A dashboard state as the ``DashboardState`` schema describes it, keyed by widget id."""
+    """A dashboard state as the ``DashboardState`` schema describes it, keyed by widget id. Read-only."""
 
     version: Literal[1, 2]
     queue: tuple[StateQueueItem, ...]
     widgets: Mapping[str, StateWidget]
     meta_extra: Mapping[str, object] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "queue", tuple(self.queue))
+        object.__setattr__(self, "widgets", MappingProxyType(dict(self.widgets)))
+        object.__setattr__(self, "meta_extra", _frozen_mapping(self.meta_extra))
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,8 +254,11 @@ class DashboardState:
     selections: tuple[StateSelection, ...]
     issues: tuple[ValidationIssue, ...]
     data: DashboardStateData
-    raw: Mapping[str, object] = field(default_factory=dict)
+    _raw: Mapping[str, object] = field(default_factory=dict, repr=False)
     _dashboard: Dashboard | None = field(default=None, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "_raw", _frozen_mapping(self._raw))
 
     @classmethod
     def from_data(
@@ -211,7 +274,9 @@ class DashboardState:
     ) -> DashboardState:
         """Check typed state data against the loaded dashboard revision.
 
-        Without ``tab`` the first tab that contains every queued item is used. Problems are collected into
+        Without ``tab`` the first tab that contains every queued item is used (the only tab of a one-tab
+        dashboard); when no tab fits, :class:`DataLensValidationError` is raised before any issue is collected,
+        whatever ``strict`` is. Problems are collected into
         ``issues`` and reported with one warning; ``strict=True`` raises :class:`DataLensValidationError` instead.
         """
         entries = _state_entries(data)
@@ -232,14 +297,23 @@ class DashboardState:
             selections=selections,
             issues=tuple(issues),
             data=data,
-            raw=raw or {},
+            _raw=raw or {},
             _dashboard=dashboard,
         )
         _report_issues(state, strict=strict)
         return state
 
     def edit(self) -> DashboardStateBuilder:
-        """Start a builder with a copy of this state on the same tab; ``create()`` stores a new state."""
+        """Start a builder with a copy of this state on the same tab; ``create()`` stores a new state.
+
+        A version 1 state keeps params per widget, which a version 2 queue cannot express; migrate it explicitly
+        with ``dashboard.create_state(tab, state.selections)`` after checking what each source should reach.
+        """
+        if self.version == 1:
+            raise DataLensValidationError(
+                "A version 1 state keeps params per widget and cannot be edited as a queue; build a new state with "
+                "dashboard.new_state() or dashboard.create_state() instead"
+            )
         return self.dashboard.new_state(self.tab_id)._load(self)
 
     def params_for(self, item: str | ControlView | ControlMemberView | DashboardItemView) -> NormalizedRuntimeParams:
@@ -291,6 +365,22 @@ class DashboardState:
             )
         query = urlencode({"tab": self.tab_id, "state": self.hash})
         return f"{resolved.rstrip('/')}/{self.dashboard_id}?{query}"
+
+    @property
+    def raw(self) -> dict[str, object]:
+        """An independent copy of the JSON the state was read from or sent as."""
+        return cast("dict[str, object]", _thaw(self._raw))
+
+    def active_chart_id(self, item: str | DashboardItemView) -> str | None:
+        """Saved chart id of the widget tab this state shows: ``state.tabId``, else ``isDefault``, else the first."""
+        item_id = item if isinstance(item, str) else item.id
+        widget = _find_item(self.tab, item_id or "")
+        if widget is None or widget.item_type != "widget":
+            raise DataLensValidationError(f"Item {item_id!r} is not a chart widget on tab {self.tab_id!r}")
+        active = _active_inner_tab_id(widget, self.data)
+        tab = next((_ for _ in _inner_tabs(widget) if _.get("id") == active), None)
+        chart_id = tab.get("chartId") if tab is not None else None
+        return chart_id if isinstance(chart_id, str) else None
 
     @property
     def dashboard(self) -> Dashboard:
@@ -367,6 +457,8 @@ def _resolve_state_tab(
         return titled[0]
     wanted = set(item_ids)
     candidates = [candidate for candidate in tabs if wanted <= _tab_item_ids(candidate)]
+    if not candidates and len(tabs) == 1:
+        return tabs[0]
     if not candidates:
         raise DataLensValidationError(
             f"No dashboard tab contains every state item {sorted(wanted)!r}; pass tab= explicitly "
@@ -376,23 +468,10 @@ def _resolve_state_tab(
     return candidates[0]
 
 
-def _selector_operation(member: ControlMemberView | None) -> ParamOperation | None:
-    operation = member.source.operation if member is not None else None
-    return cast(ParamOperation, operation) if operation in _PARAM_OPERATIONS else None
-
-
 def _bind_values(values: tuple[StateValue, ...], member: ControlMemberView | None = None) -> tuple[StateValue, ...]:
-    """Apply the selector's operation to values without a prefix and mark dataset field keys."""
-    operation = _selector_operation(member)
+    """Mark dataset field keys; operands keep the operations charts apply to them."""
     dataset = member is not None and member.source_type == "dataset"
-    return tuple(
-        replace(
-            value,
-            operation=operation if value.inherits_operation and operation is not None else value.operation,
-            dataset_field=dataset and not value.is_action_param,
-        )
-        for value in values
-    )
+    return tuple(replace(value, dataset_field=dataset and not value.is_action_param) for value in values)
 
 
 def _check_params(
@@ -442,7 +521,11 @@ def _resolve_selection(
         _check_params(values, set(item.defaults), tab_id=tab_id, item_id=entry.item_id, owner=owner, issues=issues)
         return StateSelection(entry.item_id, None, entry.widget_tab_id, "selector", control, values)
     kind: StateSelectionKind = "chart" if item.item_type == "widget" else "unknown"
-    return StateSelection(entry.item_id, None, entry.widget_tab_id, kind, item, _bind_values(entry.values))
+    values = _bind_values(entry.values)
+    if kind == "unknown":
+        owner = f"{item.item_type or 'item'} {entry.item_id!r}"
+        _check_params(values, set(item.defaults), tab_id=tab_id, item_id=entry.item_id, owner=owner, issues=issues)
+    return StateSelection(entry.item_id, None, entry.widget_tab_id, kind, item, values)
 
 
 def _resolve_group_selection(

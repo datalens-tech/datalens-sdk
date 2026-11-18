@@ -381,3 +381,46 @@ def test_unbound_dashboard_cannot_create() -> None:
 
     with pytest.raises(dl.DataLensConfigurationError, match="not bound"):
         dashboard.new_state("Ab").select(item="Pv").create()
+
+
+def test_create_state_from_selections_keeps_a_non_default_chart_tab_active() -> None:
+    recorder = RecordedTransport(_load("dashboard_group_interval_widget_tab"), hashes=["copy"])
+    dashboard = _group_dashboard(recorder)
+    data = {
+        "LEN": {"params": {}, "state": {"tabId": "kQ1"}},
+        "__meta__": {"queue": [{"id": "LEN", "tabId": "kQ1"}], "version": 2},
+    }
+    original = _from_json(dashboard, data, tab="Mk")
+    assert original.selections[0].applied
+
+    copy_state = dashboard.create_state(original.tab, original.selections)
+
+    assert copy_state.selections[0].applied
+    assert recorder.created()[0]["data"] == data
+
+
+def test_create_rejects_undeclared_params_on_other_item_types() -> None:
+    entry = _load("dashboard_group_interval_widget_tab")
+    _items(entry).append({"data": {"text": "x"}, "id": "text-item", "namespace": "default", "type": "text"})
+    recorder = RecordedTransport(entry)
+    builder = _dashboard(entry, recorder).new_state("Mk").add({"id": "text-item", "params": {"undeclared": "x"}})
+
+    with pytest.raises(dl.DataLensValidationError, match="Parameter 'undeclared' of text 'text-item'"):
+        builder.create()
+    assert recorder.created() == []
+
+
+def test_select_rejects_non_string_parameter_names() -> None:
+    builder = _group_dashboard().new_state("Mk")
+
+    with pytest.raises(dl.DataLensValidationError, match="Parameter names must be non-empty strings"):
+        builder.select("Scale", {1: "week"})  # type: ignore[dict-item]
+
+
+def test_legacy_state_cannot_be_edited_as_a_queue() -> None:
+    dashboard = _dashboard(_load("dashboard_action_params"))
+    with pytest.warns(UserWarning, match="legacy_state_version"):
+        state = _from_json(dashboard, {"Lj": {"params": {"_ap_a": ["1"]}}})
+
+    with pytest.raises(dl.DataLensValidationError, match="version 1 state"):
+        state.edit()

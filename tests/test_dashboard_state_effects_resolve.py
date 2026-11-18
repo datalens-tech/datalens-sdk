@@ -215,7 +215,20 @@ def test_editor_chart_without_declared_params_is_unknown() -> None:
     summary = _summary(state)
 
     assert ("Q", "ED2", ("interval_from",), "unknown", None) in summary
-    assert not any(receiver == "ED" for _, receiver, *_rest in summary)
+    assert ("Q", "ED", ("interval_from",), "unknown", None) in summary
+
+
+def test_editor_chart_keeps_declared_and_unknown_keys_apart() -> None:
+    state, _ = _state(["C"], {"C": {"guid-region": ["EU"]}})
+    data = state.raw
+    data["Q"] = {"params": {"interval_from": "x"}}
+    data["__meta__"] = {"queue": [{"id": "C"}, {"id": "Q"}], "version": 2}
+    both = _from_json(state.dashboard, data, tab="T")
+
+    summary = _summary(both, items=["ED"])
+
+    assert ("C", "ED", ("guid-region",), "declared", None) in summary
+    assert ("Q", "ED", ("interval_from",), "unknown", None) in summary
 
 
 def test_each_chart_and_dataset_is_read_once() -> None:
@@ -262,3 +275,30 @@ def test_resolve_charts_requires_bound_dashboard() -> None:
 
     with pytest.raises(dl.DataLensConfigurationError, match="not bound"):
         state.effects(resolve_charts=True)
+
+
+class LocalFieldsTransport(ChartsTransport):
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        response = super().handler(request)
+        if request.url.path != "/rpc/getWizardChart":
+            return response
+        body = response.json()
+        body["entry"]["data"]["datasetsPartialFields"] = [[{"guid": "local-1", "title": "Margin"}], []]
+        return httpx.Response(200, json=body)
+
+
+@pytest.mark.parametrize(("param", "matched_by"), [("local-1", "guid"), ("Margin", "title")])
+def test_wizard_chart_local_fields_count_as_exact_matches(param: str, matched_by: str) -> None:
+    data = _dashboard_data()
+    items = cast(list[object], cast(list[dict[str, object]], data["tabs"])[0]["items"])
+    items.append(_selector("LF", {"fieldName": param}, "manual", {param: ""}))
+    transport = LocalFieldsTransport()
+    client = dl.DataLensClientYC(
+        auth=None, base_url="https://datalens.test", transport=httpx.MockTransport(transport.handler)
+    )
+    dashboard = dl.Dashboard(id="dash", data=data, rev_id="rev", _operations=client._dashboard_service)
+    state = _from_json(
+        dashboard, {"LF": {"params": {param: ["x"]}}, "__meta__": {"queue": [{"id": "LF"}], "version": 2}}, tab="T"
+    )
+
+    assert _summary(state, items=["WZ"]) == [("LF", "WZ", (param,), "exact", matched_by)]

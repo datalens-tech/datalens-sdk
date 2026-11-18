@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypeAlias, cast
 
 from typing_extensions import Self
 
@@ -18,6 +18,7 @@ from datalens_sdk.domain.dashboard_state import (
     DashboardState,
     DashboardStateData,
     ParamOperation,
+    StateOperand,
     StateParamValue,
     StateQueueItem,
     StateSelection,
@@ -53,6 +54,10 @@ if TYPE_CHECKING:
         DashboardTabView,
     )
     from datalens_sdk.domain.fields import DatasetField
+
+StateInputValue: TypeAlias = "str | DateInterval | RelativeDateInterval | RelativeDate"
+StateInput: TypeAlias = "StateInputValue | Sequence[StateInputValue]"
+"""Values of one parameter: a value or a sequence of values (a list for multiselect sources)."""
 
 _RAW_SELECTION_KEYS = frozenset({"id", "groupItemId", "tabId", "params"})
 _UNBOUND = "Object is not bound to client operations. Use a client namespace."
@@ -168,18 +173,28 @@ def _state_value(
     if effective not in _VALUELESS_OPERATIONS and not multiselect and len(items) != 1:
         raise DataLensValidationError(f"A single-value source takes exactly one value, got {len(items)}")
     prefixed = effective is not None and (own_operation is not None or effective != implicit)
-    return StateValue(
-        param=param,
-        operation=effective or implicit,
-        values=items,
-        multiple=multiselect,
-        inherits_operation=not prefixed,
-    )
+    operation = effective or implicit
+    if effective in _VALUELESS_OPERATIONS:
+        operands: tuple[StateOperand, ...] = (StateOperand(operation, None),)
+    else:
+        operands = tuple(StateOperand(operation, item, prefixed=prefixed and item != "") for item in items)
+    return StateValue(param=param, operands=operands, multiple=multiselect)
 
 
 def _wire_value(param: str, value: str | Sequence[str]) -> StateValue:
     raw: str | tuple[str, ...] = value if isinstance(value, str) else tuple(value)
-    return StateValue(param, "IN", (), multiple=not isinstance(value, str), inherits_operation=True, raw=raw)
+    return StateValue(param, (), multiple=not isinstance(value, str), raw=raw)
+
+
+def _param_pairs(values: object, default_param: str | None) -> list[tuple[str, object]]:
+    if not isinstance(values, Mapping):
+        if default_param is None:
+            raise DataLensValidationError("Chart values need field= or a mapping of chart parameters")
+        return [(default_param, values)]
+    bad = [key for key in values if not isinstance(key, str) or not key]
+    if bad:
+        raise DataLensValidationError(f"Parameter names must be non-empty strings, got {bad!r}")
+    return list(values.items())
 
 
 def _is_wire_value(value: object) -> bool:
@@ -246,7 +261,7 @@ class DashboardStateBuilder:
     def select(
         self,
         target: str | ControlView | ControlMemberView | DashboardItemView | None = None,
-        values: object = None,
+        values: StateInput | Mapping[str, StateInput] | None = None,
         *,
         field: DatasetField | None = None,
         item: str | DashboardItemView | None = None,
@@ -291,8 +306,17 @@ class DashboardStateBuilder:
         return self
 
     def add(self, selection: StateSelection | Mapping[str, object]) -> Self:
-        """Append a source as is: a selection of a read state or a raw ``{"id", "groupItemId", "tabId", "params"}``."""
-        return self._put(_raw_entry(selection))
+        """Append a source as is: a selection of a read state or a raw ``{"id", "groupItemId", "tabId", "params"}``.
+
+        A chart or tabs-selector source makes its tab the active one, so it keeps applying; a selection that was not
+        applied in its state is added without changing the active tab.
+        """
+        entry = _raw_entry(selection)
+        item = _find_item(self._tab, entry.item_id)
+        keep_inactive = isinstance(selection, StateSelection) and not selection.applied
+        if item is not None and entry.widget_tab_id in _inner_tab_ids(item) and not keep_inactive:
+            self._choose_inner_tab(item, entry.widget_tab_id)
+        return self._put(entry)
 
     def prune(self) -> tuple[StateSelection, ...]:
         """Drop sources missing from the loaded revision and return them."""
@@ -459,7 +483,6 @@ class DashboardStateBuilder:
     ) -> tuple[StateValue, ...]:
         source = member.source
         own = cast("ParamOperation | None", source.operation if source.operation in _PARAM_OPERATIONS else None)
-        pairs = values.items() if isinstance(values, Mapping) else [(_member_param(member), values)]
         return tuple(
             _state_value(
                 key,
@@ -469,7 +492,7 @@ class DashboardStateBuilder:
                 is_range=source.is_range,
                 own_operation=own,
             )
-            for key, value in pairs
+            for key, value in _param_pairs(values, _member_param(member) if not isinstance(values, Mapping) else None)
         )
 
     def _chart_params(
@@ -484,9 +507,7 @@ class DashboardStateBuilder:
             return (_state_value(key, values, operation, multiselect=True, is_range=False),)
         if values is None:
             return ()
-        if not isinstance(values, Mapping):
-            raise DataLensValidationError("Chart values need field= or a mapping of chart parameters")
         return tuple(
             _state_value(key, value, operation, multiselect=not isinstance(value, str), is_range=False)
-            for key, value in values.items()
+            for key, value in _param_pairs(values, None)
         )

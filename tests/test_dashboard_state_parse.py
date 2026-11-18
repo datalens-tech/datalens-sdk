@@ -115,7 +115,7 @@ def test_action_params_expose_field_guid() -> None:
     assert state.issues == ()
 
 
-def test_standalone_selector_uses_control_view_and_default_operation() -> None:
+def test_unprefixed_value_is_in_even_for_a_selector_with_an_operation() -> None:
     entry = _load("dashboard_action_params")
     tabs = cast(list[dict[str, object]], cast(dict[str, object], entry["data"])["tabs"])
     cast(list[object], tabs[0]["items"]).append(
@@ -140,7 +140,8 @@ def test_standalone_selector_uses_control_view_and_default_operation() -> None:
     selection = state.selections[0]
     assert selection.kind == "selector"
     assert isinstance(selection.item, ControlView)
-    assert selection.values[0].operation == "NE"
+    assert selection.values[0].operation == "IN"
+    assert selection.values[0].operands[0].prefixed is False
     assert selection.values[0].field_guid == "guid-1"
 
 
@@ -277,10 +278,20 @@ def test_state_of_global_items_uses_the_first_fitting_tab_unless_tab_is_passed()
 
 
 def test_tab_inference_rejects_states_that_fit_no_tab() -> None:
-    data = _state_data("state_group_interval_widget_tab")
+    data = _state_data("state_action_params")
 
     with pytest.raises(dl.DataLensValidationError, match="No dashboard tab contains"):
-        _from_json(_dashboard(_load("dashboard_action_params")), data)
+        _from_json(_dashboard(_load("dashboard_group_interval_widget_tab")), data)
+
+
+def test_one_tab_dashboard_reports_orphans_without_tab() -> None:
+    data = _state_data("state_group_interval_widget_tab")
+
+    with pytest.warns(UserWarning, match="unknown_state_item"):
+        state = _from_json(_dashboard(_load("dashboard_action_params")), data)
+
+    assert state.tab_id == "Ab"
+    assert all(_.is_orphan for _ in state.selections)
 
 
 def test_explicit_tab_by_id_title_or_view() -> None:
@@ -306,3 +317,32 @@ def test_created_at_and_hash_are_kept() -> None:
 def test_state_is_immutable() -> None:
     with pytest.raises(AttributeError):
         _group_state().tab_id = "Qa"  # type: ignore[misc]
+
+
+def test_state_snapshot_is_read_only_and_independent_of_its_input() -> None:
+    data = copy.deepcopy(_state_data("state_group_interval_widget_tab"))
+    state = _parse("dashboard_group_interval_widget_tab", "state_group_interval_widget_tab", data=data)
+
+    cast(dict[str, Any], data["LEN"])["state"] = {"tabId": "kQ1"}
+    with pytest.raises(TypeError):
+        state.data.widgets["LEN"] = dl.StateWidget()  # type: ignore[index]
+    widget_params = state.data.widgets["6n"].params
+    assert widget_params is not None
+    with pytest.raises(TypeError):
+        widget_params["E7Z"] = {}  # type: ignore[index]
+    raw = state.raw
+    raw["LEN"] = {"params": {"x": "1"}}
+
+    assert state.raw == _state_data("state_group_interval_widget_tab")
+    assert state.active_chart_id("LEN") == "qlchart000001"
+
+
+def test_active_chart_id_follows_the_widget_state() -> None:
+    data = copy.deepcopy(_state_data("state_group_interval_widget_tab"))
+    data["LEN"] = {"params": {}, "state": {"tabId": "kQ1"}}
+
+    state = _parse("dashboard_group_interval_widget_tab", "state_group_interval_widget_tab", data=data)
+
+    assert state.active_chart_id("LEN") == "wizchart00001"
+    with pytest.raises(dl.DataLensValidationError, match="not a chart widget"):
+        state.active_chart_id("6n")

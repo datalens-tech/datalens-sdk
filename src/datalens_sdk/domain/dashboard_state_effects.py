@@ -87,6 +87,12 @@ def _inner_tab_ids(item: DashboardItemView) -> list[str]:
     return [tab_id for tab in _inner_tabs(item) if (tab_id := _optional_str(tab.get("id")))]
 
 
+def _mappings_list(value: object) -> tuple[tuple[Mapping[str, object], ...], ...]:
+    if not isinstance(value, Sequence) or isinstance(value, str):
+        return ()
+    return tuple(_mappings(entry) for entry in value)
+
+
 def _group_members(item: DashboardItemView) -> tuple[Mapping[str, object], ...]:
     return _mappings(item.data.get("group"))
 
@@ -430,8 +436,11 @@ def _wizard_matches(
     datasets: dict[str, Dataset],
     operations: DashboardOperations,
 ) -> tuple[list[str], EffectMatch | None]:
-    guids: set[str] = set()
-    titles: set[str] = set()
+    guids = {_.guid for _ in chart.fields}
+    titles = {_.title for _ in chart.fields}
+    for local_fields in _mappings_list(chart.data.get("datasetsPartialFields")):
+        guids.update(guid for _ in local_fields if (guid := _optional_str(_.get("guid"))))
+        titles.update(title for _ in local_fields if (title := _optional_str(_.get("title"))))
     for dataset_id in chart.dataset_ids:
         if dataset_id not in datasets:
             datasets[dataset_id] = operations.dataset_operations.get_dataset(dataset_id)
@@ -460,12 +469,13 @@ def _chart_usage(
         result = [replace(effect, params=exact_params, certainty="exact")] if exact_params else []
         return result + ([replace(effect, params=bound_params, certainty="declared")] if bound_params else [])
     if isinstance(chart, EditorChart):
+        # Editor code may read any parameter; only the chart tab params are declared.
         declared_params = chart_tab.get("params")
         declared = set(declared_params) if isinstance(declared_params, Mapping) else set()
-        if not declared:
-            return [replace(effect, certainty="unknown")]
         used = tuple(_ for _ in effect.params if _ in declared)
-        return [replace(effect, params=used, certainty="declared")] if used else []
+        other = tuple(_ for _ in effect.params if _ not in declared)
+        result = [replace(effect, params=used, certainty="declared")] if used else []
+        return result + ([replace(effect, params=other, certainty="unknown")] if other else [])
     return [replace(effect, certainty="unknown")]
 
 

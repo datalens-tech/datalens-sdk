@@ -9,16 +9,14 @@ contracts. The state JSON is read and written through models generated from the
 
 ## Read a state
 
+Saved selector values and chart clicks are the user's data. Follow the
+result-handling rule of [chart data](chart-data.md#result-handling-permission-is-mandatory):
+ask how the values should be handled before reading them, and show them only in
+the form the user chose.
+
 ```python
 dashboard = client.get.dashboard(by_id="<dashboard-id>")
-state = dashboard.get_state("<hash>", tab="<tab id from ?tab=>")
-for selection in state.selections:
-    print(
-        selection.kind,
-        selection.item_id,
-        selection.applied,
-        [(_.param, _.operation, _.values) for _ in selection.values],
-    )
+state = dashboard.get_state("<state from the link>", tab="<tab from the link>")
 ```
 
 `get_state(hash, tab=None, strict=False)` returns an immutable
@@ -31,8 +29,9 @@ A state applies to **one dashboard tab**. Without `tab`, the SDK picks the
 first tab that holds every item of the state, as the UI opens a link without
 `?tab=`. A state of global selectors fits every tab, so pass `tab=` (the
 link's `?tab=` value: a tab id, title, or `DashboardTabView`) to check it
-against the tab you mean. When no tab fits, it raises
-`DataLensValidationError`.
+against the tab you mean. On a one-tab dashboard that tab is used
+even when queued items are gone. Otherwise, when no tab fits, it raises
+`DataLensValidationError` before orphans are collected, whatever `strict` is.
 
 A state is not bound to a revision. The SDK checks it against the revision
 loaded into `dashboard`, and `state.rev_id` is that revision.
@@ -72,11 +71,14 @@ Each `StateSelection` has `item_id`, `group_item_id`, `widget_tab_id`, `kind`
 
 ## Value prefixes
 
-Each `StateValue` has `param`, `operation` (a `ParamOperation`), decoded
-`values`, `multiple` (a list on the wire), `inherits_operation` (no prefix: the
-selector's operation applies), the stored wire `raw`, `is_action_param`, and
-`field_guid`. Decoding and encoding the wire forms below is done by the SDK; the
-domain objects hold only typed values.
+Each `StateValue` has `param`, `operands`, `multiple` (a list on the wire),
+the stored wire `raw`, `is_action_param`, and `field_guid`; `values` and
+`operation` (the operation shared by all operands, else `None`) are shortcuts.
+A `StateOperand` has `operation`, `value`, and `prefixed`. Charts resolve every
+operand on its own: `["__gte_10", "__lte_20"]` is GTE 10 and LTE 20, and an
+operand without a prefix is IN (BETWEEN for an interval) whatever operation its
+selector is configured with. The SDK decodes and encodes the wire forms below;
+the objects hold only typed values.
 
 | Wire form | Meaning |
 |---|---|
@@ -84,10 +86,11 @@ domain objects hold only typed values.
 | `__<op>_<value>` | explicit operation, lower case: `__ne_x`, `__gte_10`, `__isnull_` |
 | `__interval_<start>_<end>` | date range, decoded to `DateInterval`; operation BETWEEN |
 | `__relative_-7d[_sd]` | relative date, decoded to `RelativeDate(offset, cast, unit)`; `_sd`/`_ed` round to the start/end of a day |
-| no prefix | the selector's operation, else IN (BETWEEN for an interval) |
+| no prefix | IN, BETWEEN for an interval (`prefixed=False`) |
 
 The UI writes every value of a selector that has an operation with that
-operation's prefix. An unknown prefix such as `__relative_` alone decodes as IN.
+operation's prefix, so the builder does the same. An unknown prefix such as
+`__relative_` alone decodes as IN.
 
 `ParamOperation` has 24 values: the 12 of `FilterOperation` plus `NIN`,
 `ICONTAINS`, `NOTCONTAINS`, `NOTICONTAINS`, `ISTARTSWITH`, `ENDSWITH`,
@@ -160,7 +163,9 @@ Shortcuts:
   raw mappings and runs the same validation.
 - `state.edit()` starts a builder with a copy of the queue and the widget
   states on the same tab; its `create()` stores a new state and leaves the old
-  one unchanged.
+  one unchanged. A version 1 state cannot be edited: its params are per widget.
+- `add()` and `create_state()` make the tab of an applied chart source active,
+  so a copied selection keeps applying.
 
 ## `params_for` and `effects`
 
@@ -179,7 +184,9 @@ names. A connection `{"from": R, "to": S, "kind": "ignore"}` stops R receiving
 anything from S; both ends are the active endpoints: a chart's active tab id,
 a selector id, or one selector of a group. `aliases[namespace]` copies a value
 to every name of its group, and a foreign `_ap_<guid>` arrives as `<guid>`. A
-selector of a global group takes part only on the tabs of its `impactType`.
+selector of a global group whose `impactType` excludes the tab has no defaults
+and receives nothing there; its queued value still applies, because DashKit
+does not filter queue sources by tab.
 Address a group by one of its selectors.
 
 `state.effects(*, resolve_charts=False, items=None)` returns `StateEffect`
@@ -192,10 +199,11 @@ receivers; a version 1 state has none.
 | `received` | the receiver gets the parameters; default, no HTTP |
 | `exact` | a selector `defaults` key, a Wizard dataset field guid or title, or a QL parameter `name` uses them |
 | `declared` | a QL interval bound (`name_from`, `name_to`) or an Editor chart tab `params` key |
-| `unknown` | an Editor chart tab declares no params (the public API exposes no `usedParams`), or the chart was not found |
+| `unknown` | an Editor chart key outside its tab `params` (the public API exposes no `usedParams`), or the chart was not found |
 
 With `resolve_charts=True`, receivers that do not use the parameters are
-dropped and `matched_by` is `"guid"` or `"title"` for Wizard charts. It sends
+dropped and `matched_by` is `"guid"` or `"title"` for Wizard charts. Wizard
+fields include the chart's own fields and the fields of its datasets. It sends
 one `getEntries` for the chart kinds, one request per distinct chart, and one
 per distinct dataset of the Wizard charts.
 
@@ -215,13 +223,27 @@ tab comes from the state, and a different explicit `tab` or a state of another
 dashboard raises `DataLensValidationError`. A string hash is still accepted as
 before; see [screenshots](screenshots.md#saved-dashboard-state).
 
-To read a chart as the state shows it, pass the receiver's parameters, after
-the result-handling permission from [chart data](chart-data.md):
+To read a chart the way a state link shows it, start from the link, after the
+result-handling permission from [chart data](chart-data.md). The dashboard tab
+comes from `?tab=`, the widget from that tab, and the chart from the widget tab
+the state makes active:
 
 ```python
-widget = dashboard.tabs[0].items[0]
-result = client.data.get_chart_data(chart_id="<chart-id>", params=state.params_for(widget))
+from urllib.parse import parse_qs, urlparse
+
+link = "https://datalens.ru/<dashboard-id>?tab=<tab-id>&state=<hash>"
+query = parse_qs(urlparse(link).query)
+dashboard = client.get.dashboard(by_id=urlparse(link).path.rsplit("/", 1)[-1])
+state = dashboard.get_state(query["state"][0], tab=query["tab"][0])
+widget = next(item for item in state.tab.items if item.id == "<widget-id>")
+chart_id = state.active_chart_id(widget)
+result = client.data.get_chart_data(chart_id=chart_id, params=state.params_for(widget.id))
 ```
+
+`active_chart_id()` follows `state.tabId`, then the tab marked `isDefault`, then
+the first tab of the widget, so a multi-tab widget yields the chart the link
+shows. The query runs by chart ID, as described in
+[chart data](chart-data.md): it does not pin the loaded chart revision.
 
 ## Related references
 

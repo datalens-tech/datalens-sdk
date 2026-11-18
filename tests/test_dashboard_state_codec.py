@@ -27,19 +27,22 @@ def _decode(wire: str | list[str], param: str = "p") -> dl.StateValue:
 
 
 def _encode(value: dl.StateValue) -> object:
-    data = dl.DashboardStateData(
-        version=2, queue=(dl.StateQueueItem("w"),), widgets={"w": dl.StateWidget(params={value.param: value})}
-    )
+    widget = dl.StateWidget(params={value.param: value})
+    data = dl.DashboardStateData(version=2, queue=(dl.StateQueueItem("w"),), widgets={"w": widget})
     payload = DashboardStateConverter.to_payload(data)
-    widget = payload["w"]
-    assert isinstance(widget, dict)
-    return widget["params"][value.param]
+    body = payload["w"]
+    assert isinstance(body, dict)
+    return body["params"][value.param]
 
 
 def _value(
-    *values: object, operation: dl.ParamOperation = "IN", multiple: bool = True, inherits: bool = False
+    *values: DateInterval | RelativeDate | str | None,
+    operation: dl.ParamOperation = "IN",
+    multiple: bool = True,
+    prefixed: bool = True,
 ) -> dl.StateValue:
-    return dl.StateValue("p", operation, tuple(values), multiple=multiple, inherits_operation=inherits)  # type: ignore[arg-type]
+    operands = tuple(dl.StateOperand(operation, value, prefixed=prefixed) for value in values)
+    return dl.StateValue("p", operands, multiple=multiple)
 
 
 def test_param_operation_is_a_flat_tuple_of_24_strings() -> None:
@@ -50,25 +53,38 @@ def test_param_operation_is_a_flat_tuple_of_24_strings() -> None:
 
 @pytest.mark.parametrize("operation", OPERATIONS)
 def test_every_explicit_operation_round_trips(operation: dl.ParamOperation) -> None:
-    values = () if operation in ("ISNULL", "ISNOTNULL") else ("Moscow", "Paris")
+    values: tuple[str | None, ...] = (None,) if operation in ("ISNULL", "ISNOTNULL") else ("Moscow", "Paris")
 
     wire = _encode(_value(*values, operation=operation))
-    decoded = _decode(wire)  # type: ignore[arg-type]
+    assert isinstance(wire, list)
+    decoded = _decode(wire)
 
     assert decoded.operation == operation
-    assert decoded.values == values
-    assert not decoded.inherits_operation
-    assert decoded.raw == tuple(wire)  # type: ignore[arg-type]
+    assert decoded.values == tuple(_ for _ in values if _ is not None)
+    assert all(operand.prefixed for operand in decoded.operands)
+    assert decoded.raw == tuple(wire)
 
 
-def test_value_without_prefix_inherits_the_selector_operation() -> None:
-    assert _encode(_value("a", inherits=True)) == ["a"]
+def test_each_operand_keeps_its_operation() -> None:
+    decoded = _decode(["__gte_10", "__lte_20"])
+
+    assert [(_.operation, _.value) for _ in decoded.operands] == [("GTE", "10"), ("LTE", "20")]
+    assert decoded.operation is None
+    assert decoded.values == ("10", "20")
+
+
+def test_unprefixed_value_is_in_whatever_the_selector_operation() -> None:
     decoded = _decode("a")
-    assert (decoded.operation, decoded.inherits_operation, decoded.multiple) == ("IN", True, False)
+
+    assert decoded.operands == (dl.StateOperand("IN", "a", prefixed=False),)
+    assert (decoded.operation, decoded.multiple) == ("IN", False)
+    assert _encode(_value("a", prefixed=False)) == ["a"]
 
 
 def test_empty_values_are_not_prefixed() -> None:
-    assert _encode(_value("", "EU", operation="NE")) == ["", "__ne_EU"]
+    value = dl.StateValue("p", (dl.StateOperand("NE", "", prefixed=False), dl.StateOperand("NE", "EU")), multiple=True)
+
+    assert _encode(value) == ["", "__ne_EU"]
 
 
 def test_absolute_interval_round_trips() -> None:
@@ -76,9 +92,9 @@ def test_absolute_interval_round_trips() -> None:
 
     decoded = _decode(raw)
 
-    assert (decoded.operation, decoded.inherits_operation) == ("BETWEEN", False)
-    assert decoded.values == (DateInterval("2026-01-01T00:00:00.000Z", "2026-01-31T23:59:59.999Z"),)
-    assert _encode(_value(*decoded.values, operation="BETWEEN", multiple=False, inherits=True)) == raw
+    interval = DateInterval("2026-01-01T00:00:00.000Z", "2026-01-31T23:59:59.999Z")
+    assert decoded.operands == (dl.StateOperand("BETWEEN", interval, prefixed=False),)
+    assert _encode(_value(interval, operation="BETWEEN", multiple=False, prefixed=False)) == raw
 
 
 def test_relative_interval_uses_the_ui_rounding_format() -> None:
@@ -86,7 +102,7 @@ def test_relative_interval_uses_the_ui_rounding_format() -> None:
     interval = DateInterval(RelativeDate("-7d", cast="s", unit="d"), RelativeDate("+0d", cast="e", unit="d"))
 
     assert _decode(raw).values == (interval,)
-    assert _encode(_value(interval, operation="BETWEEN", multiple=False, inherits=True)) == raw
+    assert _encode(_value(interval, operation="BETWEEN", multiple=False, prefixed=False)) == raw
 
 
 def test_between_prefix_wraps_an_interval() -> None:
@@ -100,44 +116,45 @@ def test_interval_encoding_accepts_dates_and_exclusive_end() -> None:
     interval = DateInterval(datetime.date(2026, 1, 1), datetime.date(2026, 1, 2), inclusive_end=False)
 
     assert (
-        _encode(_value(interval, operation="BETWEEN", multiple=False, inherits=True))
+        _encode(_value(interval, operation="BETWEEN", multiple=False, prefixed=False))
         == "__interval_2026-01-01T00:00:00.000Z_2026-01-02T00:00:00.000Z"
     )
 
 
 def test_prefixed_relative_date_round_trips() -> None:
-    value = _value(RelativeDate("-7d", cast="s", unit="d"), operation="GTE", multiple=False)
+    date = RelativeDate("-7d", cast="s", unit="d")
 
-    assert _encode(value) == "__gte___relative_-7d_sd"
-    assert _decode("__gte___relative_-7d_sd").values == (RelativeDate("-7d", cast="s", unit="d"),)
+    assert _encode(_value(date, operation="GTE", multiple=False)) == "__gte___relative_-7d_sd"
+    assert _decode("__gte___relative_-7d_sd").operands == (dl.StateOperand("GTE", date),)
 
 
 @pytest.mark.parametrize(
-    ("raw", "operation", "inherits"),
+    ("raw", "operation", "prefixed"),
     [
         ("__foo_bar", "IN", False),
-        ("__isnull", "IN", True),
+        ("__isnull", "IN", False),
         ("__ne_", "IN", False),
         ("__relative_-7d_sd", "IN", False),
         ("__interval_broken", "BETWEEN", False),
-        ("plain_value", "IN", True),
+        ("plain_value", "IN", False),
     ],
 )
-def test_unrecognized_prefixes_follow_the_ui_fallback(raw: str, operation: str, inherits: bool) -> None:
-    decoded = _decode(raw)
+def test_unrecognized_prefixes_follow_the_ui_fallback(raw: str, operation: str, prefixed: bool) -> None:
+    (operand,) = _decode(raw).operands
 
-    assert (decoded.operation, decoded.inherits_operation) == (operation, inherits)
+    assert (operand.operation, operand.prefixed) == (operation, prefixed)
 
 
 @pytest.mark.parametrize("raw", ["__isnull_", "__ISNULL_"])
 def test_isnull_has_no_values(raw: str) -> None:
     decoded = _decode(raw)
 
-    assert (decoded.operation, decoded.values) == ("ISNULL", ())
+    assert decoded.operands == (dl.StateOperand("ISNULL", None),)
+    assert decoded.values == ()
 
 
 def test_stored_raw_is_written_back_unchanged() -> None:
-    value = dl.StateValue("p", "IN", (), multiple=True, inherits_operation=True, raw=("__weird_x", "y"))
+    value = dl.StateValue("p", (), multiple=True, raw=("__weird_x", "y"))
 
     assert _encode(value) == ["__weird_x", "y"]
 
