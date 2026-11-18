@@ -8,6 +8,7 @@ from typing import Protocol, cast
 
 from typing_extensions import Self
 
+from datalens_sdk.domain.chart_data import ChartData, ChartDataQuery
 from datalens_sdk.domain.chart_types import ChartCategory
 from datalens_sdk.domain.connection import _optional_str
 from datalens_sdk.domain.entry_location import (
@@ -22,6 +23,7 @@ from datalens_sdk.domain.entry_location import (
 from datalens_sdk.domain.navigation import EntryRelation, EntryScope, LinkDirection, Pager, RelationOptions
 from datalens_sdk.domain.ports import ChartOperations
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
+from datalens_sdk.domain.runtime_params import RuntimeParams
 from datalens_sdk.domain.screenshot import (
     CHART_SCREENSHOT_HEIGHT,
     CHART_SCREENSHOT_WIDTH,
@@ -172,6 +174,20 @@ class Chart(ABC):
 
     def to_file(self, path: ArtifactPath) -> Path:
         return self._write_artifact(path, split_tabs=False)
+
+    def get_chart_data(self, *, params: RuntimeParams | None = None) -> ChartData:
+        """Execute this chart by ID and return its ordered data tables.
+
+        The loaded revision and local chart content are not sent. The server
+        selects the saved configuration; no saved/published revision is promised.
+        ``params`` rejects revision selectors ``branch``/``revId`` and dashboard
+        controls ``tab``/``state``; other names retain their chart-specific meaning.
+        """
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot get data for a chart without an id")
+        return self._operations.get_chart_data(ChartDataQuery(chart_id=self.id, params=params))
 
     def screenshot(
         self,

@@ -293,3 +293,32 @@ def test_dataset_bound_get_dataset_data_rejects_bare_string_columns() -> None:
 def test_unbound_dataset_cannot_get_dataset_data() -> None:
     with pytest.raises(dl.DataLensConfigurationError, match="not bound"):
         dl.Dataset(id="dataset-1").get_dataset_data(columns=["sales"])
+
+
+def test_dataset_bound_data_ignores_loaded_revision_and_local_state() -> None:
+    recorder = RecordedTransport(httpx.Response(200, json={"schema": [], "rows": [[1], [2, 3]]}))
+    client = dl.DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
+    dataset = dl.Dataset(
+        id="dataset-1",
+        raw={"revId": "historical", "savedId": "saved", "publishedId": "published"},
+        _operations=client.dataset_ops,
+    )
+    assert dataset.get_dataset_data(columns=["sales"]).rows == ((1,), (2, 3))
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getDatasetData"]
+    assert recorder.request_json() == {"datasetId": "dataset-1", "columns": ["sales"], "limit": 500}
+
+
+def test_dataset_request_dto_error_retains_existing_exception() -> None:
+    recorder = RecordedTransport([])
+    client = dl.DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
+    # Dataset query validation historically leaves some wire shape checks to DTOs.
+    with pytest.raises(dl.DTOValidationError, match="getDatasetData"):
+        client.data.get_dataset_data(dataset_id=cast(str, 123), columns=["sales"])
+    assert recorder.requests == []
+
+
+def test_dataset_json_cell_validation_retains_existing_exception() -> None:
+    recorder = RecordedTransport(httpx.Response(200, content=b'{"schema":[],"rows":[[NaN]]}'))
+    client = dl.DataLensClientYC(auth=None, transport=httpx.MockTransport(recorder.handler))
+    with pytest.raises(dl.DataLensValidationError, match=r"Dataset data row 0 column 0.*non-finite"):
+        client.data.get_dataset_data(dataset_id="dataset-1", columns=["sales"])

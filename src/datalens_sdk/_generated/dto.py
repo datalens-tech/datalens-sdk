@@ -278,6 +278,73 @@ class DatasetDataReadDTO(BaseModel):
     columns: list[DatasetDataSchemaItemReadDTO] = Field(alias='schema')
 
 
+
+class GetChartDataArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    chart_id: Annotated[str, Field(min_length=1, alias='chartId')]
+    params: dict[str, list[str] | str] = _UNVALIDATED_NONE_DEFAULT
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class GetEditorChartDataResultResultsItemSchemaItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    name: str
+
+class GetEditorChartDataResultResultsItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    rows: list[list[JsonValue]]
+    columns: list[GetEditorChartDataResultResultsItemSchemaItemReadDTO] = Field(alias='schema')
+
+class GetEditorChartDataResultDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_type: Literal['editor'] = Field(alias='chartType')
+    results: list[GetEditorChartDataResultResultsItemReadDTO]
+
+class GetQLChartDataResultResultsItemSchemaItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    name: str
+    type: str
+
+class GetQLChartDataResultResultsItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    rows: list[list[JsonValue]]
+    columns: list[GetQLChartDataResultResultsItemSchemaItemReadDTO] = Field(alias='schema')
+
+class GetQLChartDataResultDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_type: Literal['ql'] = Field(alias='chartType')
+    results: list[GetQLChartDataResultResultsItemReadDTO]
+
+class GetWizardChartDataResultResultsItemSchemaItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    guid: str = _UNVALIDATED_NONE_DEFAULT
+    name: str
+    type: str
+
+class GetWizardChartDataResultResultsItemReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    rows: list[list[JsonValue]]
+    columns: list[GetWizardChartDataResultResultsItemSchemaItemReadDTO] = Field(alias='schema')
+
+class GetWizardChartDataResultDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    chart_type: Literal['wizard'] = Field(alias='chartType')
+    results: list[GetWizardChartDataResultResultsItemReadDTO]
+
+GetChartDataResultDTO = Annotated[GetEditorChartDataResultDTO | GetQLChartDataResultDTO | GetWizardChartDataResultDTO, Field(discriminator='chart_type')]
+
+
 class DatasetValidateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 

@@ -45,6 +45,15 @@ The SDK always sends `limit=500` unless an explicit limit is provided. This
 keeps an accidental read small while still allowing an explicit value from 1
 through 100000.
 
+The bound method executes by dataset ID. It does not send the loaded
+`rev_id`, branch pointers, or local content. Loading a historical dataset does
+not pin the data request to that revision; the server's saved/published
+selection is not specified. Fields from a historical schema may be absent
+from the configuration the server executes.
+
+For tables from a saved chart, use [chart data](chart-data.md). It has separate
+parameter and result contracts and no dataset default limit.
+
 ## Filters, parameters, sorting, and pagination
 
 ```python

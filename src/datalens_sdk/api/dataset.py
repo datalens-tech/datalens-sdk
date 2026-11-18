@@ -7,9 +7,7 @@ import warnings
 
 from pydantic import ValidationError
 
-from datalens_sdk.api.data import DataAPI
 from datalens_sdk.api.entries import EntriesService
-from datalens_sdk.converter.data import DatasetDataConverter, DatasetDataDtoModule
 from datalens_sdk.converter.dataset import DatasetConverter, DatasetDtoModule
 from datalens_sdk.domain.data import DatasetData, DatasetDataQuery
 from datalens_sdk.domain.dataset import Dataset, DatasetCreate, Source
@@ -18,7 +16,7 @@ from datalens_sdk.domain.dataset_update import DatasetUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
 from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
-from datalens_sdk.domain.ports import DatasetOperations, NavigationOperations
+from datalens_sdk.domain.ports import DatasetDataOperations, DatasetOperations, NavigationOperations
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.specs.dataset import DatasetUpdateSpec
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
@@ -127,19 +125,17 @@ class DatasetService(DatasetOperations):
         *,
         installation: str,
         api: DatasetAPI,
-        data_api: DataAPI,
+        data_operations: DatasetDataOperations,
         entries_service: EntriesService,
         navigation_operations: NavigationOperations,
         dto_module: DatasetDtoModule | None = None,
-        data_dto_module: DatasetDataDtoModule | None = None,
     ) -> None:
         self._installation = installation
         self._api = api
-        self._data_api = data_api
+        self._data_operations = data_operations
         self._entries_service = entries_service
         self._navigation_operations = navigation_operations
         self._dto_module = dto_module
-        self._data_dto_module = data_dto_module
 
     def create_dataset(self, builder: DatasetCreate) -> Dataset:
         spec = builder.to_spec()
@@ -219,12 +215,7 @@ class DatasetService(DatasetOperations):
         )
 
     def get_dataset_data(self, query: DatasetDataQuery) -> DatasetData:
-        try:
-            payload = DatasetDataConverter.request_payload(query, dto_module=self._data_dto_module)
-            response = self._data_api.get_dataset_data(payload)
-            return DatasetDataConverter.result(response, dto_module=self._data_dto_module)
-        except ValidationError as exc:
-            raise translate_dto_validation_error(operation="getDatasetData", reason=str(exc)) from exc
+        return self._data_operations.get_dataset_data(query)
 
     def update_dataset(self, builder: DatasetUpdate) -> Dataset:
         spec: DatasetUpdateSpec = builder.to_spec()

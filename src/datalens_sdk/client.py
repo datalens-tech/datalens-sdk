@@ -17,7 +17,7 @@ from datalens_sdk.api.cloud_environment_storage import CloudEnvironmentStorageAP
 from datalens_sdk.api.collection import CollectionAPI, CollectionService
 from datalens_sdk.api.connection import ConnectionAPI, ConnectionService
 from datalens_sdk.api.dashboard import DashboardAPI, DashboardService
-from datalens_sdk.api.data import DataAPI
+from datalens_sdk.api.data import DataAPI, DataDtoModule, DataService
 from datalens_sdk.api.dataset import DatasetAPI, DatasetService
 from datalens_sdk.api.entries import EntriesAPI, EntriesDtoModule, EntriesService
 from datalens_sdk.api.folder import FolderAPI, FolderService
@@ -44,7 +44,6 @@ from datalens_sdk.converter.cloud_environment_storage import CloudEnvironmentSto
 from datalens_sdk.converter.collection import CollectionDtoModule
 from datalens_sdk.converter.connection import ConnectionDtoModule
 from datalens_sdk.converter.dashboard import DashboardDtoModule
-from datalens_sdk.converter.data import DatasetDataDtoModule
 from datalens_sdk.converter.dataset import DatasetDtoModule
 from datalens_sdk.converter.editor_chart import EditorChartDtoModule, editor_read_wire_types
 from datalens_sdk.converter.folder import FolderDtoModule
@@ -59,6 +58,7 @@ from datalens_sdk.converter.sql_query import SqlQueryDtoModule
 from datalens_sdk.converter.trino_cluster import TrinoClusterDtoModule
 from datalens_sdk.converter.wizard_chart import WizardChartDtoModule
 from datalens_sdk.converter.workbook import WorkbookDtoModule
+from datalens_sdk.domain.chart_data import ChartData, ChartDataQuery
 from datalens_sdk.domain.cloud_environment import (
     CloudEnvironment,
     CloudEnvironmentCreate,
@@ -112,6 +112,7 @@ from datalens_sdk.domain.ports import (
     CollectionOperations,
     ConnectionOperations,
     DashboardOperations,
+    DataOperations,
     DatasetOperations,
     FolderOperations,
     HtmlPageOperations,
@@ -133,6 +134,7 @@ from datalens_sdk.domain.rest_catalog import (
     RestCatalogListOptions,
     RestCatalogSortField,
 )
+from datalens_sdk.domain.runtime_params import RuntimeParams
 from datalens_sdk.domain.spark_application import (
     SparkApplication,
     SparkApplicationCreate,
@@ -291,8 +293,16 @@ class DatasetCreateFactory:
 
 
 class DataNamespace:
-    def __init__(self, operations: DatasetOperations) -> None:
+    def __init__(self, operations: DataOperations) -> None:
         self._operations = operations
+
+    def get_chart_data(self, *, chart_id: str, params: RuntimeParams | None = None) -> ChartData:
+        """Execute a saved chart by ID, without a revision selector or automatic pagination.
+
+        ``params`` rejects revision selectors ``branch``/``revId`` and dashboard
+        controls ``tab``/``state``; other names retain their chart-specific meaning.
+        """
+        return self._operations.get_chart_data(ChartDataQuery(chart_id=chart_id, params=params))
 
     def get_dataset_data(
         self,
@@ -1237,14 +1247,17 @@ class DataLensClientBase:
             navigation_operations=self._navigation_service,
             dto_module=cast(ConnectionDtoModule, dto_module),
         )
+        self._data_service = DataService(
+            api=DataAPI(self._http),
+            dto_module=cast(DataDtoModule, dto_module),
+        )
         self._dataset_service = DatasetService(
             installation=self.INSTALLATION,
             api=DatasetAPI(self._http),
-            data_api=DataAPI(self._http),
+            data_operations=self._data_service,
             entries_service=entries_service,
             navigation_operations=self._navigation_service,
             dto_module=cast(DatasetDtoModule, dto_module),
-            data_dto_module=cast(DatasetDataDtoModule, dto_module),
         )
         screenshot_service = ScreenshotService(
             api=ScreenshotAPI(self._http),
@@ -1256,6 +1269,7 @@ class DataLensClientBase:
             entries_service=entries_service,
             navigation_operations=self._navigation_service,
             screenshot_operations=screenshot_service,
+            data_operations=self._data_service,
             dto_module=cast(WizardChartDtoModule, dto_module),
         )
         dashboard_bundle_exporter = DashboardBundleExporter(
@@ -1337,7 +1351,7 @@ class DataLensClientBase:
             dashboard_operations=self._dashboard_service,
             chart_operations=self._chart_service,
         )
-        self.data = DataNamespace(self._dataset_service)
+        self.data = DataNamespace(self._data_service)
         self.navigation = NavigationNamespace(self._navigation_service)
         if "licenses" in self._installation_info["namespaces"]:
             self._license_service = LicenseService(

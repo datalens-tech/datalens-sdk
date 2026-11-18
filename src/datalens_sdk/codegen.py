@@ -116,6 +116,13 @@ _SCREENSHOT_ROUTES = {
 }
 _DATASET_DATA_ROUTE = "/rpc/getDatasetData"
 _DATASET_DATA_ROOTS = ("DatasetDataArgs", "DatasetData")
+_CHART_DATA_ROUTE = "/rpc/getChartData"
+_CHART_DATA_ROOTS = ("GetChartDataArgs", "GetChartDataResult")
+_CHART_DATA_VARIANTS = {
+    "wizard": "GetWizardChartDataResult",
+    "ql": "GetQLChartDataResult",
+    "editor": "GetEditorChartDataResult",
+}
 _ENTRY_REVISIONS_ROUTE = "/rpc/getRevisions"
 _ENTRY_REVISIONS_ROOTS = ("GetRevisionsArgs", "GetRevisionsResult")
 _ENTRY_MOVE_ROUTE = "/rpc/moveFolderEntry"
@@ -143,6 +150,7 @@ _SCHEMA_SUPPORTED_KEYS = frozenset(
 _WIZARD_SCHEMA_SUPPORTED_KEYS = frozenset({"default", "maximum", "minimum"})
 _DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "maxItems", "minItems", "minLength", "minimum"})
 _DATASET_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"maximum", "minItems", "minLength", "minimum"})
+_CHART_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "minLength"})
 _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS = frozenset({"default", "maximum", "maxItems", "minItems", "minimum"})
 _HTML_PAGE_SCHEMA_SUPPORTED_KEYS = frozenset({"maxLength"})
 _SCREENSHOT_SCHEMA_SUPPORTED_KEYS = frozenset({"exclusiveMinimum", "maximum"})
@@ -267,6 +275,11 @@ class DatasetDataContractMeta(TypedDict):
     schemas: dict[str, JsonValue]
 
 
+class ChartDataContractMeta(TypedDict):
+    roots: list[str]
+    schemas: dict[str, JsonValue]
+
+
 class EntryRevisionsContractMeta(TypedDict):
     roots: list[str]
     schemas: dict[str, JsonValue]
@@ -359,6 +372,7 @@ class Metadata(TypedDict):
     installations: dict[str, InstallationMetadata]
     dashboard: NotRequired[DashboardContractMeta]
     dataset_data: NotRequired[DatasetDataContractMeta]
+    chart_data: NotRequired[ChartDataContractMeta]
     entry_move: NotRequired[EntryMoveContractMeta]
     entry_revisions: NotRequired[EntryRevisionsContractMeta]
     html_page: NotRequired[HtmlPageContractMeta]
@@ -722,6 +736,7 @@ def _audit_pydantic_schema_features(
             (contract == "Wizard" and key in _WIZARD_SCHEMA_SUPPORTED_KEYS)
             or (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS)
             or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
+            or (contract == "getChartData" and key in _CHART_DATA_SCHEMA_SUPPORTED_KEYS)
             or (contract == "getRevisions" and key in _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS)
             or (contract == "HtmlPages" and key in _HTML_PAGE_SCHEMA_SUPPORTED_KEYS)
             or (contract == "Screenshots" and key in _SCREENSHOT_SCHEMA_SUPPORTED_KEYS)
@@ -763,7 +778,7 @@ def _audit_pydantic_schema_features(
                     f"Unsupported behavior-bearing {contract} schema feature at "
                     f"{_schema_pointer(pointer, constraint)}: incompatible schema type or composition"
                 )
-    if contract.startswith("tagged RPC "):
+    if contract == "getChartData" or contract.startswith("tagged RPC "):
         for composition_key in ("$ref", "anyOf", "oneOf"):
             if composition_key not in value:
                 continue
@@ -1074,6 +1089,7 @@ def _audit_pydantic_schema_features(
                         or (contract == "Wizard" and key in _WIZARD_SCHEMA_SUPPORTED_KEYS)
                         or (contract == "Dashboard" and key in _DASHBOARD_SCHEMA_SUPPORTED_KEYS)
                         or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
+                        or (contract == "getChartData" and key in _CHART_DATA_SCHEMA_SUPPORTED_KEYS)
                         or (contract == "getRevisions" and key in _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS)
                         or (contract == "HtmlPages" and key in _HTML_PAGE_SCHEMA_SUPPORTED_KEYS)
                     )
@@ -2114,6 +2130,121 @@ def build_dataset_data_contract_meta(spec: Mapping[str, object]) -> DatasetDataC
     }
 
 
+def build_chart_data_contract_meta(spec: Mapping[str, object]) -> ChartDataContractMeta | None:
+    """Extract the exact chart-data route and preserve its original schema closure."""
+
+    paths = _string_object_dict(spec.get("paths"), context="paths")
+    if _CHART_DATA_ROUTE not in paths:
+        return None
+    path_item = _string_object_dict(paths[_CHART_DATA_ROUTE], context=_CHART_DATA_ROUTE)
+    operation = _string_object_dict(path_item.get("post"), context=f"{_CHART_DATA_ROUTE}.post")
+    request, _ = _route_schema(operation, route=_CHART_DATA_ROUTE, request=True)
+    response, _ = _route_schema(operation, route=_CHART_DATA_ROUTE, request=False)
+    if (request, response) != _CHART_DATA_ROOTS:
+        raise ValueError(
+            f"getChartData schema references differ: expected {_CHART_DATA_ROOTS!r}, got {(request, response)!r}"
+        )
+
+    for request_side, keys in (
+        (True, ("requestBody", "content", "application/json", "schema")),
+        (False, ("responses", "200", "content", "application/json", "schema")),
+    ):
+        route_schema = operation
+        context = f"{_CHART_DATA_ROUTE}.post"
+        for key in keys:
+            context = f"{context}.{key}"
+            route_schema = _string_object_dict(route_schema.get(key), context=context)
+        _audit_pydantic_schema_features(
+            route_schema,
+            pointer=f"{_CHART_DATA_ROUTE}/{'request' if request_side else 'response'}",
+            contract="getChartData",
+            require_provably_disjoint_one_of=False,
+        )
+
+    available = _schemas(spec)
+    reached: dict[str, JsonValue] = {}
+    visiting: set[str] = set()
+
+    def visit(name: str) -> None:
+        if name in visiting:
+            raise ValueError(f"Recursive getChartData schema {name!r} is not supported")
+        if name in reached:
+            return
+        schema = available.get(name)
+        if schema is None:
+            raise ValueError(f"getChartData schema graph references missing component {name!r}")
+        _audit_pydantic_schema_features(
+            schema,
+            pointer=f"/schemas/{_json_pointer_token(name)}",
+            contract="getChartData",
+            require_provably_disjoint_one_of=False,
+        )
+        visiting.add(name)
+        for referenced in sorted(_schema_refs(schema)):
+            visit(referenced)
+        visiting.remove(name)
+        # Compare the complete source before widening read types or discarding annotations.
+        reached[name] = normalize_json_value(schema, context=f"getChartData schema {name}")
+
+    for root in _CHART_DATA_ROOTS:
+        visit(root)
+
+    result = _string_object_dict(reached["GetChartDataResult"], context="GetChartDataResult")
+    discriminator = _string_object_dict(result.get("discriminator"), context="GetChartDataResult.discriminator")
+    expected_mapping = {tag: f"{_SCHEMA_REF_PREFIX}{name}" for tag, name in _CHART_DATA_VARIANTS.items()}
+    if discriminator != {"propertyName": "chartType", "mapping": expected_mapping}:
+        raise ValueError("getChartData discriminator must map wizard, ql and editor to their result schemas")
+    branches = result.get("oneOf")
+    if (
+        not isinstance(branches, list)
+        or len(branches) != len(_CHART_DATA_VARIANTS)
+        or {_schema_ref_name(branch, context="GetChartDataResult.oneOf") for branch in branches}
+        != set(_CHART_DATA_VARIANTS.values())
+    ):
+        raise ValueError("getChartData oneOf must contain exactly the wizard, ql and editor result schemas")
+    for tag, name in _CHART_DATA_VARIANTS.items():
+        variant = _string_object_dict(reached[name], context=name)
+        properties = _string_object_dict(variant.get("properties"), context=f"{name}.properties")
+        chart_type = _string_object_dict(properties.get("chartType"), context=f"{name}.properties.chartType")
+        required = _string_list(variant.get("required"), context=f"{name}.required")
+        if chart_type.get("type") != "string" or chart_type.get("enum") != [tag] or "chartType" not in required:
+            raise ValueError(f"getChartData variant {name!r} must require the literal chartType {tag!r}")
+    return {"roots": list(_CHART_DATA_ROOTS), "schemas": dict(sorted(reached.items()))}
+
+
+def _widen_chart_data_column_type(schemas: dict[str, JsonValue]) -> None:
+    """Accept future Wizard column types only in the generated read contract."""
+
+    name = "GetWizardChartDataResult"
+    response = _string_object_dict(schemas[name], context=name)
+    properties = _string_object_dict(response.get("properties"), context=f"{name}.properties")
+    results = _string_object_dict(properties.get("results"), context=f"{name}.results")
+    table = _string_object_dict(results.get("items"), context=f"{name}.results.items")
+    table_properties = _string_object_dict(table.get("properties"), context=f"{name}.results.items.properties")
+    columns = _string_object_dict(table_properties.get("schema"), context=f"{name}.results.items.schema")
+    column = _string_object_dict(columns.get("items"), context=f"{name}.results.items.schema.items")
+    referenced_name: str | None = None
+    while "$ref" in column:
+        referenced_name = _schema_ref_name(column, context=f"{name} column")
+        column = _string_object_dict(schemas[referenced_name], context=referenced_name)
+    column_properties = _string_object_dict(column.get("properties"), context=f"{name} column.properties")
+    type_schema = _string_object_dict(column_properties.get("type"), context=f"{name} column.type")
+    type_schema.pop("enum", None)
+    type_schema["type"] = "string"
+    column_properties["type"] = type_schema
+    column["properties"] = column_properties
+    if referenced_name is not None:
+        schemas[referenced_name] = cast(JsonValue, column)
+        return
+    columns["items"] = column
+    table_properties["schema"] = columns
+    table["properties"] = table_properties
+    results["items"] = table
+    properties["results"] = results
+    response["properties"] = properties
+    schemas[name] = cast(JsonValue, response)
+
+
 def wizard_schema_fingerprint(meta: WizardSchemaMeta) -> str:
     canonical = normalize_json_object(meta, context="Wizard schema metadata")
     return hashlib.sha256(_canonical_json(canonical).encode("utf-8")).hexdigest()
@@ -2866,6 +2997,8 @@ def build_metadata(
     dashboard_contracts: list[tuple[str, DashboardContractMeta]] = []
     dataset_data_contracts: list[tuple[str, DatasetDataContractMeta]] = []
     dataset_data_missing: list[str] = []
+    chart_data_contracts: list[tuple[str, ChartDataContractMeta]] = []
+    chart_data_missing: list[str] = []
     entry_move_contracts: list[tuple[str, EntryMoveContractMeta]] = []
     entry_move_missing: list[str] = []
     entry_revisions_contracts: list[tuple[str, EntryRevisionsContractMeta]] = []
@@ -2907,6 +3040,11 @@ def build_metadata(
             dataset_data_missing.append(installation)
         else:
             dataset_data_contracts.append((installation, dataset_data_contract))
+        chart_data_contract = build_chart_data_contract_meta(spec)
+        if chart_data_contract is None:
+            chart_data_missing.append(installation)
+        else:
+            chart_data_contracts.append((installation, chart_data_contract))
         connection_discriminator = _string_object_dict(
             schemas["ConnectionCreate"].get("discriminator"),
             context="ConnectionCreate.discriminator",
@@ -2987,6 +3125,17 @@ def build_metadata(
                     f"getDatasetData schemas differ between {canonical_installation!r} and {installation!r}"
                 )
         out["dataset_data"] = canonical_dataset_data
+    if chart_data_contracts and chart_data_missing:
+        raise ValueError(
+            "getChartData availability differs between installations: "
+            f"present on {[name for name, _ in chart_data_contracts]!r}, missing on {chart_data_missing!r}"
+        )
+    if chart_data_contracts:
+        canonical_installation, canonical_chart_data = chart_data_contracts[0]
+        for installation, candidate in chart_data_contracts[1:]:
+            if candidate != canonical_chart_data:
+                raise ValueError(f"getChartData schemas differ between {canonical_installation!r} and {installation!r}")
+        out["chart_data"] = canonical_chart_data
     if entry_move_missing:
         raise ValueError(f"moveFolderEntry is missing from installations: {entry_move_missing!r}")
     if entry_move_contracts:
@@ -4895,6 +5044,30 @@ def _emit_dataset_data_dto(metadata: Metadata) -> str:
     return f"\n{request_models}\n{response_models}\n"
 
 
+def _emit_chart_data_dto(metadata: Metadata) -> str:
+    contract = metadata.get("chart_data")
+    if contract is None:
+        return ""
+    schemas = {name: _normalize_wizard_schema(schema) for name, schema in contract["schemas"].items()}
+    request_models = _PydanticSchemaEmitter(
+        schemas,
+        read=False,
+        contract="getChartData",
+        payload_methods="roots",
+    ).emit(("GetChartDataArgs",))
+    _widen_chart_data_column_type(schemas)
+    response_models = _PydanticSchemaEmitter(
+        schemas,
+        read=True,
+        contract="getChartData",
+        field_name_overrides={
+            (variant, "results", "item", "schema"): "columns" for variant in _CHART_DATA_VARIANTS.values()
+        },
+        model_name_overrides={(name,): f"{name}DTO" for name in ("GetChartDataResult", *_CHART_DATA_VARIANTS.values())},
+    ).emit(("GetChartDataResult",))
+    return f"\n{request_models}\n{response_models}\n"
+
+
 def _emit_entry_revisions_dto(metadata: Metadata) -> str:
     contract = metadata.get("entry_revisions")
     if contract is None:
@@ -4965,6 +5138,7 @@ def emit_dto(metadata: Metadata) -> str:
     chart_dto_block = _emit_chart_dto(metadata)
     dashboard_dto_block = _emit_dashboard_dto(metadata)
     dataset_data_dto_block = _emit_dataset_data_dto(metadata)
+    chart_data_dto_block = _emit_chart_data_dto(metadata)
     entry_move_result_dto_block = _emit_entry_move_result_dto(metadata)
     entry_revisions_dto_block = _emit_entry_revisions_dto(metadata)
     html_page_dto_block = _emit_html_page_dto(metadata)
@@ -5163,6 +5337,7 @@ class DatasetReadDTO(BaseModel):
 
 
 {dataset_data_dto_block}
+{chart_data_dto_block}
 class DatasetValidateDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 

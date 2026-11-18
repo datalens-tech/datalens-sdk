@@ -26,6 +26,7 @@ from datalens_sdk.converter.wizard_chart import (
     validate_wizard_generated_contract,
 )
 from datalens_sdk.domain.chart import Chart
+from datalens_sdk.domain.chart_data import ChartData, ChartDataQuery
 from datalens_sdk.domain.editor_chart import EditorChart, EditorChartUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
@@ -35,7 +36,7 @@ from datalens_sdk.domain.navigation import (
     Pager,
     RelationOptions,
 )
-from datalens_sdk.domain.ports import ChartOperations, NavigationOperations, ScreenshotOperations
+from datalens_sdk.domain.ports import ChartDataOperations, ChartOperations, NavigationOperations, ScreenshotOperations
 from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.screenshot import EntityScreenshot, ScreenshotRequest
@@ -148,6 +149,7 @@ class ChartService(ChartOperations):
         entries_service: EntriesService,
         navigation_operations: NavigationOperations,
         screenshot_operations: ScreenshotOperations,
+        data_operations: ChartDataOperations,
         dto_module: WizardChartDtoModule | None = None,
     ) -> None:
         self._installation = installation
@@ -155,8 +157,12 @@ class ChartService(ChartOperations):
         self._entries_service = entries_service
         self._navigation_operations = navigation_operations
         self._screenshot_operations = screenshot_operations
+        self._data_operations = data_operations
         self._dto_module = dto_module
         self._wizard_contract = validate_wizard_generated_contract(dto_module)
+
+    def get_chart_data(self, query: ChartDataQuery) -> ChartData:
+        return self._data_operations.get_chart_data(query)
 
     @property
     def installation(self) -> str:

@@ -1,22 +1,31 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 import math
 from pathlib import Path
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
 from typing_extensions import Self
 
+from datalens_sdk.domain.runtime_params import (
+    RuntimeParams,
+    RuntimeParamValue,
+)
+from datalens_sdk.domain.runtime_params import (
+    normalize_param_value as normalize_runtime_param_value,
+)
+from datalens_sdk.domain.runtime_params import (
+    normalize_params as normalize_runtime_params,
+)
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.serialization.artifacts import ArtifactPath
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.ports import ScreenshotOperations
 
-ScreenshotParamValue: TypeAlias = str | Sequence[str]
-ScreenshotParams: TypeAlias = Mapping[str, ScreenshotParamValue]
+ScreenshotParamValue: TypeAlias = RuntimeParamValue
+ScreenshotParams: TypeAlias = RuntimeParams
 ScreenshotEntityKind: TypeAlias = Literal["chart", "dashboard"]
 ScreenshotTheme: TypeAlias = Literal["light", "dark"]
 
@@ -47,38 +56,27 @@ def validate_side(value: int | None, *, name: str) -> None:
 
 
 def normalize_param_value(key: str, value: object) -> str | tuple[str, ...]:
-    if isinstance(value, str):
-        return value
-    if isinstance(value, (bytes, bytearray)) or not isinstance(value, Sequence):
-        raise DataLensValidationError(f"Screenshot parameter {key!r} must be a string or a sequence of strings")
-    items = tuple(value)
-    for item in items:
-        if not isinstance(item, str):
-            raise DataLensValidationError(f"Screenshot parameter {key!r} must contain only strings")
-    return items
+    return normalize_runtime_param_value(key, value, context="Screenshot")
 
 
 def normalize_params(
     params: ScreenshotParams | None, *, reserved: frozenset[str]
 ) -> Mapping[str, str | tuple[str, ...]]:
-    if params is None:
-        return MappingProxyType({})
-    if not isinstance(params, Mapping):
-        raise DataLensValidationError("Screenshot params must be a mapping of parameter names to values")
-    normalized: dict[str, str | tuple[str, ...]] = {}
-    for key, value in params.items():
-        if not isinstance(key, str) or not key:
-            raise DataLensValidationError("Screenshot parameter names must be non-empty strings")
-        if key in reserved:
-            raise DataLensValidationError(
-                f"Screenshot parameter {key!r} is set by the SDK and cannot be passed in params"
-            )
-        if key.startswith(VIEW_PARAM_PREFIX):
-            raise DataLensValidationError(
-                f"Screenshot parameter {key!r} is a page view setting owned by the SDK; use the screenshot arguments"
-            )
-        normalized[key] = normalize_param_value(key, value)
-    return MappingProxyType(normalized)
+    if params is not None:
+        if not isinstance(params, Mapping):
+            raise DataLensValidationError("Screenshot params must be a mapping of parameter names to values")
+        for key in params:
+            if not isinstance(key, str) or not key:
+                raise DataLensValidationError("Screenshot parameter names must be non-empty strings")
+            if key in reserved:
+                raise DataLensValidationError(
+                    f"Screenshot parameter {key!r} is set by the SDK and cannot be passed in params"
+                )
+            if key.startswith(VIEW_PARAM_PREFIX):
+                raise DataLensValidationError(
+                    f"Screenshot parameter {key!r} is a page view setting owned by the SDK; use the screenshot arguments"
+                )
+    return normalize_runtime_params(params, context="Screenshot")
 
 
 @dataclass(frozen=True, slots=True)

@@ -15,6 +15,14 @@
 
 ### Added
 
+- Add experimental chart tables through `client.data.get_chart_data()` and
+  `chart.get_chart_data()` for Wizard, QL, and Editor, with typed ordered
+  tables, positional JSON rows, and caller runtime parameters. Both entrypoints
+  execute by chart ID without selecting the loaded revision; no automatic
+  pagination or file export is provided.
+- Expose shared `RuntimeParams` and `RuntimeParamValue` types while retaining
+  the existing screenshot parameter aliases and validation policy.
+
 - Expose `has_more_rows` on successful SQL statements so callers can detect
   omitted rows.
 
@@ -33,6 +41,10 @@
 
 ### Fixed
 
+- Reject chart-data `params` named `revId`, `branch`, `tab`, or `state` with
+  `DataLensValidationError` before HTTP instead of forwarding them. Remove
+  these names from `params`: chart-data reads execute by chart ID and cannot
+  select a draft or historical revision, dashboard tab, or saved selector state.
 - Allow `EditorChartUpdate.config(None)` for renderers with an optional config
   tab while rejecting missing config for renderers that require it.
 - Accept boolean OpenAPI `deprecated` annotations and current Wizard numeric
