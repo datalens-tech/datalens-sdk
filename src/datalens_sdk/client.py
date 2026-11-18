@@ -1288,6 +1288,8 @@ class DataLensClientBase:
             navigation_operations=self._navigation_service,
             bundle_exporter=dashboard_bundle_exporter,
             screenshot_operations=screenshot_service,
+            chart_operations=self._chart_service,
+            dataset_operations=self._dataset_service,
             dto_module=cast(DashboardDtoModule, dto_module),
         )
         self._folder_service = FolderService(

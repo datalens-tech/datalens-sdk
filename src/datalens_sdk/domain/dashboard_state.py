@@ -13,6 +13,14 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Literal, cast
 import warnings
 
+from datalens_sdk.domain.dashboard_state_effects import StateEffect, params_for, receivers, resolve_usage
+from datalens_sdk.domain.dashboard_state_items import (
+    find_item,
+    optional_str,
+    tab_item_ids,
+    widget_tab_ids,
+    widget_tab_params,
+)
 from datalens_sdk.domain.dashboard_types import ValidationIssue
 from datalens_sdk.domain.param_values import (
     ACTION_PARAM_PREFIX,
@@ -21,7 +29,7 @@ from datalens_sdk.domain.param_values import (
     StateValue,
     decode_param_value,
 )
-from datalens_sdk.errors import DataLensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.dashboard import (
@@ -32,6 +40,7 @@ if TYPE_CHECKING:
         DashboardTabView,
     )
     from datalens_sdk.domain.dashboard_state_builder import DashboardStateBuilder
+    from datalens_sdk.domain.runtime_params import NormalizedRuntimeParams
 
 STATE_META_KEY = "__meta__"
 STATE_VERSION = 2
@@ -149,6 +158,36 @@ class DashboardState:
             builder.add(selection)
         return builder
 
+    def params_for(self, item: str | ControlView | ControlMemberView | DashboardItemView) -> NormalizedRuntimeParams:
+        """Parameters the item receives under this state, ready for ``get_chart_data(params=...)``.
+
+        Applied in order: dashboard ``globalParams``, defaults of the namespace, then the queue; connections with
+        ``kind="ignore"``, ``aliases`` and the ``_ap_`` prefix of foreign action parameters are honoured.
+        """
+        return params_for(self, item)
+
+    def effects(
+        self,
+        *,
+        resolve_charts: bool = False,
+        items: Sequence[str | ControlView | ControlMemberView | DashboardItemView] | None = None,
+    ) -> tuple[StateEffect, ...]:
+        """Receivers of each source of this state; ``items`` limits the receivers.
+
+        By default only delivery is computed (``certainty="received"``), without HTTP. ``resolve_charts=True`` keeps
+        the receivers that use the parameters: selectors by their defaults, Wizard charts by dataset field guid or
+        title, QL charts by parameter names (``exact``), Editor charts by the chart tab params (``declared``, or
+        ``unknown`` when none are declared: the public API exposes no ``usedParams``). It sends one ``getEntries``
+        for the chart kinds, one request per distinct chart and one per distinct dataset of the Wizard charts.
+        """
+        effects = receivers(self, items)
+        if not resolve_charts:
+            return effects
+        operations = self.dashboard._operations
+        if operations is None:
+            raise DataLensConfigurationError("Object is not bound to client operations. Use a client namespace.")
+        return resolve_usage(self, effects, operations)
+
     @property
     def dashboard(self) -> Dashboard:
         """The dashboard revision this state was read or created against."""
@@ -178,10 +217,6 @@ def item_params(raw: Mapping[str, object], item_id: str) -> Mapping[str, object]
     entry = raw.get(item_id)
     params = entry.get("params") if isinstance(entry, Mapping) else None
     return params if isinstance(params, Mapping) else {}
-
-
-def optional_str(value: object) -> str | None:
-    return value if isinstance(value, str) and value else None
 
 
 def queue_entries(raw: Mapping[str, object]) -> list[QueueEntry]:
@@ -217,10 +252,6 @@ def queue_entries(raw: Mapping[str, object]) -> list[QueueEntry]:
 
 def legacy_entries(raw: Mapping[str, object]) -> list[QueueEntry]:
     return [QueueEntry(item_id, None, None, item_params(raw, item_id)) for item_id in raw if item_id != STATE_META_KEY]
-
-
-def tab_item_ids(tab: DashboardTabView) -> set[str]:
-    return {item.id for item in (*tab.items, *tab.global_items) if item.id}
 
 
 def resolve_state_tab(
@@ -259,13 +290,6 @@ def resolve_state_tab(
     raise DataLensValidationError(f"State items fit several tabs {[_.id for _ in candidates]!r}; pass tab= explicitly")
 
 
-def find_item(tab: DashboardTabView, item_id: str) -> DashboardItemView | None:
-    for item in (*tab.items, *tab.global_items):
-        if item.id == item_id:
-            return item
-    return None
-
-
 def default_operation(member: ControlMemberView | None) -> ParamOperation | None:
     operation = member.source.operation if member is not None else None
     return cast(ParamOperation, operation) if operation in PARAM_OPERATIONS else None
@@ -293,28 +317,6 @@ def wire_value(value: object) -> str | list[str]:
 
 def is_action(key: str) -> bool:
     return key.startswith(ACTION_PARAM_PREFIX)
-
-
-def widget_tabs(item: DashboardItemView) -> tuple[Mapping[str, object], ...]:
-    tabs = item.data.get("tabs")
-    if not isinstance(tabs, Sequence) or isinstance(tabs, str):
-        return ()
-    return tuple(tab for tab in tabs if isinstance(tab, Mapping))
-
-
-def widget_tab_params(item: DashboardItemView, widget_tab_id: str | None) -> set[str]:
-    keys: set[str] = set()
-    for widget_tab in widget_tabs(item):
-        if widget_tab_id is not None and widget_tab.get("id") != widget_tab_id:
-            continue
-        params = widget_tab.get("params")
-        if isinstance(params, Mapping):
-            keys.update(params)
-    return keys
-
-
-def widget_tab_ids(item: DashboardItemView) -> list[str]:
-    return [tab_id for tab in widget_tabs(item) if isinstance(tab_id := tab.get("id"), str)]
 
 
 def check_params(

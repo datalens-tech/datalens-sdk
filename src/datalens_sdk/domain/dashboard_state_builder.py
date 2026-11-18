@@ -20,11 +20,10 @@ from datalens_sdk.domain.dashboard_state import (
     DashboardState,
     QueueEntry,
     StateSelection,
-    find_item,
     resolve_selection,
     resolve_state_tab,
-    widget_tab_ids,
 )
+from datalens_sdk.domain.dashboard_state_items import find_item, widget_tab_ids
 from datalens_sdk.domain.dashboard_types import ValidationIssue
 from datalens_sdk.domain.param_values import ACTION_PARAM_PREFIX, ParamOperation, encode_param_value
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError

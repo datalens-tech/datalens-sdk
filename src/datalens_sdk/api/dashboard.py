@@ -15,7 +15,13 @@ from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.entry_state import EntryStateRecord
 from datalens_sdk.domain.entry_types import EntryBranch
 from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
-from datalens_sdk.domain.ports import DashboardOperations, NavigationOperations, ScreenshotOperations
+from datalens_sdk.domain.ports import (
+    ChartOperations,
+    DashboardOperations,
+    DatasetOperations,
+    NavigationOperations,
+    ScreenshotOperations,
+)
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.screenshot import EntityScreenshot, ScreenshotRequest
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
@@ -64,6 +70,8 @@ class DashboardService(DashboardOperations):
         navigation_operations: NavigationOperations,
         bundle_exporter: DashboardBundleExporter,
         screenshot_operations: ScreenshotOperations,
+        chart_operations: ChartOperations,
+        dataset_operations: DatasetOperations,
         dto_module: DashboardDtoModule | None = None,
     ) -> None:
         self._installation = installation
@@ -71,12 +79,22 @@ class DashboardService(DashboardOperations):
         self._entries_service = entries_service
         self._navigation_operations = navigation_operations
         self._screenshot_operations = screenshot_operations
+        self._chart_operations = chart_operations
+        self._dataset_operations = dataset_operations
         self._bundle_exporter = bundle_exporter
         self._dto_module = dto_module
 
     @property
     def installation(self) -> str:
         return self._installation
+
+    @property
+    def chart_operations(self) -> ChartOperations:
+        return self._chart_operations
+
+    @property
+    def dataset_operations(self) -> DatasetOperations:
+        return self._dataset_operations
 
     def _to_domain(
         self,

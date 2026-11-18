@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from typing import cast
 
 from pydantic import ValidationError
@@ -49,6 +49,9 @@ from datalens_sdk.errors import (
 )
 from datalens_sdk.http import DEFAULT_RETRY_POLICY, TRANSIENT_RETRY_POLICY, HTTPClientProtocol, RetryPolicy
 from datalens_sdk.serialization.artifacts import ChartSnapshotView
+
+GET_ENTRIES_MAX_IDS = 1000
+GET_ENTRIES_MAX_PAGE_SIZE = 200
 
 
 class ChartAPI:
@@ -298,6 +301,16 @@ class ChartService(ChartOperations):
             None,
         )
         wire_type = entry.type if entry is not None else None
+        return self.get_chart_of_type(chart_id, wire_type, workbook_id=workbook_id, branch=branch, rev_id=rev_id)
+
+    def get_chart_of_type(
+        self,
+        chart_id: str,
+        wire_type: str | None,
+        workbook_id: str | None = None,
+        branch: EntryBranch | None = None,
+        rev_id: str | None = None,
+    ) -> WizardChart | EditorChart | QLChart:
         if wire_type in editor_read_wire_types(
             self._installation,
             cast(EditorChartDtoModule | None, self._dto_module),
@@ -306,6 +319,18 @@ class ChartService(ChartOperations):
         if is_ql_wire_type(wire_type):
             return self.get_ql_chart(chart_id, workbook_id=workbook_id, branch=branch, rev_id=rev_id)
         return self.get_wizard_chart(chart_id, workbook_id=workbook_id, branch=branch, rev_id=rev_id)
+
+    def get_charts(self, chart_ids: Sequence[str]) -> dict[str, WizardChart | EditorChart | QLChart]:
+        """Read several charts of any kind: one ``getEntries`` for their types, then one typed read per chart."""
+        unique_ids = tuple(dict.fromkeys(chart_ids))
+        if not unique_ids:
+            return {}
+        wire_types: dict[str, str | None] = {}
+        for start in range(0, len(unique_ids), GET_ENTRIES_MAX_IDS):
+            batch = unique_ids[start : start + GET_ENTRIES_MAX_IDS]
+            options = GetEntriesOptions(ids=batch, page_size=min(len(batch), GET_ENTRIES_MAX_PAGE_SIZE))
+            wire_types.update((entry.id, entry.type) for entry in self._navigation_operations.get_entries(options))
+        return {chart_id: self.get_chart_of_type(chart_id, wire_types.get(chart_id)) for chart_id in unique_ids}
 
     def create_editor_chart(self, builder: _BaseEditorNodeCreate) -> EditorChart:
         spec = builder.to_spec()
