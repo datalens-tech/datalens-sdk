@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
@@ -11,6 +12,7 @@ from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.dashboard_create import DashboardCreate
 from datalens_sdk.domain.dashboard_update import DashboardUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
+from datalens_sdk.domain.entry_state import EntryStateRecord
 from datalens_sdk.domain.entry_types import EntryBranch
 from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
 from datalens_sdk.domain.ports import DashboardOperations, NavigationOperations, ScreenshotOperations
@@ -257,6 +259,12 @@ class DashboardService(DashboardOperations):
 
     def get_entry_revisions(self, entry_id: str, options: EntryRevisionsOptions) -> Pager[EntryRevision]:
         return self._entries_service.get_entry_revisions(entry_id, options)
+
+    def get_entry_state(self, entry_id: str, hash: str) -> EntryStateRecord:
+        return self._entries_service.get_entry_state(entry_id, hash)
+
+    def create_entry_state(self, entry_id: str, data: Mapping[str, object]) -> str:
+        return self._entries_service.create_entry_state(entry_id, data)
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]:
         return self._navigation_operations.get_entry_relations(entry_id, options)

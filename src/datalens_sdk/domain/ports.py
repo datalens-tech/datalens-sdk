@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.dataset_update import DatasetUpdate
     from datalens_sdk.domain.editor_chart import EditorChart, EditorChartUpdate
     from datalens_sdk.domain.entry_location import EntryLocation
+    from datalens_sdk.domain.entry_state import EntryStateRecord
     from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
     from datalens_sdk.domain.folder import Folder, FolderCreate, FolderUpdate
     from datalens_sdk.domain.html_page import (
@@ -243,6 +244,13 @@ class NavigationOperations(Protocol):
 @runtime_checkable
 class EntryRevisionsOperations(Protocol):
     def get_entry_revisions(self, entry_id: str, options: EntryRevisionsOptions) -> Pager[EntryRevision]: ...
+
+
+@runtime_checkable
+class EntryStateOperations(Protocol):
+    def get_entry_state(self, entry_id: str, hash: str) -> EntryStateRecord: ...
+
+    def create_entry_state(self, entry_id: str, data: Mapping[str, object]) -> str: ...
 
 
 @runtime_checkable
@@ -479,7 +487,7 @@ class HtmlPageOperations(EntryRevisionsOperations, Protocol):
 
 
 @runtime_checkable
-class DashboardOperations(EntryRevisionsOperations, ScreenshotOperations, Protocol):
+class DashboardOperations(EntryRevisionsOperations, EntryStateOperations, ScreenshotOperations, Protocol):
     def create_dashboard(self, builder: DashboardCreate) -> Dashboard: ...
 
     def create_dashboard_from_raw(self, spec: RawCreateSpec) -> Dashboard: ...

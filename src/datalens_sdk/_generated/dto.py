@@ -5022,6 +5022,37 @@ class EntryRevisionsReadDTO(BaseModel):
     entries: list[EntryRevisionReadDTO]
     next_page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='nextPageToken')
 
+class CreateStateArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    data: dict[str, JsonValue]
+    entry_id: str = Field(alias='entryId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class GetStateArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    entry_id: str = Field(alias='entryId')
+    hash: Annotated[str, Field(min_length=1)]
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class CreateStateResultDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    hash: Annotated[str, Field(min_length=1)]
+
+class GetStateResultDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    created_at: str = Field(alias='createdAt')
+    data: None | dict[str, JsonValue]
+    entry_id: str = Field(alias='entryId')
+    hash: Annotated[str, Field(min_length=1)]
+
 
 class CreateHtmlPageArgsAnnotationDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)

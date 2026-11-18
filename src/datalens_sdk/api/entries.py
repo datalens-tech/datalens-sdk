@@ -6,9 +6,11 @@ from typing import Protocol
 from pydantic import ValidationError
 
 from datalens_sdk.converter.entry import EntryMutationConverter, EntryMutationDtoModule
+from datalens_sdk.converter.entry_state import EntryStateConverter, EntryStateDtoModule
 from datalens_sdk.converter.navigation import NavigationConverter, NavigationDtoModule
 from datalens_sdk.converter.revisions import EntryRevisionsConverter, EntryRevisionsDtoModule
 from datalens_sdk.domain.entry_location import EntryLocation
+from datalens_sdk.domain.entry_state import EntryStateRecord
 from datalens_sdk.domain.navigation import (
     EntryMoveResult,
     EntryRelation,
@@ -57,6 +59,13 @@ class EntriesAPI:
     def get_revisions(self, payload: dict[str, object]) -> dict[str, object]:
         return self._post_object("/rpc/getRevisions", payload, retry_policy=TRANSIENT_RETRY_POLICY)
 
+    def get_state(self, payload: dict[str, object]) -> dict[str, object]:
+        return self._post_object("/rpc/getEntryState", payload, retry_policy=TRANSIENT_RETRY_POLICY)
+
+    def create_state(self, payload: dict[str, object]) -> dict[str, object]:
+        # US derives the hash from the payload and deduplicates records, so a retried create is idempotent.
+        return self._post_object("/rpc/createEntryState", payload, retry_policy=TRANSIENT_RETRY_POLICY)
+
     def get_relations(self, payload: dict[str, object]) -> dict[str, object]:
         return self._post_object("/rpc/getEntriesRelations", payload, retry_policy=TRANSIENT_RETRY_POLICY)
 
@@ -74,7 +83,13 @@ class EntriesAPI:
             raise translate_invalid_response_error(operation="/rpc/renameEntry", reason="response root is not an array")
 
 
-class EntriesDtoModule(EntryMutationDtoModule, NavigationDtoModule, EntryRevisionsDtoModule, Protocol): ...
+class EntriesDtoModule(
+    EntryMutationDtoModule,
+    NavigationDtoModule,
+    EntryRevisionsDtoModule,
+    EntryStateDtoModule,
+    Protocol,
+): ...
 
 
 class EntriesService:
@@ -132,6 +147,28 @@ class EntriesService:
                 )
 
         return Pager(load)
+
+    def get_entry_state(self, entry_id: str, hash: str) -> EntryStateRecord:
+        try:
+            payload = EntryStateConverter.get_payload(entry_id, hash, dto_module=self._dto_module)
+        except ValidationError as exc:
+            raise DataLensValidationError(str(exc)) from exc
+        response = self._api.get_state(payload)
+        try:
+            return EntryStateConverter.to_record(response, dto_module=self._dto_module)
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="getEntryState", reason=str(exc)) from exc
+
+    def create_entry_state(self, entry_id: str, data: Mapping[str, object]) -> str:
+        try:
+            payload = EntryStateConverter.create_payload(entry_id, data, dto_module=self._dto_module)
+        except ValidationError as exc:
+            raise DataLensValidationError(str(exc)) from exc
+        response = self._api.create_state(payload)
+        try:
+            return EntryStateConverter.hash_from_create(response, dto_module=self._dto_module)
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="createEntryState", reason=str(exc)) from exc
 
     def get_entry_relations(
         self,
