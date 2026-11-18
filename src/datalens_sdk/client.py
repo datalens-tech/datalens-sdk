@@ -1162,6 +1162,7 @@ class DataLensClientBase:
     GENERATED_PACKAGE = "datalens_sdk._generated"
     SDK_DISTRIBUTION = "datalens-sdk"
     DEFAULT_BASE_URL = ""
+    DEFAULT_UI_BASE_URL = ""
     KNOWN_NAMESPACE_OWNERS: ClassVar[dict[str, list[str]]] = {}
     create: CreateNamespace[object, SourceBuilder, object]
     data: DataNamespace
@@ -1182,6 +1183,7 @@ class DataLensClientBase:
         transport: httpx.BaseTransport | None = None,
         event_hooks: HTTPEventHooks | None = None,
         http_client: HTTPClientProtocol | None = None,
+        ui_base_url: str | None = None,
     ) -> None:
         if not self.INSTALLATION:
             raise TypeError("INSTALLATION must be defined by subclasses")
@@ -1290,6 +1292,7 @@ class DataLensClientBase:
             screenshot_operations=screenshot_service,
             chart_operations=self._chart_service,
             dataset_operations=self._dataset_service,
+            ui_base_url=(ui_base_url or self.DEFAULT_UI_BASE_URL).rstrip("/") or None,
             dto_module=cast(DashboardDtoModule, dto_module),
         )
         self._folder_service = FolderService(
@@ -1461,6 +1464,7 @@ class DataLensClientBase:
 class DataLensClientYC(DataLensClientBase):
     INSTALLATION = "yacloud"
     DEFAULT_BASE_URL = "https://api.datalens.tech"
+    DEFAULT_UI_BASE_URL = "https://datalens.ru"
 
     @classmethod
     def _get_default_auth_provider(cls) -> AuthProviderProtocol:

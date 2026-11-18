@@ -11,6 +11,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Literal, cast
+from urllib.parse import urlencode
 import warnings
 
 from datalens_sdk.domain.dashboard_state_effects import StateEffect, params_for, receivers, resolve_usage
@@ -187,6 +188,23 @@ class DashboardState:
         if operations is None:
             raise DataLensConfigurationError("Object is not bound to client operations. Use a client namespace.")
         return resolve_usage(self, effects, operations)
+
+    def url(self, base: str | None = None) -> str:
+        """Link that opens this state: ``{base}/{dashboard_id}?tab={tab_id}&state={hash}``.
+
+        ``base`` defaults to the client's ``ui_base_url`` (``https://datalens.ru`` for Yandex Cloud; required for
+        enterprise installations).
+        """
+        if not self.hash:
+            raise DataLensValidationError("This state has no hash yet; store it with create() first")
+        operations = self._dashboard._operations if self._dashboard is not None else None
+        resolved = base or (operations.ui_base_url if operations is not None else None)
+        if not resolved:
+            raise DataLensConfigurationError(
+                "No DataLens UI address: pass base= or create the client with ui_base_url= set to your DataLens address"
+            )
+        query = urlencode({"tab": self.tab_id, "state": self.hash})
+        return f"{resolved.rstrip('/')}/{self.dashboard_id}?{query}"
 
     @property
     def dashboard(self) -> Dashboard:

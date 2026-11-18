@@ -72,6 +72,7 @@ class DashboardService(DashboardOperations):
         screenshot_operations: ScreenshotOperations,
         chart_operations: ChartOperations,
         dataset_operations: DatasetOperations,
+        ui_base_url: str | None = None,
         dto_module: DashboardDtoModule | None = None,
     ) -> None:
         self._installation = installation
@@ -81,6 +82,7 @@ class DashboardService(DashboardOperations):
         self._screenshot_operations = screenshot_operations
         self._chart_operations = chart_operations
         self._dataset_operations = dataset_operations
+        self._ui_base_url = ui_base_url
         self._bundle_exporter = bundle_exporter
         self._dto_module = dto_module
 
@@ -95,6 +97,10 @@ class DashboardService(DashboardOperations):
     @property
     def dataset_operations(self) -> DatasetOperations:
         return self._dataset_operations
+
+    @property
+    def ui_base_url(self) -> str | None:
+        return self._ui_base_url
 
     def _to_domain(
         self,

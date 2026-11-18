@@ -433,7 +433,7 @@ class Dashboard:
         height: int | None = None,
         full_page: bool | None = None,
         tab: str | None = None,
-        state: str | None = None,
+        state: str | DashboardState | None = None,
         theme: ScreenshotTheme | None = None,
         show_title: bool = True,
         show_tabs: bool = True,
@@ -444,8 +444,9 @@ class Dashboard:
 
         Without ``height`` the whole tab is captured at full length. With ``height``
         the picture is cut to that viewport unless ``full_page=True`` is passed.
-        ``tab`` is a tab id from ``tabs``. ``state`` is the hash of a saved selector
-        state, taken from a dashboard link; the SDK cannot check it, and DataLens
+        ``tab`` is a tab id from ``tabs``. ``state`` is a :class:`DashboardState` of this
+        dashboard (its tab is used when ``tab`` is omitted) or the hash of a saved selector
+        state, taken from a dashboard link; a bare hash is not checked, and DataLens
         draws an error notice into the picture for an unknown one. ``params`` are
         values of parameters declared in the dashboard settings; DataLens ignores
         any other name, so an undeclared one is rejected here instead of producing
@@ -454,6 +455,17 @@ class Dashboard:
         """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
+        if isinstance(state, DashboardState):
+            if state.dashboard_id != self.id:
+                raise DataLensValidationError(
+                    f"State belongs to dashboard {state.dashboard_id!r}, not to dashboard {self.id!r}"
+                )
+            if tab is not None and tab != state.tab_id:
+                raise DataLensValidationError(f"State is for tab {state.tab_id!r}, but tab={tab!r} was passed")
+            if not state.hash:
+                raise DataLensValidationError("State has no hash yet; store it with create() first")
+            tab = state.tab_id
+            state = state.hash
         if tab is not None:
             tab_ids = [_.id for _ in self.tabs if _.id]
             if tab not in tab_ids:
