@@ -103,7 +103,7 @@ class DashboardState:
     _dashboard: Dashboard | None = field(default=None, repr=False, compare=False)
 
     @classmethod
-    def from_raw(
+    def from_data(
         cls,
         dashboard: Dashboard,
         data: Mapping[str, object] | None,

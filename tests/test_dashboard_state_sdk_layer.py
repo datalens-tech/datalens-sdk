@@ -190,7 +190,7 @@ def test_enterprise_url_requires_ui_base_url() -> None:
 
 def test_url_requires_hash() -> None:
     dashboard, _ = _state_client()
-    state = dl.DashboardState.from_raw(dashboard, cast(dict[str, object], _load("state_action_params")["data"]))
+    state = dl.DashboardState.from_data(dashboard, cast(dict[str, object], _load("state_action_params")["data"]))
 
     with pytest.raises(dl.DataLensValidationError, match="no hash"):
         state.url()
@@ -229,7 +229,7 @@ def test_screenshot_rejects_conflicting_tab_and_foreign_state() -> None:
 
 def test_screenshot_rejects_state_without_hash() -> None:
     dashboard, _ = _state_client()
-    state = dl.DashboardState.from_raw(dashboard, cast(dict[str, object], _load("state_action_params")["data"]))
+    state = dl.DashboardState.from_data(dashboard, cast(dict[str, object], _load("state_action_params")["data"]))
 
     with pytest.raises(dl.DataLensValidationError, match="no hash"):
         dashboard.screenshot(state=state)

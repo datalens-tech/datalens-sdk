@@ -183,6 +183,24 @@ class _FakeOperations:
     def get_screenshot_url(self, request: object) -> str:
         raise NotImplementedError
 
+    def get_entry_state(self, entry_id: str, hash: str) -> object:
+        raise NotImplementedError
+
+    def create_entry_state(self, entry_id: str, data: object) -> str:
+        raise NotImplementedError
+
+    @property
+    def chart_operations(self) -> object:
+        raise NotImplementedError
+
+    @property
+    def dataset_operations(self) -> object:
+        raise NotImplementedError
+
+    @property
+    def ui_base_url(self) -> str | None:
+        return None
+
 
 def test_fake_operations_satisfy_runtime_checkable_port() -> None:
     assert isinstance(_FakeOperations(), DashboardOperations)

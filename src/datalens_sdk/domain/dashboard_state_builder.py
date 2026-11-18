@@ -216,7 +216,7 @@ class DashboardStateBuilder:
         if not self._dashboard.id:
             raise DataLensValidationError("Cannot create a state for a dashboard without an id")
         hash_value = operations.create_entry_state(self._dashboard.id, data)
-        return DashboardState.from_raw(self._dashboard, data, tab=self.tab_id, hash=hash_value)
+        return DashboardState.from_data(self._dashboard, data, tab=self.tab_id, hash=hash_value)
 
     def describe(self, issue: ValidationIssue) -> str:
         if issue.kind != "unknown_state_item" or issue.item_id is None:

@@ -71,7 +71,7 @@ def _state(
     queue: list[dict[str, object]], data: dict[str, object], dashboard_data: dict[str, object] | None = None
 ) -> DashboardState:
     dashboard = dl.Dashboard(id="dash", data=dashboard_data or _data(), rev_id="rev")
-    return DashboardState.from_raw(dashboard, {**data, "__meta__": {"queue": queue, "version": 2}}, tab="T")
+    return DashboardState.from_data(dashboard, {**data, "__meta__": {"queue": queue, "version": 2}}, tab="T")
 
 
 def _with_connections(*connections: tuple[str, str]) -> dict[str, object]:

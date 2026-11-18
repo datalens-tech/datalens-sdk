@@ -311,7 +311,7 @@ def test_edit_then_create_gives_a_new_hash() -> None:
     data = cast(dict[str, object], _load("state_group_interval_widget_tab")["data"])
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        original = DashboardState.from_raw(dashboard, data, hash="21e04f18384")
+        original = DashboardState.from_data(dashboard, data, hash="21e04f18384")
 
     edited = original.edit().select("Scale", "week").create()
 
@@ -338,7 +338,7 @@ def test_edit_keeps_orphans_until_pruned() -> None:
     cast(dict[str, list[object]], data["__meta__"])["queue"].append({"id": "Gone"})
     data["Gone"] = {"params": {}}
     with pytest.warns(UserWarning, match="unknown_state_item"):
-        state = DashboardState.from_raw(dashboard, data, tab="Mk")
+        state = DashboardState.from_data(dashboard, data, tab="Mk")
 
     builder = state.edit()
 

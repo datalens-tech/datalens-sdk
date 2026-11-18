@@ -46,7 +46,7 @@ def _parse(
     dashboard = _dashboard(_load(dashboard_name))
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        return DashboardState.from_raw(
+        return DashboardState.from_data(
             dashboard,
             _state_data(state_name) if data is None else data,
             tab=tab,
@@ -128,7 +128,7 @@ def test_standalone_selector_uses_control_view_and_default_operation() -> None:
 
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        state = DashboardState.from_raw(_dashboard(entry), data)
+        state = DashboardState.from_data(_dashboard(entry), data)
 
     selection = state.selections[0]
     assert selection.kind == "selector"
@@ -154,7 +154,7 @@ def test_orphans_of_every_kind_become_issues_and_one_warning() -> None:
     dashboard = _dashboard(_load("dashboard_group_interval_widget_tab"))
 
     with pytest.warns(UserWarning, match="does not fully match") as record:
-        state = DashboardState.from_raw(dashboard, data, tab="Mk", hash="h1")
+        state = DashboardState.from_data(dashboard, data, tab="Mk", hash="h1")
 
     assert len(record) == 1
     assert "h1" in str(record[0].message)
@@ -180,7 +180,7 @@ def test_strict_mode_raises_instead_of_warning() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         with pytest.raises(dl.DataLensValidationError, match="unknown_state_item"):
-            DashboardState.from_raw(_dashboard(_load("dashboard_action_params")), data, tab="Ab", strict=True)
+            DashboardState.from_data(_dashboard(_load("dashboard_action_params")), data, tab="Ab", strict=True)
 
 
 def test_unknown_chart_param_is_reported_but_action_params_are_not() -> None:
@@ -190,7 +190,7 @@ def test_unknown_chart_param_is_reported_but_action_params_are_not() -> None:
     }
 
     with pytest.warns(UserWarning, match="unknown_state_param"):
-        state = DashboardState.from_raw(_dashboard(_load("dashboard_group_interval_widget_tab")), data)
+        state = DashboardState.from_data(_dashboard(_load("dashboard_group_interval_widget_tab")), data)
 
     assert [(_.kind, _.item_id) for _ in state.issues] == [("unknown_state_param", "LEN")]
     assert "'other'" in state.issues[0].message
@@ -200,7 +200,7 @@ def test_legacy_v1_state_follows_key_order() -> None:
     data: dict[str, object] = {"Lj": {"params": {"_ap_a": ["1"]}}, "Rnn": {"params": {"_ap_b": ["2"]}}}
 
     with pytest.warns(UserWarning, match="legacy_state_version"):
-        state = DashboardState.from_raw(_dashboard(_load("dashboard_action_params")), data)
+        state = DashboardState.from_data(_dashboard(_load("dashboard_action_params")), data)
 
     assert state.version == 1
     assert [_.item_id for _ in state.selections] == ["Lj", "Rnn"]
@@ -224,8 +224,8 @@ def test_unqueued_data_entries_follow_the_queue() -> None:
 def test_empty_or_null_state_has_no_selections() -> None:
     dashboard = _dashboard(_load("dashboard_action_params"))
 
-    assert DashboardState.from_raw(dashboard, None).selections == ()
-    assert DashboardState.from_raw(dashboard, {}).version == 2
+    assert DashboardState.from_data(dashboard, None).selections == ()
+    assert DashboardState.from_data(dashboard, {}).version == 2
 
 
 def test_tab_is_inferred_from_queue_items() -> None:
@@ -240,26 +240,26 @@ def test_tab_inference_rejects_ambiguous_and_missing_tabs() -> None:
     data = _state_data("state_group_interval_widget_tab")
 
     with pytest.raises(dl.DataLensValidationError, match=r"several tabs \['Mk', 'Qa'\]"):
-        DashboardState.from_raw(ambiguous, data)
+        DashboardState.from_data(ambiguous, data)
     with pytest.raises(dl.DataLensValidationError, match="No dashboard tab contains"):
-        DashboardState.from_raw(_dashboard(_load("dashboard_action_params")), data)
+        DashboardState.from_data(_dashboard(_load("dashboard_action_params")), data)
 
 
 def test_explicit_tab_by_id_title_or_view() -> None:
     dashboard = _dashboard(_load("dashboard_group_interval_widget_tab"))
     data = _state_data("state_group_interval_widget_tab")
 
-    assert DashboardState.from_raw(dashboard, data, tab="Overview").tab_id == "Mk"
-    assert DashboardState.from_raw(dashboard, data, tab=dashboard.tabs[0]).tab_id == "Mk"
+    assert DashboardState.from_data(dashboard, data, tab="Overview").tab_id == "Mk"
+    assert DashboardState.from_data(dashboard, data, tab=dashboard.tabs[0]).tab_id == "Mk"
     with pytest.raises(dl.DataLensValidationError, match="Unknown tab 'Nope'"):
-        DashboardState.from_raw(dashboard, data, tab="Nope")
+        DashboardState.from_data(dashboard, data, tab="Nope")
 
 
 def test_created_at_and_hash_are_kept() -> None:
     created_at = datetime(2026, 11, 16, 9, 31, tzinfo=timezone.utc)
     dashboard = _dashboard(_load("dashboard_action_params"))
 
-    state = DashboardState.from_raw(
+    state = DashboardState.from_data(
         dashboard, _state_data("state_action_params"), hash="298725dd251", created_at=created_at
     )
 

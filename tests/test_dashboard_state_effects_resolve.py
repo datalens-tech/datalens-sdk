@@ -136,7 +136,7 @@ def _state(queue_ids: list[str], params: dict[str, dict[str, object]]) -> tuple[
     dashboard = dl.Dashboard(id="dash", data=_dashboard_data(), rev_id="rev", _operations=client._dashboard_service)
     data: dict[str, object] = {item_id: {"params": params[item_id]} for item_id in queue_ids}
     data["__meta__"] = {"queue": [{"id": _} for _ in queue_ids], "version": 2}
-    return DashboardState.from_raw(dashboard, data, tab="T"), transport
+    return DashboardState.from_data(dashboard, data, tab="T"), transport
 
 
 def _summary(state: DashboardState, **kwargs: object) -> list[tuple[str, str | None, tuple[str, ...], str, str | None]]:
@@ -223,7 +223,7 @@ def test_without_resolve_charts_no_http_is_made() -> None:
 def test_resolve_charts_requires_bound_dashboard() -> None:
     dashboard = dl.Dashboard(id="dash", data=_dashboard_data(), rev_id="rev")
     data = {"C": {"params": {"guid-region": ["EU"]}}, "__meta__": {"queue": [{"id": "C"}], "version": 2}}
-    state = DashboardState.from_raw(dashboard, data, tab="T")
+    state = DashboardState.from_data(dashboard, data, tab="T")
 
     with pytest.raises(dl.DataLensConfigurationError, match="not bound"):
         state.effects(resolve_charts=True)
