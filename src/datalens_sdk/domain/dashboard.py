@@ -5,7 +5,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
-from datalens_sdk.domain.dashboard_state import DashboardState
+from datalens_sdk.domain.dashboard_state import DashboardState, StateSelection
+from datalens_sdk.domain.dashboard_state_builder import DashboardStateBuilder
 from datalens_sdk.domain.dashboard_types import KNOWN_DASHBOARD_ITEM_TYPES, ValidationIssue
 from datalens_sdk.domain.dashboard_update import DashboardUpdate
 from datalens_sdk.domain.dashboard_validate import validate_dashboard
@@ -598,6 +599,26 @@ class Dashboard:
             created_at=record.created_at,
             strict=strict,
         )
+
+    def new_state(self, tab: str | DashboardTabView) -> DashboardStateBuilder:
+        """Start an empty state for one tab (id, title or view); finish with ``.select(...).create()``."""
+        return DashboardStateBuilder(self, tab)
+
+    def create_state(
+        self,
+        tab: str | DashboardTabView,
+        selections: Sequence[StateSelection | Mapping[str, object]],
+    ) -> DashboardState:
+        """Store a state from selections of a read state or raw ``{"id", "groupItemId", "tabId", "params"}`` items.
+
+        Runs the same validation as :meth:`DashboardStateBuilder.create` and raises on any problem.
+        """
+        if isinstance(selections, (str, Mapping)) or not isinstance(selections, Sequence):
+            raise DataLensValidationError("selections must be a sequence of StateSelection objects or mappings")
+        builder = self.new_state(tab)
+        for selection in selections:
+            builder.add(selection)
+        return builder.create()
 
     def get_relations(
         self,

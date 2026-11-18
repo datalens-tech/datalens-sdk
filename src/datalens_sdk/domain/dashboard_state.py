@@ -31,6 +31,7 @@ if TYPE_CHECKING:
         DashboardItemView,
         DashboardTabView,
     )
+    from datalens_sdk.domain.dashboard_state_builder import DashboardStateBuilder
 
 STATE_META_KEY = "__meta__"
 STATE_VERSION = 2
@@ -140,6 +141,20 @@ class DashboardState:
         )
         report_issues(state, strict=strict)
         return state
+
+    def edit(self) -> DashboardStateBuilder:
+        """Start a builder with a copy of this queue on the same tab; ``create()`` stores a new state."""
+        builder = self.dashboard.new_state(self.tab_id)
+        for selection in self.selections:
+            builder.add(selection)
+        return builder
+
+    @property
+    def dashboard(self) -> Dashboard:
+        """The dashboard revision this state was read or created against."""
+        if self._dashboard is None:
+            raise DataLensValidationError("This state is not attached to a dashboard; read it with get_state()")
+        return self._dashboard
 
 
 def report_issues(state: DashboardState, *, strict: bool) -> None:
