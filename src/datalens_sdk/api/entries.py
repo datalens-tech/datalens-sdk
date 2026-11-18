@@ -6,11 +6,10 @@ from typing import Protocol
 from pydantic import ValidationError
 
 from datalens_sdk.converter.entry import EntryMutationConverter, EntryMutationDtoModule
-from datalens_sdk.converter.entry_state import EntryStateConverter, EntryStateDtoModule
+from datalens_sdk.converter.entry_state import EntryStateConverter, EntryStateDtoModule, EntryStateRecord
 from datalens_sdk.converter.navigation import NavigationConverter, NavigationDtoModule
 from datalens_sdk.converter.revisions import EntryRevisionsConverter, EntryRevisionsDtoModule
 from datalens_sdk.domain.entry_location import EntryLocation
-from datalens_sdk.domain.entry_state import EntryStateRecord
 from datalens_sdk.domain.navigation import (
     EntryMoveResult,
     EntryRelation,

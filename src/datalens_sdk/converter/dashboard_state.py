@@ -1,22 +1,44 @@
+"""Dashboard state JSON <-> :class:`DashboardStateData` through the DTOs generated from the ``DashboardState`` schema.
+
+Parameter values use the DataLens UI wire forms: ``__<op>_<value>`` for an explicit operation (lower-case op),
+``__interval_<start>_<end>`` for date ranges and ``__relative_<offset>[_<cast><unit>]`` for relative dates.
+Decoding follows ``resolveOperation`` in datalens-ui, encoding follows ``addOperationForValue``.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+import datetime
 import json
+import re
 from typing import Literal, Protocol, cast
 
 from datalens_sdk._generated import dto as generated_dto
-from datalens_sdk.domain.entry_state import (
+from datalens_sdk._runtime.chart_wire import build_date_interval
+from datalens_sdk.domain.dashboard_state import (
+    _PARAM_OPERATIONS,
     DashboardStateData,
+    ParamOperation,
+    StateParamValue,
     StateQueueItem,
+    StateValue,
     StateWidget,
     StateWidgetState,
-    StateWireValue,
 )
+from datalens_sdk.domain.dashboard_types import DateInterval, RelativeDate, RelativeDateInterval
 from datalens_sdk.errors import DataLensValidationError
+
+MAX_STATE_DATA_SYMBOLS = 50_000
 
 _META_KEY = "__meta__"
 _STATE_VERSION: Literal[2] = 2
-MAX_STATE_DATA_SYMBOLS = 50_000
+_VALUELESS_OPERATIONS = frozenset({"ISNULL", "ISNOTNULL"})
+_INTERVAL_MARKER = "__interval"
+_RELATIVE_PREFIX = "__relative_"
+_OPERATION_RE = re.compile(r"^__([^_]+)_([\s\S]+)?$")
+_RELATIVE_DATE_RE = re.compile(r"^__relative_([+-]\d+(?:ms|[yQMwdhms]))(?:_([se])([yQMwdhms]))?$")
+_INTERVAL_EDGE = r"(__relative_[+-]\d+(?:ms|[yQMwdhms])(?:_[se][yQMwdhms])?|[^_]+)"
+_INTERVAL_RE = re.compile(rf"^__interval_{_INTERVAL_EDGE}_{_INTERVAL_EDGE}$")
 
 
 class _PayloadDTOProtocol(Protocol):
@@ -63,33 +85,114 @@ def _dto_module(dto_module: DashboardStateDtoModule | None) -> DashboardStateDto
     return cast(DashboardStateDtoModule, generated_dto if dto_module is None else dto_module)
 
 
-def _wire_value(value: object) -> StateWireValue:
-    return value if isinstance(value, str) else tuple(cast("Sequence[str]", value))
+def _relative_date_wire(value: RelativeDate) -> str:
+    suffix = "" if value.cast is None else f"_{value.cast}{value.unit}"
+    return f"{_RELATIVE_PREFIX}{value.offset}{suffix}"
 
 
-def _domain_params(params: Mapping[str, object]) -> Mapping[str, object]:
+def _parse_relative_date(raw: str) -> RelativeDate | None:
+    match = _RELATIVE_DATE_RE.fullmatch(raw)
+    if match is None:
+        return None
+    offset, rounding, unit = match.groups()
+    return RelativeDate(offset, cast=cast("Literal['s', 'e'] | None", rounding), unit=unit)
+
+
+def _parse_date_interval(raw: str) -> DateInterval | None:
+    match = _INTERVAL_RE.fullmatch(raw)
+    if match is None:
+        return None
+    start, end = (_parse_relative_date(edge) or edge for edge in match.groups())
+    try:
+        return DateInterval(start, end)
+    except DataLensValidationError:
+        return None
+
+
+def _decode_item(raw: str) -> StateParamValue:
+    if raw.startswith(f"{_INTERVAL_MARKER}_"):
+        return _parse_date_interval(raw) or raw
+    if raw.startswith(_RELATIVE_PREFIX):
+        return _parse_relative_date(raw) or raw
+    return raw
+
+
+def _resolve_operation(raw: str) -> tuple[ParamOperation | None, str | None]:
+    """``resolveOperation`` without the selector: ``None`` means the selector's operation applies."""
+    match = _OPERATION_RE.fullmatch(raw)
+    if match is not None:
+        operation, value = match.group(1).upper(), match.group(2)
+        if operation in _PARAM_OPERATIONS and (value is not None or operation in _VALUELESS_OPERATIONS):
+            return cast(ParamOperation, operation), value
+        return ("BETWEEN" if _INTERVAL_MARKER in raw else "IN"), raw
+    return ("BETWEEN" if _INTERVAL_MARKER in raw else None), raw
+
+
+def _decode_value(param: str, wire: object) -> StateValue:
+    raw: str | tuple[str, ...] = wire if isinstance(wire, str) else tuple(cast("Sequence[str]", wire))
+    items = (raw,) if isinstance(raw, str) else raw
+    resolved = [_resolve_operation(item) for item in items]
+    operation = resolved[0][0] if resolved else None
+    return StateValue(
+        param=param,
+        operation=operation or "IN",
+        values=tuple(_decode_item(value) for _, value in resolved if value is not None),
+        multiple=not isinstance(raw, str),
+        inherits_operation=operation is None,
+        raw=raw,
+    )
+
+
+def _encode_interval_edge(edge: str | datetime.date | RelativeDate) -> str:
+    if isinstance(edge, RelativeDate):
+        return _relative_date_wire(edge)
+    if isinstance(edge, datetime.date):
+        return edge.isoformat()
+    return _relative_date_wire(RelativeDate(edge)) if edge.startswith(("+", "-")) else edge
+
+
+def _encode_item(value: StateParamValue | RelativeDateInterval) -> str:
+    if isinstance(value, (DateInterval, RelativeDateInterval)):
+        inclusive_end = value.inclusive_end if isinstance(value, DateInterval) else True
+        start = _encode_interval_edge(value.start)
+        end = _encode_interval_edge(value.end)
+        return build_date_interval(start, end, inclusive_end=inclusive_end)
+    if isinstance(value, RelativeDate):
+        return _relative_date_wire(value)
+    return value
+
+
+def _encode_value(value: StateValue) -> str | list[str]:
+    if value.raw is not None:
+        return value.raw if isinstance(value.raw, str) else list(value.raw)
+    prefix = "" if value.inherits_operation else f"__{value.operation.lower()}_"
+    if value.operation in _VALUELESS_OPERATIONS and not value.values:
+        encoded = [f"__{value.operation.lower()}_"]
+    else:
+        encoded = [f"{prefix}{wire}" if wire else wire for wire in (_encode_item(_) for _ in value.values)]
+    return encoded if value.multiple else encoded[0]
+
+
+def _decode_params(params: Mapping[str, object]) -> Mapping[str, object]:
     return {
-        key: {name: _wire_value(item) for name, item in value.items()}
+        key: {name: _decode_value(name, item) for name, item in value.items()}
         if isinstance(value, Mapping)
-        else _wire_value(value)
+        else _decode_value(key, value)
         for key, value in params.items()
     }
 
 
-def _payload_value(value: object) -> object:
-    if isinstance(value, Mapping):
-        return {key: _payload_value(item) for key, item in value.items()}
-    return value if isinstance(value, str) else list(cast("Sequence[str]", value))
-
-
-def _payload_params(params: Mapping[str, object]) -> dict[str, object]:
-    return {key: _payload_value(value) for key, value in params.items()}
+def _encode_params(params: Mapping[str, object]) -> dict[str, object]:
+    return {
+        key: _encode_params(value) if isinstance(value, Mapping) else _encode_value(cast(StateValue, value))
+        for key, value in params.items()
+    }
 
 
 def _widget(dto: _WidgetDTOProtocol) -> StateWidget:
     state = dto.state
     return StateWidget(
-        params=None if dto.params is None else cast("Mapping[str, StateWireValue]", _domain_params(dto.params)),
+        params=None if dto.params is None else cast("Mapping[str, StateValue]", _decode_params(dto.params)),
         state=None if state is None else StateWidgetState(tab_id=state.tab_id, extra=dict(state.model_extra or {})),
         extra=dict(dto.model_extra or {}),
     )
@@ -126,20 +229,10 @@ class DashboardStateConverter:
             return DashboardStateData(version=version, queue=(), widgets=widgets)
         meta_dto = generated.DashboardStateMetaDTO.model_validate(meta)
         queue = tuple(
-            StateQueueItem(
-                id=item.id,
-                group_item_id=item.group_item_id,
-                tab_id=item.tab_id,
-                extra=dict(item.model_extra or {}),
-            )
+            StateQueueItem(item.id, item.group_item_id, item.tab_id, dict(item.model_extra or {}))
             for item in meta_dto.queue
         )
-        return DashboardStateData(
-            version=_STATE_VERSION,
-            queue=queue,
-            widgets=widgets,
-            meta_extra=dict(meta_dto.model_extra or {}),
-        )
+        return DashboardStateData(_STATE_VERSION, queue, widgets, dict(meta_dto.model_extra or {}))
 
     @staticmethod
     def to_payload(
@@ -152,7 +245,7 @@ class DashboardStateConverter:
         for widget_id, widget in data.widgets.items():
             body: dict[str, object] = dict(widget.extra)
             if widget.params is not None:
-                body["params"] = _payload_params(widget.params)
+                body["params"] = _encode_params(widget.params)
             if widget.state is not None:
                 state = dict(widget.state.extra)
                 if widget.state.tab_id is not None:

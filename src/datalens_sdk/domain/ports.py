@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.connection import Connection, ConnectionUpdate
     from datalens_sdk.domain.dashboard import Dashboard
     from datalens_sdk.domain.dashboard_create import DashboardCreate
+    from datalens_sdk.domain.dashboard_state import DashboardStateData, DashboardStateRecord
     from datalens_sdk.domain.dashboard_update import DashboardUpdate
     from datalens_sdk.domain.data import DatasetData, DatasetDataQuery
     from datalens_sdk.domain.dataset import Dataset, DatasetCreate, Source
@@ -35,7 +36,6 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.dataset_update import DatasetUpdate
     from datalens_sdk.domain.editor_chart import EditorChart, EditorChartUpdate
     from datalens_sdk.domain.entry_location import EntryLocation
-    from datalens_sdk.domain.entry_state import DashboardStateData, DashboardStateRecord
     from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
     from datalens_sdk.domain.folder import Folder, FolderCreate, FolderUpdate
     from datalens_sdk.domain.html_page import (

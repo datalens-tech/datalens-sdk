@@ -36,7 +36,16 @@ from datalens_sdk.domain.dashboard import (
 )
 from datalens_sdk.domain.dashboard_create import DashboardCreate
 from datalens_sdk.domain.dashboard_layout import DEFAULT_ITEM_SIZES, GRID_COLUMNS, Layout, Position
-from datalens_sdk.domain.dashboard_state import DashboardState, StateSelection
+from datalens_sdk.domain.dashboard_state import (
+    DashboardState,
+    DashboardStateData,
+    ParamOperation,
+    StateQueueItem,
+    StateSelection,
+    StateValue,
+    StateWidget,
+    StateWidgetState,
+)
 from datalens_sdk.domain.dashboard_state_builder import DashboardStateBuilder
 from datalens_sdk.domain.dashboard_state_effects import StateEffect
 from datalens_sdk.domain.dashboard_tab import DashboardChartTab, DashboardTab
@@ -90,7 +99,6 @@ from datalens_sdk.domain.dataset_types import (
 from datalens_sdk.domain.dataset_update import DatasetUpdate
 from datalens_sdk.domain.editor_chart import EditorChart, EditorChartUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
-from datalens_sdk.domain.entry_state import DashboardStateData, StateQueueItem, StateWidget, StateWidgetState
 from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
 from datalens_sdk.domain.fields import (
     DatasetField,
@@ -139,7 +147,6 @@ from datalens_sdk.domain.navigation import (
     StructureSummary,
     WorkbookSummary,
 )
-from datalens_sdk.domain.param_values import ParamOperation, StateValue
 from datalens_sdk.domain.ql_chart import QLChart, QLChartUpdate, QLColumn, QLParam
 from datalens_sdk.domain.raw_dashboard import RawDashboardCreate, RawDashboardReplace
 from datalens_sdk.domain.raw_resource import (

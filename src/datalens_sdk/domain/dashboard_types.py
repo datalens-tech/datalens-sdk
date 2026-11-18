@@ -175,12 +175,11 @@ def _signed_offset(value: str) -> str:
 
 _RELATIVE_DATE_OFFSET_RE = re.compile(r"[+-]?\d+(?:ms|[yQMwdhms])\Z")
 _RELATIVE_DATE_UNITS = frozenset("yQMwdhms")
-_RELATIVE_DATE_PREFIX = "__relative_"
 
 
 @dataclass(frozen=True, slots=True)
 class RelativeDate:
-    """A relative date on the wire: ``__relative_<offset>[_<cast><unit>]``, as the DataLens UI parses it.
+    """A relative date, written as ``__relative_<offset>[_<cast><unit>]`` the way the DataLens UI parses it.
 
     ``offset`` is ``[+-]N`` with unit y/Q/M/w/d/h/m/s/ms; ``cast`` rounds the result to the start (``"s"``) or the
     end (``"e"``) of ``unit``, one of y/Q/M/w/d/h/m/s. ``RelativeDate("-7d", cast="s", unit="d")`` is
@@ -203,10 +202,6 @@ class RelativeDate:
             raise DataLensValidationError(f"cast must be 's' or 'e', got {self.cast!r}")
         if self.unit is not None and self.unit not in _RELATIVE_DATE_UNITS:
             raise DataLensValidationError(f"unit must be one of y/Q/M/w/d/h/m/s, got {self.unit!r}")
-
-    def to_wire(self) -> str:
-        suffix = "" if self.cast is None else f"_{self.cast}{self.unit}"
-        return f"{_RELATIVE_DATE_PREFIX}{self.offset}{suffix}"
 
 
 def _validated_interval_edge(value: str | datetime.date | RelativeDate, *, field: str) -> str | RelativeDate:

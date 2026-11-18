@@ -14,13 +14,21 @@ from typing import TYPE_CHECKING, cast
 from typing_extensions import Self
 
 from datalens_sdk.domain.dashboard_state import (
+    _PARAM_OPERATIONS,
     DashboardState,
+    DashboardStateData,
+    ParamOperation,
+    StateParamValue,
+    StateQueueItem,
     StateSelection,
+    StateValue,
+    StateWidget,
+    StateWidgetState,
     _QueueEntry,
     _resolve_selection,
     _resolve_state_tab,
 )
-from datalens_sdk.domain.dashboard_state_support import (
+from datalens_sdk.domain.dashboard_state_effects import (
     _ACTION_PARAM_PREFIX,
     _active_inner_tab_id,
     _default_inner_tab_id,
@@ -28,15 +36,12 @@ from datalens_sdk.domain.dashboard_state_support import (
     _has_inner_tabs,
     _inner_tab_ids,
 )
-from datalens_sdk.domain.dashboard_types import ValidationIssue
-from datalens_sdk.domain.entry_state import (
-    DashboardStateData,
-    StateQueueItem,
-    StateWidget,
-    StateWidgetState,
-    StateWireValue,
+from datalens_sdk.domain.dashboard_types import (
+    DateInterval,
+    RelativeDate,
+    RelativeDateInterval,
+    ValidationIssue,
 )
-from datalens_sdk.domain.param_values import _PARAM_OPERATIONS, ParamOperation, encode_param_value
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 if TYPE_CHECKING:
@@ -111,8 +116,70 @@ def _view_kind(view: object) -> str:
     return "item" if hasattr(view, "item_type") else "unknown"
 
 
-def _wire_value(value: str | Sequence[str]) -> StateWireValue:
-    return value if isinstance(value, str) else tuple(value)
+_VALUELESS_OPERATIONS = frozenset({"ISNULL", "ISNOTNULL"})
+
+
+def _state_item(value: object) -> StateParamValue:
+    if isinstance(value, RelativeDateInterval):
+        return DateInterval(RelativeDate(value.start), RelativeDate(value.end))
+    if isinstance(value, (str, DateInterval, RelativeDate)):
+        return value
+    raise DataLensValidationError(
+        f"State values must be strings, DateInterval, RelativeDateInterval or RelativeDate, got {value!r}"
+    )
+
+
+def _value_items(values: object) -> tuple[object, ...]:
+    if values is None:
+        return ()
+    if isinstance(values, (str, DateInterval, RelativeDateInterval, RelativeDate)):
+        return (values,)
+    if isinstance(values, Sequence):
+        return tuple(values)
+    raise DataLensValidationError(f"State values must be a value or a sequence of values, got {values!r}")
+
+
+def _state_value(
+    param: str,
+    values: object,
+    operation: ParamOperation | None,
+    *,
+    multiselect: bool,
+    is_range: bool,
+    own_operation: ParamOperation | None = None,
+) -> StateValue:
+    """Validate a selection like the UI does and mark whether the ``__<op>_`` prefix is written.
+
+    A selector with its own operation prefixes every value with it; otherwise only an operation other than IN
+    (BETWEEN for ranges) is written.
+    """
+    for candidate in (operation, own_operation):
+        if candidate is not None and candidate not in _PARAM_OPERATIONS:
+            raise DataLensValidationError(
+                f"Unknown parameter operation {candidate!r}; expected one of {sorted(_PARAM_OPERATIONS)}"
+            )
+    items = tuple(_state_item(_) for _ in _value_items(values))
+    if is_range and (len(items) != 1 or not isinstance(items[0], DateInterval)):
+        raise DataLensValidationError("A range selector takes exactly one DateInterval or RelativeDateInterval")
+    implicit: ParamOperation = "BETWEEN" if is_range else "IN"
+    effective = operation or own_operation
+    if effective in _VALUELESS_OPERATIONS and items:
+        raise DataLensValidationError(f"{effective} takes no values")
+    if effective not in _VALUELESS_OPERATIONS and not multiselect and len(items) != 1:
+        raise DataLensValidationError(f"A single-value source takes exactly one value, got {len(items)}")
+    prefixed = effective is not None and (own_operation is not None or effective != implicit)
+    return StateValue(
+        param=param,
+        operation=effective or implicit,
+        values=items,
+        multiple=multiselect,
+        inherits_operation=not prefixed,
+    )
+
+
+def _wire_value(param: str, value: str | Sequence[str]) -> StateValue:
+    raw: str | tuple[str, ...] = value if isinstance(value, str) else tuple(value)
+    return StateValue(param, "IN", (), multiple=not isinstance(value, str), inherits_operation=True, raw=raw)
 
 
 def _is_wire_value(value: object) -> bool:
@@ -132,7 +199,7 @@ def _optional_id(selection: Mapping[str, object], key: str) -> str | None:
 
 def _raw_entry(selection: StateSelection | Mapping[str, object]) -> _QueueEntry:
     if isinstance(selection, StateSelection):
-        return _QueueEntry(selection.item_id, selection.group_item_id, selection.widget_tab_id, selection.params)
+        return _QueueEntry(selection.item_id, selection.group_item_id, selection.widget_tab_id, selection.values)
     if not isinstance(selection, Mapping):
         raise DataLensValidationError(f"A selection must be a StateSelection or a mapping, got {selection!r}")
     unknown = sorted(set(selection) - _RAW_SELECTION_KEYS)
@@ -152,7 +219,7 @@ def _raw_entry(selection: StateSelection | Mapping[str, object]) -> _QueueEntry:
         item_id,
         _optional_id(selection, "groupItemId"),
         _optional_id(selection, "tabId"),
-        {key: _wire_value(value) for key, value in params.items()},
+        tuple(_wire_value(key, value) for key, value in params.items()),
     )
 
 
@@ -245,14 +312,15 @@ class DashboardStateBuilder:
         """The state as typed data: queued params per widget (per selector for groups) and widget states."""
         params: dict[str, dict[str, object]] = {}
         for entry in self._entries:
+            values = {value.param: value for value in entry.values}
             if entry.group_item_id is not None:
-                params.setdefault(entry.item_id, {})[entry.group_item_id] = dict(entry.params)
+                params.setdefault(entry.item_id, {})[entry.group_item_id] = values
             else:
-                params[entry.item_id] = dict(entry.params)
+                params[entry.item_id] = dict(values)
         widget_ids = dict.fromkeys([*params, *self._widget_states])
         widgets = {
             widget_id: StateWidget(
-                params=cast("Mapping[str, StateWireValue]", params[widget_id]) if widget_id in params else None,
+                params=cast("Mapping[str, StateValue]", params[widget_id]) if widget_id in params else None,
                 state=self._widget_states.get(widget_id),
             )
             for widget_id in widget_ids
@@ -388,22 +456,21 @@ class DashboardStateBuilder:
         values: object,
         *,
         operation: ParamOperation | None,
-    ) -> dict[str, StateWireValue]:
+    ) -> tuple[StateValue, ...]:
         source = member.source
         own = cast("ParamOperation | None", source.operation if source.operation in _PARAM_OPERATIONS else None)
         pairs = values.items() if isinstance(values, Mapping) else [(_member_param(member), values)]
-        return {
-            key: _wire_value(
-                encode_param_value(
-                    value,
-                    operation,
-                    multiselect=source.multiselect,
-                    is_range=source.is_range,
-                    default_operation=own,
-                )
+        return tuple(
+            _state_value(
+                key,
+                value,
+                operation,
+                multiselect=source.multiselect,
+                is_range=source.is_range,
+                own_operation=own,
             )
             for key, value in pairs
-        }
+        )
 
     def _chart_params(
         self,
@@ -411,17 +478,15 @@ class DashboardStateBuilder:
         *,
         field: DatasetField | None,
         operation: ParamOperation | None,
-    ) -> dict[str, StateWireValue]:
+    ) -> tuple[StateValue, ...]:
         if field is not None:
             key = f"{_ACTION_PARAM_PREFIX}{field.guid}"
-            return {key: _wire_value(encode_param_value(values, operation, multiselect=True, is_range=False))}
+            return (_state_value(key, values, operation, multiselect=True, is_range=False),)
         if values is None:
-            return {}
+            return ()
         if not isinstance(values, Mapping):
             raise DataLensValidationError("Chart values need field= or a mapping of chart parameters")
-        return {
-            key: _wire_value(
-                encode_param_value(value, operation, multiselect=not isinstance(value, str), is_range=False)
-            )
+        return tuple(
+            _state_value(key, value, operation, multiselect=not isinstance(value, str), is_range=False)
             for key, value in values.items()
-        }
+        )

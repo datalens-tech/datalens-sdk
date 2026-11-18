@@ -1,31 +1,34 @@
-"""Read model of a saved dashboard state, checked against the loaded dashboard revision.
+"""Dashboard states: the typed ``DashboardState`` schema and its check against the loaded dashboard revision.
 
-The state format is the ``DashboardState`` schema (see :class:`~datalens_sdk.domain.entry_state.DashboardStateData`).
 Only sources listed in ``__meta__.queue`` contribute parameters, in queue order. A chart source applies only while
 its queue ``tabId`` is the active tab of the widget (``state.tabId``, else ``isDefault``, else the first tab).
+Wire encoding of values (``__<op>_``, ``__interval_``, ``__relative_``) belongs to the converter.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal, TypeAlias, cast, get_args
 from urllib.parse import urlencode
 import warnings
 
-from datalens_sdk.domain.dashboard_state_effects import StateEffect, _params_for, _receivers, _resolve_usage
-from datalens_sdk.domain.dashboard_state_support import (
+from datalens_sdk.domain.chart_types import FilterOperation
+from datalens_sdk.domain.dashboard_state_effects import (
+    _ACTION_PARAM_PREFIX,
+    StateEffect,
     _active_inner_tab_id,
     _find_item,
     _has_inner_tabs,
     _inner_tab_ids,
     _inner_tab_params,
+    _params_for,
+    _receivers,
+    _resolve_usage,
     _tab_item_ids,
 )
-from datalens_sdk.domain.dashboard_types import ValidationIssue
-from datalens_sdk.domain.param_values import _PARAM_OPERATIONS as _PARAM_OPERATIONS
-from datalens_sdk.domain.param_values import ParamOperation, StateValue, decode_param_value
+from datalens_sdk.domain.dashboard_types import DateInterval, RelativeDate, ValidationIssue
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 if TYPE_CHECKING:
@@ -37,12 +40,106 @@ if TYPE_CHECKING:
         DashboardTabView,
     )
     from datalens_sdk.domain.dashboard_state_builder import DashboardStateBuilder
-    from datalens_sdk.domain.entry_state import DashboardStateData, StateWireValue
     from datalens_sdk.domain.runtime_params import NormalizedRuntimeParams
 
+ParamOperation: TypeAlias = Literal[
+    FilterOperation,
+    "NIN",
+    "ICONTAINS",
+    "NOTCONTAINS",
+    "NOTICONTAINS",
+    "ISTARTSWITH",
+    "ENDSWITH",
+    "IENDSWITH",
+    "LENEQ",
+    "LENGT",
+    "LENGTE",
+    "LENLT",
+    "LENLTE",
+]
+StateParamValue: TypeAlias = "str | DateInterval | RelativeDate"
 StateSelectionKind = Literal["selector", "group_selector", "chart", "unknown"]
 
+_PARAM_OPERATIONS: frozenset[str] = frozenset(get_args(ParamOperation))
 _UNBOUND = "Object is not bound to client operations. Use a client namespace."
+
+
+@dataclass(frozen=True, slots=True)
+class StateValue:
+    """One parameter of a state source.
+
+    ``values`` holds strings, :class:`DateInterval` ranges and :class:`RelativeDate` values; ``multiple`` keeps a
+    list on the wire. ``inherits_operation`` means the value carries no ``__<op>_`` prefix, so the selector's own
+    operation (else IN) applies. ``raw`` is the stored wire value of a state that was read or created.
+    """
+
+    param: str
+    operation: ParamOperation
+    values: tuple[StateParamValue, ...]
+    multiple: bool = False
+    inherits_operation: bool = False
+    raw: str | tuple[str, ...] | None = None
+    dataset_field: bool = False
+
+    @property
+    def is_action_param(self) -> bool:
+        return self.param.startswith(_ACTION_PARAM_PREFIX)
+
+    @property
+    def field_guid(self) -> str | None:
+        if self.is_action_param:
+            return self.param[len(_ACTION_PARAM_PREFIX) :]
+        return self.param if self.dataset_field else None
+
+
+StateWidgetParams: TypeAlias = "Mapping[str, StateValue] | Mapping[str, Mapping[str, StateValue]]"
+
+
+@dataclass(frozen=True, slots=True)
+class StateQueueItem:
+    """One ``__meta__.queue`` item: a widget, a selector of a group (``group_item_id``) or a chart tab (``tab_id``)."""
+
+    id: str
+    group_item_id: str | None = None
+    tab_id: str | None = None
+    extra: Mapping[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class StateWidgetState:
+    """The ``state`` of a widget entry: the active chart tab and any other widget settings."""
+
+    tab_id: str | None = None
+    extra: Mapping[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class StateWidget:
+    """One widget entry of a dashboard state; ``params`` is ``None`` when the entry stores none."""
+
+    params: StateWidgetParams | None = None
+    state: StateWidgetState | None = None
+    extra: Mapping[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class DashboardStateData:
+    """A dashboard state as the ``DashboardState`` schema describes it, keyed by widget id."""
+
+    version: Literal[1, 2]
+    queue: tuple[StateQueueItem, ...]
+    widgets: Mapping[str, StateWidget]
+    meta_extra: Mapping[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class DashboardStateRecord:
+    """A stored dashboard state: typed ``data`` and the JSON object it was read from or sent as."""
+
+    hash: str
+    data: DashboardStateData
+    raw: Mapping[str, object]
+    created_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,8 +165,8 @@ class StateSelection:
 
     @property
     def params(self) -> dict[str, str | tuple[str, ...]]:
-        """The params of this source, as stored in the state."""
-        return {value.param: value.raw for value in self.values}
+        """The stored wire params of this source (values not stored yet are left out)."""
+        return {value.param: value.raw for value in self.values if value.raw is not None}
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,7 +174,7 @@ class _QueueEntry:
     item_id: str
     group_item_id: str | None
     widget_tab_id: str | None
-    params: Mapping[str, StateWireValue]
+    values: tuple[StateValue, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,14 +219,8 @@ class DashboardState:
         tab_id = resolved_tab.id or ""
         issues: list[ValidationIssue] = []
         if data.version == 1:
-            issues.append(
-                ValidationIssue(
-                    "legacy_state_version",
-                    tab_id,
-                    None,
-                    "State has no __meta__ queue (version 1); every widget keeps only its own stored params",
-                )
-            )
+            message = "State has no __meta__ queue (version 1); every widget keeps only its own stored params"
+            issues.append(ValidationIssue("legacy_state_version", tab_id, None, message))
         selections = tuple(_resolve_selection(resolved_tab, entry, data, issues) for entry in entries)
         state = cls(
             hash=hash,
@@ -227,16 +318,16 @@ def _report_issues(state: DashboardState, *, strict: bool) -> None:
     warnings.warn(summary, UserWarning, stacklevel=4)
 
 
-def _flat_params(params: object) -> Mapping[str, StateWireValue]:
+def _flat_values(params: object) -> tuple[StateValue, ...]:
     if not isinstance(params, Mapping):
-        return {}
-    return {key: value for key, value in params.items() if isinstance(value, (str, tuple))}
+        return ()
+    return tuple(value for value in params.values() if isinstance(value, StateValue))
 
 
 def _state_entries(data: DashboardStateData) -> list[_QueueEntry]:
     if data.version == 1:
         return [
-            _QueueEntry(widget_id, None, None, _flat_params(widget.params))
+            _QueueEntry(widget_id, None, None, _flat_values(widget.params))
             for widget_id, widget in data.widgets.items()
             if widget.params
         ]
@@ -246,7 +337,7 @@ def _state_entries(data: DashboardStateData) -> list[_QueueEntry]:
         params: object = widget.params if widget is not None else None
         if item.group_item_id is not None:
             params = params.get(item.group_item_id) if isinstance(params, Mapping) else None
-        entries.append(_QueueEntry(item.id, item.group_item_id, item.tab_id, _flat_params(params)))
+        entries.append(_QueueEntry(item.id, item.group_item_id, item.tab_id, _flat_values(params)))
     return entries
 
 
@@ -285,20 +376,22 @@ def _resolve_state_tab(
     return candidates[0]
 
 
-def _default_operation(member: ControlMemberView | None) -> ParamOperation | None:
+def _selector_operation(member: ControlMemberView | None) -> ParamOperation | None:
     operation = member.source.operation if member is not None else None
     return cast(ParamOperation, operation) if operation in _PARAM_OPERATIONS else None
 
 
-def _decode_values(
-    params: Mapping[str, StateWireValue],
-    member: ControlMemberView | None = None,
-) -> tuple[StateValue, ...]:
-    dataset_field = member is not None and member.source_type == "dataset"
-    operation = _default_operation(member)
+def _bind_values(values: tuple[StateValue, ...], member: ControlMemberView | None = None) -> tuple[StateValue, ...]:
+    """Apply the selector's operation to values without a prefix and mark dataset field keys."""
+    operation = _selector_operation(member)
+    dataset = member is not None and member.source_type == "dataset"
     return tuple(
-        decode_param_value(key, value, operation, dataset_field=dataset_field and not key.startswith("_ap_"))
-        for key, value in params.items()
+        replace(
+            value,
+            operation=operation if value.inherits_operation and operation is not None else value.operation,
+            dataset_field=dataset and not value.is_action_param,
+        )
+        for value in values
     )
 
 
@@ -314,26 +407,13 @@ def _check_params(
     for value in values:
         if value.is_action_param or value.param in allowed:
             continue
-        issues.append(
-            ValidationIssue(
-                "unknown_state_param",
-                tab_id,
-                item_id,
-                f"Parameter {value.param!r} of {owner} is not declared in the loaded revision and is not applied",
-                tuple(sorted(allowed)),
-            )
-        )
+        message = f"Parameter {value.param!r} of {owner} is not declared in the loaded revision and is not applied"
+        issues.append(ValidationIssue("unknown_state_param", tab_id, item_id, message, tuple(sorted(allowed))))
 
 
 def _orphan(entry: _QueueEntry, kind: StateSelectionKind) -> StateSelection:
     return StateSelection(
-        entry.item_id,
-        entry.group_item_id,
-        entry.widget_tab_id,
-        kind,
-        None,
-        _decode_values(entry.params),
-        applied=False,
+        entry.item_id, entry.group_item_id, entry.widget_tab_id, kind, None, _bind_values(entry.values), applied=False
     )
 
 
@@ -346,14 +426,9 @@ def _resolve_selection(
     tab_id = tab.id or ""
     item = _find_item(tab, entry.item_id)
     if item is None:
+        message = f"Item {entry.item_id!r} is not on tab {tab_id!r}"
         issues.append(
-            ValidationIssue(
-                "unknown_state_item",
-                tab_id,
-                entry.item_id,
-                f"Item {entry.item_id!r} is not on tab {tab_id!r}",
-                tuple(sorted(_tab_item_ids(tab))),
-            )
+            ValidationIssue("unknown_state_item", tab_id, entry.item_id, message, tuple(sorted(_tab_item_ids(tab))))
         )
         return _orphan(entry, "unknown")
     if item.item_type == "group_control":
@@ -362,13 +437,12 @@ def _resolve_selection(
         return _resolve_tabbed_selection(tab, item, entry, data, issues)
     if item.item_type == "control":
         control = next(_ for _ in tab.controls if _.id == entry.item_id)
-        member = control.members[0] if control.members else None
-        values = _decode_values(entry.params, member)
+        values = _bind_values(entry.values, control.members[0] if control.members else None)
         owner = f"selector {entry.item_id!r}"
         _check_params(values, set(item.defaults), tab_id=tab_id, item_id=entry.item_id, owner=owner, issues=issues)
         return StateSelection(entry.item_id, None, entry.widget_tab_id, "selector", control, values)
     kind: StateSelectionKind = "chart" if item.item_type == "widget" else "unknown"
-    return StateSelection(entry.item_id, None, entry.widget_tab_id, kind, item, _decode_values(entry.params))
+    return StateSelection(entry.item_id, None, entry.widget_tab_id, kind, item, _bind_values(entry.values))
 
 
 def _resolve_group_selection(
@@ -380,17 +454,11 @@ def _resolve_group_selection(
     control = next(_ for _ in tab.controls if _.id == entry.item_id)
     member = control.member(entry.group_item_id) if entry.group_item_id is not None else None
     if member is None:
-        issues.append(
-            ValidationIssue(
-                "unknown_group_item",
-                tab_id,
-                entry.item_id,
-                f"Group selector {entry.item_id!r} has no member {entry.group_item_id!r}",
-                tuple(_.id for _ in control.members if _.id),
-            )
-        )
+        message = f"Group selector {entry.item_id!r} has no member {entry.group_item_id!r}"
+        members = tuple(_.id for _ in control.members if _.id)
+        issues.append(ValidationIssue("unknown_group_item", tab_id, entry.item_id, message, members))
         return _orphan(entry, "group_selector")
-    values = _decode_values(entry.params, member)
+    values = _bind_values(entry.values, member)
     owner = f"group selector {entry.item_id!r} member {entry.group_item_id!r}"
     _check_params(values, set(member.defaults), tab_id=tab_id, item_id=entry.item_id, owner=owner, issues=issues)
     return StateSelection(entry.item_id, entry.group_item_id, None, "group_selector", member, values)
@@ -405,24 +473,16 @@ def _resolve_tabbed_selection(
 ) -> StateSelection:
     tab_id = tab.id or ""
     kind: StateSelectionKind = "selector" if item.item_type == "control" else "chart"
+    noun = "Selector" if kind == "selector" else "Chart widget"
     known_tabs = _inner_tab_ids(item)
     if entry.widget_tab_id is None or entry.widget_tab_id not in known_tabs:
-        issues.append(
-            ValidationIssue(
-                "unknown_widget_tab",
-                tab_id,
-                entry.item_id,
-                f"{'Selector' if kind == 'selector' else 'Chart widget'} {entry.item_id!r} has no tab "
-                f"{entry.widget_tab_id!r}",
-                tuple(known_tabs),
-            )
-        )
+        message = f"{noun} {entry.item_id!r} has no tab {entry.widget_tab_id!r}"
+        issues.append(ValidationIssue("unknown_widget_tab", tab_id, entry.item_id, message, tuple(known_tabs)))
         return _orphan(entry, kind)
     control = next((_ for _ in tab.controls if _.id == entry.item_id), None) if kind == "selector" else None
-    member = control.member(entry.widget_tab_id) if control is not None else None
-    values = _decode_values(entry.params, member)
+    values = _bind_values(entry.values, control.member(entry.widget_tab_id) if control is not None else None)
+    owner = f"{noun.lower()} {entry.item_id!r} tab {entry.widget_tab_id!r}"
     allowed = set(_inner_tab_params(item, entry.widget_tab_id))
-    owner = f"{'selector' if kind == 'selector' else 'chart widget'} {entry.item_id!r} tab {entry.widget_tab_id!r}"
     _check_params(values, allowed, tab_id=tab_id, item_id=entry.item_id, owner=owner, issues=issues)
     view: ControlView | DashboardItemView = control if control is not None else item
     applied = _active_inner_tab_id(item, data) == entry.widget_tab_id

@@ -14,9 +14,9 @@ from datalens_sdk.converter.dashboard_state import (
 )
 from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.dashboard_create import DashboardCreate
+from datalens_sdk.domain.dashboard_state import DashboardStateData, DashboardStateRecord
 from datalens_sdk.domain.dashboard_update import DashboardUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
-from datalens_sdk.domain.entry_state import DashboardStateData, DashboardStateRecord
 from datalens_sdk.domain.entry_types import EntryBranch
 from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
 from datalens_sdk.domain.ports import (
@@ -309,7 +309,8 @@ class DashboardService(DashboardOperations):
                 f"the limit is {MAX_STATE_DATA_SYMBOLS}"
             )
         hash_value = self._entries_service.create_entry_state(entry_id, payload)
-        return DashboardStateRecord(hash=hash_value, data=data, raw=payload)
+        stored = DashboardStateConverter.to_domain(payload, dto_module=self._state_dto_module())
+        return DashboardStateRecord(hash=hash_value, data=stored, raw=payload)
 
     def _state_dto_module(self) -> DashboardStateDtoModule | None:
         return cast(DashboardStateDtoModule | None, self._dto_module)

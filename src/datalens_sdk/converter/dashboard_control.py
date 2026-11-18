@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import cast
 
+from datalens_sdk.converter.dashboard_state import _relative_date_wire
 from datalens_sdk.domain.dashboard_types import (
     Affects,
     DateInterval,
@@ -45,7 +46,7 @@ def _interval_edge_wire(edge: str | RelativeDate, *, field_type: str, is_end: bo
     marker; absolute dates are date-only for DATE fields and full ISO+Z for
     datetime fields (day bounds expand asymmetrically, the UI convention)."""
     if isinstance(edge, RelativeDate):
-        return edge.to_wire()
+        return _relative_date_wire(edge)
     if edge.startswith(("+", "-")):
         return f"__relative_{edge}"
     if field_type == _DATE_FIELD_TYPE:

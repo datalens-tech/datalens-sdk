@@ -73,7 +73,10 @@ Each `StateSelection` has `item_id`, `group_item_id`, `widget_tab_id`, `kind`
 ## Value prefixes
 
 Each `StateValue` has `param`, `operation` (a `ParamOperation`), decoded
-`values`, the wire `raw`, `is_action_param`, and `field_guid`.
+`values`, `multiple` (a list on the wire), `inherits_operation` (no prefix: the
+selector's operation applies), the stored wire `raw`, `is_action_param`, and
+`field_guid`. Decoding and encoding the wire forms below is done by the SDK; the
+domain objects hold only typed values.
 
 | Wire form | Meaning |
 |---|---|
