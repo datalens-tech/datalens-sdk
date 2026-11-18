@@ -22,9 +22,11 @@ A hash unknown for this dashboard raises `DashboardStateNotFoundError`, a
 subclass of `NotFoundError`.
 
 A state applies to **one dashboard tab**. Without `tab`, the SDK picks the
-only tab that holds every item of the state. When none or several tabs fit,
-it raises `DataLensValidationError` with the candidates; pass `tab=` with a
-tab id, title, or `DashboardTabView`.
+first tab that holds every item of the state, as the UI opens a link without
+`?tab=`. A state of global selectors fits every tab, so pass `tab=` (the
+link's `?tab=` value: a tab id, title, or `DashboardTabView`) to check it
+against the tab you mean. When no tab fits, it raises
+`DataLensValidationError`.
 
 A state is not bound to a revision. The SDK checks it against the revision
 loaded into `dashboard`, and `state.rev_id` is that revision.

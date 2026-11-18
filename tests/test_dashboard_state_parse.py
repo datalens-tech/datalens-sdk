@@ -232,15 +232,20 @@ def test_tab_is_inferred_from_queue_items() -> None:
     assert _group_state().tab_id == "Mk"
 
 
-def test_tab_inference_rejects_ambiguous_and_missing_tabs() -> None:
+def test_state_of_global_items_uses_the_first_fitting_tab_unless_tab_is_passed() -> None:
     entry = _load("dashboard_group_interval_widget_tab")
     tabs = cast(list[dict[str, object]], cast(dict[str, object], entry["data"])["tabs"])
     tabs[1]["globalItems"] = copy.deepcopy(tabs[0]["items"])
-    ambiguous = _dashboard(entry)
+    shared = _dashboard(entry)
     data = _state_data("state_group_interval_widget_tab")
 
-    with pytest.raises(dl.DataLensValidationError, match=r"several tabs \['Mk', 'Qa'\]"):
-        DashboardState.from_data(ambiguous, data)
+    assert DashboardState.from_data(shared, data).tab_id == "Mk"
+    assert DashboardState.from_data(shared, data, tab="Details").tab_id == "Qa"
+
+
+def test_tab_inference_rejects_states_that_fit_no_tab() -> None:
+    data = _state_data("state_group_interval_widget_tab")
+
     with pytest.raises(dl.DataLensValidationError, match="No dashboard tab contains"):
         DashboardState.from_data(_dashboard(_load("dashboard_action_params")), data)
 

@@ -595,7 +595,8 @@ class Dashboard:
 
         A state is not bound to a revision: it is checked against the revision loaded into this object. Items,
         group members, widget tabs and parameters missing from it are collected into ``issues`` and reported with
-        one warning; ``strict=True`` raises instead. Without ``tab`` the only tab holding every queued item is used.
+        one warning; ``strict=True`` raises instead. Without ``tab`` the first tab holding every queued item is used
+        (states of global selectors fit every tab: pass ``tab`` from the link's ``?tab=``).
         A hash unknown for this dashboard raises :class:`~datalens_sdk.errors.DashboardStateNotFoundError`.
         """
         if self._operations is None:

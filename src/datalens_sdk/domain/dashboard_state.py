@@ -115,7 +115,7 @@ class DashboardState:
     ) -> DashboardState:
         """Parse stored state data against the loaded dashboard revision.
 
-        Without ``tab`` the only tab that contains every queued item is used. Problems are collected into
+        Without ``tab`` the first tab that contains every queued item is used. Problems are collected into
         ``issues`` and reported with one warning; ``strict=True`` raises :class:`DataLensValidationError` instead.
         """
         raw: Mapping[str, object] = data if data is not None else {}
@@ -298,14 +298,13 @@ def resolve_state_tab(
         return titled[0]
     wanted = set(item_ids)
     candidates = [candidate for candidate in tabs if wanted <= tab_item_ids(candidate)]
-    if len(candidates) == 1:
-        return candidates[0]
     if not candidates:
         raise DataLensValidationError(
             f"No dashboard tab contains every state item {sorted(wanted)!r}; pass tab= explicitly "
             f"(known tab ids: {known!r})"
         )
-    raise DataLensValidationError(f"State items fit several tabs {[_.id for _ in candidates]!r}; pass tab= explicitly")
+    # Several tabs fit only when every item is global; the UI opens a link without ?tab= on the first tab.
+    return candidates[0]
 
 
 def default_operation(member: ControlMemberView | None) -> ParamOperation | None:
