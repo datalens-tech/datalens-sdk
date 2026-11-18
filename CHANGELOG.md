@@ -15,6 +15,21 @@
 
 ### Added
 
+- Add dashboard states over `/rpc/getEntryState` and `/rpc/createEntryState`:
+  `dashboard.get_state(hash, tab=None, strict=False)` returns an immutable
+  `DashboardState` with queue-ordered selections, decoded operations, intervals
+  and relative dates, and `ValidationIssue` entries for items missing from the
+  loaded revision (one warning, or an error with `strict=True`). Build new
+  states with `dashboard.new_state(tab)`, `dashboard.create_state(tab,
+  selections)`, or `state.edit()`; `create()` rejects orphans, foreign-tab
+  items, undeclared parameters, and payloads above 50 000 characters.
+  `state.params_for(item)` and `state.effects(resolve_charts=False)` follow the
+  dashkit delivery rules; `state.url()` builds the UI link from the new client
+  argument `ui_base_url` (`https://datalens.ru` by default on Yandex Cloud).
+  `dashboard.screenshot(state=...)` accepts a `DashboardState`. An unknown hash
+  raises `DashboardStateNotFoundError`.
+- `DateInterval` accepts `inclusive_end` and `RelativeDate` edges with
+  rounding (`__relative_-7d_s_day`); selector defaults encode them too.
 - Add experimental chart tables through `client.data.get_chart_data()` and
   `chart.get_chart_data()` for Wizard, QL, and Editor, with typed ordered
   tables, positional JSON rows, and caller runtime parameters. Both entrypoints

@@ -287,5 +287,7 @@ parameter key, value type, connection, or renderer behavior is correct.
 
 - [datasets.md](datasets.md) — creating Dataset parameters
 - [dashboards.md](dashboards.md) — selectors, connections, read model, updates
+- [dashboard-state.md](dashboard-state.md) — saved selector values and chart
+  clicks, `params_for()` and `effects()` for what each widget receives
 - [ql-charts/common-operations.md](ql-charts/common-operations.md) — `QLParam` and `{{name}}`
 - [editor-charts/common-operations.md](editor-charts/common-operations.md) — Editor `params` tabs
