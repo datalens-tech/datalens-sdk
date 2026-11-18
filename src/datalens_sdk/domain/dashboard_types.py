@@ -82,6 +82,12 @@ ValidationIssueKind = Literal[
     "alias_group_too_small",
     "duplicate_alias_group",
     "layout_reflow",
+    # dashboard state issues — Dashboard.get_state() against the loaded revision
+    "unknown_state_item",
+    "unknown_group_item",
+    "unknown_widget_tab",
+    "unknown_state_param",
+    "legacy_state_version",
 ]
 
 

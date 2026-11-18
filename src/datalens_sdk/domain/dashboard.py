@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
+from datalens_sdk.domain.dashboard_state import DashboardState
 from datalens_sdk.domain.dashboard_types import KNOWN_DASHBOARD_ITEM_TYPES, ValidationIssue
 from datalens_sdk.domain.dashboard_update import DashboardUpdate
 from datalens_sdk.domain.dashboard_validate import validate_dashboard
@@ -568,6 +569,34 @@ class Dashboard:
         return self._operations.get_entry_revisions(
             self.id,
             EntryRevisionsOptions.create(page_size=page_size, page_token=page_token, rev_ids=rev_ids),
+        )
+
+    def get_state(
+        self,
+        hash: str,
+        *,
+        tab: str | DashboardTabView | None = None,
+        strict: bool = False,
+    ) -> DashboardState:
+        """Read a saved state by its hash (the ``state=`` value of a dashboard link).
+
+        A state is not bound to a revision: it is checked against the revision loaded into this object. Items,
+        group members, widget tabs and parameters missing from it are collected into ``issues`` and reported with
+        one warning; ``strict=True`` raises instead. Without ``tab`` the only tab holding every queued item is used.
+        A hash unknown for this dashboard raises :class:`~datalens_sdk.errors.DashboardStateNotFoundError`.
+        """
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot read a state of a dashboard without an id")
+        record = self._operations.get_entry_state(self.id, hash)
+        return DashboardState.from_raw(
+            self,
+            record.data,
+            tab=tab,
+            hash=record.hash,
+            created_at=record.created_at,
+            strict=strict,
         )
 
     def get_relations(
