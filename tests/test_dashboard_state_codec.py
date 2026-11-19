@@ -41,7 +41,7 @@ def _value(
     multiple: bool = True,
     prefixed: bool = True,
 ) -> dl.StateValue:
-    operands = tuple(dl.StateOperand(operation, value, prefixed=prefixed) for value in values)
+    operands = tuple(dl.StateOperand(operation if prefixed else None, value) for value in values)
     return dl.StateValue("p", operands, multiple=multiple)
 
 
@@ -61,7 +61,7 @@ def test_every_explicit_operation_round_trips(operation: dl.ParamOperation) -> N
 
     assert decoded.operation == operation
     assert decoded.values == tuple(_ for _ in values if _ is not None)
-    assert all(operand.prefixed for operand in decoded.operands)
+    assert all(operand.operation == operation for operand in decoded.operands)
     assert decoded.raw == tuple(wire)
 
 
@@ -76,13 +76,13 @@ def test_each_operand_keeps_its_operation() -> None:
 def test_unprefixed_value_is_in_whatever_the_selector_operation() -> None:
     decoded = _decode("a")
 
-    assert decoded.operands == (dl.StateOperand("IN", "a", prefixed=False),)
+    assert decoded.operands == (dl.StateOperand(None, "a"),)
     assert (decoded.operation, decoded.multiple) == ("IN", False)
     assert _encode(_value("a", prefixed=False)) == ["a"]
 
 
 def test_empty_values_are_not_prefixed() -> None:
-    value = dl.StateValue("p", (dl.StateOperand("NE", "", prefixed=False), dl.StateOperand("NE", "EU")), multiple=True)
+    value = dl.StateValue("p", (dl.StateOperand(None, ""), dl.StateOperand("NE", "EU")), multiple=True)
 
     assert _encode(value) == ["", "__ne_EU"]
 
@@ -93,7 +93,7 @@ def test_absolute_interval_round_trips() -> None:
     decoded = _decode(raw)
 
     interval = DateInterval("2026-01-01T00:00:00.000Z", "2026-01-31T23:59:59.999Z")
-    assert decoded.operands == (dl.StateOperand("BETWEEN", interval, prefixed=False),)
+    assert decoded.operands == (dl.StateOperand(None, interval),)
     assert _encode(_value(interval, operation="BETWEEN", multiple=False, prefixed=False)) == raw
 
 
@@ -142,7 +142,7 @@ def test_prefixed_relative_date_round_trips() -> None:
 def test_unrecognized_prefixes_follow_the_ui_fallback(raw: str, operation: str, prefixed: bool) -> None:
     (operand,) = _decode(raw).operands
 
-    assert (operand.operation, operand.prefixed) == (operation, prefixed)
+    assert (operand.effective_operation, operand.operation is not None) == (operation, prefixed)
 
 
 @pytest.mark.parametrize("raw", ["__isnull_", "__ISNULL_"])
@@ -203,3 +203,11 @@ def test_selector_defaults_encode_relative_date_edges_and_exclusive_end() -> Non
 def test_date_interval_rejects_non_boolean_inclusive_end() -> None:
     with pytest.raises(dl.DataLensValidationError, match="inclusive_end"):
         DateInterval("2024-01-01", "2024-01-02", inclusive_end="yes")  # type: ignore[arg-type]
+
+
+def test_interval_is_between_whatever_its_prefix() -> None:
+    (operand,) = _decode("__ne___interval_2026-01-01_2026-01-31").operands
+
+    assert operand.operation == "NE"
+    assert operand.effective_operation == "BETWEEN"
+    assert operand.value == DateInterval("2026-01-01", "2026-01-31")

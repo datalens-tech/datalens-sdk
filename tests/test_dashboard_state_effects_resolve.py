@@ -302,3 +302,41 @@ def test_wizard_chart_local_fields_count_as_exact_matches(param: str, matched_by
     )
 
     assert _summary(state, items=["WZ"]) == [("LF", "WZ", (param,), "exact", matched_by)]
+
+
+class UpdatesFieldTransport(ChartsTransport):
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        response = super().handler(request)
+        if request.url.path != "/rpc/getWizardChart":
+            return response
+        body = response.json()
+        field = {"guid": "upd-1", "title": "Upd"}
+        body["entry"]["data"]["sources"]["updates"] = [{"action": "add_field", "field": field}]
+        return httpx.Response(200, json=body)
+
+
+def _local_state(transport: ChartsTransport, params: dict[str, object]) -> DashboardState:
+    data = _dashboard_data()
+    items = cast(list[object], cast(list[dict[str, object]], data["tabs"])[0]["items"])
+    items.append(_selector("LF", {"fieldName": "multi"}, "manual", dict.fromkeys(params, "")))
+    client = dl.DataLensClientYC(
+        auth=None, base_url="https://datalens.test", transport=httpx.MockTransport(transport.handler)
+    )
+    dashboard = dl.Dashboard(id="dash", data=data, rev_id="rev", _operations=client._dashboard_service)
+    raw = {"LF": {"params": params}, "__meta__": {"queue": [{"id": "LF"}], "version": 2}}
+    return _from_json(dashboard, raw, tab="T")
+
+
+def test_wizard_field_added_through_source_updates_is_matched() -> None:
+    state = _local_state(UpdatesFieldTransport(), {"upd-1": ["x"]})
+
+    assert _summary(state, items=["WZ"]) == [("LF", "WZ", ("upd-1",), "exact", "guid")]
+
+
+def test_mixed_guid_and_title_matches_are_reported_separately() -> None:
+    state = _local_state(ChartsTransport(), {"guid-city": ["x"], "Region": ["y"]})
+
+    assert _summary(state, items=["WZ"]) == [
+        ("LF", "WZ", ("guid-city",), "exact", "guid"),
+        ("LF", "WZ", ("Region",), "exact", "title"),
+    ]

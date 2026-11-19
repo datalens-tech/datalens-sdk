@@ -1770,16 +1770,17 @@ def _opaque_entry_state_data_schema(schema: JsonValue, *, schema_name: str) -> J
     data_types = data.get("type")
     type_set = set(data_types) if isinstance(data_types, list) else {data_types}
     branches = data.get("anyOf")
-    allowed_branches = [
+    allowed_branches: list[JsonValue] = [
         {"$ref": f"{_SCHEMA_REF_PREFIX}{_DASHBOARD_STATE_SCHEMA}"},
         {"additionalProperties": True, "type": "object"},
-        *([{"type": "null"}] if nullable else []),
     ]
+    if nullable:
+        allowed_branches.append({"type": "null"})
     if (
         type_set != ({"null", "object"} if nullable else {"object"})
         or not isinstance(branches, list)
-        or any(_open_schema_extras(branch) not in allowed_branches for branch in branches)
-        or {"$ref": f"{_SCHEMA_REF_PREFIX}{_DASHBOARD_STATE_SCHEMA}"} not in branches
+        or sorted(_canonical_json(_open_schema_extras(branch)) for branch in branches)
+        != sorted(_canonical_json(branch) for branch in allowed_branches)
     ):
         raise ValueError(
             f"entryState schema {schema_name!r} 'data' must be "

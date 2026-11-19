@@ -141,7 +141,7 @@ def test_unprefixed_value_is_in_even_for_a_selector_with_an_operation() -> None:
     assert selection.kind == "selector"
     assert isinstance(selection.item, ControlView)
     assert selection.values[0].operation == "IN"
-    assert selection.values[0].operands[0].prefixed is False
+    assert selection.values[0].operands[0].operation is None
     assert selection.values[0].field_guid == "guid-1"
 
 

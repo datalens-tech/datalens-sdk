@@ -227,7 +227,8 @@ def test_global_items_receive_and_send() -> None:
     assert state.params_for("GI")["scale"] == "week"
 
 
-def test_global_group_member_of_another_tab_has_no_defaults_here() -> None:
+def test_global_group_member_of_another_tab_still_counts_with_dashkit_10() -> None:
+    # DashKit 10.0.0, pinned by the public DataLens UI, does not filter global group members by impactType.
     data = copy.deepcopy(_data())
     group = {
         "data": {"group": [_manual("gm", "segment", "ALL", impactType="selectedTabs", impactTabsIds=["T2"])]},
@@ -237,11 +238,12 @@ def test_global_group_member_of_another_tab_has_no_defaults_here() -> None:
     }
     data["tabs"][0]["globalItems"].append(group)
 
-    state = _state([], {}, data)
+    empty = _state([], {}, data)
+    queued = _state([{"id": "GG", "groupItemId": "gm"}], {"GG": {"params": {"gm": {"segment": "B2B"}}}}, data)
 
-    assert "segment" not in state.params_for("W1")
-    with pytest.raises(dl.DataLensValidationError, match="receives no parameters here"):
-        state.params_for("gm")
+    assert empty.params_for("W1")["segment"] == "ALL"
+    assert empty.params_for("gm")["segment"] == "ALL"
+    assert queued.params_for("W1")["segment"] == "B2B"
 
 
 def test_legacy_state_keeps_params_per_receiver() -> None:

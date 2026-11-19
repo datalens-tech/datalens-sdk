@@ -23,7 +23,7 @@ TYPED_DATA = dl.DashboardStateData(
     queue=(dl.StateQueueItem("sel-1"), dl.StateQueueItem("chart-1", tab_id="t2")),
     widgets={
         "sel-1": dl.StateWidget(
-            params={"region": dl.StateValue("region", (dl.StateOperand("IN", "EU", prefixed=False),), multiple=True)}
+            params={"region": dl.StateValue("region", (dl.StateOperand(None, "EU"),), multiple=True)}
         ),
         "chart-1": dl.StateWidget(params={}, state=dl.StateWidgetState(tab_id="t2", extra={"scroll": 4})),
     },
@@ -77,9 +77,7 @@ def test_get_dashboard_state_reads_typed_data_through_generated_dtos(installatio
     assert record.data.queue == TYPED_DATA.queue
     assert record.data.widgets["chart-1"] == TYPED_DATA.widgets["chart-1"]
     params = record.data.widgets["sel-1"].params
-    assert params == {
-        "region": dl.StateValue("region", (dl.StateOperand("IN", "EU", prefixed=False),), multiple=True, raw=("EU",))
-    }
+    assert params == {"region": dl.StateValue("region", (dl.StateOperand(None, "EU"),), multiple=True, raw=("EU",))}
     assert record.raw == STATE_DATA
     assert record.created_at == datetime(2026, 11, 12, 10, 20, 30, 123000, tzinfo=timezone.utc)
 
@@ -107,9 +105,7 @@ def test_null_and_legacy_data_are_typed() -> None:
 
     assert (empty.version, empty.queue, dict(empty.widgets)) == (2, (), {})
     assert (old.version, old.queue) == (1, ())
-    assert old.widgets["w1"].params == {
-        "region": dl.StateValue("region", (dl.StateOperand("IN", "EU", prefixed=False),), raw="EU")
-    }
+    assert old.widgets["w1"].params == {"region": dl.StateValue("region", (dl.StateOperand(None, "EU"),), raw="EU")}
 
 
 @pytest.mark.parametrize(
@@ -168,11 +164,7 @@ def test_create_dashboard_state_rejects_payloads_above_the_limit_before_request(
     data = dl.DashboardStateData(
         version=2,
         queue=(dl.StateQueueItem("w"),),
-        widgets={
-            "w": dl.StateWidget(
-                params={"p": dl.StateValue("p", (dl.StateOperand("IN", "Ж" * 50_000, prefixed=False),))}
-            )
-        },
+        widgets={"w": dl.StateWidget(params={"p": dl.StateValue("p", (dl.StateOperand(None, "Ж" * 50_000),))})},
     )
 
     with pytest.raises(dl.DataLensValidationError, match="limit is 50000"):

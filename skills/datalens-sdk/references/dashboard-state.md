@@ -74,11 +74,16 @@ Each `StateSelection` has `item_id`, `group_item_id`, `widget_tab_id`, `kind`
 Each `StateValue` has `param`, `operands`, `multiple` (a list on the wire),
 the stored wire `raw`, `is_action_param`, and `field_guid`; `values` and
 `operation` (the operation shared by all operands, else `None`) are shortcuts.
-A `StateOperand` has `operation`, `value`, and `prefixed`. Charts resolve every
-operand on its own: `["__gte_10", "__lte_20"]` is GTE 10 and LTE 20, and an
-operand without a prefix is IN (BETWEEN for an interval) whatever operation its
-selector is configured with. The SDK decodes and encodes the wire forms below;
-the objects hold only typed values.
+A `StateOperand` has `operation` (the stored `__<op>_` prefix, `None` when
+there is none), `value`, and `effective_operation` (what charts apply). Charts
+resolve every operand on its own, as Wizard `prepareArrayFilterValues` does:
+`["__gte_10", "__lte_20"]` is GTE 10 and LTE 20, an interval is BETWEEN whatever
+its prefix, and an unprefixed value is IN whatever operation its selector is
+configured with. Wizard also turns a single unprefixed value of a date field
+into EQ, which depends on the receiving field and is not reflected here. The
+SDK decodes and encodes the wire forms below; the objects hold only typed
+values. Typed values become wire values when `create()` stores them, so
+`DashboardState.from_data()` accepts only stored data.
 
 | Wire form | Meaning |
 |---|---|
@@ -163,14 +168,28 @@ Shortcuts:
   raw mappings and runs the same validation.
 - `state.edit()` starts a builder with a copy of the queue and the widget
   states on the same tab; its `create()` stores a new state and leaves the old
-  one unchanged. A version 1 state cannot be edited: its params are per widget.
+  one unchanged. Everything not touched is kept: params of widgets outside the
+  queue, widget `state` fields, and extra fields of widgets and queue items.
 - `add()` and `create_state()` make the tab of an applied chart source active,
-  so a copied selection keeps applying.
+  so a copied selection keeps applying; copying a selection that was not applied
+  and would start applying is rejected in favour of `state.edit()`.
+- A version 1 state cannot be edited: its params are per widget and its chart
+  sources record no widget tab. Migrate it by choosing each source explicitly.
+
+```python
+migrated = (
+    dashboard.new_state("<tab id>")
+    .select("<selector id>", ["<value>"])
+    .select(item="<chart widget id>", widget_tab="<chart tab id>", field=field, values=["<value>"])
+    .create()
+)
+```
 
 ## `params_for` and `effects`
 
 `state.params_for(item)` returns the parameters an item ends up with, ready for
-`get_chart_data(params=...)`, following DashKit:
+`get_chart_data(params=...)`, following DashKit 10.0.0, the version the public
+DataLens UI pins:
 
 1. the params of the item's active chart tab (only for that chart);
 2. dashboard `globalParams`;
@@ -183,11 +202,13 @@ Parameters travel within one `namespace` to every item, whatever its parameter
 names. A connection `{"from": R, "to": S, "kind": "ignore"}` stops R receiving
 anything from S; both ends are the active endpoints: a chart's active tab id,
 a selector id, or one selector of a group. `aliases[namespace]` copies a value
-to every name of its group, and a foreign `_ap_<guid>` arrives as `<guid>`. A
-selector of a global group whose `impactType` excludes the tab has no defaults
-and receives nothing there; its queued value still applies, because DashKit
-does not filter queue sources by tab.
-Address a group by one of its selectors.
+to every name of its group, and a foreign `_ap_<guid>` arrives as `<guid>`.
+DashKit 10.0.0 does not filter selectors of global groups by `impactType`: a
+selector of a group on the tab has defaults, receives, and sends its queued
+value on every tab. Address a group by one of its selectors.
+
+Lookups read the attached `Dashboard` object, which is not copied: keep it
+unchanged, or read the state again after reloading the dashboard.
 
 `state.effects(*, resolve_charts=False, items=None)` returns `StateEffect`
 objects: `selection`, `receiver` (an item view, or the `ControlMemberView` of a
@@ -202,8 +223,10 @@ receivers; a version 1 state has none.
 | `unknown` | an Editor chart key outside its tab `params` (the public API exposes no `usedParams`), or the chart was not found |
 
 With `resolve_charts=True`, receivers that do not use the parameters are
-dropped and `matched_by` is `"guid"` or `"title"` for Wizard charts. Wizard
-fields include the chart's own fields and the fields of its datasets. It sends
+dropped. For Wizard charts, guid and title matches come as separate effects
+with `matched_by` `"guid"` or `"title"`. Wizard fields include the fields of its
+datasets, its placed fields, `datasetsPartialFields`, and fields added through
+`sources.updates`. It sends
 one `getEntries` for the chart kinds, one request per distinct chart, and one
 per distinct dataset of the Wizard charts.
 
@@ -229,11 +252,16 @@ comes from `?tab=`, the widget from that tab, and the chart from the widget tab
 the state makes active:
 
 ```python
+import re
 from urllib.parse import parse_qs, urlparse
 
-link = "https://datalens.ru/<dashboard-id>?tab=<tab-id>&state=<hash>"
-query = parse_qs(urlparse(link).query)
-dashboard = client.get.dashboard(by_id=urlparse(link).path.rsplit("/", 1)[-1])
+link = "https://datalens.ru/ab12cd34ef56g-sales-overview?tab=Mk&state=21e04f18384"
+url = urlparse(link)
+# The first path part is "<13-character id>" or "<id>-<slug>", as in the UI's extractEntryId.
+dashboard_id = re.fullmatch(r"([0-9a-z]{13})(?:-.*)?", next(_ for _ in url.path.split("/") if _)).group(1)
+query = parse_qs(url.query)
+
+dashboard = client.get.dashboard(by_id=dashboard_id)
 state = dashboard.get_state(query["state"][0], tab=query["tab"][0])
 widget = next(item for item in state.tab.items if item.id == "<widget-id>")
 chart_id = state.active_chart_id(widget)

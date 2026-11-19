@@ -90,16 +90,24 @@ def _frozen_mapping(value: Mapping[str, object]) -> Mapping[str, object]:
 
 @dataclass(frozen=True, slots=True)
 class StateOperand:
-    """One value of a parameter with the operation charts apply to it.
+    """One stored value of a parameter.
 
-    ``prefixed`` is ``True`` when the value is written as ``__<op>_<value>``; an unprefixed value is IN (BETWEEN
-    for an interval), whatever operation its selector is configured with. ``value`` is ``None`` for ISNULL and
-    ISNOTNULL.
+    ``operation`` is the ``__<op>_`` prefix written on the wire, ``None`` for an unprefixed value; ``value`` is
+    ``None`` for ISNULL and ISNOTNULL. ``effective_operation`` is what charts apply, following Wizard
+    ``prepareArrayFilterValues``: an interval is BETWEEN whatever its prefix, an unprefixed value is IN. Wizard also
+    turns a single unprefixed value of a date field into EQ, which depends on the receiving field.
     """
 
-    operation: ParamOperation
+    operation: ParamOperation | None
     value: StateParamValue | None
-    prefixed: bool = True
+
+    @property
+    def effective_operation(self) -> ParamOperation:
+        if isinstance(self.value, DateInterval):
+            return "BETWEEN"
+        if self.operation is None and isinstance(self.value, str) and self.value.startswith("__interval"):
+            return "BETWEEN"
+        return self.operation or "IN"
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,8 +129,8 @@ class StateValue:
 
     @property
     def operation(self) -> ParamOperation | None:
-        """The operation shared by every operand, or ``None`` when they differ or there are none."""
-        operations = {operand.operation for operand in self.operands}
+        """The effective operation shared by every operand, or ``None`` when they differ or there are none."""
+        operations = {operand.effective_operation for operand in self.operands}
         return next(iter(operations)) if len(operations) == 1 else None
 
     @property
@@ -243,6 +251,8 @@ class DashboardState:
 
     ``selections`` follow the queue; ``issues`` describe what does not match the loaded revision (the state itself
     is not bound to a revision). ``data`` is the typed state and ``raw`` the JSON it was read from or sent as.
+    Lookups such as ``tab``, ``active_chart_id()``, ``params_for()`` and ``effects()`` read the attached
+    ``Dashboard`` object, which is not copied: keep it unchanged, or read the state again after reloading it.
     """
 
     hash: str | None
@@ -279,6 +289,11 @@ class DashboardState:
         whatever ``strict`` is. Problems are collected into
         ``issues`` and reported with one warning; ``strict=True`` raises :class:`DataLensValidationError` instead.
         """
+        if any(value.raw is None for value in _stored_values(data)):
+            raise DataLensValidationError(
+                "State data holds values that are not stored yet; store them with DashboardStateBuilder.create() "
+                "and read the returned state"
+            )
         entries = _state_entries(data)
         resolved_tab = _resolve_state_tab(dashboard, tab, [entry.item_id for entry in entries])
         tab_id = resolved_tab.id or ""
@@ -306,8 +321,10 @@ class DashboardState:
     def edit(self) -> DashboardStateBuilder:
         """Start a builder with a copy of this state on the same tab; ``create()`` stores a new state.
 
-        A version 1 state keeps params per widget, which a version 2 queue cannot express; migrate it explicitly
-        with ``dashboard.create_state(tab, state.selections)`` after checking what each source should reach.
+        A version 1 state keeps params per widget, which a version 2 queue cannot express. Migrate it by building
+        a new state and choosing each source explicitly, for example
+        ``dashboard.new_state(tab).select(item="<chart>", widget_tab="<tab>", field=field, values=[...])`` for a
+        chart click, since a version 1 chart source records no widget tab.
         """
         if self.version == 1:
             raise DataLensValidationError(
@@ -406,6 +423,14 @@ def _report_issues(state: DashboardState, *, strict: bool) -> None:
     if strict:
         raise DataLensValidationError(summary)
     warnings.warn(summary, UserWarning, stacklevel=4)
+
+
+def _stored_values(data: DashboardStateData) -> list[StateValue]:
+    values: list[StateValue] = []
+    for widget in data.widgets.values():
+        for value in (widget.params or {}).values():
+            values.extend(value.values() if isinstance(value, Mapping) else [value])
+    return values
 
 
 def _flat_values(params: object) -> tuple[StateValue, ...]:

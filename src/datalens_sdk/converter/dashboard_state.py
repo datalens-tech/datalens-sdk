@@ -120,14 +120,13 @@ def _decode_item(raw: str) -> StateParamValue:
 
 
 def _decode_operand(raw: str) -> StateOperand:
-    """``resolveOperation`` as charts apply it: an unprefixed value is IN (BETWEEN for an interval)."""
+    """``resolveOperation``: a known ``__<op>_`` prefix is kept, anything else is an unprefixed value."""
     match = _OPERATION_RE.fullmatch(raw)
     if match is not None:
         operation, value = match.group(1).upper(), match.group(2)
         if operation in _PARAM_OPERATIONS and (value is not None or operation in _VALUELESS_OPERATIONS):
             return StateOperand(cast(ParamOperation, operation), None if value is None else _decode_item(value))
-    fallback: ParamOperation = "BETWEEN" if _INTERVAL_MARKER in raw else "IN"
-    return StateOperand(fallback, _decode_item(raw), prefixed=False)
+    return StateOperand(None, _decode_item(raw))
 
 
 def _decode_value(param: str, wire: object) -> StateValue:
@@ -162,9 +161,9 @@ def _encode_item(value: StateParamValue | RelativeDateInterval) -> str:
 
 def _encode_operand(operand: StateOperand) -> str:
     if operand.value is None:
-        return f"__{operand.operation.lower()}_"
+        return f"__{(operand.operation or 'ISNULL').lower()}_"
     wire = _encode_item(operand.value)
-    return f"__{operand.operation.lower()}_{wire}" if operand.prefixed and wire else wire
+    return f"__{operand.operation.lower()}_{wire}" if operand.operation is not None and wire else wire
 
 
 def _encode_value(value: StateValue) -> str | list[str]:

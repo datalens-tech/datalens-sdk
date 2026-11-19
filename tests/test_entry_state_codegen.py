@@ -266,3 +266,22 @@ def test_entry_state_contract_rejects_data_envelope_drift(schema_name: str, data
 
     with pytest.raises(ValueError, match=f"entryState schema '{schema_name}' 'data' must be"):
         codegen.build_entry_state_contract_meta(spec)
+
+
+@pytest.mark.parametrize(
+    ("schema_name", "drop"),
+    [
+        ("CreateStateArgs", "object"),
+        ("GetStateResult", "object"),
+        ("GetStateResult", "null"),
+    ],
+    ids=["create-without-any-object", "get-without-any-object", "get-without-null"],
+)
+def test_entry_state_contract_rejects_removed_data_alternatives(schema_name: str, drop: str) -> None:
+    spec = _load_spec()
+    data = _properties(_schemas(spec)[schema_name])["data"]
+    branches = cast(list[dict[str, object]], data["anyOf"])
+    data["anyOf"] = [_ for _ in branches if _.get("type") != drop]
+
+    with pytest.raises(ValueError, match=f"entryState schema '{schema_name}' 'data' must be"):
+        codegen.build_entry_state_contract_meta(spec)

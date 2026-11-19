@@ -1,8 +1,9 @@
 """DashKit rules for dashboard states: active inner tabs and parameter delivery (``getItemsParams``).
 
-An item with ``data.tabs`` (chart widget or tabs-selector) shows ``state.tabId`` when that tab exists, else the tab
-marked ``isDefault``, else the first tab. A selector of a global group takes part on a tab only when its
-``impactType``/``impactTabsIds`` (or the group's, for ``asGroup``) include that tab.
+The compatibility target is DashKit 10.0.0, the version the public DataLens UI pins. An item with ``data.tabs``
+(chart widget or tabs-selector) shows ``state.tabId`` when that tab exists, else the tab marked ``isDefault``, else
+the first tab. DashKit 10.0.0 does not filter selectors of global groups by ``impactType``: every selector of a
+group on the tab has defaults and receives parameters.
 
 Receivers are the items of the tab, with every visible selector of a group as its own receiver. An item with tabs
 is addressed by its active tab id. A connection ``{"from": R, "to": S, "kind": "ignore"}`` stops receiver R
@@ -66,10 +67,6 @@ def _tab_item_ids(tab: DashboardTabView) -> set[str]:
     return {item.id for item in _tab_items(tab) if item.id}
 
 
-def _global_item_ids(tab: DashboardTabView) -> set[str]:
-    return {item.id for item in tab.global_items if item.id}
-
-
 def _find_item(tab: DashboardTabView, item_id: str) -> DashboardItemView | None:
     return next((_ for _ in _tab_items(tab) if _.id == item_id), None)
 
@@ -126,27 +123,6 @@ def _inner_tab_params(item: DashboardItemView, tab_id: str | None) -> Mapping[st
 def _member_defaults(member: Mapping[str, object]) -> Mapping[str, object]:
     defaults = member.get("defaults")
     return defaults if isinstance(defaults, Mapping) else {}
-
-
-def _is_group_member_visible(
-    member: Mapping[str, object],
-    group: DashboardItemView,
-    tab: DashboardTabView,
-) -> bool:
-    """``isGlobalGroupItemVisible``: only members of a global group are filtered by their impact tabs."""
-    if group.id not in _global_item_ids(tab):
-        return True
-    impact_type = member.get("impactType")
-    if impact_type == "allTabs":
-        return True
-    if impact_type in ("asGroup", None):
-        group_impact_type = group.data.get("impactType")
-        group_tab_ids = group.data.get("impactTabsIds")
-        if (group_impact_type is None and group_tab_ids is None) or group_impact_type == "allTabs":
-            return True
-        return isinstance(group_tab_ids, Sequence) and tab.id in group_tab_ids
-    member_tab_ids = member.get("impactTabsIds")
-    return isinstance(member_tab_ids, Sequence) and tab.id in member_tab_ids
 
 
 def _is_action_param(key: str) -> bool:
@@ -232,7 +208,7 @@ def _member_receivers(state: DashboardState, item: DashboardItemView) -> list[_R
     for member in _group_members(item):
         member_id = _optional_str(member.get("id"))
         view = control.member(member_id) if member_id else None
-        if member_id is None or view is None or not _is_group_member_visible(member, item, state.tab):
+        if member_id is None or view is None:
             continue
         receivers.append(
             _Receiver(
@@ -435,21 +411,28 @@ def _wizard_matches(
     params: Sequence[str],
     datasets: dict[str, Dataset],
     operations: DashboardOperations,
-) -> tuple[list[str], EffectMatch | None]:
+) -> list[tuple[tuple[str, ...], EffectMatch]]:
     guids = {_.guid for _ in chart.fields}
     titles = {_.title for _ in chart.fields}
-    for local_fields in _mappings_list(chart.data.get("datasetsPartialFields")):
-        guids.update(guid for _ in local_fields if (guid := _optional_str(_.get("guid"))))
-        titles.update(title for _ in local_fields if (title := _optional_str(_.get("title"))))
+    sources = chart.data.get("sources")
+    updates = _mappings(sources.get("updates")) if isinstance(sources, Mapping) else ()
+    local_fields = [
+        *(field for group in _mappings_list(chart.data.get("datasetsPartialFields")) for field in group),
+        *(_optional_mapping(update.get("field")) or {} for update in updates if update.get("action") == "add_field"),
+    ]
+    for local_field in local_fields:
+        guids.update(guid for guid in (_optional_str(local_field.get("guid")),) if guid)
+        titles.update(title for title in (_optional_str(local_field.get("title")),) if title)
     for dataset_id in chart.dataset_ids:
         if dataset_id not in datasets:
             datasets[dataset_id] = operations.dataset_operations.get_dataset(dataset_id)
         for dataset_field in datasets[dataset_id].fields:
             guids.add(dataset_field.guid)
             titles.add(dataset_field.title)
-    by_title = [_ for _ in params if _ not in guids and _ in titles]
-    matched = [_ for _ in params if _ in guids or _ in titles]
-    return matched, "title" if by_title else "guid" if matched else None
+    by_guid = tuple(_ for _ in params if _ in guids)
+    by_title = tuple(_ for _ in params if _ not in guids and _ in titles)
+    matches: list[tuple[tuple[str, ...], EffectMatch]] = [(by_guid, "guid"), (by_title, "title")]
+    return [(names, method) for names, method in matches if names]
 
 
 def _chart_usage(
@@ -460,8 +443,10 @@ def _chart_usage(
     operations: DashboardOperations,
 ) -> list[StateEffect]:
     if isinstance(chart, WizardChart):
-        matched, matched_by = _wizard_matches(chart, effect.params, datasets, operations)
-        return [replace(effect, params=tuple(matched), certainty="exact", matched_by=matched_by)] if matched else []
+        return [
+            replace(effect, params=names, certainty="exact", matched_by=method)
+            for names, method in _wizard_matches(chart, effect.params, datasets, operations)
+        ]
     if isinstance(chart, QLChart):
         exact, bounds = _ql_names(chart)
         exact_params = tuple(_ for _ in effect.params if _ in exact)

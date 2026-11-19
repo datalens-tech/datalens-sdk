@@ -177,7 +177,8 @@ def _state_value(
     if effective in _VALUELESS_OPERATIONS:
         operands: tuple[StateOperand, ...] = (StateOperand(operation, None),)
     else:
-        operands = tuple(StateOperand(operation, item, prefixed=prefixed and item != "") for item in items)
+        written = operation if prefixed else None
+        operands = tuple(StateOperand(written if item != "" else None, item) for item in items)
     return StateValue(param=param, operands=operands, multiple=multiselect)
 
 
@@ -245,7 +246,10 @@ class DashboardStateBuilder:
         self._dashboard = dashboard
         self._tab = _resolve_state_tab(dashboard, tab, [])
         self._entries: list[_QueueEntry] = []
+        self._params: dict[str, dict[str, object]] = {}
         self._widget_states: dict[str, StateWidgetState] = {}
+        self._widget_extras: dict[str, Mapping[str, object]] = {}
+        self._queue_extras: dict[tuple[str, str | None], Mapping[str, object]] = {}
         self._meta_extra: Mapping[str, object] = {}
 
     @property
@@ -303,6 +307,7 @@ class DashboardStateBuilder:
             source = self._resolve_selector(target, field=None)
             key = (source.item_id, source.group_item_id)
         self._entries = [_ for _ in self._entries if (_.item_id, _.group_item_id) != key]
+        self._drop_params(*key)
         return self
 
     def add(self, selection: StateSelection | Mapping[str, object]) -> Self:
@@ -313,8 +318,14 @@ class DashboardStateBuilder:
         """
         entry = _raw_entry(selection)
         item = _find_item(self._tab, entry.item_id)
-        keep_inactive = isinstance(selection, StateSelection) and not selection.applied
-        if item is not None and entry.widget_tab_id in _inner_tab_ids(item) and not keep_inactive:
+        tabbed = item is not None and entry.widget_tab_id in _inner_tab_ids(item)
+        if item is not None and tabbed and isinstance(selection, StateSelection) and not selection.applied:
+            if _active_inner_tab_id(item, self.to_data()) == entry.widget_tab_id:
+                raise DataLensValidationError(
+                    f"Selection of {entry.item_id!r} was not applied in its state, but tab {entry.widget_tab_id!r} "
+                    "is active here, so it would start applying; edit the original state with state.edit() instead"
+                )
+        elif item is not None and tabbed:
             self._choose_inner_tab(item, entry.widget_tab_id)
         return self._put(entry)
 
@@ -327,29 +338,29 @@ class DashboardStateBuilder:
             selection = _resolve_selection(self._tab, entry, data, [])
             if selection.is_orphan:
                 removed.append(selection)
+                self._drop_params(entry.item_id, entry.group_item_id)
             else:
                 kept.append(entry)
         self._entries = kept
         return tuple(removed)
 
     def to_data(self) -> DashboardStateData:
-        """The state as typed data: queued params per widget (per selector for groups) and widget states."""
-        params: dict[str, dict[str, object]] = {}
-        for entry in self._entries:
-            values = {value.param: value for value in entry.values}
-            if entry.group_item_id is not None:
-                params.setdefault(entry.item_id, {})[entry.group_item_id] = values
-            else:
-                params[entry.item_id] = dict(values)
-        widget_ids = dict.fromkeys([*params, *self._widget_states])
+        """The state as typed data: stored params per widget (per selector for groups), widget states and queue."""
+        widget_ids = dict.fromkeys([*self._params, *self._widget_states, *self._widget_extras])
         widgets = {
             widget_id: StateWidget(
-                params=cast("Mapping[str, StateValue]", params[widget_id]) if widget_id in params else None,
+                params=cast("Mapping[str, StateValue]", self._params[widget_id]) if widget_id in self._params else None,
                 state=self._widget_states.get(widget_id),
+                extra=self._widget_extras.get(widget_id, {}),
             )
             for widget_id in widget_ids
         }
-        queue = tuple(StateQueueItem(_.item_id, _.group_item_id, _.widget_tab_id) for _ in self._entries)
+        queue = tuple(
+            StateQueueItem(
+                _.item_id, _.group_item_id, _.widget_tab_id, self._queue_extras.get((_.item_id, _.group_item_id), {})
+            )
+            for _ in self._entries
+        )
         return DashboardStateData(version=2, queue=queue, widgets=widgets, meta_extra=self._meta_extra)
 
     def create(self) -> DashboardState:
@@ -375,11 +386,28 @@ class DashboardStateBuilder:
 
     def _load(self, state: DashboardState) -> Self:
         self._entries = [_raw_entry(selection) for selection in state.selections]
-        self._widget_states = {
-            widget_id: widget.state for widget_id, widget in state.data.widgets.items() if widget.state is not None
-        }
+        for widget_id, widget in state.data.widgets.items():
+            if widget.params is not None:
+                self._params[widget_id] = {
+                    key: dict(value) if isinstance(value, Mapping) else value for key, value in widget.params.items()
+                }
+            if widget.state is not None:
+                self._widget_states[widget_id] = widget.state
+            if widget.extra:
+                self._widget_extras[widget_id] = widget.extra
+        self._queue_extras = {(_.id, _.group_item_id): _.extra for _ in state.data.queue if _.extra}
         self._meta_extra = state.data.meta_extra
         return self
+
+    def _drop_params(self, item_id: str, group_item_id: str | None) -> None:
+        if group_item_id is None:
+            self._params.pop(item_id, None)
+            return
+        group = self._params.get(item_id)
+        if isinstance(group, dict):
+            group.pop(group_item_id, None)
+            if not group:
+                self._params.pop(item_id)
 
     def _describe(self, issue: ValidationIssue) -> str:
         if issue.kind != "unknown_state_item" or issue.item_id is None:
@@ -393,6 +421,11 @@ class DashboardStateBuilder:
         key = (entry.item_id, entry.group_item_id)
         self._entries = [_ for _ in self._entries if (_.item_id, _.group_item_id) != key]
         self._entries.append(entry)
+        values = {value.param: value for value in entry.values}
+        if entry.group_item_id is None:
+            self._params[entry.item_id] = dict(values)
+        else:
+            self._params.setdefault(entry.item_id, {})[entry.group_item_id] = values
         return self
 
     def _choose_inner_tab(self, item: DashboardItemView, inner_tab: str | None) -> str | None:

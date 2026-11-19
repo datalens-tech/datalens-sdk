@@ -424,3 +424,39 @@ def test_legacy_state_cannot_be_edited_as_a_queue() -> None:
 
     with pytest.raises(dl.DataLensValidationError, match="version 1 state"):
         state.edit()
+
+
+def test_untouched_edit_keeps_every_stored_record() -> None:
+    recorder = RecordedTransport(_load("dashboard_group_interval_widget_tab"), hashes=["same"])
+    dashboard = _group_dashboard(recorder)
+    data = copy.deepcopy(cast(dict[str, Any], _load("state_group_interval_widget_tab")["data"]))
+    data["Zt9"] = {"params": {"stale": "x"}, "future": 1}
+    data["LEN"]["layout"] = {"w": 2}
+    data["__meta__"]["queue"][0]["extra"] = True
+    data["__meta__"]["note"] = "kept"
+    state = _from_json(dashboard, data, tab="Mk")
+
+    state.edit().create()
+
+    assert recorder.created()[0]["data"] == data
+
+
+def test_copying_an_inactive_chart_source_that_would_activate_is_rejected() -> None:
+    dashboard = _group_dashboard()
+    data = {
+        "LEN": {"params": {"_ap_guid": ["x"]}, "state": {"tabId": "kQ1"}},
+        "__meta__": {"queue": [{"id": "LEN", "tabId": "dM3"}], "version": 2},
+    }
+    state = _from_json(dashboard, data, tab="Mk")
+    assert not state.selections[0].applied
+
+    with pytest.raises(dl.DataLensValidationError, match="would start applying"):
+        dashboard.create_state(state.tab, state.selections)
+
+
+def test_unsaved_builder_data_cannot_be_checked_as_a_state() -> None:
+    dashboard = _group_dashboard()
+    builder = dashboard.new_state("Mk").select("Scale", "week")
+
+    with pytest.raises(dl.DataLensValidationError, match="not stored yet"):
+        DashboardState.from_data(dashboard, builder.to_data(), tab="Mk")
