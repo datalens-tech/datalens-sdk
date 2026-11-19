@@ -21,14 +21,17 @@ from datalens_sdk.domain.dashboard_state_effects import (
     StateEffect,
     _active_inner_tab_id,
     _find_item,
+    _group_members,
     _has_inner_tabs,
     _inner_tab_ids,
     _inner_tab_params,
     _inner_tabs,
+    _optional_str,
     _params_for,
     _receivers,
     _resolve_usage,
     _tab_item_ids,
+    _tab_items,
 )
 from datalens_sdk.domain.dashboard_types import DateInterval, RelativeDate, ValidationIssue
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
@@ -105,7 +108,8 @@ class StateOperand:
     def effective_operation(self) -> ParamOperation:
         if isinstance(self.value, DateInterval):
             return "BETWEEN"
-        if self.operation is None and isinstance(self.value, str) and self.value.startswith("__interval"):
+        if isinstance(self.value, str) and self.value.startswith("__interval_"):
+            # Wizard resolves interval forms the SDK keeps as strings (``now-7d``, ISO offsets) as BETWEEN too.
             return "BETWEEN"
         return self.operation or "IN"
 
@@ -243,6 +247,7 @@ class _QueueEntry:
     group_item_id: str | None
     widget_tab_id: str | None
     values: tuple[StateValue, ...]
+    extra: Mapping[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -289,7 +294,7 @@ class DashboardState:
         whatever ``strict`` is. Problems are collected into
         ``issues`` and reported with one warning; ``strict=True`` raises :class:`DataLensValidationError` instead.
         """
-        if any(value.raw is None for value in _stored_values(data)):
+        if any(value.raw is None or (not value.operands and value.raw != ()) for value in _stored_values(data)):
             raise DataLensValidationError(
                 "State data holds values that are not stored yet; store them with DashboardStateBuilder.create() "
                 "and read the returned state"
@@ -301,7 +306,10 @@ class DashboardState:
         if data.version == 1:
             message = "State has no __meta__ queue (version 1); every widget keeps only its own stored params"
             issues.append(ValidationIssue("legacy_state_version", tab_id, None, message))
+        if data.version == 1:
+            entries = [_legacy_member_entry(resolved_tab, entry) for entry in entries]
         selections = tuple(_resolve_selection(resolved_tab, entry, data, issues) for entry in entries)
+        _check_widget_states(resolved_tab, data, issues)
         state = cls(
             hash=hash,
             dashboard_id=dashboard.id,
@@ -452,7 +460,7 @@ def _state_entries(data: DashboardStateData) -> list[_QueueEntry]:
         params: object = widget.params if widget is not None else None
         if item.group_item_id is not None:
             params = params.get(item.group_item_id) if isinstance(params, Mapping) else None
-        entries.append(_QueueEntry(item.id, item.group_item_id, item.tab_id, _flat_values(params)))
+        entries.append(_QueueEntry(item.id, item.group_item_id, item.tab_id, _flat_values(params), item.extra))
     return entries
 
 
@@ -481,7 +489,7 @@ def _resolve_state_tab(
             raise DataLensValidationError(f"Unknown tab {reference!r}; known tab ids: {known!r}")
         return titled[0]
     wanted = set(item_ids)
-    candidates = [candidate for candidate in tabs if wanted <= _tab_item_ids(candidate)]
+    candidates = [candidate for candidate in tabs if wanted <= _tab_source_ids(candidate)]
     if not candidates and len(tabs) == 1:
         return tabs[0]
     if not candidates:
@@ -521,6 +529,36 @@ def _orphan(entry: _QueueEntry, kind: StateSelectionKind) -> StateSelection:
     )
 
 
+def _tab_source_ids(tab: DashboardTabView) -> set[str]:
+    """Item ids of the tab plus the selector ids of its groups (version 1 states key group selectors by them)."""
+    ids = _tab_item_ids(tab)
+    for item in _tab_items(tab):
+        if item.item_type == "group_control":
+            ids.update(member_id for member in _group_members(item) if (member_id := _optional_str(member.get("id"))))
+    return ids
+
+
+def _legacy_member_entry(tab: DashboardTabView, entry: _QueueEntry) -> _QueueEntry:
+    if _find_item(tab, entry.item_id) is not None:
+        return entry
+    for item in _tab_items(tab):
+        if item.item_type == "group_control" and any(_.get("id") == entry.item_id for _ in _group_members(item)):
+            return replace(entry, item_id=item.id or "", group_item_id=entry.item_id)
+    return entry
+
+
+def _check_widget_states(tab: DashboardTabView, data: DashboardStateData, issues: list[ValidationIssue]) -> None:
+    for widget_id, widget in data.widgets.items():
+        item = _find_item(tab, widget_id)
+        tab_id = widget.state.tab_id if widget.state is not None else None
+        if item is None or tab_id is None or not _has_inner_tabs(item) or tab_id in _inner_tab_ids(item):
+            continue
+        message = f"Widget {widget_id!r} has no tab {tab_id!r} from state.tabId; the dashboard shows its default tab"
+        issues.append(
+            ValidationIssue("unknown_widget_tab", tab.id or "", widget_id, message, tuple(_inner_tab_ids(item)))
+        )
+
+
 def _resolve_selection(
     tab: DashboardTabView,
     entry: _QueueEntry,
@@ -537,6 +575,13 @@ def _resolve_selection(
         return _orphan(entry, "unknown")
     if item.item_type == "group_control":
         return _resolve_group_selection(tab, entry, issues)
+    if entry.group_item_id is not None:
+        # DashKit reads groupItemId only for selector groups; other items take their flat params.
+        message = (
+            f"Item {entry.item_id!r} is not a selector group, so its groupItemId {entry.group_item_id!r} is invalid"
+        )
+        issues.append(ValidationIssue("unknown_group_item", tab_id, entry.item_id, message))
+        return _orphan(entry, "chart" if item.item_type == "widget" else "unknown")
     if _has_inner_tabs(item) and data.version == 2:
         return _resolve_tabbed_selection(tab, item, entry, data, issues)
     if item.item_type == "control":

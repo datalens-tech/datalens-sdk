@@ -290,7 +290,10 @@ def _sources(state: DashboardState) -> list[_Source]:
             declared = _inner_tab_params(item, selection.widget_tab_id) if has_tabs else item.defaults
             source_id = selection.item_id
             namespace = item.namespace or _DEFAULT_NAMESPACE
-        params = {key: value for key, value in selection.params.items() if key in declared or _is_action_param(key)}
+        stored = selection.params
+        # formQueueData picks declared keys in declaration order, then appends action params.
+        params = {key: stored[key] for key in declared if key in stored}
+        params.update((key, value) for key, value in stored.items() if _is_action_param(key))
         sources.append(_Source(selection, source_id, namespace, params))
     return sources
 
@@ -337,6 +340,9 @@ def _resolve_receivers(receivers: list[_Receiver], ref: object) -> list[_Receive
     if own:
         return own
     members = [_ for _ in receivers if _.item.id == ref_id]
+    if not members:
+        # A selector of a tabs-control is addressed by its tab id; the control receives as one item.
+        members = [_ for _ in receivers if _.view is _.item and ref_id in _inner_tab_ids(_.item)]
     if not members:
         raise DataLensValidationError(f"Item {ref_id!r} is not on this tab or receives no parameters here")
     return members

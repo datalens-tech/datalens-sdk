@@ -14,7 +14,7 @@ import datalens_sdk as dl
 from datalens_sdk.converter.dashboard_state import DashboardStateConverter
 from datalens_sdk.domain.dashboard_state import DashboardState
 from datalens_sdk.domain.dashboard_state_builder import DashboardStateBuilder
-from datalens_sdk.domain.dashboard_types import DateInterval
+from datalens_sdk.domain.dashboard_types import DateInterval, RelativeDate
 from datalens_sdk.domain.fields import DatasetField
 
 FIXTURES = Path(__file__).parent / "contract" / "fixtures" / "dashboard_state"
@@ -457,6 +457,90 @@ def test_copying_an_inactive_chart_source_that_would_activate_is_rejected() -> N
 def test_unsaved_builder_data_cannot_be_checked_as_a_state() -> None:
     dashboard = _group_dashboard()
     builder = dashboard.new_state("Mk").select("Scale", "week")
+
+    with pytest.raises(dl.DataLensValidationError, match="not stored yet"):
+        DashboardState.from_data(dashboard, builder.to_data(), tab="Mk")
+
+
+def _duplicate_tab_state(first: str, second: str) -> dict[str, Any]:
+    return {
+        "LEN": {"params": {"_ap_f": ["x"]}},
+        "__meta__": {"queue": [{"id": "LEN", "tabId": first}, {"id": "LEN", "tabId": second}], "version": 2},
+    }
+
+
+@pytest.mark.parametrize(("first", "second"), [("dM3", "kQ1"), ("kQ1", "dM3")])
+def test_copying_two_tab_records_of_one_widget_keeps_both(first: str, second: str) -> None:
+    recorder = RecordedTransport(_load("dashboard_group_interval_widget_tab"), hashes=["copy"])
+    dashboard = _group_dashboard(recorder)
+    data = _duplicate_tab_state(first, second)
+    state = _from_json(dashboard, data, tab="Mk")
+
+    copy_state = dashboard.create_state(state.tab, state.selections)
+
+    assert recorder.created()[0]["data"] == data
+    assert copy_state.params_for("Zt9")["f"] == ("x",)
+
+
+def test_prune_keeps_params_still_used_by_a_surviving_record() -> None:
+    recorder = RecordedTransport(_load("dashboard_group_interval_widget_tab"), hashes=["pruned"])
+    dashboard = _group_dashboard(recorder)
+    data = _duplicate_tab_state("gone", "dM3")
+    with pytest.warns(UserWarning, match="unknown_widget_tab"):
+        state = _from_json(dashboard, data, tab="Mk")
+
+    builder = state.edit()
+    removed = builder.prune()
+    saved = builder.create()
+
+    assert [_.widget_tab_id for _ in removed] == ["gone"]
+    assert saved.params_for("Zt9")["f"] == ("x",)
+    assert cast(dict[str, Any], recorder.created()[0]["data"])["LEN"] == {"params": {"_ap_f": ["x"]}}
+
+
+def test_untouched_edit_keeps_empty_records_and_per_record_queue_fields() -> None:
+    recorder = RecordedTransport(_load("dashboard_group_interval_widget_tab"), hashes=["same"])
+    dashboard = _group_dashboard(recorder)
+    data = _duplicate_tab_state("dM3", "kQ1")
+    data["__meta__"]["queue"][0]["note"] = "first"
+    data["__meta__"]["queue"][1]["note"] = "last"
+    data["Zt9"] = {}
+    state = _from_json(dashboard, data, tab="Mk")
+
+    state.edit().create()
+
+    assert recorder.created()[0]["data"] == data
+
+
+def test_failed_select_leaves_the_builder_unchanged() -> None:
+    recorder = RecordedTransport(_load("dashboard_group_interval_widget_tab"), hashes=["after"])
+    builder = (
+        _group_dashboard(recorder).new_state("Mk").select(item="LEN", widget_tab="dM3", values={"date_scale": "w"})
+    )
+
+    with pytest.raises(dl.DataLensValidationError, match="need field="):
+        builder.select(item="LEN", widget_tab="kQ1", values="scalar")
+    builder.create()
+
+    assert cast(dict[str, Any], recorder.created()[0]["data"])["LEN"] == {"params": {"date_scale": "w"}}
+
+
+def test_explicit_operation_is_always_written() -> None:
+    payload = _payload(_group_dashboard().new_state("Mk").select("Scale", "day", operation="IN"))
+
+    assert payload["6n"] == {"params": {"e3G": {"date_scale": "__in_day"}}}
+
+
+def test_interval_start_in_milliseconds_is_rejected() -> None:
+    interval = DateInterval(RelativeDate("-500ms"), RelativeDate("+0s"))
+
+    with pytest.raises(dl.DataLensValidationError, match="milliseconds"):
+        _group_dashboard().new_state("Mk").select("Period", interval)
+
+
+def test_raw_values_added_to_a_builder_cannot_be_checked_before_storing() -> None:
+    dashboard = _group_dashboard()
+    builder = dashboard.new_state("Mk").add({"id": "6n", "groupItemId": "e3G", "params": {"date_scale": "__ne_week"}})
 
     with pytest.raises(dl.DataLensValidationError, match="not stored yet"):
         DashboardState.from_data(dashboard, builder.to_data(), tab="Mk")

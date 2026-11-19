@@ -275,3 +275,39 @@ def test_effects_items_limit_receivers_and_skip_orphans() -> None:
         )
 
     assert [effect.receiver.id for effect in state.effects(items=["W2", "G"])] == ["m1", "m2", "W2"]
+
+
+def test_aliased_queue_params_follow_the_declared_order() -> None:
+    data = copy.deepcopy(_data())
+    data["tabs"][0]["items"][2] = _widget("W1", [("w1t", {"a": "", "b": ""})])
+    data["tabs"][0]["aliases"] = {"default": [["a", "b"]]}
+
+    state = _state([{"id": "W1", "tabId": "w1t"}], {"W1": {"params": {"b": "B", "a": "A"}}}, data)
+
+    assert (state.params_for("W2")["a"], state.params_for("W2")["b"]) == ("B", "B")
+
+
+def test_selector_of_a_tabs_control_is_addressed_by_its_view() -> None:
+    data = copy.deepcopy(_data())
+    entry = {"id": "t1", "title": "Tab selector", "sourceType": "manual", "source": {"fieldName": "p_tab"}}
+    tabs_control = {
+        "data": {"tabs": [{**entry, "params": {"p_tab": "v1"}}]},
+        "id": "c_tabs",
+        "namespace": "default",
+        "type": "control",
+    }
+    data["tabs"][0]["items"].append(tabs_control)
+    state = _state([], {}, data)
+    control = next(_ for _ in state.tab.controls if _.id == "c_tabs")
+    member = control.member("t1")
+    assert member is not None
+
+    assert state.params_for(member) == state.params_for(control)
+    assert state.params_for(member)["p_tab"] == "v1"
+
+
+def test_unparsed_interval_strings_are_between() -> None:
+    state = _state([{"id": "C"}], {"C": {"params": {"region": "__ne___interval_now-7d_now"}}})
+
+    (operand,) = state.selections[0].values[0].operands
+    assert (operand.operation, operand.effective_operation) == ("NE", "BETWEEN")

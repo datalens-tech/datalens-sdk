@@ -8,7 +8,7 @@ chart or tabs-selector tab sets ``state.tabId`` of that widget, as the UI does, 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, TypeAlias, cast
 
 from typing_extensions import Self
@@ -127,6 +127,9 @@ _VALUELESS_OPERATIONS = frozenset({"ISNULL", "ISNOTNULL"})
 def _state_item(value: object) -> StateParamValue:
     if isinstance(value, RelativeDateInterval):
         return DateInterval(RelativeDate(value.start), RelativeDate(value.end))
+    if isinstance(value, DateInterval) and isinstance(value.start, RelativeDate) and value.start.offset.endswith("ms"):
+        # The UI interval grammar accepts a one-letter unit in the start bound only.
+        raise DataLensValidationError("The start of an interval cannot be in milliseconds; use seconds or larger units")
     if isinstance(value, (str, DateInterval, RelativeDate)):
         return value
     raise DataLensValidationError(
@@ -155,8 +158,8 @@ def _state_value(
 ) -> StateValue:
     """Validate a selection like the UI does and mark whether the ``__<op>_`` prefix is written.
 
-    A selector with its own operation prefixes every value with it; otherwise only an operation other than IN
-    (BETWEEN for ranges) is written.
+    A selector with its own operation prefixes every value with it, and an explicit ``operation`` is always
+    written; without either the values stay unprefixed, which charts read as IN (BETWEEN for an interval).
     """
     for candidate in (operation, own_operation):
         if candidate is not None and candidate not in _PARAM_OPERATIONS:
@@ -172,7 +175,7 @@ def _state_value(
         raise DataLensValidationError(f"{effective} takes no values")
     if effective not in _VALUELESS_OPERATIONS and not multiselect and len(items) != 1:
         raise DataLensValidationError(f"A single-value source takes exactly one value, got {len(items)}")
-    prefixed = effective is not None and (own_operation is not None or effective != implicit)
+    prefixed = effective is not None
     operation = effective or implicit
     if effective in _VALUELESS_OPERATIONS:
         operands: tuple[StateOperand, ...] = (StateOperand(operation, None),)
@@ -246,10 +249,10 @@ class DashboardStateBuilder:
         self._dashboard = dashboard
         self._tab = _resolve_state_tab(dashboard, tab, [])
         self._entries: list[_QueueEntry] = []
+        self._widget_ids: dict[str, None] = {}
         self._params: dict[str, dict[str, object]] = {}
         self._widget_states: dict[str, StateWidgetState] = {}
         self._widget_extras: dict[str, Mapping[str, object]] = {}
-        self._queue_extras: dict[tuple[str, str | None], Mapping[str, object]] = {}
         self._meta_extra: Mapping[str, object] = {}
 
     @property
@@ -285,18 +288,18 @@ class DashboardStateBuilder:
         """
         chart = self._resolve_chart(target if item is None else item)
         if chart is not None:
-            inner_tab = self._choose_inner_tab(chart, widget_tab)
             params = self._chart_params(values, field=field, operation=operation)
-            return self._put(_QueueEntry(chart.id or "", None, inner_tab, params))
+            inner_tab = self._choose_inner_tab(chart, widget_tab)
+            return self._put(_QueueEntry(chart.id or "", None, inner_tab, params), replace_source=True)
         if item is not None:
             raise DataLensValidationError(f"Item {item!r} is not a chart widget on tab {self.tab_id!r}")
         source = self._resolve_selector(target, field=field)
+        params = self._selector_params(source.member, values, operation=operation)
         inner_tab = None
         if source.inner_tab_id is not None:
             control = _find_item(self._tab, source.item_id)
             inner_tab = self._choose_inner_tab(cast("DashboardItemView", control), source.inner_tab_id)
-        params = self._selector_params(source.member, values, operation=operation)
-        return self._put(_QueueEntry(source.item_id, source.group_item_id, inner_tab, params))
+        return self._put(_QueueEntry(source.item_id, source.group_item_id, inner_tab, params), replace_source=True)
 
     def clear(self, target: str | ControlView | ControlMemberView | DashboardItemView) -> Self:
         """Remove a source from the queue; the widget keeps its active tab."""
@@ -327,7 +330,7 @@ class DashboardStateBuilder:
                 )
         elif item is not None and tabbed:
             self._choose_inner_tab(item, entry.widget_tab_id)
-        return self._put(entry)
+        return self._put(entry, replace_source=False)
 
     def prune(self) -> tuple[StateSelection, ...]:
         """Drop sources missing from the loaded revision and return them."""
@@ -338,15 +341,18 @@ class DashboardStateBuilder:
             selection = _resolve_selection(self._tab, entry, data, [])
             if selection.is_orphan:
                 removed.append(selection)
-                self._drop_params(entry.item_id, entry.group_item_id)
             else:
                 kept.append(entry)
         self._entries = kept
+        remaining = {(_.item_id, _.group_item_id) for _ in kept}
+        for selection in removed:
+            if (selection.item_id, selection.group_item_id) not in remaining:
+                self._drop_params(selection.item_id, selection.group_item_id)
         return tuple(removed)
 
     def to_data(self) -> DashboardStateData:
         """The state as typed data: stored params per widget (per selector for groups), widget states and queue."""
-        widget_ids = dict.fromkeys([*self._params, *self._widget_states, *self._widget_extras])
+        widget_ids = dict.fromkeys([*self._widget_ids, *self._params, *self._widget_states, *self._widget_extras])
         widgets = {
             widget_id: StateWidget(
                 params=cast("Mapping[str, StateValue]", self._params[widget_id]) if widget_id in self._params else None,
@@ -355,12 +361,7 @@ class DashboardStateBuilder:
             )
             for widget_id in widget_ids
         }
-        queue = tuple(
-            StateQueueItem(
-                _.item_id, _.group_item_id, _.widget_tab_id, self._queue_extras.get((_.item_id, _.group_item_id), {})
-            )
-            for _ in self._entries
-        )
+        queue = tuple(StateQueueItem(_.item_id, _.group_item_id, _.widget_tab_id, _.extra) for _ in self._entries)
         return DashboardStateData(version=2, queue=queue, widgets=widgets, meta_extra=self._meta_extra)
 
     def create(self) -> DashboardState:
@@ -385,7 +386,11 @@ class DashboardStateBuilder:
         return DashboardState.from_data(self._dashboard, record.data, raw=record.raw, tab=self.tab_id, hash=record.hash)
 
     def _load(self, state: DashboardState) -> Self:
-        self._entries = [_raw_entry(selection) for selection in state.selections]
+        self._entries = [
+            replace(_raw_entry(selection), extra=item.extra)
+            for selection, item in zip(state.selections, state.data.queue, strict=True)
+        ]
+        self._widget_ids = dict.fromkeys(state.data.widgets)
         for widget_id, widget in state.data.widgets.items():
             if widget.params is not None:
                 self._params[widget_id] = {
@@ -395,7 +400,6 @@ class DashboardStateBuilder:
                 self._widget_states[widget_id] = widget.state
             if widget.extra:
                 self._widget_extras[widget_id] = widget.extra
-        self._queue_extras = {(_.id, _.group_item_id): _.extra for _ in state.data.queue if _.extra}
         self._meta_extra = state.data.meta_extra
         return self
 
@@ -417,9 +421,16 @@ class DashboardStateBuilder:
             return f"Item {issue.item_id!r} is on tab {owners[0]!r}, not on tab {self.tab_id!r} and not global"
         return issue.message
 
-    def _put(self, entry: _QueueEntry) -> Self:
-        key = (entry.item_id, entry.group_item_id)
-        self._entries = [_ for _ in self._entries if (_.item_id, _.group_item_id) != key]
+    def _put(self, entry: _QueueEntry, *, replace_source: bool) -> Self:
+        """Queue a source. ``select`` replaces every record of the source, as the UI's ``addToQueue`` does;
+        ``add`` replaces only a record of the same source and widget tab, so a copy keeps both tabs."""
+        if replace_source:
+            self._entries = [
+                _ for _ in self._entries if (_.item_id, _.group_item_id) != (entry.item_id, entry.group_item_id)
+            ]
+        else:
+            key = (entry.item_id, entry.group_item_id, entry.widget_tab_id)
+            self._entries = [_ for _ in self._entries if (_.item_id, _.group_item_id, _.widget_tab_id) != key]
         self._entries.append(entry)
         values = {value.param: value for value in entry.values}
         if entry.group_item_id is None:

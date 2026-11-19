@@ -91,7 +91,7 @@ values. Typed values become wire values when `create()` stores them, so
 | `__<op>_<value>` | explicit operation, lower case: `__ne_x`, `__gte_10`, `__isnull_` |
 | `__interval_<start>_<end>` | date range, decoded to `DateInterval`; operation BETWEEN |
 | `__relative_-7d[_sd]` | relative date, decoded to `RelativeDate(offset, cast, unit)`; `_sd`/`_ed` round to the start/end of a day |
-| no prefix | IN, BETWEEN for an interval (`prefixed=False`) |
+| no prefix | IN, BETWEEN for an interval (`operation is None`) |
 
 The UI writes every value of a selector that has an operation with that
 operation's prefix, so the builder does the same. An unknown prefix such as
@@ -145,10 +145,15 @@ link = state.url()
   takes a mapping of chart parameters or only switches the chart tab.
 - Values are strings, sequences of strings, `DateInterval`,
   `RelativeDateInterval`, or `RelativeDate`; a mapping sets several parameters
-  of one source. A range selector takes exactly one interval. A selector with
-  its own operation prefixes the values with it; `operation=` writes another
-  one (`__in_` included).
-- A repeated `select` of the same source moves it to the end of the queue.
+  of one source. A range selector takes exactly one interval, and its start
+  cannot be in milliseconds (the UI does not parse that). A selector with its
+  own operation prefixes the values with it, and an explicit `operation=` is
+  always written, `__in_` included: an unprefixed single date on a date field
+  would be EQ in Wizard.
+- A repeated `select` of the same source removes all its queue records and
+  appends one, as the UI does; `add()` replaces only a record of the same
+  source and widget tab, so copying a widget with records on two tabs keeps
+  both. A `select` that fails leaves the builder unchanged.
 
 `clear(target)` removes a source and keeps the widget's active tab,
 `add(selection)` appends a read `StateSelection` or a raw
@@ -255,10 +260,17 @@ the state makes active:
 import re
 from urllib.parse import parse_qs, urlparse
 
-link = "https://datalens.ru/ab12cd34ef56g-sales-overview?tab=Mk&state=21e04f18384"
+import datalens_sdk as dl
+
+link = "https://datalens.ru/dashboards/ab12cd34ef56g-sales-overview/?tab=Mk&state=21e04f18384"
 url = urlparse(link)
-# The first path part is "<13-character id>" or "<id>-<slug>", as in the UI's extractEntryId.
-dashboard_id = re.fullmatch(r"([0-9a-z]{13})(?:-.*)?", next(_ for _ in url.path.split("/") if _)).group(1)
+# Path forms of the UI's extractEntryId: /<id>, /<id>-<slug>, /dashboards/<id>-<slug>, with or without a trailing /.
+parts = [_ for _ in url.path.split("/") if _]
+candidate = parts[1] if len(parts) > 1 and parts[0] == "dashboards" else parts[0]
+match = re.fullmatch(r"([0-9a-z]{13})(?:-.*)?", candidate)
+if match is None:
+    raise dl.DataLensValidationError(f"{link} is not a dashboard link")
+dashboard_id = match.group(1)
 query = parse_qs(url.query)
 
 dashboard = client.get.dashboard(by_id=dashboard_id)
@@ -272,6 +284,10 @@ result = client.data.get_chart_data(chart_id=chart_id, params=state.params_for(w
 the first tab of the widget, so a multi-tab widget yields the chart the link
 shows. The query runs by chart ID, as described in
 [chart data](chart-data.md): it does not pin the loaded chart revision.
+`get_chart_data()` rejects the parameter names `state`, `tab`, `branch`, and
+`revId`. If the chart declares one of them, `params_for()` returns it and the
+call raises `DataLensValidationError` before the request; dropping the key
+would change the query, so read such a chart another way.
 
 ## Related references
 

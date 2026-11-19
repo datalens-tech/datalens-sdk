@@ -70,17 +70,44 @@ class _WidgetDTOProtocol(_PayloadDTOProtocol, Protocol):
     state: _WidgetStateDTOProtocol | None
 
 
-class _MetaDTOClass(Protocol):
+class _FieldInfo(Protocol):
+    alias: str | None
+
+
+class _DTOClass(Protocol):
+    model_fields: Mapping[str, _FieldInfo]
+
+
+class _MetaDTOClass(_DTOClass, Protocol):
     def model_validate(self, obj: object) -> _MetaDTOProtocol: ...
 
 
-class _WidgetDTOClass(Protocol):
+class _WidgetDTOClass(_DTOClass, Protocol):
     def model_validate(self, obj: object) -> _WidgetDTOProtocol: ...
+
+
+class _WidgetStateDTOClass(_DTOClass, Protocol):
+    def model_validate(self, obj: object) -> _WidgetStateDTOProtocol: ...
 
 
 class DashboardStateDtoModule(Protocol):
     DashboardStateMetaDTO: _MetaDTOClass
+    DashboardStateMetaQueueItemDTO: _DTOClass
     DashboardStateWidgetDTO: _WidgetDTOClass
+    DashboardStateWidgetStateDTO: _WidgetStateDTOClass
+
+
+def _split(dto_class: _DTOClass, value: object) -> tuple[object, dict[str, object]]:
+    """Separate the schema fields (by wire name) from extension fields, which are kept verbatim.
+
+    Only wire names reach the DTO, so an extension key that equals a Python field name (``tab_id``) stays an
+    extension instead of populating the field.
+    """
+    if not isinstance(value, Mapping):
+        return value, {}
+    names = {field.alias or name for name, field in dto_class.model_fields.items()}
+    known = {key: item for key, item in value.items() if key in names}
+    return known, {key: item for key, item in value.items() if key not in names}
 
 
 def _dto_module(dto_module: DashboardStateDtoModule | None) -> DashboardStateDtoModule:
@@ -189,13 +216,38 @@ def _encode_params(params: Mapping[str, object]) -> dict[str, object]:
     }
 
 
-def _widget(dto: _WidgetDTOProtocol) -> StateWidget:
-    state = dto.state
+def _widget(generated: DashboardStateDtoModule, value: object) -> StateWidget:
+    known, extra = _split(generated.DashboardStateWidgetDTO, value)
+    state_value = known.pop("state", None) if isinstance(known, dict) else None
+    dto = generated.DashboardStateWidgetDTO.model_validate(known)
+    state = None
+    if state_value is not None:
+        state_known, state_extra = _split(generated.DashboardStateWidgetStateDTO, state_value)
+        state_dto = generated.DashboardStateWidgetStateDTO.model_validate(state_known)
+        state = StateWidgetState(tab_id=state_dto.tab_id, extra=state_extra)
     return StateWidget(
         params=None if dto.params is None else cast("Mapping[str, StateValue]", _decode_params(dto.params)),
-        state=None if state is None else StateWidgetState(tab_id=state.tab_id, extra=dict(state.model_extra or {})),
-        extra=dict(dto.model_extra or {}),
+        state=state,
+        extra=extra,
     )
+
+
+def _queue(generated: DashboardStateDtoModule, meta: object) -> tuple[tuple[StateQueueItem, ...], dict[str, object]]:
+    known, extra = _split(generated.DashboardStateMetaDTO, meta)
+    queue_value = known.get("queue") if isinstance(known, dict) else None
+    items = (
+        [_split(generated.DashboardStateMetaQueueItemDTO, item) for item in queue_value]
+        if isinstance(queue_value, list)
+        else []
+    )
+    if isinstance(known, dict) and isinstance(queue_value, list):
+        known = {**known, "queue": [item for item, _ in items]}
+    meta_dto = generated.DashboardStateMetaDTO.model_validate(known)
+    queue = tuple(
+        StateQueueItem(item.id, item.group_item_id, item.tab_id, item_extra)
+        for item, (_, item_extra) in zip(meta_dto.queue, items, strict=True)
+    )
+    return queue, extra
 
 
 class DashboardStateConverter:
@@ -218,21 +270,15 @@ class DashboardStateConverter:
             return DashboardStateData(version=_STATE_VERSION, queue=(), widgets={})
         if "" in raw:
             raise DataLensValidationError("Dashboard state widget ids must be non-empty")
-        widgets = {
-            widget_id: _widget(generated.DashboardStateWidgetDTO.model_validate(value))
-            for widget_id, value in raw.items()
-            if widget_id != _META_KEY
-        }
+        widgets = {widget_id: _widget(generated, value) for widget_id, value in raw.items() if widget_id != _META_KEY}
         meta = raw.get(_META_KEY)
         if meta is None:
-            version: Literal[1, 2] = 1 if any(widget.params for widget in widgets.values()) else _STATE_VERSION
+            # DashKit getCurrentVersion: any stored params map, even an empty one, marks version 1.
+            has_params = any(widget.params is not None for widget in widgets.values())
+            version: Literal[1, 2] = 1 if has_params else _STATE_VERSION
             return DashboardStateData(version=version, queue=(), widgets=widgets)
-        meta_dto = generated.DashboardStateMetaDTO.model_validate(meta)
-        queue = tuple(
-            StateQueueItem(item.id, item.group_item_id, item.tab_id, dict(item.model_extra or {}))
-            for item in meta_dto.queue
-        )
-        return DashboardStateData(_STATE_VERSION, queue, widgets, dict(meta_dto.model_extra or {}))
+        queue, meta_extra = _queue(generated, meta)
+        return DashboardStateData(_STATE_VERSION, queue, widgets, meta_extra)
 
     @staticmethod
     def to_payload(
@@ -243,24 +289,31 @@ class DashboardStateConverter:
         generated = _dto_module(dto_module)
         payload: dict[str, object] = {}
         for widget_id, widget in data.widgets.items():
-            body = cast("dict[str, object]", _thaw(widget.extra))
+            body: dict[str, object] = {}
             if widget.params is not None:
                 body["params"] = _encode_params(widget.params)
             if widget.state is not None:
-                state = cast("dict[str, object]", _thaw(widget.state.extra))
-                if widget.state.tab_id is not None:
-                    state["tabId"] = widget.state.tab_id
-                body["state"] = state
-            payload[widget_id] = generated.DashboardStateWidgetDTO.model_validate(body).to_payload()
+                body["state"] = {} if widget.state.tab_id is None else {"tabId": widget.state.tab_id}
+            dumped = generated.DashboardStateWidgetDTO.model_validate(body).to_payload()
+            if widget.state is not None:
+                dumped["state"] = cast("dict[str, object]", _thaw(widget.state.extra)) | cast(
+                    "dict[str, object]", dumped["state"]
+                )
+            payload[widget_id] = cast("dict[str, object]", _thaw(widget.extra)) | dumped
         if data.version == _STATE_VERSION:
-            queue = []
+            queue: list[dict[str, object]] = []
             for item in data.queue:
-                record = cast("dict[str, object]", _thaw(item.extra)) | {"id": item.id}
+                record: dict[str, object] = {"id": item.id}
                 if item.group_item_id is not None:
                     record["groupItemId"] = item.group_item_id
                 if item.tab_id is not None:
                     record["tabId"] = item.tab_id
                 queue.append(record)
-            meta = cast("dict[str, object]", _thaw(data.meta_extra)) | {"queue": queue, "version": _STATE_VERSION}
-            payload[_META_KEY] = generated.DashboardStateMetaDTO.model_validate(meta).to_payload()
+            meta = generated.DashboardStateMetaDTO.model_validate({"queue": queue, "version": _STATE_VERSION})
+            dumped_meta = meta.to_payload()
+            dumped_meta["queue"] = [
+                cast("dict[str, object]", _thaw(item.extra)) | record
+                for item, record in zip(data.queue, cast("list[dict[str, object]]", dumped_meta["queue"]), strict=True)
+            ]
+            payload[_META_KEY] = cast("dict[str, object]", _thaw(data.meta_extra)) | dumped_meta
         return payload

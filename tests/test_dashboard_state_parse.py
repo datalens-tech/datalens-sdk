@@ -346,3 +346,63 @@ def test_active_chart_id_follows_the_widget_state() -> None:
     assert state.active_chart_id("LEN") == "wizchart00001"
     with pytest.raises(dl.DataLensValidationError, match="not a chart widget"):
         state.active_chart_id("6n")
+
+
+def test_empty_params_map_marks_a_version_1_state() -> None:
+    data = DashboardStateConverter.to_domain({"W2": {"params": {}}})
+
+    assert data.version == 1
+
+
+def test_version_1_state_keyed_by_a_group_selector_resolves_it() -> None:
+    dashboard = _dashboard(_load("dashboard_group_interval_widget_tab"))
+
+    with pytest.warns(UserWarning, match="legacy_state_version"):
+        state = _from_json(dashboard, {"e3G": {"params": {"date_scale": "week"}}})
+
+    selection = state.selections[0]
+    assert (state.tab_id, selection.item_id, selection.group_item_id, selection.applied) == ("Mk", "6n", "e3G", True)
+    assert state.params_for("e3G")["date_scale"] == "week"
+
+
+def test_group_item_id_on_a_chart_is_reported_and_not_applied() -> None:
+    data = {
+        "LEN": {"params": {"x": {"_ap_f": ["A"]}}},
+        "__meta__": {"queue": [{"id": "LEN", "groupItemId": "x", "tabId": "dM3"}], "version": 2},
+    }
+
+    with pytest.warns(UserWarning, match="is not a selector group"):
+        state = _from_json(_dashboard(_load("dashboard_group_interval_widget_tab")), data, tab="Mk")
+
+    assert not state.selections[0].applied
+    assert "f" not in state.params_for("Zt9")
+
+
+def test_stale_active_widget_tab_is_reported_and_falls_back_to_the_default() -> None:
+    data = copy.deepcopy(_state_data("state_group_interval_widget_tab"))
+    data["LEN"] = {"params": {}, "state": {"tabId": "deleted"}}
+    dashboard = _dashboard(_load("dashboard_group_interval_widget_tab"))
+
+    with pytest.raises(dl.DataLensValidationError, match=r"state\.tabId"):
+        _from_json(dashboard, data, tab="Mk", strict=True)
+    with pytest.warns(UserWarning, match=r"state\.tabId"):
+        state = _from_json(dashboard, data, tab="Mk")
+
+    assert state.active_chart_id("LEN") == "qlchart000001"
+
+
+def test_python_field_names_in_extensions_stay_extensions() -> None:
+    raw = {
+        "LEN": {"params": {}, "state": {"tab_id": "kQ1"}},
+        "__meta__": {"queue": [{"id": "LEN", "tabId": "dM3", "tab_id": "x", "group_item_id": "y"}], "version": 2},
+    }
+
+    data = DashboardStateConverter.to_domain(raw)
+    state = _from_json(_dashboard(_load("dashboard_group_interval_widget_tab")), raw, tab="Mk")
+
+    widget_state = data.widgets["LEN"].state
+    assert widget_state is not None
+    assert (widget_state.tab_id, dict(widget_state.extra)) == (None, {"tab_id": "kQ1"})
+    assert data.queue[0].group_item_id is None
+    assert state.active_chart_id("LEN") == "qlchart000001"
+    assert DashboardStateConverter.to_payload(data) == raw
