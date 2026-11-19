@@ -2,11 +2,12 @@
 
 ## Unreleased
 
+## 3.3.0 - 2026-11-19
+
 ### Changed
 
 - Refresh shared Enterprise and Yandex Cloud SQL, Dashboard, HTML-page, and
   Wizard contracts while preserving the Enterprise connector and source catalogs.
-
 - Use ordinary DataLens entry IDs for Trino and Spark cluster actions,
   Spark applications and logs, and Trino catalog membership. Pass the same
   `cluster.id` to Trino connection `cluster_entry_id` and UI links. Separate
@@ -40,10 +41,8 @@
   pagination or file export is provided.
 - Expose shared `RuntimeParams` and `RuntimeParamValue` types while retaining
   the existing screenshot parameter aliases and validation policy.
-
 - Expose `has_more_rows` on successful SQL statements so callers can detect
   omitted rows.
-
 - Add experimental server-rendered screenshots: `screenshot()` on loaded charts
   and dashboards returns an `EntityScreenshot` with PNG bytes, `save(path)`, and
   `get_temp_s3_url()`. The loaded revision is rendered as an embedded page
