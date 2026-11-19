@@ -95,6 +95,10 @@ class NotFoundError(DataLensAPIError):
     pass
 
 
+class DashboardStateNotFoundError(NotFoundError):
+    """No state is stored for this hash and entry (``NOT_EXIST_STATE_BY_HASH``)."""
+
+
 class ConflictError(DataLensAPIError):
     pass
 

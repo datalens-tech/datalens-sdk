@@ -1,0 +1,143 @@
+{
+  "annotation": null,
+  "createdAt": "2026-11-01T10:00:00.000Z",
+  "createdBy": "uid:0000000000000001",
+  "data": {
+    "counter": 10,
+    "salt": "0.4242",
+    "settings": {
+      "autoupdateInterval": null,
+      "dependentSelectors": true,
+      "expandTOC": false,
+      "globalParams": {},
+      "hideDashTitle": false,
+      "hideTabs": false,
+      "maxConcurrentRequests": null,
+      "silentLoading": false
+    },
+    "tabs": [
+      {
+        "aliases": {
+          "default": []
+        },
+        "connections": [],
+        "globalItems": [],
+        "id": "main",
+        "items": [
+          {
+            "data": {
+              "source": {
+                "elementType": "select",
+                "fieldName": "region"
+              },
+              "sourceType": "manual",
+              "title": "Region"
+            },
+            "defaults": {
+              "region": ""
+            },
+            "id": "selector-widget-id",
+            "namespace": "default",
+            "type": "control"
+          },
+          {
+            "data": {
+              "autoHeight": true,
+              "buttonApply": false,
+              "buttonReset": false,
+              "group": [
+                {
+                  "defaults": {
+                    "year": ""
+                  },
+                  "id": "selector-id",
+                  "namespace": "default",
+                  "source": {
+                    "elementType": "select",
+                    "fieldName": "year",
+                    "required": false,
+                    "showTitle": true
+                  },
+                  "sourceType": "manual",
+                  "title": "Year",
+                  "width": ""
+                }
+              ],
+              "showGroupName": false
+            },
+            "id": "group-widget-id",
+            "namespace": "default",
+            "type": "group_control"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": false,
+                  "chartId": "wizchart00021",
+                  "id": "chart-default-tab",
+                  "params": {},
+                  "title": "Overview"
+                },
+                {
+                  "autoHeight": false,
+                  "chartId": "wizchart00022",
+                  "id": "chart-tab-id",
+                  "params": {
+                    "region": ""
+                  },
+                  "title": "By region"
+                }
+              ]
+            },
+            "id": "chart-widget-id",
+            "namespace": "default",
+            "type": "widget"
+          }
+        ],
+        "layout": [
+          {
+            "h": 8,
+            "i": "selector-widget-id",
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "h": 8,
+            "i": "group-widget-id",
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          {
+            "h": 8,
+            "i": "chart-widget-id",
+            "w": 12,
+            "x": 24,
+            "y": 0
+          }
+        ],
+        "title": "Main"
+      }
+    ]
+  },
+  "entryId": "specexample01",
+  "hidden": false,
+  "key": "fixtures/dashboard_state/spec_example",
+  "meta": {},
+  "public": false,
+  "publishedId": "specexamprev1",
+  "revId": "specexamprev1",
+  "revUpdatedAt": "2026-11-01T10:00:00.000Z",
+  "revUpdatedBy": "uid:0000000000000001",
+  "savedId": "specexamprev1",
+  "scope": "dash",
+  "tenantId": "common",
+  "type": "",
+  "updatedAt": "2026-11-01T10:00:00.000Z",
+  "updatedBy": "uid:0000000000000001",
+  "version": 2,
+  "workbookId": null
+}

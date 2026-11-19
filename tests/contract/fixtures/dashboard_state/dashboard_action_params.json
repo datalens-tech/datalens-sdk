@@ -1,0 +1,125 @@
+{
+  "annotation": null,
+  "createdAt": "2026-11-01T10:00:00.000Z",
+  "createdBy": "uid:0000000000000001",
+  "data": {
+    "counter": 10,
+    "salt": "0.4242",
+    "settings": {
+      "autoupdateInterval": null,
+      "dependentSelectors": true,
+      "expandTOC": false,
+      "globalParams": {},
+      "hideDashTitle": false,
+      "hideTabs": false,
+      "maxConcurrentRequests": null,
+      "silentLoading": false
+    },
+    "tabs": [
+      {
+        "aliases": {
+          "default": []
+        },
+        "connections": [],
+        "globalItems": [],
+        "id": "Ab",
+        "items": [
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": false,
+                  "chartId": "wizchart00011",
+                  "enableActionParams": true,
+                  "id": "0x",
+                  "params": {},
+                  "title": "Environments"
+                }
+              ]
+            },
+            "id": "Lj",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": false,
+                  "chartId": "wizchart00012",
+                  "enableActionParams": true,
+                  "id": "lJr",
+                  "params": {},
+                  "title": "Owners"
+                }
+              ]
+            },
+            "id": "Rnn",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": false,
+                  "chartId": "wizchart00013",
+                  "id": "q1",
+                  "params": {},
+                  "title": "Incidents"
+                }
+              ]
+            },
+            "id": "Pv",
+            "namespace": "default",
+            "type": "widget"
+          }
+        ],
+        "layout": [
+          {
+            "h": 8,
+            "i": "Lj",
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "h": 8,
+            "i": "Rnn",
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          {
+            "h": 8,
+            "i": "Pv",
+            "w": 12,
+            "x": 24,
+            "y": 0
+          }
+        ],
+        "title": "Main"
+      }
+    ]
+  },
+  "entryId": "rmxuwz8j1mqmd",
+  "hidden": false,
+  "key": "fixtures/dashboard_state/action_params",
+  "meta": {},
+  "public": false,
+  "publishedId": "rmxuwz8j1rev1",
+  "revId": "rmxuwz8j1rev1",
+  "revUpdatedAt": "2026-11-01T10:00:00.000Z",
+  "revUpdatedBy": "uid:0000000000000001",
+  "savedId": "rmxuwz8j1rev1",
+  "scope": "dash",
+  "tenantId": "common",
+  "type": "",
+  "updatedAt": "2026-11-01T10:00:00.000Z",
+  "updatedBy": "uid:0000000000000001",
+  "version": 2,
+  "workbookId": null
+}

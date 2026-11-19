@@ -36,6 +36,19 @@ from datalens_sdk.domain.dashboard import (
 )
 from datalens_sdk.domain.dashboard_create import DashboardCreate
 from datalens_sdk.domain.dashboard_layout import DEFAULT_ITEM_SIZES, GRID_COLUMNS, Layout, Position
+from datalens_sdk.domain.dashboard_state import (
+    DashboardState,
+    DashboardStateData,
+    ParamOperation,
+    StateOperand,
+    StateQueueItem,
+    StateSelection,
+    StateValue,
+    StateWidget,
+    StateWidgetState,
+)
+from datalens_sdk.domain.dashboard_state_builder import DashboardStateBuilder
+from datalens_sdk.domain.dashboard_state_effects import StateEffect
 from datalens_sdk.domain.dashboard_tab import DashboardChartTab, DashboardTab
 from datalens_sdk.domain.dashboard_types import (
     DEFAULT_TEXT_BACKGROUND,
@@ -46,6 +59,7 @@ from datalens_sdk.domain.dashboard_types import (
     DashboardTitleSize,
     DateInterval,
     PinZone,
+    RelativeDate,
     RelativeDateInterval,
     SelectorOperation,
     ThemedColor,
@@ -264,6 +278,9 @@ __all__ = [
     "DashboardItemView",
     "DashboardLayoutItemView",
     "DashboardLoadPriority",
+    "DashboardState",
+    "DashboardStateBuilder",
+    "DashboardStateData",
     "DashboardTab",
     "DashboardTabView",
     "DashboardTitleSize",
@@ -330,6 +347,7 @@ __all__ = [
     "NumberFormatUnit",
     "Page",
     "Pager",
+    "ParamOperation",
     "ParameterDataType",
     "ParameterValue",
     "PinZone",
@@ -356,6 +374,7 @@ __all__ = [
     "RawQLChartReplace",
     "RawWizardChartCreate",
     "RawWizardChartReplace",
+    "RelativeDate",
     "RelativeDateInterval",
     "RestCatalog",
     "RestCatalogBucket",
@@ -412,6 +431,13 @@ __all__ = [
     "SqlQueryStatementResult",
     "SqlQueryStatementSuccess",
     "SqlQueryUpdate",
+    "StateEffect",
+    "StateOperand",
+    "StateQueueItem",
+    "StateSelection",
+    "StateValue",
+    "StateWidget",
+    "StateWidgetState",
     "StructureOrderField",
     "StructureSummary",
     "ThemedColor",

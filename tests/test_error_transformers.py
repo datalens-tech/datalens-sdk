@@ -9,8 +9,10 @@ from datalens_sdk import (
     CodeMapTransformer,
     ConflictError,
     DataLensAPIError,
+    NotFoundError,
     StatusMapTransformer,
 )
+from datalens_sdk.errors import DashboardStateNotFoundError
 
 
 class _CodeMappedError(Exception):
@@ -93,3 +95,13 @@ def test_default_transformer_keeps_unrelated_bad_request_and_status_conflict_map
 
     assert isinstance(bad_request, BadRequestError)
     assert isinstance(conflict, ConflictError)
+
+
+def test_default_transformer_maps_missing_state_hash_to_dashboard_state_not_found() -> None:
+    error = DataLensAPIError(APIErrorContext(status_code=404, code="NOT_EXIST_STATE_BY_HASH", message="missing"))
+
+    result = DATALENS_ERROR_TRANSFORMER.transform(error)
+
+    assert isinstance(result, DashboardStateNotFoundError)
+    assert isinstance(result, NotFoundError)
+    assert result.context is error.context

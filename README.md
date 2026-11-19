@@ -243,7 +243,7 @@ screenshot.save("dashboard.png")
 | `height` | `768` | not set | Viewport height in pixels, 1 through 6000 |
 | `full_page` | n/a | on unless `height` is given | Capture the whole tab instead of the viewport |
 | `tab` | n/a | first tab | Tab id from `dashboard.tabs` |
-| `state` | n/a | not set | Hash of a saved selector state, the `state=` value of a dashboard link |
+| `state` | n/a | not set | A `DashboardState`, or the hash of a saved selector state (the `state=` value of a dashboard link) |
 | `theme` | page default | page default | `"light"` or `"dark"` |
 | `show_title` | n/a | `True` | Keep the dashboard title |
 | `show_tabs` | n/a | `True` | Keep the dashboard tab bar |
@@ -254,6 +254,33 @@ The screenshot API is experimental and accepts 3 chart and 3 dashboard
 screenshots per minute; the SDK waits out that limit when the wait fits in the
 call's `timeout`. `screenshot.get_temp_s3_url()` renders the same picture again
 and returns a temporary signed link to it.
+
+## Dashboard states
+
+A dashboard link with `state=<hash>` stores selector values, chart clicks, and
+chosen chart tabs for one dashboard tab. Read it, change it, and get a new link:
+
+```python
+dashboard = client.get.dashboard(by_id="<dashboard-id>")
+state = dashboard.get_state("<hash>", tab="<tab id from ?tab=>")
+for selection in state.selections:
+    print(selection.item_id, [(_.param, _.operation, _.values) for _ in selection.values])
+
+new_state = state.edit().select("Region", ["East", "West"]).create()
+print(new_state.url())
+```
+
+`get_state()` checks the state against the loaded revision; missing items,
+selector members, chart tabs, and parameters become `state.issues` and one
+warning, or an error with `strict=True`. `dashboard.new_state(tab)` and
+`dashboard.create_state(tab, selections)` build a state from scratch;
+`create()` rejects any problem before calling the API. `state.params_for(item)`
+returns the parameters a widget receives, and `state.effects()` lists the
+receivers of every source; `effects(resolve_charts=True)` reads the charts to
+tell which of them use the parameters. `url()` uses `ui_base_url`, which is
+`https://datalens.ru` for `DataLensClientYC` and must be passed to
+`DataLensClientEnterprise`. See the
+[dashboard state reference](skills/datalens-sdk/references/dashboard-state.md).
 
 ## Examples
 

@@ -54,6 +54,9 @@ also executes by ID; see [dataset data](dataset-data.md).
 This operation returns tables in memory. It does not provide CSV/XLSX, pandas,
 file export, or a dashboard-wide data export.
 
+To read a chart with the filters of a dashboard state link, see
+[dashboard state](dashboard-state.md#screenshots-and-chart-data).
+
 ## Runtime parameters
 
 `RuntimeParams` maps string names to `RuntimeParamValue`: a string or a

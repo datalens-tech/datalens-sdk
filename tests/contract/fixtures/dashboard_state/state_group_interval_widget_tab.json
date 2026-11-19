@@ -1,0 +1,48 @@
+{
+  "createdAt": "2026-11-16T09:31:13.600Z",
+  "data": {
+    "6n": {
+      "params": {
+        "E7Z": {
+          "date_interval": "__interval_2026-11-10T00:00:00.000Z_2026-11-16T23:59:59.999Z"
+        },
+        "e3G": {
+          "date_scale": "day"
+        }
+      }
+    },
+    "LEN": {
+      "params": {}
+    },
+    "Wyk": {
+      "params": {
+        "78A": {
+          "department_param": "User"
+        }
+      }
+    },
+    "__meta__": {
+      "queue": [
+        {
+          "groupItemId": "E7Z",
+          "id": "6n"
+        },
+        {
+          "groupItemId": "e3G",
+          "id": "6n"
+        },
+        {
+          "groupItemId": "78A",
+          "id": "Wyk"
+        },
+        {
+          "id": "LEN",
+          "tabId": "dM3"
+        }
+      ],
+      "version": 2
+    }
+  },
+  "entryId": "hcnbhimzpyg63",
+  "hash": "21e04f18384"
+}

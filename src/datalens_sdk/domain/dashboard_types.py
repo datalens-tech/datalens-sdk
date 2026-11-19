@@ -82,6 +82,12 @@ ValidationIssueKind = Literal[
     "alias_group_too_small",
     "duplicate_alias_group",
     "layout_reflow",
+    # dashboard state issues — Dashboard.get_state() against the loaded revision
+    "unknown_state_item",
+    "unknown_group_item",
+    "unknown_widget_tab",
+    "unknown_state_param",
+    "legacy_state_version",
 ]
 
 
@@ -167,12 +173,45 @@ def _signed_offset(value: str) -> str:
     return value if value.startswith(("+", "-")) else f"+{value}"
 
 
-def _validated_interval_edge(value: str | datetime.date, *, field: str) -> str:
+_RELATIVE_DATE_OFFSET_RE = re.compile(r"[+-]?\d+(?:ms|[yQMwdhms])\Z")
+_RELATIVE_DATE_UNITS = frozenset("yQMwdhms")
+
+
+@dataclass(frozen=True, slots=True)
+class RelativeDate:
+    """A relative date, written as ``__relative_<offset>[_<cast><unit>]`` the way the DataLens UI parses it.
+
+    ``offset`` is ``[+-]N`` with unit y/Q/M/w/d/h/m/s/ms; ``cast`` rounds the result to the start (``"s"``) or the
+    end (``"e"``) of ``unit``, one of y/Q/M/w/d/h/m/s. ``RelativeDate("-7d", cast="s", unit="d")`` is
+    ``__relative_-7d_sd``: seven days ago, from the start of that day.
+    """
+
+    offset: str
+    cast: Literal["s", "e"] | None = None
+    unit: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.offset, str) or not _RELATIVE_DATE_OFFSET_RE.fullmatch(self.offset):
+            raise DataLensValidationError(
+                f"offset must look like '-7d'/'+0d' (units y/Q/M/w/d/h/m/s/ms), got {self.offset!r}"
+            )
+        object.__setattr__(self, "offset", _signed_offset(self.offset))
+        if (self.cast is None) != (self.unit is None):
+            raise DataLensValidationError("cast and unit must be set together")
+        if self.cast is not None and self.cast not in ("s", "e"):
+            raise DataLensValidationError(f"cast must be 's' or 'e', got {self.cast!r}")
+        if self.unit is not None and self.unit not in _RELATIVE_DATE_UNITS:
+            raise DataLensValidationError(f"unit must be one of y/Q/M/w/d/h/m/s, got {self.unit!r}")
+
+
+def _validated_interval_edge(value: str | datetime.date | RelativeDate, *, field: str) -> str | RelativeDate:
+    if isinstance(value, RelativeDate):
+        return value
     if isinstance(value, datetime.date):
         return value.isoformat()
     if not isinstance(value, str):
         raise DataLensValidationError(
-            f"{field} must be an ISO date, a datetime.date, or a relative offset, got {value!r}"
+            f"{field} must be an ISO date, a datetime.date, a RelativeDate, or a relative offset, got {value!r}"
         )
     if _RELATIVE_OFFSET_RE.fullmatch(value):
         return _signed_offset(value)
@@ -186,16 +225,22 @@ def _validated_interval_edge(value: str | datetime.date, *, field: str) -> str:
 
 @dataclass(frozen=True, slots=True)
 class DateInterval:
-    """A date-interval selector default; each edge is an ISO date/datetime
-    (or :class:`datetime.date`), or a relative offset like ``"-7d"`` for
-    hybrid absolute+relative intervals."""
+    """A date interval for selector defaults and dashboard states.
 
-    start: str | datetime.date
-    end: str | datetime.date
+    Each edge is an ISO date/datetime (or :class:`datetime.date`), a relative offset like ``"-7d"``, or a
+    :class:`RelativeDate` with rounding. ``inclusive_end=False`` encodes a date-only end as the start of that day
+    instead of its last millisecond.
+    """
+
+    start: str | datetime.date | RelativeDate
+    end: str | datetime.date | RelativeDate
+    inclusive_end: bool = True
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "start", _validated_interval_edge(self.start, field="start"))
         object.__setattr__(self, "end", _validated_interval_edge(self.end, field="end"))
+        if not isinstance(self.inclusive_end, bool):
+            raise DataLensValidationError("inclusive_end must be a boolean")
 
 
 @dataclass(frozen=True, slots=True)

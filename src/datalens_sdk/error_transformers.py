@@ -8,6 +8,7 @@ from datalens_sdk.errors import (
     APIErrorContext,
     BadRequestError,
     ConflictError,
+    DashboardStateNotFoundError,
     DataLensAPIError,
     ForbiddenError,
     LockedError,
@@ -88,7 +89,12 @@ def _default_status_map() -> dict[int, ExceptionFactoryProtocol]:
 
 DATALENS_ERROR_TRANSFORMER: Final[ErrorTransformerProtocol] = ChainTransformer(
     transformers=(
-        CodeMapTransformer(code_map={"ERR.US.DB.UNIQUE_VIOLATION": ConflictError}),
+        CodeMapTransformer(
+            code_map={
+                "ERR.US.DB.UNIQUE_VIOLATION": ConflictError,
+                "NOT_EXIST_STATE_BY_HASH": DashboardStateNotFoundError,
+            }
+        ),
         StatusMapTransformer(status_map=_default_status_map()),
     )
 )

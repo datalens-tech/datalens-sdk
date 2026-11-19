@@ -294,6 +294,9 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
   discovery or pagination.
 - **Chart data:** after result-handling permission, use `client.data.get_chart_data()`
   or `chart.get_chart_data()`; follow [chart data](references/chart-data.md).
+- **Dashboard state:** `dashboard.get_state(hash)`, `dashboard.new_state(tab)`,
+  or `state.edit()`, then `create()` and `url()`; follow
+  [dashboard state](references/dashboard-state.md).
 - **Revision history:** read [navigation](references/navigation.md#revision-history-on-an-entry)
   for `get_revisions()`, continuation tokens, and the SDK's temporary page-size
   cap of `200` while the published specification's limit is corrected.
@@ -333,6 +336,7 @@ Editor index replaces the public Editor subtree for that installation.
 | Parameters across Dataset/Wizard, QL, Editor, widgets, dashboards, selectors, or chart clicks | [references/parameters.md](references/parameters.md) |
 | Dashboards: tabs, widgets, selectors, layout, read model                   | [references/dashboards.md](references/dashboards.md)                     |
 | A picture of a saved chart or dashboard; a visual check of a result         | [references/screenshots.md](references/screenshots.md)                   |
+| A dashboard link with `state=`: reading, creating, or editing saved selector values; which widgets they reach | [references/dashboard-state.md](references/dashboard-state.md) |
 | Finding, listing, moving, renaming entities; revision history; containers | [references/navigation.md](references/navigation.md)                     |
 | Listing DataLens REST catalogs or selecting one for a Trino cluster (Yandex Cloud only) | [references/rest-catalogs.md](references/rest-catalogs.md)                |
 | Creating, getting, listing, updating, or deleting a Yandex Cloud environment | [references/cloud-environments.md](references/cloud-environments.md) |
@@ -458,6 +462,7 @@ Use the non-executing allowlisted reader from [references/setup.md](references/s
 | `references/dashboards.md`                      | building or editing dashboards; discovering existing item, selector, and chart-tab ids             |
 | `references/chart-data.md`                      | chart tables, typed results, runtime params, execution by ID, limits, and result-handling permission |
 | `references/screenshots.md`                     | server-rendered PNG of a chart or dashboard, result-handling rule, tab and params, temporary link  |
+| `references/dashboard-state.md`                 | saved dashboard states: format, prefixes, orphans, builder rules, `params_for`/`effects`, `url()` |
 | `references/navigation.md`                      | listing/finding/moving entities, revision history; collections, workbooks, folders                                   |
 | `references/rest-catalogs.md`                   | Yandex Cloud REST catalog listing and Trino catalog membership references                                           |
 | `references/trino-clusters.md`                  | Yandex Cloud managed Trino clusters, resource presets, lifecycle, and catalog membership                           |

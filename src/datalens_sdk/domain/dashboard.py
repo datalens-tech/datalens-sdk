@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
+from datalens_sdk.domain.dashboard_state import DashboardState, StateSelection
+from datalens_sdk.domain.dashboard_state_builder import DashboardStateBuilder
 from datalens_sdk.domain.dashboard_types import KNOWN_DASHBOARD_ITEM_TYPES, ValidationIssue
 from datalens_sdk.domain.dashboard_update import DashboardUpdate
 from datalens_sdk.domain.dashboard_validate import validate_dashboard
@@ -431,7 +433,7 @@ class Dashboard:
         height: int | None = None,
         full_page: bool | None = None,
         tab: str | None = None,
-        state: str | None = None,
+        state: str | DashboardState | None = None,
         theme: ScreenshotTheme | None = None,
         show_title: bool = True,
         show_tabs: bool = True,
@@ -442,8 +444,9 @@ class Dashboard:
 
         Without ``height`` the whole tab is captured at full length. With ``height``
         the picture is cut to that viewport unless ``full_page=True`` is passed.
-        ``tab`` is a tab id from ``tabs``. ``state`` is the hash of a saved selector
-        state, taken from a dashboard link; the SDK cannot check it, and DataLens
+        ``tab`` is a tab id from ``tabs``. ``state`` is a :class:`DashboardState` of this
+        dashboard (its tab is used when ``tab`` is omitted) or the hash of a saved selector
+        state, taken from a dashboard link; a bare hash is not checked, and DataLens
         draws an error notice into the picture for an unknown one. ``params`` are
         values of parameters declared in the dashboard settings; DataLens ignores
         any other name, so an undeclared one is rejected here instead of producing
@@ -452,6 +455,17 @@ class Dashboard:
         """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
+        if isinstance(state, DashboardState):
+            if state.dashboard_id != self.id:
+                raise DataLensValidationError(
+                    f"State belongs to dashboard {state.dashboard_id!r}, not to dashboard {self.id!r}"
+                )
+            if tab is not None and tab != state.tab_id:
+                raise DataLensValidationError(f"State is for tab {state.tab_id!r}, but tab={tab!r} was passed")
+            if not state.hash:
+                raise DataLensValidationError("State has no hash yet; store it with create() first")
+            tab = state.tab_id
+            state = state.hash
         if tab is not None:
             tab_ids = [_.id for _ in self.tabs if _.id]
             if tab not in tab_ids:
@@ -569,6 +583,58 @@ class Dashboard:
             self.id,
             EntryRevisionsOptions.create(page_size=page_size, page_token=page_token, rev_ids=rev_ids),
         )
+
+    def get_state(
+        self,
+        hash: str,
+        *,
+        tab: str | DashboardTabView | None = None,
+        strict: bool = False,
+    ) -> DashboardState:
+        """Read a saved state by its hash (the ``state=`` value of a dashboard link).
+
+        A state is not bound to a revision: it is checked against the revision loaded into this object. Items,
+        group members, widget tabs and parameters missing from it are collected into ``issues`` and reported with
+        one warning; ``strict=True`` raises instead. Without ``tab`` the first tab holding every queued item is used
+        (states of global selectors fit every tab: pass ``tab`` from the link's ``?tab=``); a one-tab dashboard uses
+        its tab. When no tab holds every queued item, :class:`DataLensValidationError` is raised before orphans are
+        collected, whatever ``strict`` is. A hash unknown for this dashboard raises
+        :class:`~datalens_sdk.errors.DashboardStateNotFoundError`.
+        """
+        if self._operations is None:
+            raise DataLensConfigurationError(_UNBOUND)
+        if not self.id:
+            raise DataLensValidationError("Cannot read a state of a dashboard without an id")
+        record = self._operations.get_dashboard_state(self.id, hash)
+        return DashboardState.from_data(
+            self,
+            record.data,
+            raw=record.raw,
+            tab=tab,
+            hash=record.hash,
+            created_at=record.created_at,
+            strict=strict,
+        )
+
+    def new_state(self, tab: str | DashboardTabView) -> DashboardStateBuilder:
+        """Start an empty state for one tab (id, title or view); finish with ``.select(...).create()``."""
+        return DashboardStateBuilder(self, tab)
+
+    def create_state(
+        self,
+        tab: str | DashboardTabView,
+        selections: Sequence[StateSelection | Mapping[str, object]],
+    ) -> DashboardState:
+        """Store a state from selections of a read state or raw ``{"id", "groupItemId", "tabId", "params"}`` items.
+
+        Runs the same validation as :meth:`DashboardStateBuilder.create` and raises on any problem.
+        """
+        if isinstance(selections, (str, Mapping)) or not isinstance(selections, Sequence):
+            raise DataLensValidationError("selections must be a sequence of StateSelection objects or mappings")
+        builder = self.new_state(tab)
+        for selection in selections:
+            builder.add(selection)
+        return builder.create()
 
     def get_relations(
         self,

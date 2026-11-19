@@ -462,6 +462,8 @@ dash.delete()  # hard rule 6: confirm first; accepts lock_token=
   product precedence and dashboard/widget parameter scope
 - [parameters.md](parameters.md) — SDK parameter flow across Dataset, QL,
   Editor, widgets, dashboard settings, selectors, and action params
+- [dashboard-state.md](dashboard-state.md) — saved selector values behind a
+  `state=` link: read, create, edit, receivers, and the UI link
 - [core-concepts.md](core-concepts.md) — builders and terminal calls, `UNSET`/`REMOVE_PARAM`, locations, the update contract
 - [wizard-charts/_index.md](wizard-charts/_index.md) — building the charts a dashboard references
 - [serialization.md](serialization.md) — `to_file(with_dependencies=True)`, cloning via `client.raw`

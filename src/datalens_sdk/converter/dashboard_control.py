@@ -13,9 +13,11 @@ from __future__ import annotations
 
 from typing import cast
 
+from datalens_sdk.converter.dashboard_state import _relative_date_wire
 from datalens_sdk.domain.dashboard_types import (
     Affects,
     DateInterval,
+    RelativeDate,
     RelativeDateInterval,
     SelectorDefaultValue,
     ShowOnTabs,
@@ -39,23 +41,28 @@ _INTERVAL_START_TIME = "T00:00:00.000Z"
 _INTERVAL_END_TIME = "T23:59:59.999Z"
 
 
-def _interval_edge_wire(edge: str, *, field_type: str, is_end: bool) -> str:
+def _interval_edge_wire(edge: str | RelativeDate, *, field_type: str, is_end: bool, inclusive_end: bool = True) -> str:
     """Encode one interval edge: relative offsets get the ``__relative_``
     marker; absolute dates are date-only for DATE fields and full ISO+Z for
     datetime fields (day bounds expand asymmetrically, the UI convention)."""
+    if isinstance(edge, RelativeDate):
+        return _relative_date_wire(edge)
     if edge.startswith(("+", "-")):
         return f"__relative_{edge}"
     if field_type == _DATE_FIELD_TYPE:
         return edge.split("T", 1)[0]
     if "T" not in edge:
-        return f"{edge}{_INTERVAL_END_TIME if is_end else _INTERVAL_START_TIME}"
+        return f"{edge}{_INTERVAL_END_TIME if is_end and inclusive_end else _INTERVAL_START_TIME}"
     return edge if edge.endswith("Z") else f"{edge}Z"
 
 
 def _interval_wire(value: DateInterval | RelativeDateInterval, *, field_type: str) -> str:
     # DateInterval.__post_init__ normalizes date objects to ISO strings
-    start = _interval_edge_wire(cast(str, value.start), field_type=field_type, is_end=False)
-    end = _interval_edge_wire(cast(str, value.end), field_type=field_type, is_end=True)
+    inclusive_end = value.inclusive_end if isinstance(value, DateInterval) else True
+    start = _interval_edge_wire(cast("str | RelativeDate", value.start), field_type=field_type, is_end=False)
+    end = _interval_edge_wire(
+        cast("str | RelativeDate", value.end), field_type=field_type, is_end=True, inclusive_end=inclusive_end
+    )
     return f"__interval_{start}_{end}"
 
 

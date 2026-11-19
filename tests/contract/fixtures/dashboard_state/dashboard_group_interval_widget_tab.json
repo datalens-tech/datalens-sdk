@@ -1,0 +1,247 @@
+{
+  "annotation": null,
+  "createdAt": "2026-11-01T10:00:00.000Z",
+  "createdBy": "uid:0000000000000001",
+  "data": {
+    "counter": 10,
+    "salt": "0.4242",
+    "settings": {
+      "autoupdateInterval": null,
+      "dependentSelectors": true,
+      "expandTOC": false,
+      "globalParams": {},
+      "hideDashTitle": false,
+      "hideTabs": false,
+      "maxConcurrentRequests": null,
+      "silentLoading": false
+    },
+    "tabs": [
+      {
+        "aliases": {
+          "default": []
+        },
+        "connections": [],
+        "globalItems": [],
+        "id": "Mk",
+        "items": [
+          {
+            "data": {
+              "autoHeight": true,
+              "buttonApply": false,
+              "buttonReset": false,
+              "group": [
+                {
+                  "defaults": {
+                    "date_interval": "__interval___relative_-7d___relative_+0d"
+                  },
+                  "id": "E7Z",
+                  "namespace": "default",
+                  "source": {
+                    "elementType": "date",
+                    "fieldName": "date_interval",
+                    "fieldType": "datetime",
+                    "isRange": true,
+                    "required": false,
+                    "showTitle": true
+                  },
+                  "sourceType": "manual",
+                  "title": "Period",
+                  "width": ""
+                },
+                {
+                  "defaults": {
+                    "date_scale": "day"
+                  },
+                  "id": "e3G",
+                  "namespace": "default",
+                  "source": {
+                    "acceptableValues": [
+                      {
+                        "title": "Day",
+                        "value": "day"
+                      },
+                      {
+                        "title": "Week",
+                        "value": "week"
+                      }
+                    ],
+                    "elementType": "select",
+                    "fieldName": "date_scale",
+                    "multiselectable": false,
+                    "required": false,
+                    "showTitle": true
+                  },
+                  "sourceType": "manual",
+                  "title": "Scale",
+                  "width": ""
+                }
+              ],
+              "showGroupName": false
+            },
+            "id": "6n",
+            "namespace": "default",
+            "type": "group_control"
+          },
+          {
+            "data": {
+              "autoHeight": true,
+              "buttonApply": false,
+              "buttonReset": false,
+              "group": [
+                {
+                  "defaults": {
+                    "department_param": ""
+                  },
+                  "id": "78A",
+                  "namespace": "default",
+                  "source": {
+                    "elementType": "input",
+                    "fieldName": "department_param",
+                    "required": false,
+                    "showTitle": true
+                  },
+                  "sourceType": "manual",
+                  "title": "Department",
+                  "width": ""
+                }
+              ],
+              "showGroupName": false
+            },
+            "id": "Wyk",
+            "namespace": "default",
+            "type": "group_control"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": false,
+                  "chartId": "wizchart00001",
+                  "id": "kQ1",
+                  "params": {},
+                  "title": "Revenue"
+                },
+                {
+                  "autoHeight": false,
+                  "chartId": "qlchart000001",
+                  "id": "dM3",
+                  "isDefault": true,
+                  "params": {
+                    "date_scale": "week"
+                  },
+                  "title": "Revenue by scale"
+                }
+              ]
+            },
+            "id": "LEN",
+            "namespace": "default",
+            "type": "widget"
+          },
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": false,
+                  "chartId": "edchart00001",
+                  "id": "p0",
+                  "params": {},
+                  "title": "Departments"
+                }
+              ]
+            },
+            "id": "Zt9",
+            "namespace": "default",
+            "type": "widget"
+          }
+        ],
+        "layout": [
+          {
+            "h": 8,
+            "i": "6n",
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "h": 8,
+            "i": "Wyk",
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          {
+            "h": 8,
+            "i": "LEN",
+            "w": 12,
+            "x": 24,
+            "y": 0
+          },
+          {
+            "h": 8,
+            "i": "Zt9",
+            "w": 12,
+            "x": 0,
+            "y": 8
+          }
+        ],
+        "title": "Overview"
+      },
+      {
+        "aliases": {
+          "default": []
+        },
+        "connections": [],
+        "globalItems": [],
+        "id": "Qa",
+        "items": [
+          {
+            "data": {
+              "hideTitle": false,
+              "tabs": [
+                {
+                  "autoHeight": false,
+                  "chartId": "wizchart00002",
+                  "id": "w1",
+                  "params": {},
+                  "title": "Details"
+                }
+              ]
+            },
+            "id": "X1",
+            "namespace": "default",
+            "type": "widget"
+          }
+        ],
+        "layout": [
+          {
+            "h": 8,
+            "i": "X1",
+            "w": 12,
+            "x": 0,
+            "y": 0
+          }
+        ],
+        "title": "Details"
+      }
+    ]
+  },
+  "entryId": "hcnbhimzpyg63",
+  "hidden": false,
+  "key": "fixtures/dashboard_state/group_interval_widget_tab",
+  "meta": {},
+  "public": false,
+  "publishedId": "hcnbhimzprev1",
+  "revId": "hcnbhimzprev1",
+  "revUpdatedAt": "2026-11-01T10:00:00.000Z",
+  "revUpdatedBy": "uid:0000000000000001",
+  "savedId": "hcnbhimzprev1",
+  "scope": "dash",
+  "tenantId": "common",
+  "type": "",
+  "updatedAt": "2026-11-01T10:00:00.000Z",
+  "updatedBy": "uid:0000000000000001",
+  "version": 2,
+  "workbookId": null
+}

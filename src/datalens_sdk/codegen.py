@@ -125,6 +125,17 @@ _CHART_DATA_VARIANTS = {
 }
 _ENTRY_REVISIONS_ROUTE = "/rpc/getRevisions"
 _ENTRY_REVISIONS_ROOTS = ("GetRevisionsArgs", "GetRevisionsResult")
+_ENTRY_STATE_GET_ROUTE = "/rpc/getEntryState"
+_ENTRY_STATE_CREATE_ROUTE = "/rpc/createEntryState"
+_ENTRY_STATE_GET_ROOTS = ("GetStateArgs", "GetStateResult")
+_ENTRY_STATE_CREATE_ROOTS = ("CreateStateArgs", "CreateStateResult")
+_ENTRY_STATE_OPAQUE_DATA_SCHEMAS = ("CreateStateArgs", "GetStateResult")
+_ENTRY_STATE_NULLABLE_DATA_SCHEMAS = ("GetStateResult",)
+_DASHBOARD_STATE_SCHEMA = "DashboardState"
+_DASHBOARD_STATE_META_KEY = "__meta__"
+_DASHBOARD_STATE_META_SCHEMA = "DashboardStateMeta"
+_DASHBOARD_STATE_WIDGET_SCHEMA = "DashboardStateWidget"
+_DASHBOARD_STATE_ROOTS = (_DASHBOARD_STATE_META_SCHEMA, _DASHBOARD_STATE_WIDGET_SCHEMA)
 _ENTRY_MOVE_ROUTE = "/rpc/moveFolderEntry"
 _ENTRY_MOVE_ROOTS = ("MoveEntryArgs", "MoveEntryResult", "MoveEntryResultEntry")
 _SCHEMA_REF_PREFIX = "#/components/schemas/"
@@ -152,6 +163,7 @@ _DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "maxItems", "minI
 _DATASET_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"maximum", "minItems", "minLength", "minimum"})
 _CHART_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "minLength"})
 _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS = frozenset({"default", "maximum", "maxItems", "minItems", "minimum"})
+_ENTRY_STATE_SCHEMA_SUPPORTED_KEYS = frozenset({"minLength"})
 _HTML_PAGE_SCHEMA_SUPPORTED_KEYS = frozenset({"maxLength"})
 _SCREENSHOT_SCHEMA_SUPPORTED_KEYS = frozenset({"exclusiveMinimum", "maximum"})
 _TAGGED_RPC_SCHEMA_SUPPORTED_KEYS = frozenset(
@@ -285,6 +297,11 @@ class EntryRevisionsContractMeta(TypedDict):
     schemas: dict[str, JsonValue]
 
 
+class EntryStateContractMeta(TypedDict):
+    roots: list[str]
+    schemas: dict[str, JsonValue]
+
+
 class EntryMoveContractMeta(TypedDict):
     roots: list[str]
     schemas: dict[str, JsonValue]
@@ -375,6 +392,7 @@ class Metadata(TypedDict):
     chart_data: NotRequired[ChartDataContractMeta]
     entry_move: NotRequired[EntryMoveContractMeta]
     entry_revisions: NotRequired[EntryRevisionsContractMeta]
+    entry_state: NotRequired[EntryStateContractMeta]
     html_page: NotRequired[HtmlPageContractMeta]
     screenshot: NotRequired[ScreenshotContractMeta]
     rpc_namespaces: NotRequired[dict[str, RpcNamespaceContractMeta]]
@@ -738,6 +756,7 @@ def _audit_pydantic_schema_features(
             or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
             or (contract == "getChartData" and key in _CHART_DATA_SCHEMA_SUPPORTED_KEYS)
             or (contract == "getRevisions" and key in _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS)
+            or (contract == "entryState" and key in _ENTRY_STATE_SCHEMA_SUPPORTED_KEYS)
             or (contract == "HtmlPages" and key in _HTML_PAGE_SCHEMA_SUPPORTED_KEYS)
             or (contract == "Screenshots" and key in _SCREENSHOT_SCHEMA_SUPPORTED_KEYS)
             or (contract.startswith("tagged RPC ") and key in _TAGGED_RPC_SCHEMA_SUPPORTED_KEYS)
@@ -1091,6 +1110,7 @@ def _audit_pydantic_schema_features(
                         or (contract == "getDatasetData" and key in _DATASET_DATA_SCHEMA_SUPPORTED_KEYS)
                         or (contract == "getChartData" and key in _CHART_DATA_SCHEMA_SUPPORTED_KEYS)
                         or (contract == "getRevisions" and key in _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS)
+                        or (contract == "entryState" and key in _ENTRY_STATE_SCHEMA_SUPPORTED_KEYS)
                         or (contract == "HtmlPages" and key in _HTML_PAGE_SCHEMA_SUPPORTED_KEYS)
                     )
                     and key not in {"$ref", "properties", "required", "type"}
@@ -1737,6 +1757,133 @@ def build_entry_revisions_contract_meta(spec: Mapping[str, object]) -> EntryRevi
         "roots": list(_ENTRY_REVISIONS_ROOTS),
         "schemas": dict(sorted(normalized_schemas.items())),
     }
+
+
+def _opaque_entry_state_data_schema(schema: JsonValue, *, schema_name: str) -> JsonValue:
+    if not isinstance(schema, dict):
+        raise ValueError(f"entryState schema {schema_name!r} must be an object")
+    properties = schema.get("properties")
+    data = properties.get("data") if isinstance(properties, dict) else None
+    if not isinstance(properties, dict) or not isinstance(data, dict):
+        raise ValueError(f"entryState schema {schema_name!r} must define a 'data' property")
+    nullable = schema_name in _ENTRY_STATE_NULLABLE_DATA_SCHEMAS
+    data_types = data.get("type")
+    type_set = set(data_types) if isinstance(data_types, list) else {data_types}
+    branches = data.get("anyOf")
+    allowed_branches: list[JsonValue] = [
+        {"$ref": f"{_SCHEMA_REF_PREFIX}{_DASHBOARD_STATE_SCHEMA}"},
+        {"additionalProperties": True, "type": "object"},
+    ]
+    if nullable:
+        allowed_branches.append({"type": "null"})
+    if (
+        type_set != ({"null", "object"} if nullable else {"object"})
+        or not isinstance(branches, list)
+        or sorted(_canonical_json(_open_schema_extras(branch)) for branch in branches)
+        != sorted(_canonical_json(branch) for branch in allowed_branches)
+    ):
+        raise ValueError(
+            f"entryState schema {schema_name!r} 'data' must be "
+            f"{'a nullable' if nullable else 'an'} object of DashboardState or any object"
+        )
+    opaque: JsonValue = {"additionalProperties": True, "type": ["null", "object"] if nullable else "object"}
+    return {**schema, "properties": {**properties, "data": opaque}}
+
+
+def _open_schema_extras(value: JsonValue) -> JsonValue:
+    """Spell ``additionalProperties: {}`` (any value) as ``true`` so open objects keep their named fields."""
+    if isinstance(value, dict):
+        return {
+            key: True if key == "additionalProperties" and child == {} else _open_schema_extras(child)
+            for key, child in value.items()
+        }
+    if isinstance(value, list):
+        return [_open_schema_extras(_) for _ in value]
+    return value
+
+
+def _dashboard_state_components(schemas: Mapping[str, dict[str, object]]) -> dict[str, JsonValue]:
+    """Split ``DashboardState`` into its ``__meta__`` object and the per-widget entry schema.
+
+    The root mixes the reserved ``__meta__`` key with widget ids as free-form keys; the converter dispatches the
+    keys, and each part is validated by a generated model.
+    """
+    schema = schemas.get(_DASHBOARD_STATE_SCHEMA)
+    if schema is None:
+        raise ValueError(f"entryState schema graph references missing component {_DASHBOARD_STATE_SCHEMA!r}")
+    properties = schema.get("properties")
+    meta = properties.get(_DASHBOARD_STATE_META_KEY) if isinstance(properties, Mapping) else None
+    widget = schema.get("additionalProperties")
+    if (
+        schema.get("type") != "object"
+        or not isinstance(properties, Mapping)
+        or set(properties) != {_DASHBOARD_STATE_META_KEY}
+        or not isinstance(meta, Mapping)
+        or not isinstance(widget, Mapping)
+        or schema.get("required") != [_DASHBOARD_STATE_META_KEY]
+    ):
+        raise ValueError(
+            f"{_DASHBOARD_STATE_SCHEMA} must be an object with a required {_DASHBOARD_STATE_META_KEY!r} property "
+            "and widget entries in additionalProperties"
+        )
+    return {
+        _DASHBOARD_STATE_META_SCHEMA: _open_schema_extras(_normalize_wizard_schema(meta)),
+        _DASHBOARD_STATE_WIDGET_SCHEMA: _open_schema_extras(_normalize_wizard_schema(widget)),
+    }
+
+
+def build_entry_state_contract_meta(spec: Mapping[str, object]) -> EntryStateContractMeta | None:
+    """Build the getEntryState/createEntryState contract.
+
+    The RPC ``data`` field stays an opaque object (any entry scope may store a state); the dashboard format comes
+    from the ``DashboardState`` component as ``DashboardStateMeta`` and ``DashboardStateWidget`` roots.
+    """
+    paths = _string_object_dict(spec.get("paths"), context="paths")
+    routes = {_ENTRY_STATE_GET_ROUTE: _ENTRY_STATE_GET_ROOTS, _ENTRY_STATE_CREATE_ROUTE: _ENTRY_STATE_CREATE_ROOTS}
+    present = [route for route in routes if route in paths]
+    if not present:
+        return None
+    if len(present) != len(routes):
+        missing = sorted(set(routes) - set(present))
+        raise ValueError(f"entry state routes must be published together, missing {missing!r}")
+    for route, expected_roots in routes.items():
+        operation = _string_object_dict(
+            _string_object_dict(paths[route], context=route).get("post"), context=f"{route}.post"
+        )
+        request_schema, _ = _route_schema(operation, route=route, request=True)
+        result_schema, _ = _route_schema(operation, route=route, request=False)
+        if (request_schema, result_schema) != expected_roots:
+            raise ValueError(f"{route} must use {expected_roots!r}, got {(request_schema, result_schema)!r}")
+
+    schemas = _schemas(spec)
+    derived = _dashboard_state_components(schemas)
+    roots = (*_ENTRY_STATE_GET_ROOTS, *_ENTRY_STATE_CREATE_ROOTS, *_DASHBOARD_STATE_ROOTS)
+    reached: set[str] = set()
+    queue = list(roots)
+    normalized_schemas: dict[str, JsonValue] = {}
+    while queue:
+        name = queue.pop(0)
+        if name in reached:
+            continue
+        if name in derived:
+            normalized = derived[name]
+        else:
+            schema = schemas.get(name)
+            if schema is None:
+                raise ValueError(f"entryState schema graph references missing component {name!r}")
+            normalized = _open_schema_extras(_normalize_wizard_schema(schema))
+        if name in _ENTRY_STATE_OPAQUE_DATA_SCHEMAS:
+            normalized = _opaque_entry_state_data_schema(normalized, schema_name=name)
+        _audit_pydantic_schema_features(
+            normalized,
+            pointer=f"/schemas/{_json_pointer_token(name)}",
+            contract="entryState",
+            require_provably_disjoint_one_of=False,
+        )
+        reached.add(name)
+        normalized_schemas[name] = normalized
+        queue.extend(sorted(_schema_refs(normalized) - reached - set(queue)))
+    return {"roots": list(roots), "schemas": dict(sorted(normalized_schemas.items()))}
 
 
 def build_entry_move_contract_meta(spec: Mapping[str, object]) -> EntryMoveContractMeta | None:
@@ -3002,6 +3149,8 @@ def build_metadata(
     entry_move_contracts: list[tuple[str, EntryMoveContractMeta]] = []
     entry_move_missing: list[str] = []
     entry_revisions_contracts: list[tuple[str, EntryRevisionsContractMeta]] = []
+    entry_state_contracts: list[tuple[str, EntryStateContractMeta]] = []
+    entry_state_missing: list[str] = []
     html_page_contracts: list[tuple[str, HtmlPageContractMeta]] = []
     screenshot_contracts: list[tuple[str, ScreenshotContractMeta]] = []
     ql_factory_methods = sorted(_visualization_factory_methods(sorted(QL_VIZ_SPECS), family="QL").values())
@@ -3025,6 +3174,11 @@ def build_metadata(
         dashboard_contract = build_dashboard_contract_meta(spec)
         dashboard_contracts.append((installation, dashboard_contract))
         entry_revisions_contracts.append((installation, build_entry_revisions_contract_meta(spec)))
+        entry_state_contract = build_entry_state_contract_meta(spec)
+        if entry_state_contract is None:
+            entry_state_missing.append(installation)
+        else:
+            entry_state_contracts.append((installation, entry_state_contract))
         entry_move_contract = build_entry_move_contract_meta(spec)
         if entry_move_contract is None:
             entry_move_missing.append(installation)
@@ -3154,6 +3308,19 @@ def build_metadata(
                     f"getRevisions schemas differ between {canonical_revisions_installation!r} and {installation!r}"
                 )
         out["entry_revisions"] = canonical_entry_revisions
+    if entry_state_contracts and entry_state_missing:
+        raise ValueError(
+            "entry state availability differs between installations: "
+            f"present on {[name for name, _ in entry_state_contracts]!r}, missing on {entry_state_missing!r}"
+        )
+    if entry_state_contracts:
+        canonical_state_installation, canonical_entry_state = entry_state_contracts[0]
+        for installation, candidate in entry_state_contracts[1:]:
+            if candidate != canonical_entry_state:
+                raise ValueError(
+                    f"entryState schemas differ between {canonical_state_installation!r} and {installation!r}"
+                )
+        out["entry_state"] = canonical_entry_state
     if rpc_namespace_contracts:
         out["rpc_namespaces"] = {
             namespace: contract for namespace, (_, contract) in sorted(rpc_namespace_contracts.items())
@@ -5113,6 +5280,28 @@ def _emit_entry_revisions_dto(metadata: Metadata) -> str:
     return f"\n{request_models}\n{response_models}"
 
 
+def _emit_entry_state_dto(metadata: Metadata) -> str:
+    contract = metadata.get("entry_state")
+    if contract is None:
+        return ""
+    request_models = _PydanticSchemaEmitter(
+        contract["schemas"],
+        read=False,
+        contract="entryState",
+        model_name_overrides={(name,): f"{name}DTO" for name in ("GetStateArgs", "CreateStateArgs")},
+        payload_methods="roots",
+        # The dashboard contract already emits this alias; spell it inline to keep one definition.
+        open_schema_refs={"DashStringDefaultValueV2": "list[str] | str"},
+    ).emit(("GetStateArgs", "CreateStateArgs", *_DASHBOARD_STATE_ROOTS))
+    response_models = _PydanticSchemaEmitter(
+        contract["schemas"],
+        read=True,
+        contract="entryState",
+        model_name_overrides={(name,): f"{name}DTO" for name in ("GetStateResult", "CreateStateResult")},
+    ).emit(("GetStateResult", "CreateStateResult"))
+    return f"\n{request_models}\n{response_models}"
+
+
 def _emit_entry_move_result_dto(metadata: Metadata) -> str:
     contract = metadata.get("entry_move")
     if contract is None:
@@ -5141,6 +5330,7 @@ def emit_dto(metadata: Metadata) -> str:
     chart_data_dto_block = _emit_chart_data_dto(metadata)
     entry_move_result_dto_block = _emit_entry_move_result_dto(metadata)
     entry_revisions_dto_block = _emit_entry_revisions_dto(metadata)
+    entry_state_dto_block = _emit_entry_state_dto(metadata)
     html_page_dto_block = _emit_html_page_dto(metadata)
     screenshot_dto_block = _emit_screenshot_dto(metadata)
     navigation_dto_block = _emit_navigation_dto()
@@ -5678,7 +5868,7 @@ class LicenseSetLimitArgsDTO(BaseModel):
 
     def to_payload(self) -> dict[str, object]:
         return {{"value": self.value}}
-{chart_dto_block}{dashboard_dto_block}{entry_revisions_dto_block}
+{chart_dto_block}{dashboard_dto_block}{entry_revisions_dto_block}{entry_state_dto_block}
 {html_page_dto_block}{screenshot_dto_block}"""
     if not metadata.get("rpc_namespaces"):
         return base_dto_module

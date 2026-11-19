@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from datalens_sdk.domain.connection import Connection, ConnectionUpdate
     from datalens_sdk.domain.dashboard import Dashboard
     from datalens_sdk.domain.dashboard_create import DashboardCreate
+    from datalens_sdk.domain.dashboard_state import DashboardStateData, DashboardStateRecord
     from datalens_sdk.domain.dashboard_update import DashboardUpdate
     from datalens_sdk.domain.data import DatasetData, DatasetDataQuery
     from datalens_sdk.domain.dataset import Dataset, DatasetCreate, Source
@@ -243,6 +244,13 @@ class NavigationOperations(Protocol):
 @runtime_checkable
 class EntryRevisionsOperations(Protocol):
     def get_entry_revisions(self, entry_id: str, options: EntryRevisionsOptions) -> Pager[EntryRevision]: ...
+
+
+@runtime_checkable
+class DashboardStateOperations(Protocol):
+    def get_dashboard_state(self, entry_id: str, hash: str) -> DashboardStateRecord: ...
+
+    def create_dashboard_state(self, entry_id: str, data: DashboardStateData) -> DashboardStateRecord: ...
 
 
 @runtime_checkable
@@ -479,7 +487,16 @@ class HtmlPageOperations(EntryRevisionsOperations, Protocol):
 
 
 @runtime_checkable
-class DashboardOperations(EntryRevisionsOperations, ScreenshotOperations, Protocol):
+class DashboardOperations(EntryRevisionsOperations, DashboardStateOperations, ScreenshotOperations, Protocol):
+    @property
+    def chart_operations(self) -> ChartOperations: ...
+
+    @property
+    def dataset_operations(self) -> DatasetOperations: ...
+
+    @property
+    def ui_base_url(self) -> str | None: ...
+
     def create_dashboard(self, builder: DashboardCreate) -> Dashboard: ...
 
     def create_dashboard_from_raw(self, spec: RawCreateSpec) -> Dashboard: ...
@@ -639,6 +656,8 @@ class ChartOperations(EntryRevisionsOperations, ScreenshotOperations, ChartDataO
         branch: EntryBranch | None = None,
         rev_id: str | None = None,
     ) -> WizardChart | EditorChart | QLChart: ...
+
+    def get_charts(self, chart_ids: Sequence[str]) -> Mapping[str, WizardChart | EditorChart | QLChart]: ...
 
     def rename_chart(self, chart: Chart, name: str) -> Chart: ...
 

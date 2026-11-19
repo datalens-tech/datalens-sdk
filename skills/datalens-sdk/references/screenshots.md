@@ -131,11 +131,15 @@ same selector values. It needs no declared parameters and combines with
 
 ```python
 dashboard.screenshot(state="<hash>").save("out/dashboard-south.png")
+dashboard.screenshot(state=dashboard.get_state("<hash>")).save("out/dashboard-south.png")
 ```
 
-The API has no method that creates or lists states, so take the hash from a
-link the user gives and do not invent one. The SDK cannot check it. A hash
-that does not exist, or belongs to another dashboard, does not fail the call:
+A `DashboardState` from [dashboard state](dashboard-state.md) is checked: it
+must belong to this dashboard, its tab is used when `tab` is omitted, and a
+different `tab` is rejected. Create a new state with `dashboard.new_state(tab)`
+or `state.edit()`; states cannot be listed, so take a hash from a link the user
+gives and do not invent one. A bare hash string is not checked: a hash that
+does not exist, or belongs to another dashboard, does not fail the call;
 DataLens renders the dashboard without the state and draws an error notice
 over the picture.
 

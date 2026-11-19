@@ -7,13 +7,25 @@ from pydantic import ValidationError
 
 from datalens_sdk.api.entries import EntriesService
 from datalens_sdk.converter.dashboard import DashboardConverter, DashboardDtoModule
+from datalens_sdk.converter.dashboard_state import (
+    MAX_STATE_DATA_SYMBOLS,
+    DashboardStateConverter,
+    DashboardStateDtoModule,
+)
 from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.dashboard_create import DashboardCreate
+from datalens_sdk.domain.dashboard_state import DashboardStateData, DashboardStateRecord
 from datalens_sdk.domain.dashboard_update import DashboardUpdate
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.entry_types import EntryBranch
 from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
-from datalens_sdk.domain.ports import DashboardOperations, NavigationOperations, ScreenshotOperations
+from datalens_sdk.domain.ports import (
+    ChartOperations,
+    DashboardOperations,
+    DatasetOperations,
+    NavigationOperations,
+    ScreenshotOperations,
+)
 from datalens_sdk.domain.revisions import EntryRevision, EntryRevisionsOptions
 from datalens_sdk.domain.screenshot import EntityScreenshot, ScreenshotRequest
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
@@ -62,6 +74,9 @@ class DashboardService(DashboardOperations):
         navigation_operations: NavigationOperations,
         bundle_exporter: DashboardBundleExporter,
         screenshot_operations: ScreenshotOperations,
+        chart_operations: ChartOperations,
+        dataset_operations: DatasetOperations,
+        ui_base_url: str | None = None,
         dto_module: DashboardDtoModule | None = None,
     ) -> None:
         self._installation = installation
@@ -69,12 +84,27 @@ class DashboardService(DashboardOperations):
         self._entries_service = entries_service
         self._navigation_operations = navigation_operations
         self._screenshot_operations = screenshot_operations
+        self._chart_operations = chart_operations
+        self._dataset_operations = dataset_operations
+        self._ui_base_url = ui_base_url
         self._bundle_exporter = bundle_exporter
         self._dto_module = dto_module
 
     @property
     def installation(self) -> str:
         return self._installation
+
+    @property
+    def chart_operations(self) -> ChartOperations:
+        return self._chart_operations
+
+    @property
+    def dataset_operations(self) -> DatasetOperations:
+        return self._dataset_operations
+
+    @property
+    def ui_base_url(self) -> str | None:
+        return self._ui_base_url
 
     def _to_domain(
         self,
@@ -257,6 +287,33 @@ class DashboardService(DashboardOperations):
 
     def get_entry_revisions(self, entry_id: str, options: EntryRevisionsOptions) -> Pager[EntryRevision]:
         return self._entries_service.get_entry_revisions(entry_id, options)
+
+    def get_dashboard_state(self, entry_id: str, hash: str) -> DashboardStateRecord:
+        record = self._entries_service.get_entry_state(entry_id, hash)
+        raw = record.data or {}
+        try:
+            data = DashboardStateConverter.to_domain(raw, dto_module=self._state_dto_module())
+        except ValidationError as exc:
+            raise translate_dto_validation_error(operation="getEntryState", reason=str(exc)) from exc
+        return DashboardStateRecord(hash=record.hash, data=data, raw=raw, created_at=record.created_at)
+
+    def create_dashboard_state(self, entry_id: str, data: DashboardStateData) -> DashboardStateRecord:
+        try:
+            payload = DashboardStateConverter.to_payload(data, dto_module=self._state_dto_module())
+        except ValidationError as exc:
+            raise DataLensValidationError(str(exc)) from exc
+        size = DashboardStateConverter.symbols(payload)
+        if size > MAX_STATE_DATA_SYMBOLS:
+            raise DataLensValidationError(
+                f"Cannot create the dashboard state: state data has {size} characters, "
+                f"the limit is {MAX_STATE_DATA_SYMBOLS}"
+            )
+        hash_value = self._entries_service.create_entry_state(entry_id, payload)
+        stored = DashboardStateConverter.to_domain(payload, dto_module=self._state_dto_module())
+        return DashboardStateRecord(hash=hash_value, data=stored, raw=payload)
+
+    def _state_dto_module(self) -> DashboardStateDtoModule | None:
+        return cast(DashboardStateDtoModule | None, self._dto_module)
 
     def get_entry_relations(self, entry_id: str, options: RelationOptions) -> Pager[EntryRelation]:
         return self._navigation_operations.get_entry_relations(entry_id, options)
