@@ -3539,15 +3539,16 @@
             ]
           },
           "entityId": {
-            "description": "ID of the entity.",
+            "description": "ID of the entity. For `restCatalog`, the ID of the REST catalog in Lakehouse.",
             "type": "string"
           },
           "entityType": {
-            "description": "Type of the entity.",
+            "description": "Type of the entity: `entry`, `workbook`, `collection` or `restCatalog` (a Lakehouse REST catalog).",
             "enum": [
               "entry",
               "workbook",
-              "collection"
+              "collection",
+              "restCatalog"
             ],
             "type": "string"
           },
@@ -5016,6 +5017,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "controls": {
                 "description": "Configuration from the Controls tab.",
                 "type": "string"
@@ -6555,6 +6560,24 @@
       "CreateSparkClusterArgs": {
         "additionalProperties": false,
         "properties": {
+          "catalogs": {
+            "description": "REST catalogs to attach to the cluster, in order; newly submitted applications inherit them.",
+            "items": {
+              "properties": {
+                "catalogId": {
+                  "description": "ID of the REST catalog.",
+                  "maxLength": 50,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "catalogId"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "cloudEnvironmentId": {
             "description": "ID of the cloud environment in which to create the cluster.",
             "maxLength": 50,
@@ -7111,25 +7134,53 @@
                     "additionalProperties": false,
                     "properties": {
                       "aiSummary": {
-                        "additionalProperties": false,
-                        "properties": {
-                          "enabled": {
-                            "type": "boolean"
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "enabled": {
+                                "enum": [
+                                  true
+                                ],
+                                "type": "boolean"
+                              },
+                              "prompt": {
+                                "maxLength": 4000,
+                                "pattern": "[^\\s\\u001c-\\u001f\\u0085]|\\ufeff",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "enabled",
+                              "prompt"
+                            ],
+                            "type": "object"
                           },
-                          "prompt": {
-                            "maxLength": 4000,
-                            "type": [
-                              "string",
-                              "null"
-                            ]
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "enabled": {
+                                "enum": [
+                                  false
+                                ],
+                                "type": "boolean"
+                              },
+                              "prompt": {
+                                "maxLength": 4000,
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "enabled"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
                           }
-                        },
-                        "required": [
-                          "enabled"
-                        ],
-                        "type": [
-                          "object",
-                          "null"
                         ]
                       },
                       "states": {
@@ -10630,6 +10681,9 @@
               "type": {
                 "$ref": "#/components/schemas/DataCatalogAssetType"
               },
+              "underlyingServiceId": {
+                "type": "string"
+              },
               "updatedAt": {
                 "$ref": "#/components/schemas/Timestamp"
               },
@@ -10660,6 +10714,7 @@
               "ingestionSourceIds",
               "lastIngestionAt",
               "subTypes",
+              "underlyingServiceId",
               "assetTypeSpecificInfo",
               "query"
             ],
@@ -10772,6 +10827,9 @@
               "type": {
                 "$ref": "#/components/schemas/DataCatalogAssetType"
               },
+              "underlyingServiceId": {
+                "type": "string"
+              },
               "updatedAt": {
                 "$ref": "#/components/schemas/Timestamp"
               },
@@ -10801,7 +10859,8 @@
               "ingestionIds",
               "ingestionSourceIds",
               "lastIngestionAt",
-              "subTypes"
+              "subTypes",
+              "underlyingServiceId"
             ],
             "type": "object"
           }
@@ -12200,12 +12259,22 @@
                       "postgresConnection": {
                         "description": "PostgreSQL source connection settings.",
                         "properties": {
+                          "collapseInheritTable": {
+                            "default": false,
+                            "description": "Collapse inherited PostgreSQL tables during replication.",
+                            "type": "boolean"
+                          },
                           "connectionId": {
                             "description": "ID of the source DataLens connection.",
                             "type": "string"
                           },
                           "database": {
                             "description": "Source database name.",
+                            "type": "string"
+                          },
+                          "slotByteLagLimit": {
+                            "default": "0",
+                            "description": "Maximum WAL size retained by the replication slot, in bytes. Zero uses the Data Transfer default.",
                             "type": "string"
                           }
                         },
@@ -12289,6 +12358,40 @@
                       "mysqlConnection"
                     ],
                     "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "endpoint": {
+                        "description": "Source endpoint type.",
+                        "enum": [
+                          "greenplumConnection"
+                        ],
+                        "type": "string"
+                      },
+                      "greenplumConnection": {
+                        "description": "Greenplum source connection settings.",
+                        "properties": {
+                          "connectionId": {
+                            "description": "ID of the source DataLens connection.",
+                            "type": "string"
+                          },
+                          "database": {
+                            "description": "Source database name.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "connectionId",
+                          "database"
+                        ],
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "endpoint",
+                      "greenplumConnection"
+                    ],
+                    "type": "object"
                   }
                 ]
               },
@@ -12357,6 +12460,27 @@
                     "required": [
                       "type",
                       "oneTime"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "increment": {
+                        "description": "Continuous replication of INSERT, UPDATE, and DELETE into Iceberg without an initial snapshot. PostgreSQL only, exactly one table, no wildcards.",
+                        "properties": {},
+                        "type": "object"
+                      },
+                      "type": {
+                        "description": "Transfer mode.",
+                        "enum": [
+                          "increment"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "increment"
                     ],
                     "type": "object"
                   }
@@ -12631,6 +12755,10 @@
                 "additionalProperties": false,
                 "description": "PostgreSQL source connection settings.",
                 "properties": {
+                  "collapseInheritTable": {
+                    "description": "Collapse inherited PostgreSQL tables during replication.",
+                    "type": "boolean"
+                  },
                   "connectionId": {
                     "description": "ID of the source DataLens connection.",
                     "minLength": 1,
@@ -12640,6 +12768,11 @@
                     "description": "Source database name.",
                     "maxLength": 50,
                     "minLength": 1,
+                    "type": "string"
+                  },
+                  "slotByteLagLimit": {
+                    "description": "Maximum WAL size retained by the replication slot, in bytes. Zero or omitted uses the Data Transfer default.",
+                    "pattern": "^(0|[1-9]\\d*)$",
                     "type": "string"
                   }
                 },
@@ -12716,6 +12849,37 @@
               "mysqlConnection"
             ],
             "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "greenplumConnection": {
+                "additionalProperties": false,
+                "description": "Greenplum source connection settings.",
+                "properties": {
+                  "connectionId": {
+                    "description": "ID of the source DataLens connection.",
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "database": {
+                    "description": "Source database name.",
+                    "maxLength": 50,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "connectionId",
+                  "database"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "greenplumConnection"
+            ],
+            "type": "object"
           }
         ],
         "description": "Exactly one source connection."
@@ -12727,9 +12891,12 @@
           },
           {
             "$ref": "#/components/schemas/OneTimeDataTransferTypeArgs"
+          },
+          {
+            "$ref": "#/components/schemas/IncrementDataTransferTypeArgs"
           }
         ],
-        "description": "Exactly one transfer mode: regular or one-time."
+        "description": "Exactly one transfer mode: regular, one-time, or continuous replication."
       },
       "DataTypeListItem": {
         "properties": {
@@ -13483,6 +13650,28 @@
         "required": [
           "entryId"
         ],
+        "type": "object"
+      },
+      "DeleteSkillArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "entryId": {
+            "description": "ID of the skill to delete.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "lockToken": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "entryId"
+        ],
+        "type": "object"
+      },
+      "DeleteSkillResult": {
+        "properties": {},
         "type": "object"
       },
       "DeleteSparkClusterArgs": {
@@ -14510,6 +14699,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "controls": {
                 "description": "Configuration from the Controls tab.",
                 "type": "string"
@@ -15749,26 +15942,52 @@
         "type": "object"
       },
       "FavoriteEntityRef": {
-        "properties": {
-          "entityId": {
-            "description": "ID of the entity.",
-            "type": "string"
-          },
-          "entityType": {
-            "description": "Type of the entity.",
-            "enum": [
-              "entry",
-              "workbook",
-              "collection"
+        "oneOf": [
+          {
+            "properties": {
+              "entityId": {
+                "description": "ID of the entity.",
+                "type": "string"
+              },
+              "entityType": {
+                "description": "Type of the entity.",
+                "enum": [
+                  "entry",
+                  "workbook",
+                  "collection"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "entityId",
+              "entityType"
             ],
-            "type": "string"
+            "type": "object"
+          },
+          {
+            "properties": {
+              "entityId": {
+                "description": "ID of the REST catalog in Lakehouse.",
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              "entityType": {
+                "description": "Type of the entity: `restCatalog`, a Lakehouse REST catalog.",
+                "enum": [
+                  "restCatalog"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "entityId",
+              "entityType"
+            ],
+            "type": "object"
           }
-        },
-        "required": [
-          "entityId",
-          "entityType"
-        ],
-        "type": "object"
+        ]
       },
       "FavoriteMark": {
         "properties": {
@@ -15784,15 +16003,16 @@
             ]
           },
           "entityId": {
-            "description": "ID of the entity marked as a favorite.",
+            "description": "ID of the entity. For `restCatalog`, the ID of the REST catalog in Lakehouse.",
             "type": "string"
           },
           "entityType": {
-            "description": "Type of the entity marked as a favorite.",
+            "description": "Type of the entity: `entry`, `workbook`, `collection` or `restCatalog` (a Lakehouse REST catalog).",
             "enum": [
               "entry",
               "workbook",
-              "collection"
+              "collection",
+              "restCatalog"
             ],
             "type": "string"
           }
@@ -17967,19 +18187,19 @@
                   },
                   "required": [
                     "entryId",
+                    "collectionId",
+                    "createdBy",
+                    "createdAt",
+                    "savedId",
+                    "publishedId",
+                    "hidden",
                     "key",
                     "scope",
                     "type",
                     "meta",
-                    "createdAt",
                     "updatedAt",
-                    "createdBy",
                     "updatedBy",
-                    "savedId",
-                    "publishedId",
-                    "hidden",
                     "workbookId",
-                    "collectionId",
                     "isFavorite",
                     "links",
                     "name"
@@ -19026,16 +19246,39 @@
         "type": "object"
       },
       "GetScreenshotResult": {
-        "properties": {
-          "data": {
-            "description": "URL of the uploaded file or its base64 representation.",
-            "type": "string"
+        "anyOf": [
+          {
+            "properties": {
+              "data": {
+                "description": "URL of the uploaded file or its base64 representation.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "data"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "status": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "status",
+              "code",
+              "message"
+            ],
+            "type": "object"
           }
-        },
-        "required": [
-          "data"
-        ],
-        "type": "object"
+        ]
       },
       "GetSharedEntryBindingsArgs": {
         "properties": {
@@ -19140,6 +19383,185 @@
         "required": [
           "sourceId",
           "targetId"
+        ],
+        "type": "object"
+      },
+      "GetSkillArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "branch": {
+            "$ref": "#/components/schemas/EntryBranch"
+          },
+          "entryId": {
+            "description": "ID of the skill to retrieve.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "includeFavorite": {
+            "deprecated": true,
+            "description": "Whether to include the favorite status. Deprecated: the parameter will be removed in a future API version.",
+            "type": "boolean"
+          },
+          "includePermissions": {
+            "description": "Whether to include skill permissions.",
+            "type": "boolean"
+          },
+          "revId": {
+            "description": "ID of the skill revision to retrieve.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "entryId"
+        ],
+        "type": "object"
+      },
+      "GetSkillResult": {
+        "properties": {
+          "annotation": {
+            "$ref": "#/components/schemas/EntryAnnotation"
+          },
+          "collectionId": {
+            "description": "ID of the collection containing the entry.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "description": "Date and time when the entry was created.",
+            "type": "string"
+          },
+          "createdBy": {
+            "description": "ID of the user who created the entry.",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/SkillData"
+          },
+          "entryId": {
+            "description": "Unique identifier of the entry.",
+            "type": "string"
+          },
+          "hidden": {
+            "description": "Whether the entry is hidden.",
+            "type": "boolean"
+          },
+          "isFavorite": {
+            "deprecated": true,
+            "description": "Whether the skill is a favorite. Deprecated: the field will be removed in a future API version.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "Key of the skill entry.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "links": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "meta": {
+            "additionalProperties": {},
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/SkillPermissions"
+          },
+          "public": {
+            "type": "boolean"
+          },
+          "publishedId": {
+            "description": "ID of the published entry revision.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revId": {
+            "description": "ID of the returned skill revision.",
+            "type": "string"
+          },
+          "revUpdatedAt": {
+            "type": "string"
+          },
+          "revUpdatedBy": {
+            "type": "string"
+          },
+          "savedId": {
+            "description": "ID of the saved entry revision.",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "artifact"
+            ],
+            "type": "string"
+          },
+          "tenantId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "enum": [
+              "skill"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "workbookId": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "entryId",
+          "collectionId",
+          "createdBy",
+          "createdAt",
+          "savedId",
+          "publishedId",
+          "hidden",
+          "scope",
+          "type",
+          "key",
+          "workbookId",
+          "revId",
+          "data",
+          "meta",
+          "updatedBy",
+          "updatedAt",
+          "tenantId",
+          "public"
         ],
         "type": "object"
       },
@@ -19861,6 +20283,80 @@
             "items": {
               "additionalProperties": false,
               "properties": {
+                "aggregation": {
+                  "description": "Present for pivot results. Each aggregation level is a separate table.",
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "groupBy": {
+                          "description": "Zero-based schema indices of retained dimensions. Rolled-up dimensions contain null; retained dimensions may also contain genuine null values.",
+                          "items": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "type": "array"
+                        },
+                        "type": {
+                          "enum": [
+                            "detail"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "groupBy"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "groupBy": {
+                          "description": "Zero-based schema indices of retained dimensions. Rolled-up dimensions contain null; retained dimensions may also contain genuine null values.",
+                          "items": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "minItems": 1,
+                          "type": "array"
+                        },
+                        "type": {
+                          "enum": [
+                            "subtotal"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "groupBy"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "groupBy": {
+                          "prefixItems": [],
+                          "type": "array"
+                        },
+                        "type": {
+                          "enum": [
+                            "total"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "groupBy"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
                 "rows": {
                   "description": "Values ordered according to schema.",
                   "items": {
@@ -20812,6 +21308,21 @@
         },
         "required": [
           "workbooks"
+        ],
+        "type": "object"
+      },
+      "IncrementDataTransferTypeArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "increment": {
+            "additionalProperties": false,
+            "description": "Continuous replication of INSERT, UPDATE, and DELETE into Iceberg without an initial snapshot. PostgreSQL only, exactly one table, no wildcards.",
+            "properties": {},
+            "type": "object"
+          }
+        },
+        "required": [
+          "increment"
         ],
         "type": "object"
       },
@@ -22272,7 +22783,8 @@
               "enum": [
                 "entry",
                 "workbook",
-                "collection"
+                "collection",
+                "restCatalog"
               ],
               "type": "string"
             },
@@ -27676,6 +28188,63 @@
         },
         "type": "object"
       },
+      "SkillData": {
+        "additionalProperties": false,
+        "properties": {
+          "activation": {
+            "enum": [
+              "onDemand",
+              "manual"
+            ],
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "references": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Markdown files with names matching ^[\\w.-]+\\.md$ and at most 255 characters. Up to 20 files, 32 KiB per file, and 256 KiB total (UTF-8).",
+            "type": "object"
+          },
+          "slug": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "description",
+          "activation",
+          "body"
+        ],
+        "type": "object"
+      },
+      "SkillPermissions": {
+        "properties": {
+          "admin": {
+            "description": "Indicates if there are permissions for admin.",
+            "type": "boolean"
+          },
+          "edit": {
+            "description": "Indicates if there are permissions to edit.",
+            "type": "boolean"
+          },
+          "execute": {
+            "description": "Indicates if there are permissions to execute.",
+            "type": "boolean"
+          },
+          "read": {
+            "description": "Indicates if there are permissions to read.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "SnowFlakeTableParameters": {
         "properties": {
           "db_name": {
@@ -28683,6 +29252,24 @@
       },
       "SparkCluster": {
         "properties": {
+          "catalogs": {
+            "description": "REST catalogs attached to the cluster, in order; newly submitted applications inherit them.",
+            "items": {
+              "properties": {
+                "catalogId": {
+                  "description": "ID of the REST catalog.",
+                  "maxLength": 50,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "catalogId"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "cloudEnvironmentId": {
             "description": "ID of the associated cloud environment.",
             "minLength": 1,
@@ -28998,7 +29585,8 @@
           "labels",
           "config",
           "health",
-          "status"
+          "status",
+          "catalogs"
         ],
         "type": "object"
       },
@@ -30758,6 +31346,9 @@
                 "$ref": "#/components/schemas/OneTimeDataTransferTypeArgs"
               },
               {
+                "$ref": "#/components/schemas/IncrementDataTransferTypeArgs"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -30806,6 +31397,10 @@
           },
           "data": {
             "properties": {
+              "activities": {
+                "description": "Configuration from the Activities tab.",
+                "type": "string"
+              },
               "controls": {
                 "description": "Configuration from the Controls tab.",
                 "type": "string"
@@ -31852,6 +32447,261 @@
         ],
         "type": "object"
       },
+      "UpdateSparkClusterArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "catalogs": {
+            "description": "All REST catalogs attached to the cluster after the update, in order; an empty list detaches every catalog. Running applications keep the catalogs they started with.",
+            "items": {
+              "properties": {
+                "catalogId": {
+                  "description": "ID of the REST catalog.",
+                  "maxLength": 50,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "catalogId"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "dependencies": {
+            "additionalProperties": false,
+            "description": "Packages to install in the cluster; an empty object removes them.",
+            "properties": {
+              "debPackages": {
+                "description": "Debian packages to install in the cluster.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "pipPackages": {
+                "description": "Python packages to install in the cluster.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "id": {
+            "description": "DataLens entry ID of the Spark cluster to update.",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": {
+              "maxLength": 63,
+              "pattern": "^[-_0-9a-z]*$",
+              "type": "string"
+            },
+            "description": "Spark cluster labels; an empty map removes them.",
+            "type": "object"
+          },
+          "resourcePools": {
+            "additionalProperties": false,
+            "description": "Driver and executor resource pools; both are replaced.",
+            "properties": {
+              "driver": {
+                "additionalProperties": false,
+                "description": "Driver resource pool.",
+                "properties": {
+                  "resourcePresetId": {
+                    "description": "ID of the Spark resource preset.",
+                    "maxLength": 50,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "scalePolicy": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "fixedScale": {
+                            "properties": {
+                              "size": {
+                                "description": "Number of instances in the resource pool.",
+                                "pattern": "^(?:[1-9]|[1-9]\\d|100)$",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "size"
+                            ],
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "fixedScale"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "autoScale": {
+                            "properties": {
+                              "initialSize": {
+                                "description": "Initial number of instances in the resource pool.",
+                                "pattern": "^(?:0|[1-9]\\d?|100)$",
+                                "type": "string"
+                              },
+                              "maxSize": {
+                                "description": "Maximum number of instances in the resource pool.",
+                                "pattern": "^(?:[1-9]|[1-9]\\d|100)$",
+                                "type": "string"
+                              },
+                              "minSize": {
+                                "description": "Minimum number of instances in the resource pool.",
+                                "pattern": "^(?:0|[1-9]\\d?|100)$",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "minSize",
+                              "maxSize",
+                              "initialSize"
+                            ],
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "autoScale"
+                        ],
+                        "type": "object"
+                      }
+                    ],
+                    "description": "Resource pool scaling policy."
+                  }
+                },
+                "required": [
+                  "resourcePresetId",
+                  "scalePolicy"
+                ],
+                "type": "object"
+              },
+              "executor": {
+                "additionalProperties": false,
+                "description": "Executor resource pool.",
+                "properties": {
+                  "resourcePresetId": {
+                    "description": "ID of the Spark resource preset.",
+                    "maxLength": 50,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "scalePolicy": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "fixedScale": {
+                            "properties": {
+                              "size": {
+                                "description": "Number of instances in the resource pool.",
+                                "pattern": "^(?:[1-9]|[1-9]\\d|100)$",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "size"
+                            ],
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "fixedScale"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "autoScale": {
+                            "properties": {
+                              "initialSize": {
+                                "description": "Initial number of instances in the resource pool.",
+                                "pattern": "^(?:0|[1-9]\\d?|100)$",
+                                "type": "string"
+                              },
+                              "maxSize": {
+                                "description": "Maximum number of instances in the resource pool.",
+                                "pattern": "^(?:[1-9]|[1-9]\\d|100)$",
+                                "type": "string"
+                              },
+                              "minSize": {
+                                "description": "Minimum number of instances in the resource pool.",
+                                "pattern": "^(?:0|[1-9]\\d?|100)$",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "minSize",
+                              "maxSize",
+                              "initialSize"
+                            ],
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "autoScale"
+                        ],
+                        "type": "object"
+                      }
+                    ],
+                    "description": "Resource pool scaling policy."
+                  }
+                },
+                "required": [
+                  "resourcePresetId",
+                  "scalePolicy"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "driver",
+              "executor"
+            ],
+            "type": "object"
+          },
+          "updateMask": {
+            "additionalProperties": false,
+            "description": "Fields of the Spark cluster to update; the others are left as they are.",
+            "properties": {
+              "paths": {
+                "description": "Fields to update, by their proto names. Each path needs its field in the request; a field without its path is rejected.",
+                "items": {
+                  "enum": [
+                    "labels",
+                    "dependencies",
+                    "resource_pools",
+                    "catalogs"
+                  ],
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "paths"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "updateMask"
+        ],
+        "type": "object"
+      },
       "UpdateSqlQueryArgs": {
         "properties": {
           "connectionId": {
@@ -32108,25 +32958,53 @@
                     "additionalProperties": false,
                     "properties": {
                       "aiSummary": {
-                        "additionalProperties": false,
-                        "properties": {
-                          "enabled": {
-                            "type": "boolean"
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "enabled": {
+                                "enum": [
+                                  true
+                                ],
+                                "type": "boolean"
+                              },
+                              "prompt": {
+                                "maxLength": 4000,
+                                "pattern": "[^\\s\\u001c-\\u001f\\u0085]|\\ufeff",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "enabled",
+                              "prompt"
+                            ],
+                            "type": "object"
                           },
-                          "prompt": {
-                            "maxLength": 4000,
-                            "type": [
-                              "string",
-                              "null"
-                            ]
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "enabled": {
+                                "enum": [
+                                  false
+                                ],
+                                "type": "boolean"
+                              },
+                              "prompt": {
+                                "maxLength": 4000,
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "enabled"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
                           }
-                        },
-                        "required": [
-                          "enabled"
-                        ],
-                        "type": [
-                          "object",
-                          "null"
                         ]
                       },
                       "states": {
@@ -62753,6 +63631,50 @@
         "x-mcp-scope": "privileged"
       }
     },
+    "/rpc/deleteSkill": {
+      "post": {
+        "description": "Deletes the specified skill.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteSkillArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteSkillResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "Delete skill",
+        "tags": [
+          "Skills"
+        ],
+        "x-mcp-scope": "privileged"
+      }
+    },
     "/rpc/deleteSparkCluster": {
       "post": {
         "description": "Deletes a Spark cluster and returns an asynchronous operation.",
@@ -63340,7 +64262,7 @@
     },
     "/rpc/getChartData": {
       "post": {
-        "description": "Runs a saved Wizard, QL, or Editor chart with the supplied parameters and returns flat tables. Pivot tables are not supported. Editor charts require Editor.setRawData(). Large integers in Wizard results may lose precision. Limits across all results: 100000 rows, 100000 cells, 1000 tables and 100000 schema columns; up to 800 columns per table. Exceeding a limit returns HTTP 422; results are not truncated.",
+        "description": "Runs a saved Wizard, QL, or Editor chart with the supplied parameters and returns flat tables. Pivot results return each aggregation level as a separate table. Without measures, pivot results include all visible row/column combinations, including empty intersections. Editor charts require Editor.setRawData(). Large integers in Wizard results may lose precision. Limits across all results: 100000 rows, 100000 cells, 1000 tables and 100000 schema columns; up to 800 columns per table. Exceeding a limit returns HTTP 422; results are not truncated.",
         "parameters": [
           {
             "$ref": "#/components/parameters/ApiVersionHeader"
@@ -63966,6 +64888,7 @@
                     "type": "string"
                   },
                   "rev_id": {
+                    "description": "ID of the dataset revision to return.",
                     "type": "string"
                   },
                   "workbookId": {
@@ -65175,6 +66098,61 @@
         "summary": "Get common object binding",
         "tags": [
           "SharedEntry"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/getSkill": {
+      "post": {
+        "description": "Returns the specified skill or its saved revision.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          },
+          {
+            "in": "header",
+            "name": "x-dl-audit-mode",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetSkillArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSkillResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "Get skill",
+        "tags": [
+          "Skills"
         ],
         "x-mcp-scope": "read"
       }
@@ -67805,6 +68783,10 @@
                   "datasetId": {
                     "type": "string"
                   },
+                  "rev_id": {
+                    "description": "ID of the dataset revision the update is based on.",
+                    "type": "string"
+                  },
                   "workbookId": {
                     "type": [
                       "string",
@@ -68157,6 +69139,50 @@
         "x-mcp-scope": "privileged"
       }
     },
+    "/rpc/updateSparkCluster": {
+      "post": {
+        "description": "Updates the fields of a Spark cluster named in the update mask (labels, dependencies, resource pools, attached REST catalogs) and returns an asynchronous operation.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSparkClusterArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LakehouseOperation"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "IAM token": []
+          },
+          {
+            "Organization ID": []
+          }
+        ],
+        "summary": "🚧 [Experimental] Update Spark cluster",
+        "tags": [
+          "SparkClusters"
+        ],
+        "x-mcp-scope": "privileged"
+      }
+    },
     "/rpc/updateSqlQuery": {
       "post": {
         "description": "Updates the specified saved SQL query.",
@@ -68441,6 +69467,10 @@
                     "$ref": "#/components/schemas/DatasetValidate"
                   },
                   "datasetId": {
+                    "type": "string"
+                  },
+                  "rev_id": {
+                    "description": "ID of the dataset revision to validate against.",
                     "type": "string"
                   },
                   "workbookId": {

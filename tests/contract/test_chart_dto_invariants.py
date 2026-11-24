@@ -177,7 +177,11 @@ def test_editor_operation_catalogs_match_their_own_discriminators(installation: 
     assert INSTALLATION_EDITOR_UPDATE_NODE_TYPES[installation] == frozenset(
         _load_editor_operation_discriminator(spec_path, "update")
     )
-    assert INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE[installation] == _load_update_tabs(spec_path)
+    update_tabs = _load_update_tabs(spec_path)
+    if installation == "yacloud":
+        # Advanced Activities is outside the current typed write surface.
+        update_tabs["advanced-chart_node"] -= {"activities"}
+    assert INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE[installation] == update_tabs
     assert INSTALLATION_EDITOR_CREATE_NODE_TYPES[installation] <= INSTALLATION_EDITOR_READ_NODE_TYPES[installation]
     assert INSTALLATION_EDITOR_UPDATE_NODE_TYPES[installation] <= INSTALLATION_EDITOR_READ_NODE_TYPES[installation]
 

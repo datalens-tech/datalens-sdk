@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import os
+from typing import Literal
 
 from datalens_sdk import DashboardTab, DataLensClientYC, EntryLocation
 
@@ -44,11 +45,13 @@ def int_env(name: str, *, default: int) -> int:
         raise SystemExit(f"{name} must be an integer") from exc
 
 
-def on_off_env(name: str, *, default: str) -> str:
+def on_off_env(name: str, *, default: str) -> Literal["on", "off"]:
     value = os.environ.get(name, default).strip().lower()
-    if value not in {"on", "off"}:
-        raise SystemExit(f"{name} must be 'on' or 'off'")
-    return value
+    if value == "on":
+        return "on"
+    if value == "off":
+        return "off"
+    raise SystemExit(f"{name} must be 'on' or 'off'")
 
 
 def require_id(value: str | None, *, resource: str) -> str:

@@ -78,8 +78,8 @@ class ConnectionService(ConnectionOperations):
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="createConnection", reason=str(exc)) from exc
         response = self._api.create(dto.to_payload())
-        # API returns only the new id from createConnection; fetch the full entry only in that case.
-        if len(response) == 1:
+        # The create response can contain only the new id and an optional null operation.
+        if response.keys() <= {"id", "operation"} and response.get("operation") is None:
             connection_id = response.get("id")
             if isinstance(connection_id, str) and connection_id:
                 return self.get_connection(connection_id, workbook_id=workbook_id_from_location(spec.location))

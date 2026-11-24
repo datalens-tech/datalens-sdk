@@ -279,6 +279,13 @@ def test_trino_read_actions_have_yc_only_static_types() -> None:
         assert_type(preset_page.items, tuple[TrinoResourcePreset, ...])
 
 
+def _check_context_manager_client_types(yacloud: DataLensClientYC, enterprise: DataLensClientEnterprise) -> None:
+    with yacloud as yc_client:
+        assert_type(yc_client, DataLensClientYC)
+    with enterprise as enterprise_client:
+        assert_type(enterprise_client, DataLensClientEnterprise)
+
+
 def _check_entry_mutation_return_types(
     *,
     collection: Collection,

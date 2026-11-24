@@ -9,7 +9,7 @@ from pydantic import ValidationError
 import pytest
 
 from datalens_sdk._generated import dto
-from datalens_sdk.codegen import build_screenshot_contract_meta
+from datalens_sdk.codegen import _emit_screenshot_dto, build_screenshot_contract_meta
 
 ROOT = Path(__file__).resolve().parents[2]
 SCREENSHOT_ROUTES = ("/rpc/getChartScreenshot", "/rpc/getDashScreenshot")
@@ -35,6 +35,19 @@ def test_screenshot_contract_is_available_in_yandex_cloud_spec() -> None:
 
 def test_screenshot_contract_is_absent_from_enterprise_spec() -> None:
     assert build_screenshot_contract_meta(_spec("enterprise")) is None
+
+
+def test_screenshot_codegen_keeps_success_model_for_union_response() -> None:
+    contract = build_screenshot_contract_meta(_spec())
+    assert contract is not None
+    result_schema = contract["schemas"]["GetScreenshotResult"]
+    assert isinstance(result_schema, dict)
+    assert "anyOf" in result_schema
+
+    emitted = _emit_screenshot_dto({"installations": {}, "screenshot": contract})
+
+    assert "class GetScreenshotResultReadDTO(BaseModel):" in emitted
+    assert "    data: str\n" in emitted
 
 
 def test_screenshot_contract_rejects_partial_route_availability() -> None:

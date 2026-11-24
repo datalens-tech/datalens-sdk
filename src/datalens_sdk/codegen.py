@@ -321,6 +321,7 @@ class RpcNamespaceConfig(TypedDict):
     tag: str
     namespace: str
     operation_name_overrides: NotRequired[dict[str, str]]
+    excluded_routes: NotRequired[tuple[str, ...]]
     installations: NotRequired[tuple[str, ...]]
     alias_only_read: NotRequired[bool]
 
@@ -364,7 +365,11 @@ RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (
     ),
     RpcNamespaceConfig(tag="RestCatalogs", namespace="rest_catalogs", installations=("yacloud",)),
     RpcNamespaceConfig(
-        tag="SparkClusters", namespace="spark_clusters", installations=("yacloud",), alias_only_read=True
+        tag="SparkClusters",
+        namespace="spark_clusters",
+        installations=("yacloud",),
+        alias_only_read=True,
+        excluded_routes=("/rpc/updateSparkCluster",),
     ),
     RpcNamespaceConfig(
         tag="SparkApplications",
@@ -416,6 +421,19 @@ def _schema_dict(value: object, *, context: str) -> dict[str, dict[str, object]]
         if not isinstance(item, dict):
             raise TypeError(f"{context}.{key} must be an object")
         result[key] = _string_object_dict(item, context=f"{context}.{key}")
+    return result
+
+
+def _without_schema_property(schema: dict[str, object], field: str, *, context: str) -> dict[str, object]:
+    properties = _string_object_dict(schema.get("properties"), context=f"{context}.properties")
+    if field not in properties:
+        return schema
+    del properties[field]
+    result = {**schema, "properties": properties}
+    if "required" in schema:
+        result["required"] = [
+            name for name in _string_list(schema["required"], context=f"{context}.required") if name != field
+        ]
     return result
 
 
@@ -1296,10 +1314,11 @@ def build_rpc_namespace_contract_meta(
     """Derive one tagged RPC namespace and its transitive schema closure."""
 
     paths = _string_object_dict(spec.get("paths"), context="paths")
+    excluded_routes = frozenset(config.get("excluded_routes", ()))
     selected: list[tuple[str, str, dict[str, object], dict[str, object]]] = []
     http_methods = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
-    for route, raw_path in sorted(paths.items()):
-        path_item = _string_object_dict(raw_path, context=route)
+    for route in sorted(paths.keys() - excluded_routes):
+        path_item = _string_object_dict(paths[route], context=route)
         for method in sorted(http_methods & path_item.keys()):
             operation = _string_object_dict(path_item[method], context=f"{route}.{method}")
             tags = _string_list(operation.get("tags", []), context=f"{route}.{method}.tags")
@@ -1310,6 +1329,11 @@ def build_rpc_namespace_contract_meta(
 
     components = _string_object_dict(spec.get("components", {}), context="components")
     schemas = _schema_dict(components.get("schemas", {}), context="components.schemas")
+    if config["namespace"] == "spark_clusters":
+        # REST catalog attachments are outside the existing SDK contract.
+        for name in ("CreateSparkClusterArgs", "SparkCluster"):
+            if name in schemas:
+                schemas[name] = _without_schema_property(schemas[name], "catalogs", context=name)
     operations: dict[str, RpcOperationMeta] = {}
     root_contexts: dict[str, str] = {}
     overrides = config.get("operation_name_overrides", {})
@@ -2278,7 +2302,7 @@ def build_dataset_data_contract_meta(spec: Mapping[str, object]) -> DatasetDataC
 
 
 def build_chart_data_contract_meta(spec: Mapping[str, object]) -> ChartDataContractMeta | None:
-    """Extract the exact chart-data route and preserve its original schema closure."""
+    """Extract the chart-data schema closure for flat table reads."""
 
     paths = _string_object_dict(spec.get("paths"), context="paths")
     if _CHART_DATA_ROUTE not in paths:
@@ -2320,6 +2344,8 @@ def build_chart_data_contract_meta(spec: Mapping[str, object]) -> ChartDataContr
         schema = available.get(name)
         if schema is None:
             raise ValueError(f"getChartData schema graph references missing component {name!r}")
+        if name == _CHART_DATA_VARIANTS["wizard"]:
+            schema = _flat_wizard_chart_data_schema(schema)
         _audit_pydantic_schema_features(
             schema,
             pointer=f"/schemas/{_json_pointer_token(name)}",
@@ -2330,7 +2356,7 @@ def build_chart_data_contract_meta(spec: Mapping[str, object]) -> ChartDataContr
         for referenced in sorted(_schema_refs(schema)):
             visit(referenced)
         visiting.remove(name)
-        # Compare the complete source before widening read types or discarding annotations.
+        # Compare the supported source before widening read types or discarding annotations.
         reached[name] = normalize_json_value(schema, context=f"getChartData schema {name}")
 
     for root in _CHART_DATA_ROOTS:
@@ -2357,6 +2383,22 @@ def build_chart_data_contract_meta(spec: Mapping[str, object]) -> ChartDataContr
         if chart_type.get("type") != "string" or chart_type.get("enum") != [tag] or "chartType" not in required:
             raise ValueError(f"getChartData variant {name!r} must require the literal chartType {tag!r}")
     return {"roots": list(_CHART_DATA_ROOTS), "schemas": dict(sorted(reached.items()))}
+
+
+def _flat_wizard_chart_data_schema(schema: dict[str, object]) -> dict[str, object]:
+    # Pivot aggregation metadata is outside the flat table read contract.
+    response = dict(schema)
+    node = response
+    context = _CHART_DATA_VARIANTS["wizard"]
+    for key in ("properties", "results"):
+        context = f"{context}.{key}"
+        child = _string_object_dict(node.get(key), context=context)
+        node[key] = child
+        node = child
+    table_context = f"{context}.items"
+    table = _string_object_dict(node.get("items"), context=table_context)
+    node["items"] = _without_schema_property(table, "aggregation", context=table_context)
+    return response
 
 
 def _widen_chart_data_column_type(schemas: dict[str, JsonValue]) -> None:
@@ -3029,6 +3071,12 @@ def _editor_data_fields(schemas: dict[str, dict[str, object]], schema_name: str)
     data_props = _schema_dict(data_props_raw, context=f"{schema_name}.properties.data.properties")
     data_required_raw = data_schema.get("required", [])
     data_required = set(_string_list(data_required_raw, context=f"{schema_name}.properties.data.required"))
+    # The optional Advanced Activities tab is outside the SDK's write surface.
+    if (
+        schema_name in {"CreateEditorAdvancedChartNodeEntry", "UpdateEditorAdvancedChartNodeEntry"}
+        and "activities" not in data_required
+    ):
+        data_props.pop("activities", None)
     return {field: {"required": field in data_required} for field in sorted(data_props)}
 
 
@@ -5060,6 +5108,16 @@ def _emit_screenshot_dto(metadata: Metadata) -> str:
         contract="Screenshots",
         payload_methods="roots",
     ).emit(("GetChartScreenshotArgs", "GetDashScreenshotArgs"))
+    result_schema = schemas["GetScreenshotResult"]
+    branches = result_schema.get("anyOf") if isinstance(result_schema, dict) else None
+    if isinstance(branches, list):
+        # Keep the success DTO's shape when the wire contract also describes an error branch.
+        success_branches = [
+            branch for branch in branches if isinstance(branch, dict) and branch.get("required") == ["data"]
+        ]
+        if len(success_branches) != 1:
+            raise ValueError("GetScreenshotResult must have one success branch requiring data")
+        schemas = {**schemas, "GetScreenshotResult": success_branches[0]}
     result_models = _PydanticSchemaEmitter(
         schemas,
         read=True,

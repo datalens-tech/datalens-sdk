@@ -6,7 +6,7 @@ import json
 import logging
 from pathlib import Path
 from types import MappingProxyType
-from typing import cast
+from typing import Literal, cast
 from uuid import uuid4
 
 import httpx
@@ -611,6 +611,26 @@ def test_connection_create_update_delete_flow_uses_foreign_rpc_shape() -> None:
     assert recorder.request_json(4) == {"connectionId": "conn-1"}
 
 
+@pytest.mark.parametrize("ai_access_level", ["deny", "allow_trusted"])
+def test_typed_connection_create_sends_explicit_ai_access_level(
+    ai_access_level: Literal["deny", "allow_trusted"],
+) -> None:
+    recorder = RecordedTransport(
+        {"/rpc/createConnection": httpx.Response(200, json={"id": "conn-1", "type": "postgres", "name": "PG"})}
+    )
+    client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+
+    (
+        client.create.connection.postgres(name="PG", location=dl.EntryLocation.path("/Users/me"))
+        .host("db.local")
+        .port(6432)
+        .ai_access_level(ai_access_level)
+        .build()
+    )
+
+    assert recorder.request_json(0)["ai_access_level"] == ai_access_level
+
+
 def test_connection_get_sends_rev_id_as_snake_case() -> None:
     recorder = RecordedTransport(
         {"/rpc/getConnection": httpx.Response(200, json={"id": "c1", "type": "postgres", "name": "PG"})}
@@ -620,6 +640,30 @@ def test_connection_get_sends_rev_id_as_snake_case() -> None:
     client.get.connection(by_id="c1", rev_id="r5")
 
     assert recorder.request_json(0) == {"connectionId": "c1", "rev_id": "r5"}
+
+
+def test_connection_create_loads_full_entry_after_response_with_null_operation() -> None:
+    full_connection = {"id": "conn-1", "type": "postgres", "name": "PG", "workbook_id": "wb-1", "host": "db.local"}
+    recorder = RecordedTransport(
+        {
+            "/rpc/createConnection": httpx.Response(200, json={"id": "conn-1", "operation": None}),
+            "/rpc/getConnection": httpx.Response(200, json=full_connection),
+        }
+    )
+    client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
+
+    connection = (
+        client.create.connection.postgres(name="PG", location=dl.EntryLocation.workbook("wb-1"))
+        .host("db.local")
+        .port(6432)
+        .build()
+    )
+    source_builder = client.create.source(using=connection).pg_table(alias="orders", table_name="orders")
+
+    assert isinstance(source_builder, dl.SourceCreate)
+    assert connection.response_snapshot == full_connection
+    assert [request.url.path for request in recorder.requests] == ["/rpc/createConnection", "/rpc/getConnection"]
+    assert recorder.request_json(1) == {"connectionId": "conn-1", "workbookId": "wb-1"}
 
 
 @pytest.mark.parametrize(

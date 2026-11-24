@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Fixed
+
+- Preserve the concrete client type in `with ... as client` blocks so
+  installation-specific methods retain their types. Subclasses that override
+  `__enter__` and return `self` can annotate the return type with `Self`.
+
+- After a typed connection create returns only an ID and a null operation, load
+  the connection so its type and other fields are available to callers such as
+  `client.create.source(using=connection)`.
+- Refresh the Yandex Cloud OpenAPI snapshot and keep generation compatible
+  with the updated screenshot, chart-data, and Spark contracts.
+
+### Documentation
+
+- Clarify typed connection creates, including the `ai_access_level` default
+  and overrides, `builder.connector`, and the accepted certificate, JSON API
+  header, and PromQL authentication types.
+
 ## 3.3.0 - 2026-11-19
 
 ### Changed
@@ -77,8 +95,8 @@
   `data_export_forbidden`, `ssl_enable`, ClickHouse `experimental_features` and
   `ssl_ca_verify`, PromQL and SpeechSense `auth_type`, and Trino `auth_type` and
   `listing_sources` become enums; `ssl_ca` becomes a string. Applicable Yandex
-  Cloud connectors default `ai_access_level` to `"allow"`; ClickHouse, MySQL,
-  and PostgreSQL also default `variant` to `"default"`. Replace custom values
+  Cloud typed creates default `ai_access_level` to `"allow"`; ClickHouse,
+  MySQL, and PostgreSQL also default `variant` to `"default"`. Replace custom values
   and mappings with generated literals and scalars.
 - Hide the SDK-managed `type` discriminator from `required_fields()`,
   `optional_fields()`, and `fields_help()` for both public installations.
