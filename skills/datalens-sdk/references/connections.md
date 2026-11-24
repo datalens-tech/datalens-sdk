@@ -114,7 +114,9 @@ conn = (
 `data_export_forbidden` use the strings `"on"` / `"off"`.
 
 - `raw_sql_level="dashsql"` is valid when QL access was requested; do not force it back to `"off"` as a generic safety measure.
-- After creation, re-fetch through the returned id. Expect `password` to be absent from `saved.raw`; absence is successful redaction.
+- Use the connection returned by `.build()` when binding a source. The SDK
+  loads the full connection when creation returns only an ID and no operation.
+  An absent `password` field is expected in a connection read response.
 
 ## Binding a source
 

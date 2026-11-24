@@ -173,13 +173,16 @@ EDITOR_TABS = {
 }
 
 
-def _editor_entry(wire_type: str, *, rev_id: str = "loaded-revision") -> dict[str, object]:
+def _editor_entry(wire_type: str, *, rev_id: str = "loaded-revision", activities: bool = False) -> dict[str, object]:
+    data = {tab: f"loaded {tab}" for tab in EDITOR_TABS[wire_type]}
+    if activities:
+        data["activities"] = "module.exports = {};"
     return {
         "entryId": "editor",
         "type": wire_type,
         "key": "/Synthetic/Editor",
         "revId": rev_id,
-        "data": {tab: f"loaded {tab}" for tab in EDITOR_TABS[wire_type]},
+        "data": data,
         "annotation": {"description": "Loaded description", "future": "preserved"},
     }
 
@@ -190,10 +193,12 @@ def test_editor_publish_revision_selects_older_revision_and_preserves_loaded_tab
     installation: str, wire_type: str
 ) -> None:
     selected_rev_id = "historical-revision"
+    has_activities = installation == "yacloud" and wire_type == "advanced-chart_node"
+    loaded = _editor_entry(wire_type, activities=has_activities)
     recorder = RecordedTransport(
         {
-            "/rpc/getEditorChart": httpx.Response(200, json=_editor_entry(wire_type)),
-            "/rpc/updateEditorChart": httpx.Response(200, json=_editor_entry(wire_type, rev_id=selected_rev_id)),
+            "/rpc/getEditorChart": httpx.Response(200, json=loaded),
+            "/rpc/updateEditorChart": httpx.Response(200, json={**loaded, "revId": selected_rev_id}),
         }
     )
     chart = _client(recorder, installation).get.editor_chart(by_id="editor")
@@ -207,8 +212,8 @@ def test_editor_publish_revision_selects_older_revision_and_preserves_loaded_tab
     assert entry["entryId"] == "editor"
     assert entry["revId"] == selected_rev_id
     assert entry["type"] == wire_type
-    assert entry["data"] == _editor_entry(wire_type)["data"]
-    assert entry["annotation"] == _editor_entry(wire_type)["annotation"]
+    assert entry["data"] == result.data == loaded["data"]
+    assert entry["annotation"] == loaded["annotation"]
     assert chart.rev_id == "loaded-revision"
     assert result.rev_id == selected_rev_id
 

@@ -11,12 +11,9 @@ Confirm the requested factory in
    preserve every untouched or unknown tab.
 3. Tab code runs on the server. Functions wrapped with `Editor.wrapFn` run in a
    restricted browser sandbox and cannot close over surrounding variables.
-4. Runtime documentation is authoritative for whether a tab is supported by
-   the selected renderer and for its JavaScript format and behavior. The
-   generated setter matrix below is authoritative for what the installed typed
-   SDK can currently write. A documented tab missing from this matrix is not
-   implemented in the SDK yet; report that limitation instead of inventing a
-   setter or a raw request.
+4. Use the SDK matrix below to check which tabs the typed SDK can write for
+   each renderer and installation. Follow the runtime documentation for
+   JavaScript format and behavior.
 5. Re-fetching verifies stored tab text only. Without UI or browser evidence,
    report "persisted; rendering not verified".
 
@@ -38,16 +35,16 @@ from this skill; follow the exact documentation sections below.
 ## SDK renderer matrix
 
 Every listed tab method is available on both create and update for that
-`wire_type`. All accept `str`; `activities` also accepts `None` to omit the
-optional tab from the replacement payload.
+`wire_type`. All accept `str`. Pass `None` to `activities` to omit that tab
+from the replacement payload.
 
-| Factory | `chart.wire_type` | Use for | SDK tab methods | Renderer leaf |
-|---|---|---|---|---|
-| `advanced_chart` | `advanced-chart_node` | custom HTML or SVG | `controls`, `meta`, `params`, `prepare`, `sources` | [advanced-chart.md](advanced-chart.md) |
-| `gravity_charts` | `d3_node` | general charts | `activities`, `config`, `controls`, `meta`, `params`, `prepare`, `sources` | [gravity-charts.md](gravity-charts.md) |
-| `markdown` | `markdown_node` | formatted text | `controls`, `meta`, `params`, `prepare`, `sources` | [markdown.md](markdown.md) |
-| `selector` | `control_node` | parameter controls | `activities`, `controls`, `meta`, `params`, `sources` | [selector.md](selector.md) |
-| `table` | `table_node` | explicit tables | `activities`, `config`, `controls`, `meta`, `params`, `prepare`, `sources` | [table.md](table.md) |
+| Factory | `chart.wire_type` | Use for | SDK tab methods on both installations | Additional Yandex Cloud tab methods | Renderer leaf |
+|---|---|---|---|---|---|
+| `advanced_chart` | `advanced-chart_node` | custom HTML or SVG | `controls`, `meta`, `params`, `prepare`, `sources` | `activities` | [advanced-chart.md](advanced-chart.md) |
+| `gravity_charts` | `d3_node` | general charts | `activities`, `config`, `controls`, `meta`, `params`, `prepare`, `sources` | | [gravity-charts.md](gravity-charts.md) |
+| `markdown` | `markdown_node` | formatted text | `controls`, `meta`, `params`, `prepare`, `sources` | | [markdown.md](markdown.md) |
+| `selector` | `control_node` | parameter controls | `activities`, `controls`, `meta`, `params`, `sources` | | [selector.md](selector.md) |
+| `table` | `table_node` | explicit tables | `activities`, `config`, `controls`, `meta`, `params`, `prepare`, `sources` | | [table.md](table.md) |
 
 Use the renderer requested by the user or identified by `chart.wire_type`.
 Never translate a payload or migrate a chart to another renderer silently;

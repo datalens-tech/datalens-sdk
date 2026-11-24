@@ -20149,6 +20149,9 @@
           "advanced-chart_node": {
             "create_schema": "CreateEditorAdvancedChartNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "controls": {
                 "required": true
               },
@@ -20295,6 +20298,9 @@
           "advanced-chart_node": {
             "create_schema": "UpdateEditorAdvancedChartNodeEntry",
             "data_fields": {
+              "activities": {
+                "required": false
+              },
               "controls": {
                 "required": true
               },

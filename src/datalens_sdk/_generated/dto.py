@@ -995,6 +995,11 @@ INSTALLATION_EDITOR_UPDATE_NODE_TYPES: dict[str, frozenset[str]] = {
     'yacloud': frozenset(['advanced-chart_node', 'control_node', 'd3_node', 'markdown_node', 'table_node']),
 }
 
+INSTALLATION_EDITOR_DTO_PREFIXES: dict[tuple[str, str, str], str] = {
+    ('yacloud', 'advanced-chart_node', 'create'): 'Yacloud',
+    ('yacloud', 'advanced-chart_node', 'update'): 'Yacloud',
+}
+
 INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE: dict[str, dict[str, frozenset[str]]] = {
     'enterprise': {
         'advanced-chart_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
@@ -1004,7 +1009,7 @@ INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE: dict[str, dict[str, frozenset[str]
         'table_node': frozenset(['activities', 'config', 'controls', 'meta', 'params', 'prepare', 'sources']),
     },
     'yacloud': {
-        'advanced-chart_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
+        'advanced-chart_node': frozenset(['activities', 'controls', 'meta', 'params', 'prepare', 'sources']),
         'control_node': frozenset(['activities', 'controls', 'meta', 'params', 'sources']),
         'd3_node': frozenset(['activities', 'config', 'controls', 'meta', 'params', 'prepare', 'sources']),
         'markdown_node': frozenset(['controls', 'meta', 'params', 'prepare', 'sources']),
@@ -3928,6 +3933,44 @@ class AdvancedChartNodeNodeEntryCreateDTO(BaseModel):
             entry['workbookId'] = self.workbook_id
         return {'entry': entry}
 
+class YacloudAdvancedChartNodeNodeDataDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    controls: str
+    meta: str
+    params: str
+    prepare: str
+    sources: str
+    activities: str | None = None
+
+class YacloudAdvancedChartNodeNodeEntryCreateDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    type: Literal['advanced-chart_node']
+    data: YacloudAdvancedChartNodeNodeDataDTO
+    key: str | None = None
+    name: str | None = None
+    workbook_id: str | None = Field(default=None, serialization_alias='workbookId')
+    annotation: Mapping[str, object] | None = None
+    links: Mapping[str, str] | None = None
+
+    def to_payload(self) -> dict[str, object]:
+        entry: dict[str, object] = {
+            'type': 'advanced-chart_node',
+            'data': self.data.model_dump(exclude_none=True),
+        }
+        if self.annotation is not None:
+            entry['annotation'] = dict(self.annotation)
+        if self.links is not None:
+            entry['links'] = dict(self.links)
+        if self.key is not None:
+            entry['key'] = self.key
+        if self.name is not None:
+            entry['name'] = self.name
+        if self.workbook_id is not None:
+            entry['workbookId'] = self.workbook_id
+        return {'entry': entry}
+
 class ControlNodeNodeDataDTO(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -4095,6 +4138,41 @@ class AdvancedChartNodeNodeEntryUpdateDTO(BaseModel):
     type: Literal['advanced-chart_node']
     entry_id: str = Field(serialization_alias='entryId')
     data: AdvancedChartNodeNodeUpdateDataDTO
+    mode: Literal['save', 'publish']
+    annotation: Mapping[str, object] | None = None
+    links: Mapping[str, str] | None = None
+    rev_id: str | None = Field(default=None, serialization_alias='revId')
+
+    def to_payload(self) -> dict[str, object]:
+        entry: dict[str, object] = {
+            'type': 'advanced-chart_node',
+            'entryId': self.entry_id,
+            'data': self.data.model_dump(exclude_none=True),
+        }
+        if self.annotation is not None:
+            entry['annotation'] = dict(self.annotation)
+        if self.links is not None:
+            entry['links'] = dict(self.links)
+        if self.rev_id is not None:
+            entry['revId'] = self.rev_id
+        return {'entry': entry, 'mode': self.mode}
+
+class YacloudAdvancedChartNodeNodeUpdateDataDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    controls: str
+    meta: str
+    params: str
+    prepare: str
+    sources: str
+    activities: str | None = None
+
+class YacloudAdvancedChartNodeNodeEntryUpdateDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    type: Literal['advanced-chart_node']
+    entry_id: str = Field(serialization_alias='entryId')
+    data: YacloudAdvancedChartNodeNodeUpdateDataDTO
     mode: Literal['save', 'publish']
     annotation: Mapping[str, object] | None = None
     links: Mapping[str, str] | None = None

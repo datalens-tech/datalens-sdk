@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- Support the Activities tab on Yandex Cloud Advanced Editor charts during
+  typed creation and updates. Updates to other tabs preserve the saved
+  Activities source.
+
 ### Fixed
 
 - Preserve the concrete client type in `with ... as client` blocks so
@@ -13,6 +19,8 @@
   `client.create.source(using=connection)`.
 - Refresh the Yandex Cloud OpenAPI snapshot and keep generation compatible
   with the updated screenshot, chart-data, and Spark contracts.
+- Preserve the API status, code, message, and request ID when a screenshot
+  RPC returns a structured error in an HTTP 200 response.
 
 ### Documentation
 

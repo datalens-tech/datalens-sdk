@@ -10,7 +10,7 @@ import keyword
 from pathlib import Path
 import re
 import symtable
-from typing import Literal, TypedDict, cast
+from typing import Literal, TypedDict, TypeVar, cast
 
 from pydantic import BaseModel
 from typing_extensions import NotRequired
@@ -3071,12 +3071,6 @@ def _editor_data_fields(schemas: dict[str, dict[str, object]], schema_name: str)
     data_props = _schema_dict(data_props_raw, context=f"{schema_name}.properties.data.properties")
     data_required_raw = data_schema.get("required", [])
     data_required = set(_string_list(data_required_raw, context=f"{schema_name}.properties.data.required"))
-    # The optional Advanced Activities tab is outside the SDK's write surface.
-    if (
-        schema_name in {"CreateEditorAdvancedChartNodeEntry", "UpdateEditorAdvancedChartNodeEntry"}
-        and "activities" not in data_required
-    ):
-        data_props.pop("activities", None)
     return {field: {"required": field in data_required} for field in sorted(data_props)}
 
 
@@ -4319,31 +4313,59 @@ class WizardChartDeleteArgsDTO(BaseModel):
 """
 
 
-def _editor_create_nodes(metadata: Metadata) -> dict[str, EditorCreateNodeMeta]:
-    all_editor_nodes: dict[str, EditorCreateNodeMeta] = {}
-    node_installations: dict[str, str] = {}
-    for installation, info in sorted(metadata["installations"].items()):
-        for wire_type, node_meta in info["charts"]["editor_nodes"].items():
-            previous_node_meta = all_editor_nodes.get(wire_type)
-            if previous_node_meta is None:
-                all_editor_nodes[wire_type] = node_meta
-                node_installations[wire_type] = installation
+_EditorNode = TypeVar("_EditorNode", bound=EditorNodeMeta)
+
+
+def _editor_node_variants(
+    nodes: Mapping[str, Mapping[str, _EditorNode]], *, operation: Literal["create", "update"]
+) -> dict[tuple[str, str], _EditorNode]:
+    nodes_by_wire_type: dict[str, dict[str, _EditorNode]] = {}
+    for installation, installation_nodes in sorted(nodes.items()):
+        for wire_type, node in installation_nodes.items():
+            nodes_by_wire_type.setdefault(wire_type, {})[installation] = node
+
+    variants: dict[tuple[str, str], _EditorNode] = {}
+    for wire_type, installation_nodes in nodes_by_wire_type.items():
+        common_installation, common = min(installation_nodes.items(), key=lambda item: len(item[1]["data_fields"]))
+        common_fields = common["data_fields"]
+        variants[wire_type, ""] = common
+        for installation, node in installation_nodes.items():
+            fields = node["data_fields"]
+            if fields == common_fields:
                 continue
-            if previous_node_meta["data_fields"] != node_meta["data_fields"]:
-                previous_installation = node_installations[wire_type]
-                raise ValueError(
-                    f"Editor create wire type {wire_type!r} has incompatible data fields or requiredness "
-                    f"across installations {previous_installation!r} and {installation!r}: "
-                    f"{previous_node_meta['data_fields']!r} != {node_meta['data_fields']!r}. "
-                    "Per-installation Editor create DTOs and builders are not supported."
-                )
-    return all_editor_nodes
+            if (
+                wire_type == "advanced-chart_node"
+                and "activities" not in common_fields
+                and fields.get("activities") == {"required": False}
+                and {name: info for name, info in fields.items() if name != "activities"} == common_fields
+            ):
+                variants[wire_type, installation] = node
+                continue
+            raise ValueError(
+                f"Editor {operation} wire type {wire_type!r} has incompatible data fields or requiredness "
+                f"across installations {common_installation!r} and {installation!r}: "
+                f"{common_fields!r} != {fields!r}. "
+                "Only optional Advanced Activities may vary across installations."
+            )
+    return variants
+
+
+def _editor_create_nodes(metadata: Metadata) -> dict[tuple[str, str], EditorCreateNodeMeta]:
+    return _editor_node_variants(
+        {installation: info["charts"]["editor_nodes"] for installation, info in metadata["installations"].items()},
+        operation="create",
+    )
 
 
 def _emit_chart_dto(metadata: Metadata) -> str:
     all_editor_nodes = _editor_create_nodes(metadata)
-    all_editor_update_nodes: dict[str, EditorNodeMeta] = {}
-    editor_update_node_installations: dict[str, str] = {}
+    all_editor_update_nodes = _editor_node_variants(
+        {
+            installation: info["charts"]["editor_update_nodes"]
+            for installation, info in metadata["installations"].items()
+        },
+        operation="update",
+    )
     installation_editor_read_types: dict[str, list[str]] = {}
     installation_editor_create_types: dict[str, list[str]] = {}
     installation_editor_update_types: dict[str, list[str]] = {}
@@ -4357,20 +4379,6 @@ def _emit_chart_dto(metadata: Metadata) -> str:
             wire_type: sorted(node_meta["data_fields"])
             for wire_type, node_meta in sorted(chart_meta["editor_update_nodes"].items())
         }
-        for wire_type, update_node_meta in chart_meta["editor_update_nodes"].items():
-            previous_node_meta = all_editor_update_nodes.get(wire_type)
-            if previous_node_meta is None:
-                all_editor_update_nodes[wire_type] = update_node_meta
-                editor_update_node_installations[wire_type] = installation
-                continue
-            if previous_node_meta["data_fields"] != update_node_meta["data_fields"]:
-                previous_installation = editor_update_node_installations[wire_type]
-                raise ValueError(
-                    f"Editor update wire type {wire_type!r} has incompatible data fields or requiredness "
-                    f"across installations {previous_installation!r} and {installation!r}: "
-                    f"{previous_node_meta['data_fields']!r} != {update_node_meta['data_fields']!r}. "
-                    "Per-installation Editor update DTOs are not supported."
-                )
 
     lines: list[str] = []
 
@@ -4392,6 +4400,18 @@ def _emit_chart_dto(metadata: Metadata) -> str:
         lines.append(f"    {installation!r}: frozenset({node_types!r}),")
     lines.append("}")
     lines.append("")
+
+    dto_prefixes = {
+        (installation, wire_type, operation): _class_name(installation, "")
+        for operation, variants in (("create", all_editor_nodes), ("update", all_editor_update_nodes))
+        for wire_type, installation in variants
+        if installation
+    }
+    if dto_prefixes:
+        lines.append("INSTALLATION_EDITOR_DTO_PREFIXES: dict[tuple[str, str, str], str] = {")
+        for key, prefix in sorted(dto_prefixes.items()):
+            lines.append(f"    {key!r}: {prefix!r},")
+        lines.extend(["}", ""])
 
     lines.append("INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE: dict[str, dict[str, frozenset[str]]] = {")
     for installation, tabs_by_wire_type in sorted(installation_editor_update_tabs.items()):
@@ -4494,8 +4514,8 @@ class QLChartDeleteArgsDTO(BaseModel):
         return {"chartId": self.chart_id}
 """)
 
-    for wire_type, node_meta in sorted(all_editor_nodes.items()):
-        cls_prefix = _node_class_name(wire_type)
+    for (wire_type, installation), node_meta in sorted(all_editor_nodes.items()):
+        cls_prefix = _class_name(installation, _node_class_name(wire_type))
         data_fields = node_meta["data_fields"]
 
         data_cls = f"{cls_prefix}NodeDataDTO"
@@ -4540,8 +4560,8 @@ class QLChartDeleteArgsDTO(BaseModel):
         lines.append("        return {'entry': entry}")
         lines.append("")
 
-    for wire_type, update_node_meta in sorted(all_editor_update_nodes.items()):
-        cls_prefix = _node_class_name(wire_type)
+    for (wire_type, installation), update_node_meta in sorted(all_editor_update_nodes.items()):
+        cls_prefix = _class_name(installation, _node_class_name(wire_type))
         data_fields = update_node_meta["data_fields"]
 
         upd_data_cls = f"{cls_prefix}NodeUpdateDataDTO"
@@ -6593,24 +6613,28 @@ def emit_chart_builders(metadata: Metadata) -> str:
             ]
         )
 
-    for wire_type, node_meta in sorted(all_editor_nodes.items()):
-        cls_prefix = _node_class_name(wire_type)
-        editor_cls = f"{cls_prefix}NodeCreate"
+    for (wire_type, installation), node_meta in sorted(all_editor_nodes.items()):
+        editor_cls = f"{_class_name(installation, _node_class_name(wire_type))}NodeCreate"
         data_fields = node_meta["data_fields"]
-
-        lines.extend(
-            [
-                f"class {editor_cls}(_BaseEditorNodeCreate):",
-                "    def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:",
-                "        super().__init__(",
-                f"            wire_type={wire_type!r},",
-                "            name=name,",
-                "            location=location,",
-                "            operations=operations,",
-                "        )",
-                "",
-            ]
-        )
+        if installation:
+            base_cls = f"{_node_class_name(wire_type)}NodeCreate"
+            lines.append(f"class {editor_cls}({base_cls}):")
+            common_fields = all_editor_nodes[wire_type, ""]["data_fields"]
+            data_fields = {name: info for name, info in data_fields.items() if name not in common_fields}
+        else:
+            lines.extend(
+                [
+                    f"class {editor_cls}(_BaseEditorNodeCreate):",
+                    "    def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:",
+                    "        super().__init__(",
+                    f"            wire_type={wire_type!r},",
+                    "            name=name,",
+                    "            location=location,",
+                    "            operations=operations,",
+                    "        )",
+                    "",
+                ]
+            )
         for field in sorted(data_fields):
             meta = data_fields[field]
             annotation = "str" if meta["required"] else "str | None"
@@ -6634,8 +6658,8 @@ def emit_chart_builders(metadata: Metadata) -> str:
         )
         for wire_type in sorted(node_types):
             node_meta = metadata["installations"][installation]["charts"]["editor_nodes"][wire_type]
-            cls_prefix = _node_class_name(wire_type)
-            editor_cls = f"{cls_prefix}NodeCreate"
+            variant = installation if (wire_type, installation) in all_editor_nodes else ""
+            editor_cls = f"{_class_name(variant, _node_class_name(wire_type))}NodeCreate"
             method = node_meta["factory_method"]
             lines.extend(
                 [

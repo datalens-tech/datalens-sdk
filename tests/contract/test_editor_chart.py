@@ -561,7 +561,7 @@ def test_bound_editor_chart_update_rejects_unsupported_tab_before_http() -> None
     assert "installation 'yacloud'" in message
     assert "wire_type 'advanced-chart_node'" in message
     assert "update tab 'graph'" in message
-    assert "['controls', 'meta', 'params', 'prepare', 'sources']" in message
+    assert "['activities', 'controls', 'meta', 'params', 'prepare', 'sources']" in message
     assert update.tab_edits == {}
     assert [request.url.path for request in recorder.requests] == ["/rpc/getEditorChart"]
 
@@ -686,29 +686,33 @@ def test_editor_chart_update_raises_on_409() -> None:
 
 @pytest.mark.parametrize("client_type", [dl.DataLensClientYC, dl.DataLensClientEnterprise])
 @pytest.mark.parametrize(
-    ("factory", "wire_type", "supported"),
+    ("factory", "wire_type", "supported_installations"),
     [
-        ("selector", "control_node", True),
-        ("gravity_charts", "d3_node", True),
-        ("table", "table_node", True),
-        ("advanced_chart", "advanced-chart_node", False),
-        ("markdown", "markdown_node", False),
+        ("selector", "control_node", ("yacloud", "enterprise")),
+        ("gravity_charts", "d3_node", ("yacloud", "enterprise")),
+        ("table", "table_node", ("yacloud", "enterprise")),
+        ("advanced_chart", "advanced-chart_node", ("yacloud",)),
+        ("markdown", "markdown_node", ()),
     ],
 )
 def test_public_activities_create_update_contract(
     client_type: type[dl.DataLensClientYC] | type[dl.DataLensClientEnterprise],
     factory: str,
     wire_type: str,
-    supported: bool,
+    supported_installations: tuple[str, ...],
 ) -> None:
     requests: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
+        if request.url.path == "/rpc/getEditorChart":
+            create_entry = json.loads(requests[0].content)["entry"]
+            return httpx.Response(200, json={"entry": {"entryId": "activities-1", **create_entry}})
         entry = json.loads(request.content)["entry"]
         return httpx.Response(200, json={"entryId": "activities-1", **entry})
 
     client = client_type(auth=None, base_url="http://test", transport=httpx.MockTransport(handler))
+    supported = client.INSTALLATION in supported_installations
     builder = getattr(client.create.editor_chart, factory)(name="Activities", location=EntryLocation.path("/dir"))
     assert hasattr(builder, "activities") is supported
     if not supported:
@@ -725,6 +729,8 @@ def test_public_activities_create_update_contract(
     changed = "module.exports = {action: 'toast', title: 'Updated'};"
     chart = builder.activities(source).build()
     assert chart.data["activities"] == source
+    chart = client.get.editor_chart(by_id="activities-1")
+    assert chart.data["activities"] == source
     chart = chart.update.params("module.exports = {p: ['1']};").execute()
     assert chart.data["activities"] == source
     chart = chart.update.activities(changed).execute()
@@ -733,11 +739,14 @@ def test_public_activities_create_update_contract(
 
     assert [request.url.path for request in requests] == [
         "/rpc/createEditorChart",
+        "/rpc/getEditorChart",
         "/rpc/updateEditorChart",
         "/rpc/updateEditorChart",
         "/rpc/updateEditorChart",
     ]
-    payloads = [json.loads(request.content)["entry"] for request in requests]
+    payloads = [
+        json.loads(request.content)["entry"] for request in requests if request.url.path != "/rpc/getEditorChart"
+    ]
     assert all(payload["type"] == wire_type for payload in payloads)
     assert [payload["data"].get("activities") for payload in payloads] == [source, source, changed, None]
     assert "activities" not in payloads[-1]["data"]

@@ -10,8 +10,14 @@ from pydantic import ValidationError
 from datalens_sdk.converter.screenshot import ScreenshotConverter, ScreenshotDtoModule
 from datalens_sdk.domain.ports import ScreenshotOperations
 from datalens_sdk.domain.screenshot import EntityScreenshot, ScreenshotRequest
-from datalens_sdk.errors import RateLimitError, translate_dto_validation_error, translate_invalid_response_error
-from datalens_sdk.http import DEFAULT_RETRY_POLICY, HTTPClientProtocol, RetryPolicy
+from datalens_sdk.error_transformers import DATALENS_ERROR_TRANSFORMER
+from datalens_sdk.errors import (
+    DataLensAPIError,
+    RateLimitError,
+    translate_dto_validation_error,
+    translate_invalid_response_error,
+)
+from datalens_sdk.http import DEFAULT_RETRY_POLICY, HTTPClientProtocol, RetryPolicy, _screenshot_error_context
 
 LOGGER = logging.getLogger(__name__)
 SCREENSHOT_OPERATIONS = {"chart": "getChartScreenshot", "dashboard": "getDashScreenshot"}
@@ -35,10 +41,19 @@ class ScreenshotAPI:
         self._client = client
 
     def get_chart_screenshot(self, payload: dict[str, object], *, retry_policy: RetryPolicy) -> dict[str, object]:
-        return self._client.post_json_object("/rpc/getChartScreenshot", payload, retry_policy=retry_policy)
+        return self._post("/rpc/getChartScreenshot", payload, retry_policy=retry_policy)
 
     def get_dash_screenshot(self, payload: dict[str, object], *, retry_policy: RetryPolicy) -> dict[str, object]:
-        return self._client.post_json_object("/rpc/getDashScreenshot", payload, retry_policy=retry_policy)
+        return self._post("/rpc/getDashScreenshot", payload, retry_policy=retry_policy)
+
+    def _post(self, path: str, payload: dict[str, object], *, retry_policy: RetryPolicy) -> dict[str, object]:
+        response = self._client.post_json_object(path, payload, retry_policy=retry_policy)
+        # An injected HTTP client can return the envelope without response headers.
+        context = _screenshot_error_context(response)
+        if context is not None:
+            error = DataLensAPIError(context)
+            raise DATALENS_ERROR_TRANSFORMER.transform(error) or error
+        return response
 
 
 class ScreenshotService(ScreenshotOperations):
