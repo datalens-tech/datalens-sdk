@@ -171,13 +171,21 @@ chart.get_relations(
         "dash", "report", "widget", "dataset", "folder", "connection",
         "compute", "artifact", "sql_query",
     ] | None = None,
+    recursive: bool = False,
+    max_depth: int | None = None,
 ) -> Pager[EntryRelation]
 chart.delete() -> None
 ```
 
-`rename` and `delete` require a bound chart with an ID. `get_relations` is lazy:
-iterate the returned pager or call `.pages()`. Deletion is destructive; obtain
-explicit user approval first.
+`rename()`, `get_relations()`, and `delete()` require a bound chart with an ID.
+
+`get_relations()` returns a lazy pager. Follow [hard rule 12](../../SKILL.md#hard-rules)
+for result handling, then iterate the pager or call `.pages()` to fetch results.
+See [Entry relations](../navigation.md#entry-relations) for directions and
+recursive traversal.
+
+Deletion is destructive. Obtain explicit user approval before calling
+`chart.delete()`.
 
 ### Update
 
@@ -542,13 +550,25 @@ updated = chart.update.y([profit]).description("Now shows profit").mode("publish
 chart = client.get.wizard_chart(by_id=updated.id)
 ```
 
-### Rename, Relations, Delete
+### Rename
 
 ```python
 chart = chart.rename("Published profit")
-dependencies = list(chart.get_relations(link_direction="to"))
+```
 
-# Destructive: call only after explicit user approval.
+### Relations
+
+Get a lazy pager for the chart's direct dependencies.
+
+```python
+dependencies = chart.get_relations(link_direction="from")
+```
+
+### Delete
+
+Run this example after the user explicitly approves deleting this chart.
+
+```python
 chart.delete()
 ```
 

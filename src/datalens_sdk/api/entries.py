@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Iterator, Mapping
+from dataclasses import replace
 from typing import Protocol
 
 from pydantic import ValidationError
@@ -174,35 +176,66 @@ class EntriesService:
         entry_id: str,
         options: RelationOptions,
     ) -> Pager[EntryRelation]:
-        def load() -> Iterator[Page[EntryRelation]]:
-            page_token: str | None = None
-            seen_tokens: set[str] = set()
-            while True:
-                try:
-                    payload = NavigationConverter.relations_payload(
-                        entry_id,
-                        options,
-                        page_token=page_token,
-                        dto_module=self._dto_module,
-                    )
-                    items, next_token = NavigationConverter.relations_result(
-                        self._api.get_relations(payload),
-                        dto_module=self._dto_module,
-                    )
-                except ValidationError as exc:
-                    raise translate_dto_validation_error(operation="getEntriesRelations", reason=str(exc)) from exc
-                yield Page(items=items, next_page_token=next_token)
-                if not next_token:
-                    return
-                if next_token in seen_tokens:
-                    raise translate_invalid_response_error(
-                        operation="getEntriesRelations",
-                        reason="pagination returned a repeated nextPageToken",
-                    )
-                seen_tokens.add(next_token)
-                page_token = next_token
+        if options.recursive:
+            return Pager(lambda: self._recursive_relation_pages(entry_id, options))
+        return Pager(lambda: self._direct_relation_pages(entry_id, options))
 
-        return Pager(load)
+    def _recursive_relation_pages(
+        self,
+        entry_id: str,
+        options: RelationOptions,
+    ) -> Iterator[Page[EntryRelation]]:
+        direct_options = replace(options, scope=None, recursive=False, max_depth=None)
+        pending = deque([(entry_id, 0)])
+        seen_ids = {entry_id}
+        while pending:
+            current_id, depth = pending.popleft()
+            next_depth = depth + 1
+            expand_neighbors = options.max_depth is None or next_depth < options.max_depth
+            for page in self._direct_relation_pages(current_id, direct_options):
+                items: list[EntryRelation] = []
+                for relation in page.items:
+                    if relation.id in seen_ids:
+                        continue
+                    seen_ids.add(relation.id)
+                    if expand_neighbors:
+                        pending.append((relation.id, next_depth))
+                    if options.scope is None or relation.scope == options.scope:
+                        items.append(relation)
+                if items:
+                    yield Page(items=tuple(items))
+
+    def _direct_relation_pages(
+        self,
+        entry_id: str,
+        options: RelationOptions,
+    ) -> Iterator[Page[EntryRelation]]:
+        page_token: str | None = None
+        seen_tokens: set[str] = set()
+        while True:
+            try:
+                payload = NavigationConverter.relations_payload(
+                    entry_id,
+                    options,
+                    page_token=page_token,
+                    dto_module=self._dto_module,
+                )
+                items, next_token = NavigationConverter.relations_result(
+                    self._api.get_relations(payload),
+                    dto_module=self._dto_module,
+                )
+            except ValidationError as exc:
+                raise translate_dto_validation_error(operation="getEntriesRelations", reason=str(exc)) from exc
+            yield Page(items=items, next_page_token=next_token)
+            if not next_token:
+                return
+            if next_token in seen_tokens:
+                raise translate_invalid_response_error(
+                    operation="getEntriesRelations",
+                    reason="pagination returned a repeated nextPageToken",
+                )
+            seen_tokens.add(next_token)
+            page_token = next_token
 
     def rename_entry(self, *, entry_id: str, name: str) -> None:
         try:

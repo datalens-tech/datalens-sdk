@@ -18,12 +18,15 @@ from datalens_sdk._generated.dto import (
 )
 from datalens_sdk.converter.navigation import NavigationConverter
 from datalens_sdk.domain.collection import Collection
+from datalens_sdk.domain.dashboard import Dashboard
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.folder import Folder
 from datalens_sdk.domain.navigation import CollectionSummary, EntryScope, EntrySummary, WorkbookSummary
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.domain.workbook import Workbook
 from datalens_sdk.errors import DataLensConfigurationError
+
+_RELATIONS_RPC = "/rpc/getEntriesRelations"
 
 
 class RecordedTransport:
@@ -62,6 +65,19 @@ def _entry(entry_id: str, *, name: str = "Entry", type: str = "chart_node") -> d
         "name": name,
         "key": f"folder/{name}",
     }
+
+
+def _relation_page(*relations: tuple[str, str], token: str | None = None) -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={
+            "relations": [
+                {"entryId": entry_id, "scope": scope, "type": "", "workbookId": "workbook-1"}
+                for entry_id, scope in relations
+            ],
+            "nextPageToken": token,
+        },
+    )
 
 
 @pytest.mark.parametrize(
@@ -449,6 +465,172 @@ def test_entry_objects_get_paginated_relations() -> None:
     ]
 
 
+def test_recursive_relations_use_shortest_depth_and_visit_ids_once() -> None:
+    recorder = RecordedTransport(
+        {
+            _RELATIONS_RPC: [
+                _relation_page(("dashboard", "dash"), ("chart-a", "widget"), token="next"),
+                _relation_page(("chart-b", "widget"), ("dataset", "dataset")),
+                _relation_page(("dataset", "dataset"), ("dashboard", "dash"), ("chart-b", "widget")),
+                _relation_page(("chart-a", "widget"), ("dataset", "dataset")),
+                _relation_page(("connection", "connection")),
+            ]
+        }
+    )
+    client = _client(recorder)
+    dashboard = Dashboard(id="dashboard", data={}, _operations=client._dashboard_service)
+    pager = dashboard.get_relations(
+        link_direction="from", recursive=True, max_depth=2, page_size=3, include_permissions_info=True
+    )
+
+    pages = list(pager.pages())
+
+    assert [[item.id for item in page.items] for page in pages] == [["chart-a"], ["chart-b", "dataset"], ["connection"]]
+    assert [page.next_page_token for page in pages] == [None, None, None]
+    options = {"linkDirection": "from", "limit": 3, "includePermissionsInfo": True}
+    assert recorder.bodies(_RELATIONS_RPC) == [
+        {"entryIds": ["dashboard"], **options},
+        {"entryIds": ["dashboard"], "pageToken": "next", **options},
+        {"entryIds": ["chart-a"], **options},
+        {"entryIds": ["chart-b"], **options},
+        {"entryIds": ["dataset"], **options},
+    ]
+
+
+def test_recursive_relations_filter_output_and_follow_empty_and_filtered_pages() -> None:
+    recorder = RecordedTransport(
+        {
+            _RELATIONS_RPC: [
+                _relation_page(token="next"),
+                _relation_page(("dataset", "dataset")),
+                _relation_page(("intermediate", "future_scope"), token="next"),
+                _relation_page(),
+                _relation_page(("chart", "widget")),
+                _relation_page(("dashboard", "dash")),
+                _relation_page(),
+            ]
+        }
+    )
+    connection = _client(recorder).domain_connection(id="connection", type="postgres")
+
+    pages = list(connection.get_relations(link_direction="to", recursive=True, scope="dash").pages())
+
+    assert [[(item.id, item.scope, item.type, item.workbook_id) for item in page.items] for page in pages] == [
+        [("dashboard", "dash", "", "workbook-1")]
+    ]
+    options = {"linkDirection": "to", "limit": 100}
+    assert recorder.bodies(_RELATIONS_RPC) == [
+        {"entryIds": ["connection"], **options},
+        {"entryIds": ["connection"], "pageToken": "next", **options},
+        {"entryIds": ["dataset"], **options},
+        {"entryIds": ["dataset"], "pageToken": "next", **options},
+        {"entryIds": ["intermediate"], **options},
+        {"entryIds": ["chart"], **options},
+        {"entryIds": ["dashboard"], **options},
+    ]
+
+
+def test_recursive_relations_are_lazy_and_depth_one_replays_root_pages() -> None:
+    recorder = RecordedTransport(
+        {
+            _RELATIONS_RPC: [
+                _relation_page(("chart-a", "widget"), token="next"),
+                _relation_page(("chart-a", "widget"), token="next"),
+                _relation_page(("chart-b", "widget")),
+            ]
+        }
+    )
+    connection = _client(recorder).domain_connection(id="connection", type="postgres")
+    pager = connection.get_relations(link_direction="to", recursive=True, max_depth=1, page_size=1)
+    first = iter(pager)
+
+    assert recorder.requests == []
+    assert next(first).id == "chart-a"
+    root_payload = {"entryIds": ["connection"], "linkDirection": "to", "limit": 1}
+    assert recorder.bodies(_RELATIONS_RPC) == [root_payload]
+
+    assert [item.id for item in pager] == ["chart-a", "chart-b"]
+    assert recorder.bodies(_RELATIONS_RPC) == [root_payload, root_payload, {**root_payload, "pageToken": "next"}]
+
+
+@pytest.mark.parametrize("recursive", [False, True])
+def test_relation_pagers_reject_a_repeated_cursor_on_one_entry(recursive: bool) -> None:
+    recorder = RecordedTransport(
+        {
+            _RELATIONS_RPC: [
+                _relation_page(("chart-a", "widget"), token="next"),
+                _relation_page(("chart-b", "widget"), token="next"),
+            ]
+        }
+    )
+    connection = _client(recorder).domain_connection(id="connection", type="postgres")
+    pages = connection.get_relations(link_direction="to", recursive=recursive).pages()
+
+    assert [next(pages).items[0].id for _ in range(2)] == ["chart-a", "chart-b"]
+    with pytest.raises(dl.InvalidResponseError, match=r"getEntriesRelations.*repeated nextPageToken"):
+        next(pages)
+
+    root_payload = {"entryIds": ["connection"], "linkDirection": "to", "limit": 100}
+    assert recorder.bodies(_RELATIONS_RPC) == [root_payload, {**root_payload, "pageToken": "next"}]
+
+
+def test_recursive_relations_propagate_child_api_errors_with_context() -> None:
+    recorder = RecordedTransport(
+        {
+            _RELATIONS_RPC: [
+                _relation_page(("dataset", "dataset")),
+                httpx.Response(
+                    403,
+                    json={"code": "ERR.US.PERMISSION_DENIED", "message": "Access denied"},
+                    headers={"x-request-id": "relations-request"},
+                ),
+            ]
+        }
+    )
+    connection = _client(recorder).domain_connection(id="connection", type="postgres")
+    relations = iter(connection.get_relations(link_direction="to", recursive=True))
+
+    assert next(relations).id == "dataset"
+    with pytest.raises(dl.ForbiddenError) as error:
+        next(relations)
+    assert error.value.context.code == "ERR.US.PERMISSION_DENIED"
+    assert error.value.context.request_id == "relations-request"
+    assert recorder.bodies(_RELATIONS_RPC) == [
+        {"entryIds": ["connection"], "linkDirection": "to", "limit": 100},
+        {"entryIds": ["dataset"], "linkDirection": "to", "limit": 100},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("recursive", "direction", "depth", "error_argument"),
+    [
+        (False, None, 1, "max_depth"),
+        (True, None, None, "link_direction"),
+        (True, "both", None, "link_direction"),
+        (True, "from", 0, "max_depth"),
+        (True, "from", -1, "max_depth"),
+        (True, "from", True, "max_depth"),
+        (True, "from", 1.0, "max_depth"),
+        (True, "from", "1", "max_depth"),
+        ("yes", "from", None, "recursive"),
+    ],
+)
+def test_recursive_relations_reject_invalid_options_eagerly(
+    recursive: object, direction: object, depth: object, error_argument: str
+) -> None:
+    recorder = RecordedTransport({})
+    connection = _client(recorder).domain_connection(id="connection", type="postgres")
+
+    with pytest.raises(dl.DataLensValidationError, match=error_argument):
+        connection.get_relations(
+            recursive=recursive,  # type: ignore[arg-type]
+            link_direction=direction,  # type: ignore[arg-type]
+            max_depth=depth,  # type: ignore[arg-type]
+        )
+
+    assert recorder.requests == []
+
+
 @pytest.mark.parametrize("scope", get_args(EntryScope))
 def test_entry_relation_filters_preserve_supported_scope_payload(scope: EntryScope) -> None:
     recorder = RecordedTransport({"/rpc/getEntriesRelations": httpx.Response(200, json={"relations": []})})
@@ -494,7 +676,8 @@ def test_navigation_write_filters_reject_invalid_scopes_eagerly() -> None:
     assert recorder.requests == []
 
 
-def test_supported_entry_objects_bind_relations_to_navigation() -> None:
+@pytest.mark.parametrize("recursive", [False, True])
+def test_supported_entry_objects_bind_relations_to_navigation(recursive: bool) -> None:
     recorder = RecordedTransport(
         {
             "/rpc/getEntriesRelations": [
@@ -512,12 +695,16 @@ def test_supported_entry_objects_bind_relations_to_navigation() -> None:
     )
 
     for entry in objects:
-        assert list(entry.get_relations()) == []
+        if recursive:
+            assert list(entry.get_relations(link_direction="from", recursive=True, scope="widget", max_depth=1)) == []
+        else:
+            assert list(entry.get_relations()) == []
 
+    options = {"limit": 100, "linkDirection": "from"} if recursive else {"limit": 100}
     assert recorder.bodies("/rpc/getEntriesRelations") == [
-        {"entryIds": ["connection-1"], "limit": 100},
-        {"entryIds": ["dataset-1"], "limit": 100},
-        {"entryIds": ["chart-1"], "limit": 100},
+        {"entryIds": ["connection-1"], **options},
+        {"entryIds": ["dataset-1"], **options},
+        {"entryIds": ["chart-1"], **options},
     ]
 
 

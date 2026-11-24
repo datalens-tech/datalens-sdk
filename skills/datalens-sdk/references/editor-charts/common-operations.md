@@ -89,7 +89,8 @@ verification code failed.
   `include_permissions_info`, `link_direction`, `page_size`, and `scope`.
   `link_direction` is `"from" | "to"`; `scope` is `"dash" | "report" |
   "widget" | "dataset" | "folder" | "connection" | "compute" | "artifact" |
-  "sql_query"`; `page_size` defaults to `100`.
+  "sql_query"`; `page_size` defaults to `100`. For recursive traversal, see
+  [Entry relations](../navigation.md#entry-relations).
 - Delete only after explicit confirmation: fetch the exact chart, then call
   `chart.delete()`; deletion is immediate.
 

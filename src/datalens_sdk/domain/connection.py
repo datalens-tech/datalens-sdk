@@ -138,7 +138,14 @@ class Connection:
         link_direction: LinkDirection | None = None,
         page_size: int = 100,
         scope: EntryScope | None = None,
+        recursive: bool = False,
+        max_depth: int | None = None,
     ) -> Pager[EntryRelation]:
+        """Lazily list direct relations or traverse them in breadth-first order.
+
+        Recursive traversal requires a direction and applies scope to results only.
+        Set max_depth to limit the number of steps from this entry.
+        """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
@@ -150,6 +157,8 @@ class Connection:
                 link_direction=link_direction,
                 page_size=page_size,
                 scope=scope,
+                recursive=recursive,
+                max_depth=max_depth,
             ),
         )
 

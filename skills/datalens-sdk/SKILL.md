@@ -338,6 +338,7 @@ Editor index replaces the public Editor subtree for that installation.
 | A picture of a saved chart or dashboard; a visual check of a result         | [references/screenshots.md](references/screenshots.md)                   |
 | A dashboard link with `state=`: reading, creating, or editing saved selector values; which widgets they reach | [references/dashboard-state.md](references/dashboard-state.md) |
 | Finding, listing, moving, renaming entities; revision history; containers | [references/navigation.md](references/navigation.md)                     |
+| Finding direct or recursive dependencies and dependents | [Entry relations](references/navigation.md#entry-relations) |
 | Listing DataLens REST catalogs or selecting one for a Trino cluster (Yandex Cloud only) | [references/rest-catalogs.md](references/rest-catalogs.md)                |
 | Creating, getting, listing, updating, or deleting a Yandex Cloud environment | [references/cloud-environments.md](references/cloud-environments.md) |
 | Creating bucket upload/download URLs, reading object metadata, or listing bucket keys (Yandex Cloud only) | [references/cloud-environment-storage.md](references/cloud-environment-storage.md) |
@@ -463,7 +464,7 @@ Use the non-executing allowlisted reader from [references/setup.md](references/s
 | `references/chart-data.md`                      | chart tables, typed results, runtime params, execution by ID, limits, and result-handling permission |
 | `references/screenshots.md`                     | server-rendered PNG of a chart or dashboard, result-handling rule, tab and params, temporary link  |
 | `references/dashboard-state.md`                 | saved dashboard states: format, prefixes, orphans, builder rules, `params_for`/`effects`, `url()` |
-| `references/navigation.md`                      | listing/finding/moving entities, revision history; collections, workbooks, folders                                   |
+| `references/navigation.md`                      | finding, listing, and moving entries, entry relations, revision history, collections, workbooks, and folders |
 | `references/rest-catalogs.md`                   | Yandex Cloud REST catalog listing and Trino catalog membership references                                           |
 | `references/trino-clusters.md`                  | Yandex Cloud managed Trino clusters, resource presets, lifecycle, and catalog membership                           |
 | `references/spark-clusters.md`                  | Yandex Cloud managed Spark clusters, resource presets, driver/executor pools, and lifecycle                        |

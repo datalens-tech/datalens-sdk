@@ -1,6 +1,8 @@
 # Navigation
 
-Read this when you need to find, list, move, or rename entities, inspect their revision history, or manage the containers they live in: collections, workbooks, and folders.
+Read this when you need to find, list, move, or rename entities, follow their
+relations, inspect their revision history, or manage collections, workbooks,
+and folders.
 
 ## The container model
 
@@ -126,19 +128,59 @@ ds = client.get.dataset(by_id=matches[0].id)
 
 Scope the search when you can: inside a known workbook use `wb.list_entries(name=..., scope="dataset")` instead of the global listing. The server-side `name=` filter only narrows candidates; always compare the derived display leaf exactly. This is also the adopt-on-`ConflictError` lookup (hard rule 7).
 
-## Relations: what an entry depends on
+## Entry relations
 
-Every entry object (`Connection`, `Dataset`, `Dashboard`, and all chart types) exposes `get_relations()` — the linked entries, e.g. the dataset and connection behind a chart, or the charts built on a dataset. Containers (`Folder`, `Collection`, `Workbook`) do **not** have it.
+`Connection`, `Dataset`, `Dashboard`, and chart objects expose `get_relations()`.
+The entry must be bound to a client and have an ID.
+
+Containers (`Folder`, `Collection`, `Workbook`) do **not** have it.
+Use `list_entries()` to browse their contents.
+
+`get_relations()` returns a lazy `Pager[EntryRelation]`. Set
+`link_direction="from"` for dependencies or `link_direction="to"` for
+entries that use the starting entry. Use `relation.scope` for the entry
+category and `relation.type` for the subtype, which can be empty.
+
+The default mode (`recursive=False`) fetches direct relations in server
+order. With no `link_direction`, the SDK omits `linkDirection` from the
+RPC request, leaving the direction to the server. In one YaTeam API v3
+check on a Wizard chart, omitting the direction returned the same dataset
+as `"from"`.
+
+With `recursive=True`, pass an explicit direction. The pager yields each
+reachable entry ID once, starting with the nearest entries and excluding
+the starting entry. `max_depth` accepts a positive integer in recursive mode.
+Direct neighbors are at depth 1, and entries at the depth limit are included.
+Omit `max_depth` to traverse all reachable entries.
+
+In direct mode, the SDK passes `scope` to the server. In recursive mode,
+`scope` filters the returned entries while traversal follows all scopes.
+`page_size` sets the limit per RPC request (default `100`), and
+`include_permissions_info` applies to each request. Recursive `.pages()`
+yields nonempty pages with `next_page_token=None`.
+
+To show a dashboard's direct dependencies, iterate the relation pager and
+display the metadata.
 
 ```python
-ds = client.get.dataset(by_id=dataset_id)
-for rel in ds.get_relations():  # Pager[EntryRelation]
-    print(rel.id, rel.scope, rel.type, rel.key, rel.workbook_id)
-# filters: link_direction= ("from" | "to" — which side of the dependency edge;
-#          omit for all related entries), scope=, include_permissions_info=, page_size=100
+dashboard = client.get.dashboard(by_id=dashboard_id)
+direct_dependencies = dashboard.get_relations(link_direction="from")
+for relation in direct_dependencies:
+    print(relation.id, relation.scope, relation.type, relation.key, relation.workbook_id)
 ```
 
-Check relations before deleting anything shared — a dataset with dependent charts will break them.
+Use recursive traversal to follow a dashboard's full dependency chain or
+find dashboards that use a connection within three links.
+
+```python
+dashboard = client.get.dashboard(by_id=dashboard_id)
+dependencies = dashboard.get_relations(link_direction="from", recursive=True)
+
+connection = client.get.connection(by_id=connection_id)
+dashboards = connection.get_relations(link_direction="to", recursive=True, max_depth=3, scope="dash")
+```
+
+Check for dependents before deleting a shared entry.
 
 ## Revision history on an entry
 

@@ -260,13 +260,12 @@ relations = chart.get_relations(
     scope="dash",
 )
 for relation in relations:
-    print(relation.id, relation.type)
+    print(relation.id, relation.scope)
 ```
 
-`link_direction` is `"from" | "to"`; `scope` is one of `"dash"`, `"report"`,
-`"widget"`, `"dataset"`, `"folder"`, `"connection"`, `"compute"`, `"artifact"`,
-or `"sql_query"`. All relation arguments are optional and `page_size` defaults
-to `100`.
+In direct mode, all arguments are optional and `page_size` defaults to
+`100`. See [Entry relations](../navigation.md#entry-relations) for
+directions, scope filters, and recursive traversal.
 
 Exporting a QL chart to a file (`chart.to_file(...)`), importing, and cloning
 via `client.raw` work the same way as for other entries — see

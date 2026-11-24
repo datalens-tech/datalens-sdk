@@ -9,6 +9,10 @@
   Activities source.
 - Preserve Yandex Cloud Wizard pivot metadata in `ChartDataTable.aggregation`,
   including the detail, subtotal, or total level and its grouping columns.
+- Traverse entry dependencies and dependents with
+  `get_relations(recursive=True, link_direction=...)` on dashboards, charts,
+  datasets, and connections. Use `max_depth` to limit the number of links
+  followed from the starting entry.
 
 ### Fixed
 
