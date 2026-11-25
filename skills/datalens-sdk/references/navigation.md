@@ -1,8 +1,8 @@
 # Navigation
 
-Read this when you need to find, list, move, or rename entities, follow their
-relations, inspect their revision history, or manage collections, workbooks,
-and folders.
+Read this when you need to find, list, link to, move, or rename entities,
+follow their relations, inspect their revision history, or manage collections,
+workbooks, and folders.
 
 ## The container model
 
@@ -12,6 +12,37 @@ Two organizational schemes coexist, per installation:
 - **Folders** — a path-based directory tree (`Users/someone/reports`) that holds entries directly. Only installations with a directory tree have usable folders; check `client.capabilities["namespaces"]` before relying on them, and see [core-concepts.md](core-concepts.md) for `NotSupportedError` gating.
 
 `Collection`, `Workbook`, and `Folder` objects are all `EntryLocation`s — pass them directly as `location=` / `collection=` / `parent=` to any create builder or `move()`, no id plumbing.
+
+## Object links
+
+When sharing a saved object, use its display name or ID as the link text.
+Use the confirmed object ID (`.id` on the SDK object, `EntrySummary`, or
+`EntryRelation`) and the route for its type. The route accepts the ID alone.
+
+Use the browser-facing UI base URL of the selected DataLens installation.
+Yandex Cloud defaults to `https://datalens.ru`. Installation overlays can
+supply their own default. Use the UI base supplied for the installation when
+one is known, including a configured `ui_base_url`. Trim the trailing slash
+from the base and append the appropriate path.
+
+| Object | UI path |
+|---|---|
+| Dashboard | `/{id}` |
+| Wizard chart | `/wizard/{id}` |
+| QL chart | `/ql/{id}` |
+| Editor chart | `/editor/{id}` |
+| Dataset | `/datasets/{id}` |
+| Connection | `/connections/{id}` |
+| Folder (where folder navigation is available) | `/navigation/{id}` |
+| Workbook | `/workbooks/{id}` |
+| Collection | `/collections/{id}` |
+| Standalone HTML page | `/pages/{id}` |
+
+For entries with `scope="widget"`, use the typed chart or its known entry
+subtype to choose the chart route. If the chart family or UI base is unknown,
+report the ID and use a clickable link once both are known. For a link to a
+specific dashboard tab with saved selector values, use
+[`state.url()`](dashboard-state.md#links-and-ui_base_url).
 
 ## Global listing: `client.navigation.get_entries()`
 
