@@ -470,8 +470,8 @@ def test_log_is_unavailable_without_spark_service(monkeypatch: pytest.MonkeyPatc
         INSTALLATION = "yacloud"
         DEFAULT_BASE_URL = "https://yateam.test"
 
-    with YaTeamStyleClient(auth=None, transport=httpx.MockTransport(transport.handle)) as client:
+    with YaTeamStyleClient(auth=None, transport=httpx.MockTransport(transport.handle)) as yateam_client:
         with pytest.raises(AttributeError) as exc:
-            getattr(client.list, action_name)
+            getattr(yateam_client.list, action_name)
         assert type(exc.value) is AttributeError
     assert transport.requests == []

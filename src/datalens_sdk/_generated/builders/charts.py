@@ -1423,6 +1423,10 @@ class AdvancedChartNodeNodeCreate(_BaseEditorNodeCreate):
     def sources(self, value: str) -> Self:
         return self._set_tab('sources', value)
 
+class YacloudAdvancedChartNodeNodeCreate(AdvancedChartNodeNodeCreate):
+    def activities(self, value: str | None) -> Self:
+        return self._set_tab('activities', value)
+
 class ControlNodeNodeCreate(_BaseEditorNodeCreate):
     def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:
         super().__init__(
@@ -1554,8 +1558,8 @@ class YacloudEditorChartCreateFactory:
     def __init__(self, operations: ChartOperations) -> None:
         self._operations = operations
 
-    def advanced_chart(self, *, name: str, location: EntryLocation) -> AdvancedChartNodeNodeCreate:
-        return AdvancedChartNodeNodeCreate(name=name, location=location, operations=self._operations)
+    def advanced_chart(self, *, name: str, location: EntryLocation) -> YacloudAdvancedChartNodeNodeCreate:
+        return YacloudAdvancedChartNodeNodeCreate(name=name, location=location, operations=self._operations)
 
     def selector(self, *, name: str, location: EntryLocation) -> ControlNodeNodeCreate:
         return ControlNodeNodeCreate(name=name, location=location, operations=self._operations)

@@ -342,7 +342,9 @@ class ChartService(ChartOperations):
     def create_editor_chart(self, builder: _BaseEditorNodeCreate) -> EditorChart:
         spec = builder.to_spec()
         try:
-            dto_obj = EditorChartConverter.from_domain_create(spec, dto_module=self._dto_module)
+            dto_obj = EditorChartConverter.from_domain_create(
+                spec, installation=self._installation, dto_module=self._dto_module
+            )
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="createEditorChart", reason=str(exc)) from exc
         response = self._api.create_editor(dto_obj.to_payload())
@@ -427,7 +429,9 @@ class ChartService(ChartOperations):
             )
         _, editor_dto_module = self._validate_editor_update_wire_type(wire_type)
         try:
-            dto_obj = EditorChartConverter.from_domain_update(builder, dto_module=editor_dto_module)
+            dto_obj = EditorChartConverter.from_domain_update(
+                builder, installation=self._installation, dto_module=editor_dto_module
+            )
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="updateEditorChart", reason=str(exc)) from exc
         response = self._api.update_editor(dto_obj.to_payload())
@@ -447,7 +451,7 @@ class ChartService(ChartOperations):
         _, editor_dto_module = self._validate_editor_update_wire_type(chart.wire_type)
         try:
             dto_obj = EditorChartConverter.from_domain_publish_revision(
-                chart, rev_id=rev_id, dto_module=editor_dto_module
+                chart, rev_id=rev_id, installation=self._installation, dto_module=editor_dto_module
             )
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="updateEditorChart", reason=str(exc)) from exc

@@ -5,8 +5,11 @@ examples, and limits.
 
 Factory: `client.create.editor_chart.advanced_chart`.
 `chart.wire_type`: `advanced-chart_node`.
-Supported create/update tab methods: `controls(str)`, `meta(str)`,
-`params(str)`, `prepare(str)`, `sources(str)`.
+Both public installations support `controls(str)`, `meta(str)`, `params(str)`,
+`prepare(str)`, and `sources(str)` on create and update.
+
+On Yandex Cloud, create and update also support `activities(str | None)`.
+Pass `None` to omit the optional Activities tab from the replacement payload.
 
 ## Stable contract
 

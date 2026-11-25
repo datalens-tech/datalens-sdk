@@ -39,6 +39,7 @@ _DEFAULT_RETRYABLE_STATUS_CODES: frozenset[int] = frozenset(
         521,
     }
 )
+_SCREENSHOT_OPERATIONS = frozenset({"getChartScreenshot", "getDashScreenshot"})
 
 
 def _dict_with_string_keys(value: object) -> dict[str, object]:
@@ -53,6 +54,26 @@ def _api_error_details(value: object) -> dict[str, object] | list[object] | None
     if isinstance(value, list):
         return list(value) or None
     return None
+
+
+def _screenshot_error_context(payload: object) -> APIErrorContext | None:
+    if not isinstance(payload, Mapping) or isinstance(payload.get("data"), str):
+        return None
+    status = payload.get("status")
+    code = payload.get("code")
+    message = payload.get("message")
+    if not isinstance(status, (int, float)) or isinstance(status, bool):
+        return None
+    if isinstance(status, float) and not status.is_integer():
+        return None
+    if not isinstance(code, str) or not isinstance(message, str):
+        return None
+    return APIErrorContext(
+        status_code=int(status),
+        code=code,
+        message=message,
+        details=_api_error_details(payload.get("details")),
+    )
 
 
 def retry_after_seconds(value: str | None) -> float | None:
@@ -221,7 +242,16 @@ class DataLensHTTPClient:
         )
 
     @staticmethod
-    def _api_error(exc: httpx.HTTPStatusError, *, attempts: int) -> DataLensAPIError:
+    def _response_error(context: APIErrorContext, response: httpx.Response, *, attempts: int) -> DataLensAPIError:
+        context.request_url = str(response.request.url)
+        context.request_id = response.headers.get("x-request-id")
+        context.request_method = response.request.method
+        context.attempts = attempts
+        context.retry_after = retry_after_seconds(response.headers.get("retry-after"))
+        return DataLensAPIError(context)
+
+    @classmethod
+    def _api_error(cls, exc: httpx.HTTPStatusError, *, attempts: int) -> DataLensAPIError:
         response = exc.response
         payload: dict[str, object] = {}
         try:
@@ -233,18 +263,15 @@ class DataLensHTTPClient:
         code = payload.get("code")
         message = payload.get("message") or payload.get("error") or response.text or "Request failed"
         details = _api_error_details(payload.get("details"))
-        return DataLensAPIError(
+        return cls._response_error(
             APIErrorContext(
                 status_code=response.status_code,
                 code=str(code) if code is not None else None,
                 message=str(message),
                 details=details,
-                request_url=str(exc.request.url),
-                request_id=response.headers.get("x-request-id"),
-                request_method=exc.request.method,
-                attempts=attempts,
-                retry_after=retry_after_seconds(response.headers.get("retry-after")),
-            )
+            ),
+            response,
+            attempts=attempts,
         )
 
     def _transform_api_error(
@@ -407,6 +434,13 @@ class DataLensHTTPClient:
                 self._log_api_error(invalid_error, operation=operation)
                 response.close()
                 raise invalid_error from exc
+            if response.status_code == HTTPStatus.OK and operation in _SCREENSHOT_OPERATIONS:
+                context = _screenshot_error_context(payload)
+                if context is not None:
+                    api_error = self._response_error(context, response, attempts=attempt)
+                    self._log_api_error(api_error, operation=operation)
+                    response.close()
+                    raise self._transform_api_error(api_error)
             response.close()
             return payload
 

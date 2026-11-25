@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, ClassVar, Generic, Protocol, TypedDict, TypeVa
 import warnings
 
 import httpx
+from typing_extensions import Self
 
 from datalens_sdk.api.chart import ChartAPI, ChartService
 from datalens_sdk.api.cloud_environment import CloudEnvironmentAPI, CloudEnvironmentService
@@ -1408,7 +1409,7 @@ class DataLensClientBase:
         if self._owns_http_client:
             cast(DataLensHTTPClient, self._http).close()
 
-    def __enter__(self) -> DataLensClientBase:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(

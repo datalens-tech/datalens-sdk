@@ -10,6 +10,7 @@ from datalens_sdk._generated.builders.charts import (
     EnterpriseEditorChartCreateFactory,
     YacloudEditorChartCreateFactory,
 )
+from datalens_sdk._runtime.chart_builder_base import _BaseEditorNodeCreate
 from datalens_sdk.domain.navigation import EntryScope
 
 ROOT = Path(__file__).parents[1]
@@ -50,7 +51,7 @@ def _generated_nodes(installation: str) -> dict[str, dict[str, object]]:
     return {_string(_object(node)["factory_method"]): _object(node) for node in nodes.values()}
 
 
-def _documented_routes() -> dict[str, tuple[str, frozenset[str], str]]:
+def _documented_routes(installation: str) -> dict[str, tuple[str, frozenset[str], str]]:
     section = EDITOR_INDEX.read_text().split("## SDK renderer matrix", 1)[1]
     section = section.split("## Runtime documentation router", 1)[0]
     routes: dict[str, tuple[str, frozenset[str], str]] = {}
@@ -60,15 +61,19 @@ def _documented_routes() -> dict[str, tuple[str, frozenset[str], str]]:
         cells = [cell.strip() for cell in line.strip("|").split("|")]
         factory = cells[0].strip("`")
         wire_type = cells[1].strip("`")
-        tabs = frozenset(re.findall(r"`([^`]+)`", cells[3]))
-        link = LINK_PATTERN.search(cells[4])
+        tabs = re.findall(r"`([^`]+)`", cells[3])
+        if installation == "yacloud":
+            tabs.extend(re.findall(r"`([^`]+)`", cells[4]))
+        link = LINK_PATTERN.search(cells[5])
         assert link is not None
-        routes[factory] = (wire_type, tabs, link.group(1))
+        routes[factory] = (wire_type, frozenset(tabs), link.group(1))
     return routes
 
 
-def _leaf_contract(path: Path) -> tuple[set[str], set[str]]:
+def _leaf_contract(path: Path, installation: str) -> tuple[set[str], set[str]]:
     preamble = path.read_text().split("## Minimal payload", 1)[0]
+    if installation == "enterprise":
+        preamble = preamble.split("\nOn Yandex Cloud,", 1)[0]
     code_tokens = set(INLINE_CODE_PATTERN.findall(preamble))
     methods = {
         token.split("(", 1)[0]
@@ -89,35 +94,40 @@ def _minimal_payload_calls(path: Path) -> set[str]:
 
 
 def test_public_editor_routes_match_both_generated_installations() -> None:
-    routes = _documented_routes()
-    enterprise = _generated_nodes("enterprise")
-    yacloud = _generated_nodes("yacloud")
+    for installation in ("enterprise", "yacloud"):
+        routes = _documented_routes(installation)
+        nodes = _generated_nodes(installation)
 
-    assert enterprise == yacloud
-    assert routes.keys() == enterprise.keys() == EXPECTED_FACTORIES
-    for factory, (wire_type, tabs, target) in routes.items():
-        node = enterprise[factory]
-        assert wire_type == node["wire_type"]
-        assert tabs == frozenset(_object(node["data_fields"]))
-        assert target == EXPECTED_LEAVES[factory]
-        assert (EDITOR_DIR / target).is_file()
+        assert routes.keys() == nodes.keys() == EXPECTED_FACTORIES
+        for factory, (wire_type, tabs, target) in routes.items():
+            node = nodes[factory]
+            assert wire_type == node["wire_type"]
+            assert tabs == frozenset(_object(node["data_fields"]))
+            assert target == EXPECTED_LEAVES[factory]
+            assert (EDITOR_DIR / target).is_file()
 
 
 def test_public_renderer_leaves_match_generated_builder_methods_and_types() -> None:
-    nodes = _generated_nodes("yacloud")
-    factory_classes = (YacloudEditorChartCreateFactory, EnterpriseEditorChartCreateFactory)
-    for factory, filename in EXPECTED_LEAVES.items():
-        code_tokens, methods = _leaf_contract(EDITOR_DIR / filename)
-        fields = _object(nodes[factory]["data_fields"])
+    for installation, factory_class in (
+        ("enterprise", EnterpriseEditorChartCreateFactory),
+        ("yacloud", YacloudEditorChartCreateFactory),
+    ):
+        nodes = _generated_nodes(installation)
+        for factory, filename in EXPECTED_LEAVES.items():
+            code_tokens, methods = _leaf_contract(EDITOR_DIR / filename, installation)
+            fields = _object(nodes[factory]["data_fields"])
 
-        assert f"client.create.editor_chart.{factory}" in code_tokens
-        assert nodes[factory]["wire_type"] in code_tokens
-        assert methods == set(fields)
+            assert f"client.create.editor_chart.{factory}" in code_tokens
+            assert nodes[factory]["wire_type"] in code_tokens
+            assert methods == set(fields)
 
-        for factory_class in factory_classes:
             builder_type = get_type_hints(getattr(factory_class, factory))["return"]
             builder_tabs = {
-                name for name, value in vars(builder_type).items() if not name.startswith("_") and callable(value)
+                name
+                for name in dir(builder_type)
+                if not name.startswith("_")
+                and not hasattr(_BaseEditorNodeCreate, name)
+                and callable(getattr(builder_type, name))
             }
             assert builder_tabs == fields.keys()
             for field in fields:

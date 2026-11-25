@@ -631,13 +631,13 @@ def test_foreign_client_never_accesses_spark_application_dtos(monkeypatch: pytes
         DEFAULT_BASE_URL = "https://yateam.test"
 
     with YaTeamStyleClient(auth=None, transport=httpx.MockTransport(transport.handle)) as base:
-        for namespace, name in (
+        for base_namespace, name in (
             (base.create, "spark_application"),
             (base.get, "spark_application"),
             (base.list, "spark_applications"),
         ):
             with pytest.raises(AttributeError) as exc:
-                getattr(namespace, name)
+                getattr(base_namespace, name)
             assert type(exc.value) is AttributeError
     assert transport.requests == []
 

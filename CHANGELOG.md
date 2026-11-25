@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+### Added
+
+- Support the Activities tab on Yandex Cloud Advanced Editor charts during
+  typed creation and updates. Updates to other tabs preserve the saved
+  Activities source.
+- Preserve Yandex Cloud Wizard pivot metadata in `ChartDataTable.aggregation`,
+  including the detail, subtotal, or total level and its grouping columns.
+
+### Fixed
+
+- Preserve the concrete client type in `with ... as client` blocks so
+  installation-specific methods retain their types. Subclasses that override
+  `__enter__` and return `self` can annotate the return type with `Self`.
+- Load the connection when typed creation returns only an ID and a null
+  operation. Keep the known connection ID and destination when the read
+  response omits them so callers can bind a dataset source.
+- Refresh the Yandex Cloud OpenAPI snapshot and keep generation compatible
+  with the updated screenshot, chart-data, and Spark contracts.
+- Preserve the API status, code, message, and request ID when a screenshot
+  RPC returns a structured error in an HTTP 200 response. For a wrapped `429`,
+  honor `Retry-After` and retry when the remaining timeout permits it.
+
+### Documentation
+
+- Clarify typed connection creates, including the `ai_access_level` default
+  and overrides, `builder.connector`, and the accepted certificate, JSON API
+  header, and PromQL authentication types. Describe how to re-fetch a
+  connection created with a pending operation before binding a source.
+
+### Known limitations and follow-up
+
+- Spark cluster updates (`/rpc/updateSparkCluster`) and typed `catalogs` on
+  cluster creation and reads are deferred.
+
 ## 3.3.0 - 2026-11-19
 
 ### Changed

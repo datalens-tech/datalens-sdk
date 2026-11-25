@@ -13,7 +13,7 @@ import datalens_sdk as dl
 from datalens_sdk.api.screenshot import ScreenshotAPI, ScreenshotService
 from datalens_sdk.converter.screenshot import ScreenshotConverter, ScreenshotDtoModule
 from datalens_sdk.domain.screenshot import ScreenshotRequest
-from datalens_sdk.http import DataLensHTTPClient
+from datalens_sdk.http import DataLensHTTPClient, HTTPClientProtocol, RetryPolicy
 
 PNG_BYTES = b"\x89PNG\r\n\x1a\n" + bytes(range(32))
 PNG_BASE64 = base64.b64encode(PNG_BYTES).decode()
@@ -322,11 +322,70 @@ def test_default_screenshot_timeout_is_longer_than_the_default_request_timeout()
     assert request.extensions["timeout"]["read"] == 120
 
 
+@pytest.mark.parametrize("route", ["/rpc/getChartScreenshot", "/rpc/getDashScreenshot"])
+@pytest.mark.parametrize(
+    ("status", "exception_type"),
+    [(302, dl.DataLensAPIError), (403.0, dl.ForbiddenError)],
+)
+def test_screenshot_preserves_api_error_in_successful_http_response(
+    route: str, status: int | float, exception_type: type[dl.DataLensAPIError]
+) -> None:
+    response = httpx.Response(
+        200,
+        json={"status": status, "code": "ERR.RENDER", "message": "render failed"},
+        headers={"x-request-id": "render-request-1"},
+    )
+    recorder = RecordedTransport(screenshot_routes(route, response))
+    client = make_client(recorder)
+
+    entity = (
+        client.get.ql_chart(by_id="chart-1")
+        if route == "/rpc/getChartScreenshot"
+        else client.get.dashboard(by_id="dash-1")
+    )
+
+    with pytest.raises(exception_type) as raised:
+        entity.screenshot()
+
+    assert type(raised.value) is exception_type
+    context = raised.value.context
+    assert context.status_code == int(status)
+    assert context.code == "ERR.RENDER"
+    assert context.message == "render failed"
+    assert context.request_id == "render-request-1"
+    assert context.request_method == "POST"
+    assert context.request_url == f"http://test{route}"
+    assert context.attempts == 1
+    assert len(recorder.calls(route)) == 1
+
+
+def test_screenshot_preserves_api_error_from_injected_client_without_headers() -> None:
+    def post_json_object(path: str, body: dict[str, object], *, retry_policy: RetryPolicy) -> dict[str, object]:
+        assert path == "/rpc/getChartScreenshot"
+        return {"status": 404, "code": "ERR.RENDER_NOT_FOUND", "message": "chart missing"}
+
+    http = cast(HTTPClientProtocol, SimpleNamespace(post_json_object=post_json_object))
+    service = ScreenshotService(api=ScreenshotAPI(http))
+    request = ScreenshotRequest.create(entity_kind="chart", entity_id="chart-1")
+
+    with pytest.raises(dl.NotFoundError) as raised:
+        service.get_screenshot(request)
+
+    context = raised.value.context
+    assert context.status_code == 404
+    assert context.code == "ERR.RENDER_NOT_FOUND"
+    assert context.message == "chart missing"
+    assert context.request_id is None
+
+
 @pytest.mark.parametrize(
     ("response", "error"),
     [
         ({}, dl.DTOValidationError),
         ({"data": 123}, dl.DTOValidationError),
+        ({"status": 403, "message": "missing code"}, dl.DTOValidationError),
+        ({"status": True, "code": "ERR.RENDER", "message": "invalid status"}, dl.DTOValidationError),
+        ({"status": 403.5, "code": "ERR.RENDER", "message": "invalid status"}, dl.DTOValidationError),
         ({"data": "not base64 !!"}, dl.InvalidResponseError),
     ],
 )
@@ -375,21 +434,25 @@ def test_screenshot_is_not_supported_when_the_generated_contract_has_no_screensh
     assert recorder.requests == []
 
 
-def rate_limited(retry_after: str | None) -> httpx.Response:
+def rate_limited(retry_after: str | None, *, wrapped: bool = False) -> httpx.Response:
     headers = {} if retry_after is None else {"retry-after": retry_after}
-    return httpx.Response(429, headers=headers, json={"message": "Too many requests, please try again later."})
+    message = "Too many requests, please try again later."
+    if wrapped:
+        return httpx.Response(200, headers=headers, json={"status": 429, "code": "ERR.RATE_LIMIT", "message": message})
+    return httpx.Response(429, headers=headers, json={"message": message})
 
 
+@pytest.mark.parametrize("wrapped", [False, True])
 @pytest.mark.parametrize(("retry_after", "expected_wait"), [("7", 7.0), ("0", 1.0)])
 def test_screenshot_waits_out_the_rate_limit_named_by_the_server(
-    monkeypatch: pytest.MonkeyPatch, retry_after: str, expected_wait: float
+    monkeypatch: pytest.MonkeyPatch, retry_after: str, expected_wait: float, wrapped: bool
 ) -> None:
     sleeps: list[float] = []
     monkeypatch.setattr("datalens_sdk.api.screenshot.time.sleep", sleeps.append)
     recorder = RecordedTransport(
         screenshot_routes(
             "/rpc/getChartScreenshot",
-            [rate_limited(retry_after), httpx.Response(200, json={"data": PNG_BASE64})],
+            [rate_limited(retry_after, wrapped=wrapped), httpx.Response(200, json={"data": PNG_BASE64})],
         )
     )
     chart = make_client(recorder).get.ql_chart(by_id="chart-1")
@@ -421,19 +484,20 @@ def test_temp_s3_url_waits_out_the_rate_limit_too(monkeypatch: pytest.MonkeyPatc
     assert sleeps == [53.0]
 
 
+@pytest.mark.parametrize("wrapped", [False, True])
 @pytest.mark.parametrize(
     ("retry_after", "expected_retry_after"),
     [(None, None), ("soon", None), ("500", 500.0), ("29.5", 29.5)],
 )
 def test_screenshot_raises_rate_limit_error_when_the_wait_is_unknown_or_leaves_no_time_for_the_request(
-    monkeypatch: pytest.MonkeyPatch, retry_after: str | None, expected_retry_after: float | None
+    monkeypatch: pytest.MonkeyPatch, retry_after: str | None, expected_retry_after: float | None, wrapped: bool
 ) -> None:
     sleeps: list[float] = []
     monkeypatch.setattr("datalens_sdk.api.screenshot.time.sleep", sleeps.append)
     recorder = RecordedTransport(
         screenshot_routes(
             "/rpc/getDashScreenshot",
-            [rate_limited(retry_after), httpx.Response(200, json={"data": PNG_BASE64})],
+            [rate_limited(retry_after, wrapped=wrapped), httpx.Response(200, json={"data": PNG_BASE64})],
         )
     )
     dashboard = make_client(recorder).get.dashboard(by_id="dash-1")

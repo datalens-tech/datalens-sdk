@@ -188,7 +188,7 @@ def test_editor_create_generation_rejects_installation_specific_shared_wire_type
     assert "Editor create wire type 'advanced-chart_node'" in message
     assert "'first'" in message
     assert "'second'" in message
-    assert "Per-installation Editor create DTOs and builders are not supported" in message
+    assert "Only optional Advanced Activities may vary across installations." in message
 
 
 @pytest.mark.parametrize("drift", ["fields", "requiredness"])
@@ -211,7 +211,7 @@ def test_editor_update_dto_generation_rejects_installation_specific_shared_wire_
     assert "'advanced-chart_node'" in message
     assert "'first'" in message
     assert "'second'" in message
-    assert "Per-installation Editor update DTOs are not supported" in message
+    assert "Only optional Advanced Activities may vary across installations." in message
 
 
 def test_editor_discriminator_requires_type_property() -> None:

@@ -17,6 +17,7 @@ Builder behavior (same for every connector):
   `NotSupportedError` immediately. Use `fields_help()` and
   `allowed_values(field)` instead of guessing.
 - `.build()` raises `DataLensValidationError` listing the missing required fields before any HTTP call.
+- Read the selected connector type from `builder.connector`.
 - Every builder self-describes: `required_fields()`, `optional_fields()`, `missing_required()`, `allowed_values(field)`, and `fields_help()` (a `dict[str, FieldHelp]` with required/default/allowed per field). Use these instead of guessing — connector fields vary a lot.
 
 **Credentials are secrets.** `password`, `token`, `access_token`, and similar builder values must come from the environment (`os.environ[...]`) — never hardcode them in scripts, never print or echo them, and never write them into `.env` yourself (the user does that).
@@ -24,11 +25,11 @@ Builder behavior (same for every connector):
 ## Factory catalog
 
 The factory surface is generated per installation. Enterprise exposes a subset
-of the Yandex Cloud surface; every shared connector has identical builder
-fields on both. This table documents the public package, but the configured
-client's `client.capabilities["connectors"]` inventory is authoritative. If a
-listed factory is absent there, report it as unavailable instead of calling or
-reconstructing it.
+of the Yandex Cloud factories, and builder fields may vary by installation.
+Use the configured client's `client.capabilities["connectors"]` inventory and
+the selected builder's field metadata. If a factory is absent from the
+inventory, report it as unavailable on this installation. Do not call or
+reconstruct it.
 
 ### Databases
 
@@ -76,6 +77,19 @@ Accessing a factory that does not exist on the selected client raises plain
 `AttributeError`, so `hasattr(client.create.connection, "bigquery")` is a safe
 probe.
 
+## Typed create fields
+
+- On Yandex Cloud builders that expose `ssl_ca`, pass certificate text
+  (`str`) or `None`.
+- JSON API `plain_headers` and `secret_headers` accept
+  `Mapping[str, str | None] | None`. Use string header names and string or
+  `None` values.
+- On Yandex Cloud, PromQL `auth_type` accepts `"header"` or `"password"`.
+- Typed creates for Yandex Cloud connectors that expose `ai_access_level`
+  send `"allow"` by default. Use `.ai_access_level("allow_trusted")` or
+  `.ai_access_level("deny")` to override the default. Raw creates use the
+  snapshot and any explicit overrides.
+
 ## Canonical example: ClickHouse
 
 ```python
@@ -102,11 +116,18 @@ conn = (
 `data_export_forbidden` use the strings `"on"` / `"off"`.
 
 - `raw_sql_level="dashsql"` is valid when QL access was requested; do not force it back to `"off"` as a generic safety measure.
-- After creation, re-fetch through the returned id. Expect `password` to be absent from `saved.raw`; absence is successful redaction.
+- The SDK loads the connection when creation returns only an ID and no
+  operation. If the response includes a pending operation, `.build()` can
+  return a connection with an empty `type`. Once the connection is available,
+  re-fetch it with `client.get.connection(by_id=conn.id, workbook_id=workbook_id)`
+  before binding a source. Pass the destination workbook's ID for workbook
+  connections and omit `workbook_id` for other locations.
+- An absent `password` field is expected in a connection read response.
 
 ## Binding a source
 
-A source is not a standalone entity — it binds one table or query of a connection for use in a dataset:
+A source binds one table or query of a connection for use in a dataset. The
+example uses a fully loaded ClickHouse connection.
 
 ```python
 src = (

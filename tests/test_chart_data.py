@@ -75,6 +75,59 @@ def test_chart_data_preserves_tables_columns_and_json_values(client_cls: ClientC
     assert recorder.body() == {"chartId": "chart-1"}
 
 
+def test_wizard_pivot_preserves_grouping_and_tables() -> None:
+    schema = [
+        {"name": "City", "type": "string"},
+        {"name": "Channel", "type": "string"},
+        {"name": "Orders", "type": "integer"},
+    ]
+    recorder = RecordedTransport(
+        httpx.Response(
+            200,
+            json={
+                "chartType": "wizard",
+                "results": [
+                    {
+                        "schema": schema,
+                        "aggregation": {"type": "detail", "groupBy": [0, 1]},
+                        "rows": [["Moscow", None, 10], ["Moscow", "Web", 20]],
+                    },
+                    {
+                        "schema": schema,
+                        "aggregation": {"type": "subtotal", "groupBy": [0]},
+                        "rows": [["Moscow", None, 30]],
+                    },
+                    {
+                        "schema": schema,
+                        "aggregation": {"type": "total", "groupBy": []},
+                        "rows": [[None, None, 30]],
+                    },
+                    {"schema": schema, "rows": [["Kazan", "Web", 5]]},
+                ],
+            },
+        )
+    )
+    result = make_client(recorder).data.get_chart_data(chart_id="pivot-1")
+
+    assert isinstance(result, dl.WizardChartData)
+    assert [table.aggregation for table in result.results] == [
+        dl.ChartDataAggregation(type="detail", group_by=(0, 1)),
+        dl.ChartDataAggregation(type="subtotal", group_by=(0,)),
+        dl.ChartDataAggregation(type="total", group_by=()),
+        None,
+    ]
+    assert [table.rows for table in result.results] == [
+        (("Moscow", None, 10), ("Moscow", "Web", 20)),
+        (("Moscow", None, 30),),
+        ((None, None, 30),),
+        (("Kazan", "Web", 5),),
+    ]
+    assert all(
+        tuple(column.name for column in table.schema) == ("City", "Channel", "Orders") for table in result.results
+    )
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getChartData"]
+
+
 @pytest.mark.parametrize(
     ("response", "expected"),
     [

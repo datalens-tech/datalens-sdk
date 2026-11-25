@@ -1,6 +1,7 @@
 from datalens_sdk.domain.chart import Chart
 from datalens_sdk.domain.chart_data import (
     ChartData,
+    ChartDataAggregation,
     ChartDataTable,
     EditorChartData,
     EditorChartDataColumn,
@@ -252,6 +253,7 @@ __all__ = [
     "CacheInvalidationSource",
     "Chart",
     "ChartData",
+    "ChartDataAggregation",
     "ChartDataTable",
     "CloudEnvironment",
     "CloudEnvironmentCreate",

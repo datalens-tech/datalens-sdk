@@ -125,10 +125,10 @@ from datalens_sdk import (
     WorkbookUpdate,
 )
 from datalens_sdk._generated.builders.charts import (
-    AdvancedChartNodeNodeCreate,
     EnterpriseEditorChartCreateFactory,
     LineWizardChartCreate,
     WizardChartCreateFactory,
+    YacloudAdvancedChartNodeNodeCreate,
     YacloudEditorChartCreateFactory,
 )
 from datalens_sdk._generated.builders.dataset_sources import (
@@ -277,6 +277,13 @@ def test_trino_read_actions_have_yc_only_static_types() -> None:
         assert_type(preset_page, Page[TrinoResourcePreset])
         assert_type(cluster_page.items, tuple[TrinoCluster, ...])
         assert_type(preset_page.items, tuple[TrinoResourcePreset, ...])
+
+
+def _check_context_manager_client_types(yacloud: DataLensClientYC, enterprise: DataLensClientEnterprise) -> None:
+    with yacloud as yc_client:
+        assert_type(yc_client, DataLensClientYC)
+    with enterprise as enterprise_client:
+        assert_type(enterprise_client, DataLensClientEnterprise)
 
 
 def _check_entry_mutation_return_types(
@@ -1383,10 +1390,9 @@ def test_object_crud_and_typed_destinations_are_visible_to_static_tools() -> Non
     assert_type(hierarchy, WizardHierarchy)
     assert_type(wizard_chart.update.add_aggregated_measure(unique_cities), WizardChartUpdate)
     assert_type(wizard_chart.update.add_hierarchy(hierarchy), WizardChartUpdate)
-    assert_type(
-        client.create.editor_chart.advanced_chart(location=workbook, name="Editor chart"),
-        AdvancedChartNodeNodeCreate,
-    )
+    editor_builder = client.create.editor_chart.advanced_chart(location=workbook, name="Editor chart")
+    assert_type(editor_builder, YacloudAdvancedChartNodeNodeCreate)
+    assert_type(editor_builder.sources("module.exports = {};").activities(None), YacloudAdvancedChartNodeNodeCreate)
 
 
 def test_dataset_update_public_signatures_avoid_broad_user_argument_types() -> None:

@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import os
+from typing import Literal
 
 from datalens_sdk import DashboardTab, DataLensClientYC, EntryLocation
 
@@ -44,11 +45,13 @@ def int_env(name: str, *, default: int) -> int:
         raise SystemExit(f"{name} must be an integer") from exc
 
 
-def on_off_env(name: str, *, default: str) -> str:
+def on_off_env(name: str, *, default: str) -> Literal["on", "off"]:
     value = os.environ.get(name, default).strip().lower()
-    if value not in {"on", "off"}:
-        raise SystemExit(f"{name} must be 'on' or 'off'")
-    return value
+    if value == "on":
+        return "on"
+    if value == "off":
+        return "off"
+    raise SystemExit(f"{name} must be 'on' or 'off'")
 
 
 def require_id(value: str | None, *, resource: str) -> str:
@@ -65,7 +68,8 @@ def parse_args() -> None:
 def main() -> None:
     parse_args()
     suffix = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    workbook = EntryLocation.workbook(required_env("DL_WORKBOOK_ID"))
+    workbook_id = required_env("DL_WORKBOOK_ID")
+    workbook = EntryLocation.workbook(workbook_id)
     database = required_env("DL_CH_DATABASE")
 
     with DataLensClientYC() as client:
@@ -81,6 +85,12 @@ def main() -> None:
             .ssl_ca_verify(on_off_env("DL_CH_SSL_CA_VERIFY", default="on"))
             .build()
         )
+
+        connection_id = require_id(connection.id, resource="connection")
+        if not connection.type:
+            connection = client.get.connection(by_id=connection_id, workbook_id=workbook_id)
+            if not connection.type:
+                raise RuntimeError("The ClickHouse connection is not ready for source creation")
 
         source = (
             client.create.source(using=connection)
@@ -112,7 +122,7 @@ def main() -> None:
             .build()
         )
 
-        print(f"Connection id: {connection.id}")
+        print(f"Connection id: {connection_id}")
         print(f"Dataset id: {dataset.id}")
         print(f"Chart id: {chart.id}")
         print(f"Dashboard id: {dashboard.id}")

@@ -9,11 +9,20 @@ ColumnT_co = TypeVar("ColumnT_co", covariant=True)
 
 
 @dataclass(frozen=True, slots=True)
+class ChartDataAggregation:
+    """Pivot level and zero-based schema indices of the retained dimensions."""
+
+    type: Literal["detail", "subtotal", "total"]
+    group_by: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class ChartDataTable(Generic[ColumnT_co]):
     """One ordered table; duplicate column names and varying row widths are preserved."""
 
     schema: tuple[ColumnT_co, ...]
     rows: tuple[tuple[JsonValue, ...], ...]
+    aggregation: ChartDataAggregation | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True, slots=True)

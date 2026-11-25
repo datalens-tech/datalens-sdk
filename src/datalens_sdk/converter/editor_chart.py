@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Protocol, cast
+from typing import Literal, Protocol, cast
 
 from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.converter._navigation import name_from_key
@@ -181,6 +181,15 @@ _WIRE_TYPE_TO_UPDATE_DATA_DTO: dict[str, str] = {
 }
 
 
+def _editor_dto_prefix(
+    dto_module: object, installation: str | None, wire_type: str, operation: Literal["create", "update"]
+) -> str:
+    if installation is None:
+        return ""
+    prefixes: dict[tuple[str, str, str], str] = getattr(dto_module, "INSTALLATION_EDITOR_DTO_PREFIXES", {})
+    return prefixes.get((installation, wire_type, operation), "")
+
+
 def _get_required_fields(data_dto_name: str, dto_module: object) -> frozenset[str]:
     data_dto_cls = getattr(dto_module, data_dto_name, None)
     if data_dto_cls is None:
@@ -217,6 +226,7 @@ class EditorChartConverter:
     def from_domain_create(
         spec: EditorChartCreateSpec,
         *,
+        installation: str | None = None,
         dto_module: object = None,
     ) -> EditorChartCreateDTOProtocol:
         effective_module = generated_dto if dto_module is None else dto_module
@@ -227,6 +237,9 @@ class EditorChartConverter:
         if create_dto_name is None or data_dto_name is None:
             raise ValueError(f"Unknown editor wire_type: {wire_type!r}")
 
+        prefix = _editor_dto_prefix(effective_module, installation, wire_type, "create")
+        create_dto_name = prefix + create_dto_name
+        data_dto_name = prefix + data_dto_name
         create_dto_cls = getattr(effective_module, create_dto_name, None)
         data_dto_cls = getattr(effective_module, data_dto_name, None)
         if create_dto_cls is None:
@@ -378,27 +391,32 @@ class EditorChartConverter:
     def from_domain_update(
         update: EditorChartUpdate,
         *,
+        installation: str | None = None,
         dto_module: object = None,
     ) -> EditorChartUpdateDTOProtocol:
-        return EditorChartConverter._from_domain_update(update, dto_module=dto_module)
+        return EditorChartConverter._from_domain_update(update, installation=installation, dto_module=dto_module)
 
     @staticmethod
     def from_domain_publish_revision(
         chart: EditorChart,
         *,
         rev_id: str,
+        installation: str | None = None,
         dto_module: object = None,
     ) -> EditorChartUpdateDTOProtocol:
         if not isinstance(rev_id, str) or not rev_id:
             raise DataLensValidationError("rev_id must be a non-empty string")
         update = EditorChartUpdate(chart=chart, operations=None).mode("publish")
-        return EditorChartConverter._from_domain_update(update, rev_id=rev_id, dto_module=dto_module)
+        return EditorChartConverter._from_domain_update(
+            update, rev_id=rev_id, installation=installation, dto_module=dto_module
+        )
 
     @staticmethod
     def _from_domain_update(
         update: EditorChartUpdate,
         *,
         rev_id: str | None = None,
+        installation: str | None = None,
         dto_module: object = None,
     ) -> EditorChartUpdateDTOProtocol:
         effective_module = generated_dto if dto_module is None else dto_module
@@ -417,6 +435,9 @@ class EditorChartConverter:
         if update_dto_name is None or update_data_dto_name is None:
             raise ValueError(f"Unknown editor wire_type for update: {wire_type!r}")
 
+        prefix = _editor_dto_prefix(effective_module, installation, wire_type, "update")
+        update_dto_name = prefix + update_dto_name
+        update_data_dto_name = prefix + update_data_dto_name
         update_dto_cls = getattr(effective_module, update_dto_name, None)
         update_data_dto_cls = getattr(effective_module, update_data_dto_name, None)
         if update_dto_cls is None:

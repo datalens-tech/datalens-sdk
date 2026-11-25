@@ -9,6 +9,7 @@ from datalens_sdk.converter._data_rows import normalize_data_rows
 from datalens_sdk.converter.runtime_params import runtime_params_payload
 from datalens_sdk.domain.chart_data import (
     ChartData,
+    ChartDataAggregation,
     ChartDataQuery,
     ChartDataTable,
     EditorChartData,
@@ -59,6 +60,14 @@ class TableReadDTOProtocol(Protocol, Generic[ColumnT_co]):
     def rows(self) -> Sequence[Sequence[object]]: ...
 
 
+class ChartDataAggregationReadDTOProtocol(Protocol):
+    @property
+    def type(self) -> Literal["detail", "subtotal", "total"]: ...
+
+    @property
+    def group_by(self) -> Sequence[int]: ...
+
+
 class WizardReadDTOProtocol(Protocol):
     chart_type: Literal["wizard"]
     results: Sequence[TableReadDTOProtocol[WizardColumnReadDTOProtocol]]
@@ -72,6 +81,14 @@ class QLReadDTOProtocol(Protocol):
 class EditorReadDTOProtocol(Protocol):
     chart_type: Literal["editor"]
     results: Sequence[TableReadDTOProtocol[EditorColumnReadDTOProtocol]]
+
+
+def _wizard_table_aggregation(table: TableReadDTOProtocol[WizardColumnReadDTOProtocol]) -> ChartDataAggregation | None:
+    # Older generated DTO modules do not have the optional aggregation field.
+    aggregation = cast(ChartDataAggregationReadDTOProtocol | None, getattr(table, "aggregation", None))
+    if aggregation is None:
+        return None
+    return ChartDataAggregation(type=aggregation.type, group_by=tuple(aggregation.group_by))
 
 
 class ChartDataConverter:
@@ -108,6 +125,7 @@ class ChartDataConverter:
                             for column in table.columns
                         ),
                         rows=normalize_data_rows(table.rows, context=f"Chart data table {table_index}"),
+                        aggregation=_wizard_table_aggregation(table),
                     )
                     for table_index, table in enumerate(result.results)
                 )

@@ -10,7 +10,7 @@ import keyword
 from pathlib import Path
 import re
 import symtable
-from typing import Literal, TypedDict, cast
+from typing import Literal, TypedDict, TypeVar, cast
 
 from pydantic import BaseModel
 from typing_extensions import NotRequired
@@ -161,7 +161,7 @@ _SCHEMA_SUPPORTED_KEYS = frozenset(
 _WIZARD_SCHEMA_SUPPORTED_KEYS = frozenset({"default", "maximum", "minimum"})
 _DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "maxItems", "minItems", "minLength", "minimum"})
 _DATASET_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"maximum", "minItems", "minLength", "minimum"})
-_CHART_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "minLength"})
+_CHART_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "minLength", "minimum", "minItems"})
 _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS = frozenset({"default", "maximum", "maxItems", "minItems", "minimum"})
 _ENTRY_STATE_SCHEMA_SUPPORTED_KEYS = frozenset({"minLength"})
 _HTML_PAGE_SCHEMA_SUPPORTED_KEYS = frozenset({"maxLength"})
@@ -290,6 +290,7 @@ class DatasetDataContractMeta(TypedDict):
 class ChartDataContractMeta(TypedDict):
     roots: list[str]
     schemas: dict[str, JsonValue]
+    wizard_aggregation: NotRequired[JsonValue]
 
 
 class EntryRevisionsContractMeta(TypedDict):
@@ -321,6 +322,7 @@ class RpcNamespaceConfig(TypedDict):
     tag: str
     namespace: str
     operation_name_overrides: NotRequired[dict[str, str]]
+    excluded_routes: NotRequired[tuple[str, ...]]
     installations: NotRequired[tuple[str, ...]]
     alias_only_read: NotRequired[bool]
 
@@ -364,7 +366,11 @@ RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (
     ),
     RpcNamespaceConfig(tag="RestCatalogs", namespace="rest_catalogs", installations=("yacloud",)),
     RpcNamespaceConfig(
-        tag="SparkClusters", namespace="spark_clusters", installations=("yacloud",), alias_only_read=True
+        tag="SparkClusters",
+        namespace="spark_clusters",
+        installations=("yacloud",),
+        alias_only_read=True,
+        excluded_routes=("/rpc/updateSparkCluster",),
     ),
     RpcNamespaceConfig(
         tag="SparkApplications",
@@ -416,6 +422,19 @@ def _schema_dict(value: object, *, context: str) -> dict[str, dict[str, object]]
         if not isinstance(item, dict):
             raise TypeError(f"{context}.{key} must be an object")
         result[key] = _string_object_dict(item, context=f"{context}.{key}")
+    return result
+
+
+def _without_schema_property(schema: dict[str, object], field: str, *, context: str) -> dict[str, object]:
+    properties = _string_object_dict(schema.get("properties"), context=f"{context}.properties")
+    if field not in properties:
+        return schema
+    del properties[field]
+    result = {**schema, "properties": properties}
+    if "required" in schema:
+        result["required"] = [
+            name for name in _string_list(schema["required"], context=f"{context}.required") if name != field
+        ]
     return result
 
 
@@ -1296,10 +1315,11 @@ def build_rpc_namespace_contract_meta(
     """Derive one tagged RPC namespace and its transitive schema closure."""
 
     paths = _string_object_dict(spec.get("paths"), context="paths")
+    excluded_routes = frozenset(config.get("excluded_routes", ()))
     selected: list[tuple[str, str, dict[str, object], dict[str, object]]] = []
     http_methods = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
-    for route, raw_path in sorted(paths.items()):
-        path_item = _string_object_dict(raw_path, context=route)
+    for route in sorted(paths.keys() - excluded_routes):
+        path_item = _string_object_dict(paths[route], context=route)
         for method in sorted(http_methods & path_item.keys()):
             operation = _string_object_dict(path_item[method], context=f"{route}.{method}")
             tags = _string_list(operation.get("tags", []), context=f"{route}.{method}.tags")
@@ -1310,6 +1330,11 @@ def build_rpc_namespace_contract_meta(
 
     components = _string_object_dict(spec.get("components", {}), context="components")
     schemas = _schema_dict(components.get("schemas", {}), context="components.schemas")
+    if config["namespace"] == "spark_clusters":
+        # REST catalog attachments are outside the existing SDK contract.
+        for name in ("CreateSparkClusterArgs", "SparkCluster"):
+            if name in schemas:
+                schemas[name] = _without_schema_property(schemas[name], "catalogs", context=name)
     operations: dict[str, RpcOperationMeta] = {}
     root_contexts: dict[str, str] = {}
     overrides = config.get("operation_name_overrides", {})
@@ -2278,7 +2303,7 @@ def build_dataset_data_contract_meta(spec: Mapping[str, object]) -> DatasetDataC
 
 
 def build_chart_data_contract_meta(spec: Mapping[str, object]) -> ChartDataContractMeta | None:
-    """Extract the exact chart-data route and preserve its original schema closure."""
+    """Extract the shared chart-data schemas and optional Wizard pivot extension."""
 
     paths = _string_object_dict(spec.get("paths"), context="paths")
     if _CHART_DATA_ROUTE not in paths:
@@ -2309,6 +2334,10 @@ def build_chart_data_contract_meta(spec: Mapping[str, object]) -> ChartDataContr
         )
 
     available = _schemas(spec)
+    wizard_name = _CHART_DATA_VARIANTS["wizard"]
+    wizard_aggregation = None
+    if wizard_name in available:
+        available[wizard_name], wizard_aggregation = _split_wizard_chart_aggregation(available[wizard_name])
     reached: dict[str, JsonValue] = {}
     visiting: set[str] = set()
 
@@ -2330,7 +2359,7 @@ def build_chart_data_contract_meta(spec: Mapping[str, object]) -> ChartDataContr
         for referenced in sorted(_schema_refs(schema)):
             visit(referenced)
         visiting.remove(name)
-        # Compare the complete source before widening read types or discarding annotations.
+        # Compare the supported source before widening read types or discarding annotations.
         reached[name] = normalize_json_value(schema, context=f"getChartData schema {name}")
 
     for root in _CHART_DATA_ROOTS:
@@ -2356,11 +2385,76 @@ def build_chart_data_contract_meta(spec: Mapping[str, object]) -> ChartDataContr
         required = _string_list(variant.get("required"), context=f"{name}.required")
         if chart_type.get("type") != "string" or chart_type.get("enum") != [tag] or "chartType" not in required:
             raise ValueError(f"getChartData variant {name!r} must require the literal chartType {tag!r}")
-    return {"roots": list(_CHART_DATA_ROOTS), "schemas": dict(sorted(reached.items()))}
+    contract: ChartDataContractMeta = {"roots": list(_CHART_DATA_ROOTS), "schemas": dict(sorted(reached.items()))}
+    if wizard_aggregation is not None:
+        contract["wizard_aggregation"] = wizard_aggregation
+    return contract
 
 
-def _widen_chart_data_column_type(schemas: dict[str, JsonValue]) -> None:
-    """Accept future Wizard column types only in the generated read contract."""
+def _split_wizard_chart_aggregation(schema: dict[str, object]) -> tuple[dict[str, object], JsonValue | None]:
+    """Compare the table shape separately from the optional pivot extension."""
+    response = dict(schema)
+    node = response
+    context = _CHART_DATA_VARIANTS["wizard"]
+    for key in ("properties", "results"):
+        context = f"{context}.{key}"
+        child = _string_object_dict(node.get(key), context=context)
+        node[key] = child
+        node = child
+    table_context = f"{context}.items"
+    table = _string_object_dict(node.get("items"), context=table_context)
+    table_fields = _string_object_dict(table.get("properties"), context=f"{table_context}.properties")
+    if "aggregation" not in table_fields:
+        return response, None
+    if "aggregation" in _string_list(table.get("required", []), context=f"{table_context}.required"):
+        raise ValueError("getChartData Wizard table aggregation must be optional")
+    aggregation_context = f"{table_context}.properties.aggregation"
+    aggregation = _string_object_dict(table_fields.pop("aggregation"), context=aggregation_context)
+    table["properties"] = table_fields
+    node["items"] = table
+    branches = aggregation.get("oneOf")
+    if not isinstance(branches, list):
+        raise ValueError("getChartData Wizard aggregation must define oneOf variants")
+    normalized_branches = [
+        _normalize_wizard_aggregation_branch(branch, context=f"{aggregation_context}.oneOf[{index}]")
+        for index, branch in enumerate(branches)
+    ]
+    if {_singleton_schema_values(branch).get("type") for branch in normalized_branches} != {
+        _canonical_json(tag) for tag in ("detail", "subtotal", "total")
+    }:
+        raise ValueError("getChartData Wizard aggregation must define detail, subtotal, and total variants")
+    aggregation["oneOf"] = normalized_branches
+    _audit_pydantic_schema_features(
+        aggregation,
+        pointer=aggregation_context,
+        contract="getChartData",
+        require_provably_disjoint_one_of=True,
+    )
+    return response, _normalize_wizard_schema(aggregation)
+
+
+def _normalize_wizard_aggregation_branch(value: object, *, context: str) -> dict[str, object]:
+    branch = _string_object_dict(value, context=context)
+    fields = _string_object_dict(branch.get("properties"), context=f"{context}.properties")
+    group_by = _string_object_dict(fields.get("groupBy"), context=f"{context}.properties.groupBy")
+    if _singleton_schema_values(branch).get("type") == _canonical_json("total") and group_by == {
+        "type": "array",
+        "prefixItems": [],
+    }:
+        # The published empty prefix does not define an array length bound.
+        group_by = {"type": "array", "items": {"type": "integer", "minimum": 0}}
+    item_context = f"{context}.properties.groupBy.items"
+    items = _string_object_dict(group_by.get("items"), context=item_context)
+    required = _string_list(branch.get("required"), context=f"{context}.required")
+    if group_by.get("type") != "array" or items.get("type") != "integer" or "groupBy" not in required:
+        raise ValueError(f"{context}.groupBy must be a required array of integer schema indices")
+    fields["groupBy"] = group_by
+    branch["properties"] = fields
+    return branch
+
+
+def _prepare_wizard_chart_data_read(schemas: dict[str, JsonValue], *, aggregation: JsonValue) -> None:
+    """Widen Wizard column types and include the optional pivot metadata in generated reads."""
 
     name = "GetWizardChartDataResult"
     response = _string_object_dict(schemas[name], context=name)
@@ -2382,9 +2476,11 @@ def _widen_chart_data_column_type(schemas: dict[str, JsonValue]) -> None:
     column["properties"] = column_properties
     if referenced_name is not None:
         schemas[referenced_name] = cast(JsonValue, column)
-        return
-    columns["items"] = column
-    table_properties["schema"] = columns
+    else:
+        columns["items"] = column
+        table_properties["schema"] = columns
+    if aggregation is not None:
+        table_properties["aggregation"] = aggregation
     table["properties"] = table_properties
     results["items"] = table
     properties["results"] = results
@@ -3286,9 +3382,25 @@ def build_metadata(
         )
     if chart_data_contracts:
         canonical_installation, canonical_chart_data = chart_data_contracts[0]
+        aggregation = canonical_chart_data.get("wizard_aggregation")
+        aggregation_installation = canonical_installation
         for installation, candidate in chart_data_contracts[1:]:
-            if candidate != canonical_chart_data:
+            if (
+                candidate["roots"] != canonical_chart_data["roots"]
+                or candidate["schemas"] != canonical_chart_data["schemas"]
+            ):
                 raise ValueError(f"getChartData schemas differ between {canonical_installation!r} and {installation!r}")
+            candidate_aggregation = candidate.get("wizard_aggregation")
+            if candidate_aggregation is None:
+                continue
+            if aggregation is not None and candidate_aggregation != aggregation:
+                raise ValueError(
+                    f"getChartData Wizard aggregation differs between {aggregation_installation!r} and {installation!r}"
+                )
+            aggregation = candidate_aggregation
+            aggregation_installation = installation
+        if aggregation is not None:
+            canonical_chart_data["wizard_aggregation"] = aggregation
         out["chart_data"] = canonical_chart_data
     if entry_move_missing:
         raise ValueError(f"moveFolderEntry is missing from installations: {entry_move_missing!r}")
@@ -4271,31 +4383,59 @@ class WizardChartDeleteArgsDTO(BaseModel):
 """
 
 
-def _editor_create_nodes(metadata: Metadata) -> dict[str, EditorCreateNodeMeta]:
-    all_editor_nodes: dict[str, EditorCreateNodeMeta] = {}
-    node_installations: dict[str, str] = {}
-    for installation, info in sorted(metadata["installations"].items()):
-        for wire_type, node_meta in info["charts"]["editor_nodes"].items():
-            previous_node_meta = all_editor_nodes.get(wire_type)
-            if previous_node_meta is None:
-                all_editor_nodes[wire_type] = node_meta
-                node_installations[wire_type] = installation
+_EditorNode = TypeVar("_EditorNode", bound=EditorNodeMeta)
+
+
+def _editor_node_variants(
+    nodes: Mapping[str, Mapping[str, _EditorNode]], *, operation: Literal["create", "update"]
+) -> dict[tuple[str, str], _EditorNode]:
+    nodes_by_wire_type: dict[str, dict[str, _EditorNode]] = {}
+    for installation, installation_nodes in sorted(nodes.items()):
+        for wire_type, node in installation_nodes.items():
+            nodes_by_wire_type.setdefault(wire_type, {})[installation] = node
+
+    variants: dict[tuple[str, str], _EditorNode] = {}
+    for wire_type, installation_nodes in nodes_by_wire_type.items():
+        common_installation, common = min(installation_nodes.items(), key=lambda item: len(item[1]["data_fields"]))
+        common_fields = common["data_fields"]
+        variants[wire_type, ""] = common
+        for installation, node in installation_nodes.items():
+            fields = node["data_fields"]
+            if fields == common_fields:
                 continue
-            if previous_node_meta["data_fields"] != node_meta["data_fields"]:
-                previous_installation = node_installations[wire_type]
-                raise ValueError(
-                    f"Editor create wire type {wire_type!r} has incompatible data fields or requiredness "
-                    f"across installations {previous_installation!r} and {installation!r}: "
-                    f"{previous_node_meta['data_fields']!r} != {node_meta['data_fields']!r}. "
-                    "Per-installation Editor create DTOs and builders are not supported."
-                )
-    return all_editor_nodes
+            if (
+                wire_type == "advanced-chart_node"
+                and "activities" not in common_fields
+                and fields.get("activities") == {"required": False}
+                and {name: info for name, info in fields.items() if name != "activities"} == common_fields
+            ):
+                variants[wire_type, installation] = node
+                continue
+            raise ValueError(
+                f"Editor {operation} wire type {wire_type!r} has incompatible data fields or requiredness "
+                f"across installations {common_installation!r} and {installation!r}: "
+                f"{common_fields!r} != {fields!r}. "
+                "Only optional Advanced Activities may vary across installations."
+            )
+    return variants
+
+
+def _editor_create_nodes(metadata: Metadata) -> dict[tuple[str, str], EditorCreateNodeMeta]:
+    return _editor_node_variants(
+        {installation: info["charts"]["editor_nodes"] for installation, info in metadata["installations"].items()},
+        operation="create",
+    )
 
 
 def _emit_chart_dto(metadata: Metadata) -> str:
     all_editor_nodes = _editor_create_nodes(metadata)
-    all_editor_update_nodes: dict[str, EditorNodeMeta] = {}
-    editor_update_node_installations: dict[str, str] = {}
+    all_editor_update_nodes = _editor_node_variants(
+        {
+            installation: info["charts"]["editor_update_nodes"]
+            for installation, info in metadata["installations"].items()
+        },
+        operation="update",
+    )
     installation_editor_read_types: dict[str, list[str]] = {}
     installation_editor_create_types: dict[str, list[str]] = {}
     installation_editor_update_types: dict[str, list[str]] = {}
@@ -4309,20 +4449,6 @@ def _emit_chart_dto(metadata: Metadata) -> str:
             wire_type: sorted(node_meta["data_fields"])
             for wire_type, node_meta in sorted(chart_meta["editor_update_nodes"].items())
         }
-        for wire_type, update_node_meta in chart_meta["editor_update_nodes"].items():
-            previous_node_meta = all_editor_update_nodes.get(wire_type)
-            if previous_node_meta is None:
-                all_editor_update_nodes[wire_type] = update_node_meta
-                editor_update_node_installations[wire_type] = installation
-                continue
-            if previous_node_meta["data_fields"] != update_node_meta["data_fields"]:
-                previous_installation = editor_update_node_installations[wire_type]
-                raise ValueError(
-                    f"Editor update wire type {wire_type!r} has incompatible data fields or requiredness "
-                    f"across installations {previous_installation!r} and {installation!r}: "
-                    f"{previous_node_meta['data_fields']!r} != {update_node_meta['data_fields']!r}. "
-                    "Per-installation Editor update DTOs are not supported."
-                )
 
     lines: list[str] = []
 
@@ -4344,6 +4470,18 @@ def _emit_chart_dto(metadata: Metadata) -> str:
         lines.append(f"    {installation!r}: frozenset({node_types!r}),")
     lines.append("}")
     lines.append("")
+
+    dto_prefixes = {
+        (installation, wire_type, operation): _class_name(installation, "")
+        for operation, variants in (("create", all_editor_nodes), ("update", all_editor_update_nodes))
+        for wire_type, installation in variants
+        if installation
+    }
+    if dto_prefixes:
+        lines.append("INSTALLATION_EDITOR_DTO_PREFIXES: dict[tuple[str, str, str], str] = {")
+        for key, prefix in sorted(dto_prefixes.items()):
+            lines.append(f"    {key!r}: {prefix!r},")
+        lines.extend(["}", ""])
 
     lines.append("INSTALLATION_EDITOR_UPDATE_TABS_BY_WIRE_TYPE: dict[str, dict[str, frozenset[str]]] = {")
     for installation, tabs_by_wire_type in sorted(installation_editor_update_tabs.items()):
@@ -4446,8 +4584,8 @@ class QLChartDeleteArgsDTO(BaseModel):
         return {"chartId": self.chart_id}
 """)
 
-    for wire_type, node_meta in sorted(all_editor_nodes.items()):
-        cls_prefix = _node_class_name(wire_type)
+    for (wire_type, installation), node_meta in sorted(all_editor_nodes.items()):
+        cls_prefix = _class_name(installation, _node_class_name(wire_type))
         data_fields = node_meta["data_fields"]
 
         data_cls = f"{cls_prefix}NodeDataDTO"
@@ -4492,8 +4630,8 @@ class QLChartDeleteArgsDTO(BaseModel):
         lines.append("        return {'entry': entry}")
         lines.append("")
 
-    for wire_type, update_node_meta in sorted(all_editor_update_nodes.items()):
-        cls_prefix = _node_class_name(wire_type)
+    for (wire_type, installation), update_node_meta in sorted(all_editor_update_nodes.items()):
+        cls_prefix = _class_name(installation, _node_class_name(wire_type))
         data_fields = update_node_meta["data_fields"]
 
         upd_data_cls = f"{cls_prefix}NodeUpdateDataDTO"
@@ -5060,6 +5198,16 @@ def _emit_screenshot_dto(metadata: Metadata) -> str:
         contract="Screenshots",
         payload_methods="roots",
     ).emit(("GetChartScreenshotArgs", "GetDashScreenshotArgs"))
+    result_schema = schemas["GetScreenshotResult"]
+    branches = result_schema.get("anyOf") if isinstance(result_schema, dict) else None
+    if isinstance(branches, list):
+        # Keep the success DTO's shape when the wire contract also describes an error branch.
+        success_branches = [
+            branch for branch in branches if isinstance(branch, dict) and branch.get("required") == ["data"]
+        ]
+        if len(success_branches) != 1:
+            raise ValueError("GetScreenshotResult must have one success branch requiring data")
+        schemas = {**schemas, "GetScreenshotResult": success_branches[0]}
     result_models = _PydanticSchemaEmitter(
         schemas,
         read=True,
@@ -5222,7 +5370,7 @@ def _emit_chart_data_dto(metadata: Metadata) -> str:
         contract="getChartData",
         payload_methods="roots",
     ).emit(("GetChartDataArgs",))
-    _widen_chart_data_column_type(schemas)
+    _prepare_wizard_chart_data_read(schemas, aggregation=contract.get("wizard_aggregation"))
     response_models = _PydanticSchemaEmitter(
         schemas,
         read=True,
@@ -6535,24 +6683,28 @@ def emit_chart_builders(metadata: Metadata) -> str:
             ]
         )
 
-    for wire_type, node_meta in sorted(all_editor_nodes.items()):
-        cls_prefix = _node_class_name(wire_type)
-        editor_cls = f"{cls_prefix}NodeCreate"
+    for (wire_type, installation), node_meta in sorted(all_editor_nodes.items()):
+        editor_cls = f"{_class_name(installation, _node_class_name(wire_type))}NodeCreate"
         data_fields = node_meta["data_fields"]
-
-        lines.extend(
-            [
-                f"class {editor_cls}(_BaseEditorNodeCreate):",
-                "    def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:",
-                "        super().__init__(",
-                f"            wire_type={wire_type!r},",
-                "            name=name,",
-                "            location=location,",
-                "            operations=operations,",
-                "        )",
-                "",
-            ]
-        )
+        if installation:
+            base_cls = f"{_node_class_name(wire_type)}NodeCreate"
+            lines.append(f"class {editor_cls}({base_cls}):")
+            common_fields = all_editor_nodes[wire_type, ""]["data_fields"]
+            data_fields = {name: info for name, info in data_fields.items() if name not in common_fields}
+        else:
+            lines.extend(
+                [
+                    f"class {editor_cls}(_BaseEditorNodeCreate):",
+                    "    def __init__(self, *, name: str, location: EntryLocation, operations: ChartOperations | None = None) -> None:",
+                    "        super().__init__(",
+                    f"            wire_type={wire_type!r},",
+                    "            name=name,",
+                    "            location=location,",
+                    "            operations=operations,",
+                    "        )",
+                    "",
+                ]
+            )
         for field in sorted(data_fields):
             meta = data_fields[field]
             annotation = "str" if meta["required"] else "str | None"
@@ -6576,8 +6728,8 @@ def emit_chart_builders(metadata: Metadata) -> str:
         )
         for wire_type in sorted(node_types):
             node_meta = metadata["installations"][installation]["charts"]["editor_nodes"][wire_type]
-            cls_prefix = _node_class_name(wire_type)
-            editor_cls = f"{cls_prefix}NodeCreate"
+            variant = installation if (wire_type, installation) in all_editor_nodes else ""
+            editor_cls = f"{_class_name(variant, _node_class_name(wire_type))}NodeCreate"
             method = node_meta["factory_method"]
             lines.extend(
                 [
