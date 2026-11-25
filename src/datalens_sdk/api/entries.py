@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections import deque
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import replace
 from typing import Protocol
 
@@ -26,6 +25,8 @@ from datalens_sdk.errors import (
     translate_invalid_response_error,
 )
 from datalens_sdk.http import DEFAULT_RETRY_POLICY, TRANSIENT_RETRY_POLICY, HTTPClientProtocol, RetryPolicy
+
+_RELATIONS_BATCH_SIZE = 100
 
 
 class EntriesAPI:
@@ -178,64 +179,68 @@ class EntriesService:
     ) -> Pager[EntryRelation]:
         if options.recursive:
             return Pager(lambda: self._recursive_relation_pages(entry_id, options))
-        return Pager(lambda: self._direct_relation_pages(entry_id, options))
+        return Pager(lambda: self._relation_pages((entry_id,), options))
 
     def _recursive_relation_pages(
         self,
         entry_id: str,
         options: RelationOptions,
     ) -> Iterator[Page[EntryRelation]]:
-        direct_options = replace(options, scope=None, recursive=False, max_depth=None)
-        pending = deque([(entry_id, 0)])
+        traversal_options = replace(options, scope=None, recursive=False, max_depth=None)
+        frontier = [entry_id]
         seen_ids = {entry_id}
-        while pending:
-            current_id, depth = pending.popleft()
-            next_depth = depth + 1
-            expand_neighbors = options.max_depth is None or next_depth < options.max_depth
-            for page in self._direct_relation_pages(current_id, direct_options):
+        depth = 1
+        while frontier:
+            next_frontier: list[str] = []
+            expand_neighbors = options.max_depth is None or depth < options.max_depth
+            for page in self._relation_pages(frontier, traversal_options):
                 items: list[EntryRelation] = []
                 for relation in page.items:
                     if relation.id in seen_ids:
                         continue
                     seen_ids.add(relation.id)
                     if expand_neighbors:
-                        pending.append((relation.id, next_depth))
+                        next_frontier.append(relation.id)
                     if options.scope is None or relation.scope == options.scope:
                         items.append(relation)
                 if items:
                     yield Page(items=tuple(items))
+            frontier = next_frontier
+            depth += 1
 
-    def _direct_relation_pages(
+    def _relation_pages(
         self,
-        entry_id: str,
+        entry_ids: Sequence[str],
         options: RelationOptions,
     ) -> Iterator[Page[EntryRelation]]:
-        page_token: str | None = None
-        seen_tokens: set[str] = set()
-        while True:
-            try:
-                payload = NavigationConverter.relations_payload(
-                    entry_id,
-                    options,
-                    page_token=page_token,
-                    dto_module=self._dto_module,
-                )
-                items, next_token = NavigationConverter.relations_result(
-                    self._api.get_relations(payload),
-                    dto_module=self._dto_module,
-                )
-            except ValidationError as exc:
-                raise translate_dto_validation_error(operation="getEntriesRelations", reason=str(exc)) from exc
-            yield Page(items=items, next_page_token=next_token)
-            if not next_token:
-                return
-            if next_token in seen_tokens:
-                raise translate_invalid_response_error(
-                    operation="getEntriesRelations",
-                    reason="pagination returned a repeated nextPageToken",
-                )
-            seen_tokens.add(next_token)
-            page_token = next_token
+        for start in range(0, len(entry_ids), _RELATIONS_BATCH_SIZE):
+            batch = tuple(entry_ids[start : start + _RELATIONS_BATCH_SIZE])
+            page_token: str | None = None
+            seen_tokens: set[str] = set()
+            while True:
+                try:
+                    payload = NavigationConverter.relations_payload(
+                        batch,
+                        options,
+                        page_token=page_token,
+                        dto_module=self._dto_module,
+                    )
+                    items, next_token = NavigationConverter.relations_result(
+                        self._api.get_relations(payload),
+                        dto_module=self._dto_module,
+                    )
+                except ValidationError as exc:
+                    raise translate_dto_validation_error(operation="getEntriesRelations", reason=str(exc)) from exc
+                yield Page(items=items, next_page_token=next_token)
+                if not next_token:
+                    break
+                if next_token in seen_tokens:
+                    raise translate_invalid_response_error(
+                        operation="getEntriesRelations",
+                        reason="pagination returned a repeated nextPageToken",
+                    )
+                seen_tokens.add(next_token)
+                page_token = next_token
 
     def rename_entry(self, *, entry_id: str, name: str) -> None:
         try:

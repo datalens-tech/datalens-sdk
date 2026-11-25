@@ -12,7 +12,8 @@
 - Traverse entry dependencies and dependents with
   `get_relations(recursive=True, link_direction=...)` on dashboards, charts,
   datasets, and connections. Use `max_depth` to limit the number of links
-  followed from the starting entry.
+  followed from the starting entry. Recursive traversal queries entries at
+  the same depth in batches to reduce RPC calls.
 
 ### Fixed
 

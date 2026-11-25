@@ -471,8 +471,7 @@ def test_recursive_relations_use_shortest_depth_and_visit_ids_once() -> None:
             _RELATIONS_RPC: [
                 _relation_page(("dashboard", "dash"), ("chart-a", "widget"), token="next"),
                 _relation_page(("chart-b", "widget"), ("dataset", "dataset")),
-                _relation_page(("dataset", "dataset"), ("dashboard", "dash"), ("chart-b", "widget")),
-                _relation_page(("chart-a", "widget"), ("dataset", "dataset")),
+                _relation_page(("dataset", "dataset"), ("dashboard", "dash"), ("chart-b", "widget"), token="next"),
                 _relation_page(("connection", "connection")),
             ]
         }
@@ -491,9 +490,8 @@ def test_recursive_relations_use_shortest_depth_and_visit_ids_once() -> None:
     assert recorder.bodies(_RELATIONS_RPC) == [
         {"entryIds": ["dashboard"], **options},
         {"entryIds": ["dashboard"], "pageToken": "next", **options},
-        {"entryIds": ["chart-a"], **options},
-        {"entryIds": ["chart-b"], **options},
-        {"entryIds": ["dataset"], **options},
+        {"entryIds": ["chart-a", "chart-b", "dataset"], **options},
+        {"entryIds": ["chart-a", "chart-b", "dataset"], "pageToken": "next", **options},
     ]
 
 
@@ -598,6 +596,42 @@ def test_recursive_relations_propagate_child_api_errors_with_context() -> None:
     assert recorder.bodies(_RELATIONS_RPC) == [
         {"entryIds": ["connection"], "linkDirection": "to", "limit": 100},
         {"entryIds": ["dataset"], "linkDirection": "to", "limit": 100},
+    ]
+
+
+def test_recursive_relations_batch_wide_levels_with_independent_cursors() -> None:
+    chart_ids = [f"chart-{index}" for index in range(101)]
+    recorder = RecordedTransport(
+        {
+            _RELATIONS_RPC: [
+                _relation_page(*((entry_id, "widget") for entry_id in chart_ids[:100]), token="next"),
+                _relation_page((chart_ids[100], "widget")),
+                _relation_page(("shared-dashboard", "dash"), token="next"),
+                _relation_page(("dashboard-a", "dash")),
+                _relation_page(("shared-dashboard", "dash"), token="next"),
+                _relation_page(("dashboard-b", "dash")),
+            ]
+        }
+    )
+    connection = _client(recorder).domain_connection(id="connection", type="postgres")
+    relations = iter(connection.get_relations(link_direction="to", recursive=True, max_depth=2))
+
+    assert not recorder.requests
+    assert next(relations).id == chart_ids[0]
+    options = {"linkDirection": "to", "limit": 100}
+    root_payload = {"entryIds": ["connection"], **options}
+    assert recorder.bodies(_RELATIONS_RPC) == [root_payload]
+
+    assert [item.id for item in relations] == [*chart_ids[1:], "shared-dashboard", "dashboard-a", "dashboard-b"]
+    first_batch = {"entryIds": chart_ids[:100], **options}
+    second_batch = {"entryIds": chart_ids[100:], **options}
+    assert recorder.bodies(_RELATIONS_RPC) == [
+        root_payload,
+        {**root_payload, "pageToken": "next"},
+        first_batch,
+        {**first_batch, "pageToken": "next"},
+        second_batch,
+        {**second_batch, "pageToken": "next"},
     ]
 
 

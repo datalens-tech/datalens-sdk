@@ -348,7 +348,7 @@ class NavigationConverter:
 
     @staticmethod
     def relations_payload(
-        entry_id: str,
+        entry_ids: tuple[str, ...],
         options: RelationOptions,
         *,
         page_token: str | None,
@@ -356,7 +356,7 @@ class NavigationConverter:
     ) -> dict[str, object]:
         generated = _dto_module(dto_module)
         return generated.EntryRelationsArgsDTO(
-            entry_ids=(entry_id,),
+            entry_ids=entry_ids,
             include_permissions_info=options.include_permissions_info,
             link_direction=options.link_direction,
             limit=options.page_size,
