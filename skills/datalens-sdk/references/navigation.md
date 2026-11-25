@@ -1,6 +1,8 @@
 # Navigation
 
-Read this when you need to find, list, move, or rename entities, inspect their revision history, or manage the containers they live in: collections, workbooks, and folders.
+Read this when you need to find, list, link to, move, or rename entities,
+follow their relations, inspect their revision history, or manage collections,
+workbooks, and folders.
 
 ## The container model
 
@@ -10,6 +12,37 @@ Two organizational schemes coexist, per installation:
 - **Folders** — a path-based directory tree (`Users/someone/reports`) that holds entries directly. Only installations with a directory tree have usable folders; check `client.capabilities["namespaces"]` before relying on them, and see [core-concepts.md](core-concepts.md) for `NotSupportedError` gating.
 
 `Collection`, `Workbook`, and `Folder` objects are all `EntryLocation`s — pass them directly as `location=` / `collection=` / `parent=` to any create builder or `move()`, no id plumbing.
+
+## Object links
+
+When sharing a saved object, use its display name or ID as the link text.
+Use the confirmed object ID (`.id` on the SDK object, `EntrySummary`, or
+`EntryRelation`) and the route for its type. The route accepts the ID alone.
+
+Use the browser-facing UI base URL of the selected DataLens installation.
+Yandex Cloud defaults to `https://datalens.ru`. Installation overlays can
+supply their own default. Use the UI base supplied for the installation when
+one is known, including a configured `ui_base_url`. Trim the trailing slash
+from the base and append the appropriate path.
+
+| Object | UI path |
+|---|---|
+| Dashboard | `/{id}` |
+| Wizard chart | `/wizard/{id}` |
+| QL chart | `/ql/{id}` |
+| Editor chart | `/editor/{id}` |
+| Dataset | `/datasets/{id}` |
+| Connection | `/connections/{id}` |
+| Folder (where folder navigation is available) | `/navigation/{id}` |
+| Workbook | `/workbooks/{id}` |
+| Collection | `/collections/{id}` |
+| Standalone HTML page | `/pages/{id}` |
+
+For entries with `scope="widget"`, use the typed chart or its known entry
+subtype to choose the chart route. If the chart family or UI base is unknown,
+report the ID and use a clickable link once both are known. For a link to a
+specific dashboard tab with saved selector values, use
+[`state.url()`](dashboard-state.md#links-and-ui_base_url).
 
 ## Global listing: `client.navigation.get_entries()`
 
@@ -126,19 +159,52 @@ ds = client.get.dataset(by_id=matches[0].id)
 
 Scope the search when you can: inside a known workbook use `wb.list_entries(name=..., scope="dataset")` instead of the global listing. The server-side `name=` filter only narrows candidates; always compare the derived display leaf exactly. This is also the adopt-on-`ConflictError` lookup (hard rule 7).
 
-## Relations: what an entry depends on
+## Entry relations
 
-Every entry object (`Connection`, `Dataset`, `Dashboard`, and all chart types) exposes `get_relations()` — the linked entries, e.g. the dataset and connection behind a chart, or the charts built on a dataset. Containers (`Folder`, `Collection`, `Workbook`) do **not** have it.
+`Connection`, `Dataset`, `Dashboard`, and chart objects expose `get_relations()`
+on entries bound to a client with an ID.
+
+Containers (`Folder`, `Collection`, `Workbook`) do **not** have it.
+Use `list_entries()` to browse their contents.
+
+Choose `link_direction="from"` to find the entries the starting object
+depends on. Choose `link_direction="to"` to find entries that use it.
+Omitting the direction leaves the choice to the server on every request,
+at any depth.
+
+Follow [hard rule 12](../SKILL.md#hard-rules) when calling `get_relations()`
+and consuming its lazy `Pager[EntryRelation]`. Each example assumes the
+user has authorized handling the results for that task.
 
 ```python
-ds = client.get.dataset(by_id=dataset_id)
-for rel in ds.get_relations():  # Pager[EntryRelation]
-    print(rel.id, rel.scope, rel.type, rel.key, rel.workbook_id)
-# filters: link_direction= ("from" | "to" — which side of the dependency edge;
-#          omit for all related entries), scope=, include_permissions_info=, page_size=100
+# All direct dependencies of a dashboard, across all response pages
+direct_dependencies = dashboard.get_relations(link_direction="from")
+
+# Dashboards that use a connection within three links, including via datasets and charts
+dashboards = connection.get_relations(link_direction="to", scope="dash", max_depth=3)
+
+# Every dependency reachable from a dashboard, at any depth
+all_dependencies = dashboard.get_relations(link_direction="from", max_depth="all")
 ```
 
-Check relations before deleting anything shared — a dataset with dependent charts will break them.
+The default `max_depth=1` returns direct neighbors in server order. The
+SDK passes `scope` to the server and preserves its page tokens. Iterating
+the pager reads every page of those direct neighbors.
+
+A larger positive integer includes entries up to that many links away.
+`max_depth="all"` follows links until the traversal is exhausted. Both
+yield unique entry IDs in breadth-first order and exclude the starting
+entry. At these depths `scope` filters the output while traversal can
+pass through entries of any scope. For example, the dashboard lookup
+above can cross both datasets and charts. Traversal pages are nonempty
+and have `next_page_token=None`. Iterate the pager or its `.pages()`
+iterator to completion to receive all results.
+
+`page_size` sets the result limit per RPC request (default `100`).
+`include_permissions_info` applies to each request. On each `EntryRelation`,
+`scope` is the entry category and `type` is the subtype, which can be empty. When checking
+the impact of deleting a shared entry, use `link_direction="to"` to
+find dependents.
 
 ## Revision history on an entry
 

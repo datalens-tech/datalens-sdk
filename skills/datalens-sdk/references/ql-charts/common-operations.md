@@ -250,23 +250,19 @@ and returns a new `QLChart`:
 renamed = chart.rename("New chart name")
 ```
 
-List relations lazily:
+When the user asks to display the IDs of dashboards that directly use this
+QL chart, iterate the pager to include every page.
 
 ```python
-relations = chart.get_relations(
-    include_permissions_info=True,
-    link_direction="to",
-    page_size=100,
-    scope="dash",
-)
-for relation in relations:
-    print(relation.id, relation.type)
+dashboards = chart.get_relations(link_direction="to", scope="dash")
+for dashboard in dashboards:
+    print(dashboard.id)
 ```
 
-`link_direction` is `"from" | "to"`; `scope` is one of `"dash"`, `"report"`,
-`"widget"`, `"dataset"`, `"folder"`, `"connection"`, `"compute"`, `"artifact"`,
-or `"sql_query"`. All relation arguments are optional and `page_size` defaults
-to `100`.
+If the user requests the chart's full dependency chain, use
+`chart.get_relations(link_direction="from", max_depth="all")` and handle
+the results as requested. See [Entry relations](../navigation.md#entry-relations)
+for depth limits, scope filters, and pagination.
 
 Exporting a QL chart to a file (`chart.to_file(...)`), importing, and cloning
 via `client.raw` work the same way as for other entries — see

@@ -60,7 +60,9 @@ update. The `getHtmlPage` response schema has no `content` field. Its `data`
 object is versioned entry data, not a documented HTML-text result, and
 `object_id` is storage metadata rather than a download URL.
 
-To view a page, request a temporary preview URL with a separate RPC:
+Use the [saved page's DataLens UI link](navigation.md#object-links) when
+sharing the page with the user. To preview a specific branch or revision,
+request a temporary preview URL with a separate RPC.
 
 ```python
 preview_url = client.get.html_page_preview_url(

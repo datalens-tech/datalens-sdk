@@ -286,6 +286,15 @@ def _check_context_manager_client_types(yacloud: DataLensClientYC, enterprise: D
         assert_type(enterprise_client, DataLensClientEnterprise)
 
 
+def _check_recursive_relation_types(
+    chart: sdk.Chart, connection: Connection, dashboard: Dashboard, dataset: Dataset
+) -> None:
+    assert_type(chart.get_relations(link_direction="from", max_depth="all"), Pager[EntryRelation])
+    assert_type(connection.get_relations(link_direction="to", max_depth=3, scope="dash"), Pager[EntryRelation])
+    assert_type(dashboard.get_relations(max_depth=2), Pager[EntryRelation])
+    assert_type(dataset.get_relations(max_depth="all"), Pager[EntryRelation])
+
+
 def _check_entry_mutation_return_types(
     *,
     collection: Collection,

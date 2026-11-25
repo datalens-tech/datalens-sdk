@@ -9,6 +9,11 @@
   Activities source.
 - Preserve Yandex Cloud Wizard pivot metadata in `ChartDataTable.aggregation`,
   including the detail, subtotal, or total level and its grouping columns.
+- Follow dependencies and dependents with `get_relations()` on dashboards,
+  charts, datasets, and connections. The default `max_depth=1` fetches direct
+  links. Pass a larger positive integer to follow links up to that depth, or
+  `max_depth="all"` to find every reachable entry in the chosen direction.
+  The SDK batches entries at the same depth to reduce RPC calls.
 
 ### Fixed
 
@@ -30,6 +35,10 @@
   and overrides, `builder.connector`, and the accepted certificate, JSON API
   header, and PromQL authentication types. Describe how to re-fetch a
   connection created with a pending operation before binding a source.
+- Document installation-aware DataLens UI links for saved objects in the
+  bundled SDK skill.
+- Correct the Wizard chart dependency example to use `link_direction="from"`.
+  Use `"to"` to find entries that depend on the chart.
 
 ### Known limitations and follow-up
 

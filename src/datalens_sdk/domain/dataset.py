@@ -5,7 +5,7 @@ import contextlib
 from dataclasses import dataclass, field
 from pathlib import Path
 import re
-from typing import overload
+from typing import Literal, overload
 from uuid import uuid4
 
 from datalens_sdk.domain.connection import Connection, _optional_str
@@ -561,7 +561,14 @@ class Dataset:
         link_direction: LinkDirection | None = None,
         page_size: int = 100,
         scope: EntryScope | None = None,
+        max_depth: int | Literal["all"] = 1,
     ) -> Pager[EntryRelation]:
+        """Lazily list related entries within max_depth links (default 1, "all" for unlimited).
+
+        Use "from" for dependencies and "to" for dependents. Omit link_direction
+        to use the server default at every depth. Multi-hop traversal follows all
+        scopes and applies the scope filter to the returned entries.
+        """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
         if not self.id:
@@ -573,6 +580,7 @@ class Dataset:
                 link_direction=link_direction,
                 page_size=page_size,
                 scope=scope,
+                max_depth=max_depth,
             ),
         )
 

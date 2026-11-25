@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
+from dataclasses import replace
 from typing import Protocol
 
 from pydantic import ValidationError
@@ -24,6 +25,9 @@ from datalens_sdk.errors import (
     translate_invalid_response_error,
 )
 from datalens_sdk.http import DEFAULT_RETRY_POLICY, TRANSIENT_RETRY_POLICY, HTTPClientProtocol, RetryPolicy
+
+# The SDK caps each request at 100 input IDs. page_size controls the number of results per request.
+_RELATIONS_BATCH_SIZE = 100
 
 
 class EntriesAPI:
@@ -175,12 +179,52 @@ class EntriesService:
         options: RelationOptions,
     ) -> Pager[EntryRelation]:
         def load() -> Iterator[Page[EntryRelation]]:
+            if options.max_depth != 1:
+                return self._recursive_relation_pages(entry_id, options)
+            return self._relation_pages((entry_id,), options)
+
+        return Pager(load)
+
+    def _recursive_relation_pages(
+        self,
+        entry_id: str,
+        options: RelationOptions,
+    ) -> Iterator[Page[EntryRelation]]:
+        traversal_options = replace(options, scope=None)
+        frontier = [entry_id]
+        seen_ids = {entry_id}
+        depth = 1
+        while frontier:
+            next_frontier: list[str] = []
+            expand_neighbors = options.max_depth == "all" or depth < options.max_depth
+            for page in self._relation_pages(frontier, traversal_options):
+                items: list[EntryRelation] = []
+                for relation in page.items:
+                    if relation.id in seen_ids:
+                        continue
+                    seen_ids.add(relation.id)
+                    if expand_neighbors:
+                        next_frontier.append(relation.id)
+                    if options.scope is None or relation.scope == options.scope:
+                        items.append(relation)
+                if items:
+                    yield Page(items=tuple(items))
+            frontier = next_frontier
+            depth += 1
+
+    def _relation_pages(
+        self,
+        entry_ids: Sequence[str],
+        options: RelationOptions,
+    ) -> Iterator[Page[EntryRelation]]:
+        for start in range(0, len(entry_ids), _RELATIONS_BATCH_SIZE):
+            batch = tuple(entry_ids[start : start + _RELATIONS_BATCH_SIZE])
             page_token: str | None = None
             seen_tokens: set[str] = set()
             while True:
                 try:
                     payload = NavigationConverter.relations_payload(
-                        entry_id,
+                        batch,
                         options,
                         page_token=page_token,
                         dto_module=self._dto_module,
@@ -193,7 +237,7 @@ class EntriesService:
                     raise translate_dto_validation_error(operation="getEntriesRelations", reason=str(exc)) from exc
                 yield Page(items=items, next_page_token=next_token)
                 if not next_token:
-                    return
+                    break
                 if next_token in seen_tokens:
                     raise translate_invalid_response_error(
                         operation="getEntriesRelations",
@@ -201,8 +245,6 @@ class EntriesService:
                     )
                 seen_tokens.add(next_token)
                 page_token = next_token
-
-        return Pager(load)
 
     def rename_entry(self, *, entry_id: str, name: str) -> None:
         try:

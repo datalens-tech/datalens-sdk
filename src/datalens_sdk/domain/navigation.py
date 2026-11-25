@@ -330,6 +330,12 @@ class RelationOptions:
     link_direction: LinkDirection | None = None
     page_size: int = 100
     scope: EntryScope | None = None
+    max_depth: int | Literal["all"] = 1
 
     def __post_init__(self) -> None:
         _validate_entry_scope(self.scope)
+        max_depth = self.max_depth
+        if max_depth != "all" and (isinstance(max_depth, bool) or not isinstance(max_depth, int) or max_depth < 1):
+            raise DataLensValidationError("max_depth must be a positive integer or 'all'")
+        if max_depth != 1 and self.link_direction not in (None, "from", "to"):
+            raise DataLensValidationError("link_direction must be 'from' or 'to' when specified")
