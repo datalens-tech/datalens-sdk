@@ -15,6 +15,8 @@ from typing_extensions import TypeForm
 
 from datalens_sdk import codegen
 from datalens_sdk._generated import dto
+from datalens_sdk.converter.chart_data import ChartDataConverter, ChartDataDtoModule
+from datalens_sdk.domain.chart_data import WizardChartData
 
 ROOT = Path(__file__).resolve().parents[1]
 ROUTE = "/rpc/getChartData"
@@ -76,7 +78,8 @@ def test_chart_data_contract_matches_public_installations_and_retains_source_typ
     enterprise = _contract(_spec("enterprise"))
     yacloud = _contract(_spec())
 
-    assert enterprise == yacloud
+    assert enterprise["schemas"] == yacloud["schemas"]
+    assert enterprise["roots"] == yacloud["roots"]
     assert enterprise["roots"] == ["GetChartDataArgs", "GetChartDataResult"]
     assert set(enterprise["schemas"]) == {*enterprise["roots"], *VARIANTS.values()}
     wizard_type = _node(
@@ -93,6 +96,46 @@ def test_chart_data_contract_matches_public_installations_and_retains_source_typ
     )
     assert "integer" in cast(list[str], wizard_type["enum"])
     assert set(_node(enterprise["schemas"], "GetChartDataArgs", "properties")) == {"chartId", "params"}
+
+
+def test_chart_data_wizard_aggregation_is_optional_generated_metadata() -> None:
+    contract = _contract(_spec())
+    aggregation = _node(contract["wizard_aggregation"])
+    assert isinstance(aggregation["oneOf"], list)
+    assert {tuple(cast(list[str], _node(branch, "properties", "type")["enum"])) for branch in aggregation["oneOf"]} == {
+        ("detail",),
+        ("subtotal",),
+        ("total",),
+    }
+
+
+def test_chart_data_converter_accepts_generated_dto_without_wizard_aggregation(tmp_path: Path) -> None:
+    spec = _spec()
+    fields = _node(_schemas(spec), "GetWizardChartDataResult", "properties", "results", "items", "properties")
+    del fields["aggregation"]
+    models = _models(spec, tmp_path)
+
+    result = ChartDataConverter.result(_response("wizard"), dto_module=cast(ChartDataDtoModule, models))
+
+    assert isinstance(result, WizardChartData)
+    assert result.results[0].aggregation is None
+
+
+@pytest.mark.parametrize(
+    "aggregation",
+    [
+        {"type": "detail", "groupBy": [-1]},
+        {"type": "subtotal", "groupBy": []},
+        {"type": "total", "groupBy": ["0"]},
+        {"type": "future", "groupBy": []},
+    ],
+)
+def test_chart_data_wizard_aggregation_validates_indices_and_variants(aggregation: dict[str, object]) -> None:
+    response = _response("wizard")
+    cast(list[dict[str, object]], response["results"])[0]["aggregation"] = aggregation
+
+    with pytest.raises(ValidationError):
+        TypeAdapter(dto.GetChartDataResultDTO).validate_python(response)
 
 
 def test_chart_data_contract_does_not_depend_on_screenshots_or_other_data_routes() -> None:

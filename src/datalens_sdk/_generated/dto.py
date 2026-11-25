@@ -323,6 +323,24 @@ class GetQLChartDataResultDTO(BaseModel):
     chart_type: Literal['ql'] = Field(alias='chartType')
     results: list[GetQLChartDataResultResultsItemReadDTO]
 
+class GetWizardChartDataResultResultsItemAggregationOneOf0ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    group_by: Annotated[list[Annotated[int, Field(ge=0)]], Field(min_length=1, alias='groupBy')]
+    type: Literal['subtotal']
+
+class GetWizardChartDataResultResultsItemAggregationOneOf1ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    group_by: list[Annotated[int, Field(ge=0)]] = Field(alias='groupBy')
+    type: Literal['detail']
+
+class GetWizardChartDataResultResultsItemAggregationOneOf2ReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    group_by: list[Annotated[int, Field(ge=0)]] = Field(alias='groupBy')
+    type: Literal['total']
+
 class GetWizardChartDataResultResultsItemSchemaItemReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
@@ -333,6 +351,7 @@ class GetWizardChartDataResultResultsItemSchemaItemReadDTO(BaseModel):
 class GetWizardChartDataResultResultsItemReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
 
+    aggregation: GetWizardChartDataResultResultsItemAggregationOneOf0ReadDTO | GetWizardChartDataResultResultsItemAggregationOneOf1ReadDTO | GetWizardChartDataResultResultsItemAggregationOneOf2ReadDTO = _UNVALIDATED_NONE_DEFAULT
     rows: list[list[JsonValue]]
     columns: list[GetWizardChartDataResultResultsItemSchemaItemReadDTO] = Field(alias='schema')
 

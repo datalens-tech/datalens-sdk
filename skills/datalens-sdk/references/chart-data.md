@@ -120,11 +120,37 @@ are not invented. It does not pad or truncate rows to schema width. Large
 Wizard integers can lose precision on the server; the SDK cannot recover it.
 Table indices are not query or block IDs.
 
+## Wizard pivot results
+
+Yandex Cloud returns a separate flat table for each pivot aggregation level.
+When the server includes aggregation metadata, `table.aggregation` is a
+`ChartDataAggregation` with `type` and `group_by`.
+
+| `type` | What the rows represent |
+|---|---|
+| `detail` | Values at the pivot's most detailed grouping level |
+| `subtotal` | Rollups computed by the server for the retained dimensions |
+| `total` | The grand total computed by the server |
+
+`group_by` is a tuple of zero-based indices in that table's `schema`. For a
+schema with region, channel, product, and revenue in that order, a subtotal
+with `group_by` equal to `(0, 2)` is grouped by region and product. A result
+can contain multiple `subtotal` tables with different groupings. Use `type`
+and `group_by` to identify them even when they have the same number of rows.
+Rolled-up dimensions contain `null`. Retained dimensions may contain genuine
+`null` values.
+
+For a detail-only pivot export, select tables with an `aggregation` value and
+`aggregation.type == "detail"`. If `table.aggregation` is `None`, treat that
+table as unlabelled. If no detail level is identified, report that the response
+does not identify the detail rows. For a full export, keep the separate tables
+and their aggregation metadata. Keep the subtotals and total returned by the
+server when the export includes them.
+
 ## Server limits and failures
 
-Pivot tables are unsupported. Editor sources must provide raw data through
-`Editor.setRawData()`; a visible chart alone does not establish that raw data
-is available. Do not infer an Editor failure from an empty result alone.
+Editor sources must provide raw data through `Editor.setRawData()`. A visible
+chart alone does not establish that raw data is available. Do not infer an Editor failure from an empty result alone.
 Editor `module` resources contain reusable JavaScript and never have chart
 data. Where an installation exposes Modules, exclude them from data export;
 adding `Editor.setRawData()` does not turn a Module into a visual chart.

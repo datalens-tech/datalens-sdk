@@ -62,7 +62,9 @@ def _screenshot_error_context(payload: object) -> APIErrorContext | None:
     status = payload.get("status")
     code = payload.get("code")
     message = payload.get("message")
-    if not isinstance(status, (int, float)) or not 400 <= status < 600 or status != int(status):
+    if not isinstance(status, (int, float)) or isinstance(status, bool):
+        return None
+    if isinstance(status, float) and not status.is_integer():
         return None
     if not isinstance(code, str) or not isinstance(message, str):
         return None

@@ -27,7 +27,9 @@ Builder behavior (same for every connector):
 The factory surface is generated per installation. Enterprise exposes a subset
 of the Yandex Cloud factories, and builder fields may vary by installation.
 Use the configured client's `client.capabilities["connectors"]` inventory and
-the selected builder's field metadata.
+the selected builder's field metadata. If a factory is absent from the
+inventory, report it as unavailable on this installation. Do not call or
+reconstruct it.
 
 ### Databases
 
@@ -114,13 +116,18 @@ conn = (
 `data_export_forbidden` use the strings `"on"` / `"off"`.
 
 - `raw_sql_level="dashsql"` is valid when QL access was requested; do not force it back to `"off"` as a generic safety measure.
-- Use the connection returned by `.build()` when binding a source. The SDK
-  loads the full connection when creation returns only an ID and no operation.
-  An absent `password` field is expected in a connection read response.
+- The SDK loads the connection when creation returns only an ID and no
+  operation. If the response includes a pending operation, `.build()` can
+  return a connection with an empty `type`. Once the connection is available,
+  re-fetch it with `client.get.connection(by_id=conn.id, workbook_id=workbook_id)`
+  before binding a source. Pass the destination workbook's ID for workbook
+  connections and omit `workbook_id` for other locations.
+- An absent `password` field is expected in a connection read response.
 
 ## Binding a source
 
-A source is not a standalone entity — it binds one table or query of a connection for use in a dataset:
+A source binds one table or query of a connection for use in a dataset. The
+example uses a fully loaded ClickHouse connection.
 
 ```python
 src = (

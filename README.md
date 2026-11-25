@@ -189,6 +189,12 @@ in `result.results` is a `ChartDataTable` with an ordered `schema` and positiona
 `rows`. The SDK preserves multiple tables, duplicate column names, JSON cells,
 and numeric strings without coercion.
 
+Yandex Cloud Wizard pivot reads return a flat table per aggregation level.
+`table.aggregation` exposes the level (`detail`, `subtotal`, or `total`) and the
+zero-based `group_by` column indices. Use `detail` tables for a detail-only
+export. To keep subtotals and totals, export the tables with their aggregation
+metadata. `aggregation` is `None` when the response omits it.
+
 Both methods execute by ID: the loaded revision and local edits are not sent,
 and saved/published selection is unspecified. Revision selection is unsupported:
 `revId` and `branch` in `params` raise `DataLensValidationError` before HTTP.
@@ -202,9 +208,9 @@ automatic pagination, or CSV/XLSX export. The example names `region` and
 `year` assume that the chart reads those keys; see the [runtime parameter guidance](skills/datalens-sdk/references/parameters.md#runtime-chart-parameters)
 for the keys each chart family uses.
 
-The API is experimental. Pivot tables are unsupported, and Editor requires
-`Editor.setRawData()`. Aggregate response limits are 100,000 rows, 100,000
-cells, 1,000 tables, and 100,000 schema columns; a table can have 800 columns.
+The API is experimental. Editor requires `Editor.setRawData()`. Aggregate
+response limits are 100,000 rows, 100,000 cells, 1,000 tables, and 100,000 schema
+columns. A table can have 800 columns.
 These limits apply simultaneously: if every row has two cells, the response
 can contain at most 50,000 rows in total. The [Yandex Cloud limits page](https://yandex.cloud/ru/docs/datalens/concepts/limits#datalens-chart-data-limits)
 separately documents chart display limits and Cloud API rate limits.

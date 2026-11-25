@@ -68,7 +68,8 @@ def parse_args() -> None:
 def main() -> None:
     parse_args()
     suffix = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    workbook = EntryLocation.workbook(required_env("DL_WORKBOOK_ID"))
+    workbook_id = required_env("DL_WORKBOOK_ID")
+    workbook = EntryLocation.workbook(workbook_id)
     database = required_env("DL_CH_DATABASE")
 
     with DataLensClientYC() as client:
@@ -84,6 +85,12 @@ def main() -> None:
             .ssl_ca_verify(on_off_env("DL_CH_SSL_CA_VERIFY", default="on"))
             .build()
         )
+
+        connection_id = require_id(connection.id, resource="connection")
+        if not connection.type:
+            connection = client.get.connection(by_id=connection_id, workbook_id=workbook_id)
+            if not connection.type:
+                raise RuntimeError("The ClickHouse connection is not ready for source creation")
 
         source = (
             client.create.source(using=connection)
@@ -115,7 +122,7 @@ def main() -> None:
             .build()
         )
 
-        print(f"Connection id: {connection.id}")
+        print(f"Connection id: {connection_id}")
         print(f"Dataset id: {dataset.id}")
         print(f"Chart id: {chart.id}")
         print(f"Dashboard id: {dashboard.id}")

@@ -78,17 +78,20 @@ class ConnectionService(ConnectionOperations):
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="createConnection", reason=str(exc)) from exc
         response = self._api.create(dto.to_payload())
+        id_fallback = None
         # The create response can contain only the new id and an optional null operation.
         if response.keys() <= {"id", "operation"} and response.get("operation") is None:
             connection_id = response.get("id")
             if isinstance(connection_id, str) and connection_id:
-                return self.get_connection(connection_id, workbook_id=workbook_id_from_location(spec.location))
+                id_fallback = connection_id
+                response = self._api.get(connection_id, workbook_id=workbook_id_from_location(spec.location))
         return ConnectionConverter.to_domain(
             response,
             installation=self._installation,
             operations=self,
             location=spec.location,
             name=spec.name,
+            id_fallback=id_fallback,
             dto_module=self._dto_module,
         )
 
@@ -126,6 +129,8 @@ class ConnectionService(ConnectionOperations):
             response,
             installation=self._installation,
             operations=self,
+            location=EntryLocation.workbook(workbook_id) if workbook_id else None,
+            id_fallback=connection_id,
             dto_module=self._dto_module,
         )
 

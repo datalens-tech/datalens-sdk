@@ -323,10 +323,16 @@ def test_default_screenshot_timeout_is_longer_than_the_default_request_timeout()
 
 
 @pytest.mark.parametrize("route", ["/rpc/getChartScreenshot", "/rpc/getDashScreenshot"])
-def test_screenshot_preserves_api_error_in_successful_http_response(route: str) -> None:
+@pytest.mark.parametrize(
+    ("status", "exception_type"),
+    [(302, dl.DataLensAPIError), (403.0, dl.ForbiddenError)],
+)
+def test_screenshot_preserves_api_error_in_successful_http_response(
+    route: str, status: int | float, exception_type: type[dl.DataLensAPIError]
+) -> None:
     response = httpx.Response(
         200,
-        json={"status": 403.0, "code": "ERR.RENDER_FORBIDDEN", "message": "render forbidden"},
+        json={"status": status, "code": "ERR.RENDER", "message": "render failed"},
         headers={"x-request-id": "render-request-1"},
     )
     recorder = RecordedTransport(screenshot_routes(route, response))
@@ -338,13 +344,14 @@ def test_screenshot_preserves_api_error_in_successful_http_response(route: str) 
         else client.get.dashboard(by_id="dash-1")
     )
 
-    with pytest.raises(dl.ForbiddenError) as raised:
+    with pytest.raises(exception_type) as raised:
         entity.screenshot()
 
+    assert type(raised.value) is exception_type
     context = raised.value.context
-    assert context.status_code == 403
-    assert context.code == "ERR.RENDER_FORBIDDEN"
-    assert context.message == "render forbidden"
+    assert context.status_code == int(status)
+    assert context.code == "ERR.RENDER"
+    assert context.message == "render failed"
     assert context.request_id == "render-request-1"
     assert context.request_method == "POST"
     assert context.request_url == f"http://test{route}"
@@ -377,6 +384,8 @@ def test_screenshot_preserves_api_error_from_injected_client_without_headers() -
         ({}, dl.DTOValidationError),
         ({"data": 123}, dl.DTOValidationError),
         ({"status": 403, "message": "missing code"}, dl.DTOValidationError),
+        ({"status": True, "code": "ERR.RENDER", "message": "invalid status"}, dl.DTOValidationError),
+        ({"status": 403.5, "code": "ERR.RENDER", "message": "invalid status"}, dl.DTOValidationError),
         ({"data": "not base64 !!"}, dl.InvalidResponseError),
     ],
 )

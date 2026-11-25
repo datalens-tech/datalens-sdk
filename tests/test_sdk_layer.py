@@ -631,37 +631,41 @@ def test_typed_connection_create_sends_explicit_ai_access_level(
     assert recorder.request_json(0)["ai_access_level"] == ai_access_level
 
 
-def test_connection_get_sends_rev_id_as_snake_case() -> None:
-    recorder = RecordedTransport(
-        {"/rpc/getConnection": httpx.Response(200, json={"id": "c1", "type": "postgres", "name": "PG"})}
-    )
+def test_connection_get_retains_requested_context_when_read_omits_it() -> None:
+    read_response = {"type": "clickhouse", "name": "CH", "host": "db.local", "port": 8443, "options": {}}
+    recorder = RecordedTransport({"/rpc/getConnection": httpx.Response(200, json=read_response)})
     client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
 
-    client.get.connection(by_id="c1", rev_id="r5")
+    connection = client.get.connection(by_id="c1", workbook_id="wb-1", rev_id="r5")
 
-    assert recorder.request_json(0) == {"connectionId": "c1", "rev_id": "r5"}
+    assert connection.id == "c1"
+    assert connection.location == dl.EntryLocation.workbook("wb-1")
+    assert connection.response_snapshot == read_response
+    assert recorder.request_json(0) == {"connectionId": "c1", "workbookId": "wb-1", "rev_id": "r5"}
 
 
-def test_connection_create_loads_full_entry_after_response_with_null_operation() -> None:
-    full_connection = {"id": "conn-1", "type": "postgres", "name": "PG", "workbook_id": "wb-1", "host": "db.local"}
+@pytest.mark.parametrize("include_null_operation", [False, True])
+def test_connection_create_loads_full_entry_with_requested_context(include_null_operation: bool) -> None:
+    create_response: dict[str, object] = {"id": "conn-1"}
+    if include_null_operation:
+        create_response["operation"] = None
+    read_response = {"type": "clickhouse", "name": "CH", "host": "db.local", "port": 8443, "options": {}}
     recorder = RecordedTransport(
         {
-            "/rpc/createConnection": httpx.Response(200, json={"id": "conn-1", "operation": None}),
-            "/rpc/getConnection": httpx.Response(200, json=full_connection),
+            "/rpc/createConnection": httpx.Response(200, json=create_response),
+            "/rpc/getConnection": httpx.Response(200, json=read_response),
         }
     )
     client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
 
-    connection = (
-        client.create.connection.postgres(name="PG", location=dl.EntryLocation.workbook("wb-1"))
-        .host("db.local")
-        .port(6432)
-        .build()
-    )
-    source_builder = client.create.source(using=connection).pg_table(alias="orders", table_name="orders")
+    location = dl.EntryLocation.workbook("wb-1")
+    connection = client.create.connection.clickhouse(name="CH", location=location).host("db.local").port(8443).build()
+    source_builder = client.create.source(using=connection).ch_table(alias="orders", table_name="orders")
 
+    assert connection.id == "conn-1"
+    assert connection.location == location
     assert isinstance(source_builder, dl.SourceCreate)
-    assert connection.response_snapshot == full_connection
+    assert connection.response_snapshot == read_response
     assert [request.url.path for request in recorder.requests] == ["/rpc/createConnection", "/rpc/getConnection"]
     assert recorder.request_json(1) == {"connectionId": "conn-1", "workbookId": "wb-1"}
 

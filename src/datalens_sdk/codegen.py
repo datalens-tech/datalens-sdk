@@ -161,7 +161,7 @@ _SCHEMA_SUPPORTED_KEYS = frozenset(
 _WIZARD_SCHEMA_SUPPORTED_KEYS = frozenset({"default", "maximum", "minimum"})
 _DASHBOARD_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "maxItems", "minItems", "minLength", "minimum"})
 _DATASET_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"maximum", "minItems", "minLength", "minimum"})
-_CHART_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "minLength"})
+_CHART_DATA_SCHEMA_SUPPORTED_KEYS = frozenset({"discriminator", "minLength", "minimum", "minItems"})
 _ENTRY_REVISIONS_SCHEMA_SUPPORTED_KEYS = frozenset({"default", "maximum", "maxItems", "minItems", "minimum"})
 _ENTRY_STATE_SCHEMA_SUPPORTED_KEYS = frozenset({"minLength"})
 _HTML_PAGE_SCHEMA_SUPPORTED_KEYS = frozenset({"maxLength"})
@@ -290,6 +290,7 @@ class DatasetDataContractMeta(TypedDict):
 class ChartDataContractMeta(TypedDict):
     roots: list[str]
     schemas: dict[str, JsonValue]
+    wizard_aggregation: NotRequired[JsonValue]
 
 
 class EntryRevisionsContractMeta(TypedDict):
@@ -2302,7 +2303,7 @@ def build_dataset_data_contract_meta(spec: Mapping[str, object]) -> DatasetDataC
 
 
 def build_chart_data_contract_meta(spec: Mapping[str, object]) -> ChartDataContractMeta | None:
-    """Extract the chart-data schema closure for flat table reads."""
+    """Extract the shared chart-data schemas and optional Wizard pivot extension."""
 
     paths = _string_object_dict(spec.get("paths"), context="paths")
     if _CHART_DATA_ROUTE not in paths:
@@ -2333,6 +2334,10 @@ def build_chart_data_contract_meta(spec: Mapping[str, object]) -> ChartDataContr
         )
 
     available = _schemas(spec)
+    wizard_name = _CHART_DATA_VARIANTS["wizard"]
+    wizard_aggregation = None
+    if wizard_name in available:
+        available[wizard_name], wizard_aggregation = _split_wizard_chart_aggregation(available[wizard_name])
     reached: dict[str, JsonValue] = {}
     visiting: set[str] = set()
 
@@ -2344,8 +2349,6 @@ def build_chart_data_contract_meta(spec: Mapping[str, object]) -> ChartDataContr
         schema = available.get(name)
         if schema is None:
             raise ValueError(f"getChartData schema graph references missing component {name!r}")
-        if name == _CHART_DATA_VARIANTS["wizard"]:
-            schema = _flat_wizard_chart_data_schema(schema)
         _audit_pydantic_schema_features(
             schema,
             pointer=f"/schemas/{_json_pointer_token(name)}",
@@ -2382,11 +2385,14 @@ def build_chart_data_contract_meta(spec: Mapping[str, object]) -> ChartDataContr
         required = _string_list(variant.get("required"), context=f"{name}.required")
         if chart_type.get("type") != "string" or chart_type.get("enum") != [tag] or "chartType" not in required:
             raise ValueError(f"getChartData variant {name!r} must require the literal chartType {tag!r}")
-    return {"roots": list(_CHART_DATA_ROOTS), "schemas": dict(sorted(reached.items()))}
+    contract: ChartDataContractMeta = {"roots": list(_CHART_DATA_ROOTS), "schemas": dict(sorted(reached.items()))}
+    if wizard_aggregation is not None:
+        contract["wizard_aggregation"] = wizard_aggregation
+    return contract
 
 
-def _flat_wizard_chart_data_schema(schema: dict[str, object]) -> dict[str, object]:
-    # Pivot aggregation metadata is outside the flat table read contract.
+def _split_wizard_chart_aggregation(schema: dict[str, object]) -> tuple[dict[str, object], JsonValue | None]:
+    """Compare the table shape separately from the optional pivot extension."""
     response = dict(schema)
     node = response
     context = _CHART_DATA_VARIANTS["wizard"]
@@ -2397,12 +2403,58 @@ def _flat_wizard_chart_data_schema(schema: dict[str, object]) -> dict[str, objec
         node = child
     table_context = f"{context}.items"
     table = _string_object_dict(node.get("items"), context=table_context)
-    node["items"] = _without_schema_property(table, "aggregation", context=table_context)
-    return response
+    table_fields = _string_object_dict(table.get("properties"), context=f"{table_context}.properties")
+    if "aggregation" not in table_fields:
+        return response, None
+    if "aggregation" in _string_list(table.get("required", []), context=f"{table_context}.required"):
+        raise ValueError("getChartData Wizard table aggregation must be optional")
+    aggregation_context = f"{table_context}.properties.aggregation"
+    aggregation = _string_object_dict(table_fields.pop("aggregation"), context=aggregation_context)
+    table["properties"] = table_fields
+    node["items"] = table
+    branches = aggregation.get("oneOf")
+    if not isinstance(branches, list):
+        raise ValueError("getChartData Wizard aggregation must define oneOf variants")
+    normalized_branches = [
+        _normalize_wizard_aggregation_branch(branch, context=f"{aggregation_context}.oneOf[{index}]")
+        for index, branch in enumerate(branches)
+    ]
+    if {_singleton_schema_values(branch).get("type") for branch in normalized_branches} != {
+        _canonical_json(tag) for tag in ("detail", "subtotal", "total")
+    }:
+        raise ValueError("getChartData Wizard aggregation must define detail, subtotal, and total variants")
+    aggregation["oneOf"] = normalized_branches
+    _audit_pydantic_schema_features(
+        aggregation,
+        pointer=aggregation_context,
+        contract="getChartData",
+        require_provably_disjoint_one_of=True,
+    )
+    return response, _normalize_wizard_schema(aggregation)
 
 
-def _widen_chart_data_column_type(schemas: dict[str, JsonValue]) -> None:
-    """Accept future Wizard column types only in the generated read contract."""
+def _normalize_wizard_aggregation_branch(value: object, *, context: str) -> dict[str, object]:
+    branch = _string_object_dict(value, context=context)
+    fields = _string_object_dict(branch.get("properties"), context=f"{context}.properties")
+    group_by = _string_object_dict(fields.get("groupBy"), context=f"{context}.properties.groupBy")
+    if _singleton_schema_values(branch).get("type") == _canonical_json("total") and group_by == {
+        "type": "array",
+        "prefixItems": [],
+    }:
+        # The published empty prefix does not define an array length bound.
+        group_by = {"type": "array", "items": {"type": "integer", "minimum": 0}}
+    item_context = f"{context}.properties.groupBy.items"
+    items = _string_object_dict(group_by.get("items"), context=item_context)
+    required = _string_list(branch.get("required"), context=f"{context}.required")
+    if group_by.get("type") != "array" or items.get("type") != "integer" or "groupBy" not in required:
+        raise ValueError(f"{context}.groupBy must be a required array of integer schema indices")
+    fields["groupBy"] = group_by
+    branch["properties"] = fields
+    return branch
+
+
+def _prepare_wizard_chart_data_read(schemas: dict[str, JsonValue], *, aggregation: JsonValue) -> None:
+    """Widen Wizard column types and include the optional pivot metadata in generated reads."""
 
     name = "GetWizardChartDataResult"
     response = _string_object_dict(schemas[name], context=name)
@@ -2424,9 +2476,11 @@ def _widen_chart_data_column_type(schemas: dict[str, JsonValue]) -> None:
     column["properties"] = column_properties
     if referenced_name is not None:
         schemas[referenced_name] = cast(JsonValue, column)
-        return
-    columns["items"] = column
-    table_properties["schema"] = columns
+    else:
+        columns["items"] = column
+        table_properties["schema"] = columns
+    if aggregation is not None:
+        table_properties["aggregation"] = aggregation
     table["properties"] = table_properties
     results["items"] = table
     properties["results"] = results
@@ -3328,9 +3382,25 @@ def build_metadata(
         )
     if chart_data_contracts:
         canonical_installation, canonical_chart_data = chart_data_contracts[0]
+        aggregation = canonical_chart_data.get("wizard_aggregation")
+        aggregation_installation = canonical_installation
         for installation, candidate in chart_data_contracts[1:]:
-            if candidate != canonical_chart_data:
+            if (
+                candidate["roots"] != canonical_chart_data["roots"]
+                or candidate["schemas"] != canonical_chart_data["schemas"]
+            ):
                 raise ValueError(f"getChartData schemas differ between {canonical_installation!r} and {installation!r}")
+            candidate_aggregation = candidate.get("wizard_aggregation")
+            if candidate_aggregation is None:
+                continue
+            if aggregation is not None and candidate_aggregation != aggregation:
+                raise ValueError(
+                    f"getChartData Wizard aggregation differs between {aggregation_installation!r} and {installation!r}"
+                )
+            aggregation = candidate_aggregation
+            aggregation_installation = installation
+        if aggregation is not None:
+            canonical_chart_data["wizard_aggregation"] = aggregation
         out["chart_data"] = canonical_chart_data
     if entry_move_missing:
         raise ValueError(f"moveFolderEntry is missing from installations: {entry_move_missing!r}")
@@ -5300,7 +5370,7 @@ def _emit_chart_data_dto(metadata: Metadata) -> str:
         contract="getChartData",
         payload_methods="roots",
     ).emit(("GetChartDataArgs",))
-    _widen_chart_data_column_type(schemas)
+    _prepare_wizard_chart_data_read(schemas, aggregation=contract.get("wizard_aggregation"))
     response_models = _PydanticSchemaEmitter(
         schemas,
         read=True,

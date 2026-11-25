@@ -12,8 +12,10 @@ Confirm the requested factory in
 3. Tab code runs on the server. Functions wrapped with `Editor.wrapFn` run in a
    restricted browser sandbox and cannot close over surrounding variables.
 4. Use the SDK matrix below to check which tabs the typed SDK can write for
-   each renderer and installation. Follow the runtime documentation for
-   JavaScript format and behavior.
+   each renderer and installation. If a documented tab is absent from the
+   matrix for the selected renderer and installation, report that the SDK
+   cannot write it. Do not invent a setter or a raw request. Follow the
+   runtime documentation for JavaScript format and behavior.
 5. Re-fetching verifies stored tab text only. Without UI or browser evidence,
    report "persisted; rendering not verified".
 
