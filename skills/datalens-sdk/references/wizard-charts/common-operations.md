@@ -171,8 +171,7 @@ chart.get_relations(
         "dash", "report", "widget", "dataset", "folder", "connection",
         "compute", "artifact", "sql_query",
     ] | None = None,
-    recursive: bool = False,
-    max_depth: int | None = None,
+    max_depth: int | Literal["all"] = 1,
 ) -> Pager[EntryRelation]
 chart.delete() -> None
 ```
@@ -180,9 +179,10 @@ chart.delete() -> None
 `rename()`, `get_relations()`, and `delete()` require a bound chart with an ID.
 
 `get_relations()` returns a lazy pager. Follow [hard rule 12](../../SKILL.md#hard-rules)
-for result handling, then iterate the pager or call `.pages()` to fetch results.
-See [Entry relations](../navigation.md#entry-relations) for directions and
-recursive traversal.
+for result handling. Iterate over `pager` to fetch individual relations or over
+`pager.pages()` to fetch one page at a time.
+See [Entry relations](../navigation.md#entry-relations) for directions,
+depth limits, and pagination.
 
 Deletion is destructive. Obtain explicit user approval before calling
 `chart.delete()`.
@@ -558,10 +558,14 @@ chart = chart.rename("Published profit")
 
 ### Relations
 
-Get a lazy pager for the chart's direct dependencies.
+With permission to handle the results, choose the direction that matches the question.
 
 ```python
+# Direct dependencies of this chart
 dependencies = chart.get_relations(link_direction="from")
+
+# Dashboards that use this chart, directly or indirectly
+dashboards = chart.get_relations(link_direction="to", scope="dash", max_depth="all")
 ```
 
 ### Delete

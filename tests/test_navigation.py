@@ -478,9 +478,7 @@ def test_recursive_relations_use_shortest_depth_and_visit_ids_once() -> None:
     )
     client = _client(recorder)
     dashboard = Dashboard(id="dashboard", data={}, _operations=client._dashboard_service)
-    pager = dashboard.get_relations(
-        link_direction="from", recursive=True, max_depth=2, page_size=3, include_permissions_info=True
-    )
+    pager = dashboard.get_relations(link_direction="from", max_depth=2, page_size=3, include_permissions_info=True)
 
     pages = list(pager.pages())
 
@@ -511,7 +509,7 @@ def test_recursive_relations_filter_output_and_follow_empty_and_filtered_pages()
     )
     connection = _client(recorder).domain_connection(id="connection", type="postgres")
 
-    pages = list(connection.get_relations(link_direction="to", recursive=True, scope="dash").pages())
+    pages = list(connection.get_relations(link_direction="to", max_depth="all", scope="dash").pages())
 
     assert [[(item.id, item.scope, item.type, item.workbook_id) for item in page.items] for page in pages] == [
         [("dashboard", "dash", "", "workbook-1")]
@@ -528,31 +526,33 @@ def test_recursive_relations_filter_output_and_follow_empty_and_filtered_pages()
     ]
 
 
-def test_recursive_relations_are_lazy_and_depth_one_replays_root_pages() -> None:
+def test_depth_one_relations_are_lazy_and_preserve_server_pages() -> None:
     recorder = RecordedTransport(
         {
             _RELATIONS_RPC: [
                 _relation_page(("chart-a", "widget"), token="next"),
                 _relation_page(("chart-a", "widget"), token="next"),
-                _relation_page(("chart-b", "widget")),
+                _relation_page(("chart-a", "widget"), ("connection", "connection")),
             ]
         }
     )
     connection = _client(recorder).domain_connection(id="connection", type="postgres")
-    pager = connection.get_relations(link_direction="to", recursive=True, max_depth=1, page_size=1)
-    first = iter(pager)
+    pager = connection.get_relations(link_direction="to", max_depth=1, page_size=2)
+    first = pager.pages()
 
     assert recorder.requests == []
-    assert next(first).id == "chart-a"
-    root_payload = {"entryIds": ["connection"], "linkDirection": "to", "limit": 1}
+    first_page = next(first)
+    assert [item.id for item in first_page.items] == ["chart-a"]
+    assert first_page.next_page_token == "next"
+    root_payload = {"entryIds": ["connection"], "linkDirection": "to", "limit": 2}
     assert recorder.bodies(_RELATIONS_RPC) == [root_payload]
 
-    assert [item.id for item in pager] == ["chart-a", "chart-b"]
+    assert [item.id for item in pager] == ["chart-a", "chart-a", "connection"]
     assert recorder.bodies(_RELATIONS_RPC) == [root_payload, root_payload, {**root_payload, "pageToken": "next"}]
 
 
-@pytest.mark.parametrize("recursive", [False, True])
-def test_relation_pagers_reject_a_repeated_cursor_on_one_entry(recursive: bool) -> None:
+@pytest.mark.parametrize("max_depth", [1, 2])
+def test_relation_pagers_reject_a_repeated_cursor_on_one_entry(max_depth: int) -> None:
     recorder = RecordedTransport(
         {
             _RELATIONS_RPC: [
@@ -562,7 +562,7 @@ def test_relation_pagers_reject_a_repeated_cursor_on_one_entry(recursive: bool) 
         }
     )
     connection = _client(recorder).domain_connection(id="connection", type="postgres")
-    pages = connection.get_relations(link_direction="to", recursive=recursive).pages()
+    pages = connection.get_relations(link_direction="to", max_depth=max_depth).pages()
 
     assert [next(pages).items[0].id for _ in range(2)] == ["chart-a", "chart-b"]
     with pytest.raises(dl.InvalidResponseError, match=r"getEntriesRelations.*repeated nextPageToken"):
@@ -586,7 +586,7 @@ def test_recursive_relations_propagate_child_api_errors_with_context() -> None:
         }
     )
     connection = _client(recorder).domain_connection(id="connection", type="postgres")
-    relations = iter(connection.get_relations(link_direction="to", recursive=True))
+    relations = iter(connection.get_relations(max_depth="all"))
 
     assert next(relations).id == "dataset"
     with pytest.raises(dl.ForbiddenError) as error:
@@ -594,8 +594,8 @@ def test_recursive_relations_propagate_child_api_errors_with_context() -> None:
     assert error.value.context.code == "ERR.US.PERMISSION_DENIED"
     assert error.value.context.request_id == "relations-request"
     assert recorder.bodies(_RELATIONS_RPC) == [
-        {"entryIds": ["connection"], "linkDirection": "to", "limit": 100},
-        {"entryIds": ["dataset"], "linkDirection": "to", "limit": 100},
+        {"entryIds": ["connection"], "limit": 100},
+        {"entryIds": ["dataset"], "limit": 100},
     ]
 
 
@@ -614,11 +614,11 @@ def test_recursive_relations_batch_wide_levels_with_independent_cursors() -> Non
         }
     )
     connection = _client(recorder).domain_connection(id="connection", type="postgres")
-    relations = iter(connection.get_relations(link_direction="to", recursive=True, max_depth=2))
+    relations = iter(connection.get_relations(max_depth=2))
 
     assert not recorder.requests
     assert next(relations).id == chart_ids[0]
-    options = {"linkDirection": "to", "limit": 100}
+    options = {"limit": 100}
     root_payload = {"entryIds": ["connection"], **options}
     assert recorder.bodies(_RELATIONS_RPC) == [root_payload]
 
@@ -635,32 +635,23 @@ def test_recursive_relations_batch_wide_levels_with_independent_cursors() -> Non
     ]
 
 
-@pytest.mark.parametrize(
-    ("recursive", "direction", "depth", "error_argument"),
-    [
-        (False, None, 1, "max_depth"),
-        (True, None, None, "link_direction"),
-        (True, "both", None, "link_direction"),
-        (True, "from", 0, "max_depth"),
-        (True, "from", -1, "max_depth"),
-        (True, "from", True, "max_depth"),
-        (True, "from", 1.0, "max_depth"),
-        (True, "from", "1", "max_depth"),
-        ("yes", "from", None, "recursive"),
-    ],
-)
-def test_recursive_relations_reject_invalid_options_eagerly(
-    recursive: object, direction: object, depth: object, error_argument: str
-) -> None:
+@pytest.mark.parametrize("depth", [None, 0, -1, True, False, 1.0, "1", "unlimited"])
+def test_relation_pagers_reject_invalid_depth_eagerly(depth: object) -> None:
     recorder = RecordedTransport({})
     connection = _client(recorder).domain_connection(id="connection", type="postgres")
 
-    with pytest.raises(dl.DataLensValidationError, match=error_argument):
-        connection.get_relations(
-            recursive=recursive,  # type: ignore[arg-type]
-            link_direction=direction,  # type: ignore[arg-type]
-            max_depth=depth,  # type: ignore[arg-type]
-        )
+    with pytest.raises(dl.DataLensValidationError, match="max_depth"):
+        connection.get_relations(max_depth=depth)  # type: ignore[arg-type]
+
+    assert recorder.requests == []
+
+
+def test_relation_traversal_rejects_invalid_direction_eagerly() -> None:
+    recorder = RecordedTransport({})
+    connection = _client(recorder).domain_connection(id="connection", type="postgres")
+
+    with pytest.raises(dl.DataLensValidationError, match="link_direction"):
+        connection.get_relations(link_direction="both", max_depth=2)  # type: ignore[arg-type]
 
     assert recorder.requests == []
 
@@ -710,35 +701,29 @@ def test_navigation_write_filters_reject_invalid_scopes_eagerly() -> None:
     assert recorder.requests == []
 
 
-@pytest.mark.parametrize("recursive", [False, True])
-def test_supported_entry_objects_bind_relations_to_navigation(recursive: bool) -> None:
-    recorder = RecordedTransport(
-        {
-            "/rpc/getEntriesRelations": [
-                httpx.Response(200, json={"relations": []}),
-                httpx.Response(200, json={"relations": []}),
-                httpx.Response(200, json={"relations": []}),
-            ]
-        }
-    )
+@pytest.mark.parametrize("use_defaults", [True, False])
+def test_supported_entry_objects_bind_relations_to_navigation(use_defaults: bool) -> None:
+    recorder = RecordedTransport({_RELATIONS_RPC: [_relation_page() for _ in range(4)]})
     client = _client(recorder)
     objects = (
         client.domain_connection(id="connection-1", type="postgres"),
         Dataset(id="dataset-1", installation="yacloud", _operations=client._dataset_service),
         WizardChart(id="chart-1", installation="yacloud", _operations=client._chart_service),
+        Dashboard(id="dashboard-1", data={}, _operations=client._dashboard_service),
     )
 
     for entry in objects:
-        if recursive:
-            assert list(entry.get_relations(link_direction="from", recursive=True, scope="widget", max_depth=1)) == []
-        else:
+        if use_defaults:
             assert list(entry.get_relations()) == []
+        else:
+            assert list(entry.get_relations(link_direction="from", scope="widget", max_depth=3)) == []
 
-    options = {"limit": 100, "linkDirection": "from"} if recursive else {"limit": 100}
-    assert recorder.bodies("/rpc/getEntriesRelations") == [
+    options = {"limit": 100} if use_defaults else {"limit": 100, "linkDirection": "from"}
+    assert recorder.bodies(_RELATIONS_RPC) == [
         {"entryIds": ["connection-1"], **options},
         {"entryIds": ["dataset-1"], **options},
         {"entryIds": ["chart-1"], **options},
+        {"entryIds": ["dashboard-1"], **options},
     ]
 
 

@@ -340,7 +340,7 @@ Editor index replaces the public Editor subtree for that installation.
 | A picture of a saved chart or dashboard; a visual check of a result         | [references/screenshots.md](references/screenshots.md)                   |
 | A dashboard link with `state=`: reading, creating, or editing saved selector values; which widgets they reach | [references/dashboard-state.md](references/dashboard-state.md) |
 | Finding, listing, linking, moving, or renaming entities; revision history; containers | [references/navigation.md](references/navigation.md)                     |
-| Finding direct or recursive dependencies and dependents | [Entry relations](references/navigation.md#entry-relations) |
+| Finding what an entry depends on (`"from"`) or what uses it (`"to"`), directly or through multiple links | [Entry relations](references/navigation.md#entry-relations) |
 | Listing DataLens REST catalogs or selecting one for a Trino cluster (Yandex Cloud only) | [references/rest-catalogs.md](references/rest-catalogs.md)                |
 | Creating, getting, listing, updating, or deleting a Yandex Cloud environment | [references/cloud-environments.md](references/cloud-environments.md) |
 | Creating bucket upload/download URLs, reading object metadata, or listing bucket keys (Yandex Cloud only) | [references/cloud-environment-storage.md](references/cloud-environment-storage.md) |

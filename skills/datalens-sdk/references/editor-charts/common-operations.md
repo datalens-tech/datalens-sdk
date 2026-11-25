@@ -84,13 +84,15 @@ verification code failed.
 ## Rename, relations, and delete
 
 - Rename: `client.get.editor_chart(...).rename(new_name)`.
-- Relations: `chart.get_relations(...)` returns a lazy pager; consume it only
-  with permission to handle the result. Arguments include
-  `include_permissions_info`, `link_direction`, `page_size`, and `scope`.
-  `link_direction` is `"from" | "to"`; `scope` is `"dash" | "report" |
-  "widget" | "dataset" | "folder" | "connection" | "compute" | "artifact" |
-  "sql_query"`; `page_size` defaults to `100`. For recursive traversal, see
-  [Entry relations](../navigation.md#entry-relations).
+- With permission to handle relation data, use
+  `chart.get_relations(link_direction="from")` for the chart's direct dependencies.
+  To find dashboards that use it through any number of intermediate entries, use
+  `chart.get_relations(link_direction="to", scope="dash", max_depth="all")`.
+  Both return a lazy pager. Supported `scope` values are `"dash"`, `"report"`,
+  `"widget"`, `"dataset"`, `"folder"`, `"connection"`, `"compute"`, `"artifact"`,
+  and `"sql_query"`. Use `page_size` to set the result limit per request (default 100)
+  and `include_permissions_info=True` for permission metadata.
+  See [Entry relations](../navigation.md#entry-relations) for depth limits and pagination.
 - Delete only after explicit confirmation: fetch the exact chart, then call
   `chart.delete()`; deletion is immediate.
 

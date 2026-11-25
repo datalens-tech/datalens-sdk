@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 from datalens_sdk.domain.entry_location import (
     EntryLocation,
@@ -138,13 +139,13 @@ class Connection:
         link_direction: LinkDirection | None = None,
         page_size: int = 100,
         scope: EntryScope | None = None,
-        recursive: bool = False,
-        max_depth: int | None = None,
+        max_depth: int | Literal["all"] = 1,
     ) -> Pager[EntryRelation]:
-        """Lazily list direct relations or traverse them in breadth-first order.
+        """Lazily list related entries within max_depth links (default 1, "all" for unlimited).
 
-        Recursive traversal requires a direction and applies scope to results only.
-        Set max_depth to limit the number of steps from this entry.
+        Use "from" for dependencies and "to" for dependents. Omit link_direction
+        to use the server default at every depth. Multi-hop traversal follows all
+        scopes and applies the scope filter to the returned entries.
         """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
@@ -157,7 +158,6 @@ class Connection:
                 link_direction=link_direction,
                 page_size=page_size,
                 scope=scope,
-                recursive=recursive,
                 max_depth=max_depth,
             ),
         )

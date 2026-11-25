@@ -161,57 +161,50 @@ Scope the search when you can: inside a known workbook use `wb.list_entries(name
 
 ## Entry relations
 
-`Connection`, `Dataset`, `Dashboard`, and chart objects expose `get_relations()`.
-The entry must be bound to a client and have an ID.
+`Connection`, `Dataset`, `Dashboard`, and chart objects expose `get_relations()`
+on entries bound to a client with an ID.
 
 Containers (`Folder`, `Collection`, `Workbook`) do **not** have it.
 Use `list_entries()` to browse their contents.
 
-`get_relations()` returns a lazy `Pager[EntryRelation]`. Set
-`link_direction="from"` for dependencies or `link_direction="to"` for
-entries that use the starting entry. Use `relation.scope` for the entry
-category and `relation.type` for the subtype, which can be empty.
+Choose `link_direction="from"` to find the entries the starting object
+depends on. Choose `link_direction="to"` to find entries that use it.
+Omitting the direction leaves the choice to the server on every request,
+at any depth.
 
-The default mode (`recursive=False`) fetches direct relations in server
-order. With no `link_direction`, the SDK omits `linkDirection` from the
-RPC request, leaving the direction to the server. In one YaTeam API v3
-check on a Wizard chart, omitting the direction returned the same dataset
-as `"from"`.
-
-With `recursive=True`, pass an explicit direction. The pager yields each
-reachable entry ID once, starting with the nearest entries and excluding
-the starting entry. `max_depth` accepts a positive integer in recursive mode.
-Direct neighbors are at depth 1, and entries at the depth limit are included.
-Omit `max_depth` to traverse all reachable entries.
-
-In direct mode, the SDK passes `scope` to the server. In recursive mode,
-`scope` filters the returned entries while traversal follows all scopes.
-`page_size` sets the limit per RPC request (default `100`), and
-`include_permissions_info` applies to each request. Recursive `.pages()`
-yields nonempty pages with `next_page_token=None`.
-
-To show a dashboard's direct dependencies, iterate the relation pager and
-display the metadata.
+Follow [hard rule 12](../SKILL.md#hard-rules) when calling `get_relations()`
+and consuming its lazy `Pager[EntryRelation]`. Each example assumes the
+user has authorized handling the results for that task.
 
 ```python
-dashboard = client.get.dashboard(by_id=dashboard_id)
+# All direct dependencies of a dashboard, across all response pages
 direct_dependencies = dashboard.get_relations(link_direction="from")
-for relation in direct_dependencies:
-    print(relation.id, relation.scope, relation.type, relation.key, relation.workbook_id)
+
+# Dashboards that use a connection within three links, including via datasets and charts
+dashboards = connection.get_relations(link_direction="to", scope="dash", max_depth=3)
+
+# Every dependency reachable from a dashboard, at any depth
+all_dependencies = dashboard.get_relations(link_direction="from", max_depth="all")
 ```
 
-Use recursive traversal to follow a dashboard's full dependency chain or
-find dashboards that use a connection within three links.
+The default `max_depth=1` returns direct neighbors in server order. The
+SDK passes `scope` to the server and preserves its page tokens. Iterating
+the pager reads every page of those direct neighbors.
 
-```python
-dashboard = client.get.dashboard(by_id=dashboard_id)
-dependencies = dashboard.get_relations(link_direction="from", recursive=True)
+A larger positive integer includes entries up to that many links away.
+`max_depth="all"` follows links until the traversal is exhausted. Both
+yield unique entry IDs in breadth-first order and exclude the starting
+entry. At these depths `scope` filters the output while traversal can
+pass through entries of any scope. For example, the dashboard lookup
+above can cross both datasets and charts. Traversal pages are nonempty
+and have `next_page_token=None`. Iterate the pager or its `.pages()`
+iterator to completion to receive all results.
 
-connection = client.get.connection(by_id=connection_id)
-dashboards = connection.get_relations(link_direction="to", recursive=True, max_depth=3, scope="dash")
-```
-
-Check for dependents before deleting a shared entry.
+`page_size` sets the result limit per RPC request (default `100`).
+`include_permissions_info` applies to each request. On each `EntryRelation`,
+`scope` is the entry category and `type` is the subtype, which can be empty. When checking
+the impact of deleting a shared entry, use `link_direction="to"` to
+find dependents.
 
 ## Revision history on an entry
 

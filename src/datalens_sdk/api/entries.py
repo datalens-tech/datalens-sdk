@@ -26,6 +26,7 @@ from datalens_sdk.errors import (
 )
 from datalens_sdk.http import DEFAULT_RETRY_POLICY, TRANSIENT_RETRY_POLICY, HTTPClientProtocol, RetryPolicy
 
+# The SDK caps each request at 100 input IDs. page_size controls the number of results per request.
 _RELATIONS_BATCH_SIZE = 100
 
 
@@ -177,22 +178,25 @@ class EntriesService:
         entry_id: str,
         options: RelationOptions,
     ) -> Pager[EntryRelation]:
-        if options.recursive:
-            return Pager(lambda: self._recursive_relation_pages(entry_id, options))
-        return Pager(lambda: self._relation_pages((entry_id,), options))
+        def load() -> Iterator[Page[EntryRelation]]:
+            if options.max_depth != 1:
+                return self._recursive_relation_pages(entry_id, options)
+            return self._relation_pages((entry_id,), options)
+
+        return Pager(load)
 
     def _recursive_relation_pages(
         self,
         entry_id: str,
         options: RelationOptions,
     ) -> Iterator[Page[EntryRelation]]:
-        traversal_options = replace(options, scope=None, recursive=False, max_depth=None)
+        traversal_options = replace(options, scope=None)
         frontier = [entry_id]
         seen_ids = {entry_id}
         depth = 1
         while frontier:
             next_frontier: list[str] = []
-            expand_neighbors = options.max_depth is None or depth < options.max_depth
+            expand_neighbors = options.max_depth == "all" or depth < options.max_depth
             for page in self._relation_pages(frontier, traversal_options):
                 items: list[EntryRelation] = []
                 for relation in page.items:
