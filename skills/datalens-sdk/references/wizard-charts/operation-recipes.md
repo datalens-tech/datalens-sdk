@@ -19,36 +19,25 @@ and locations with values from the user's DataLens installation.
 
 ## Resolve Fields Safely on Update
 
-Re-fetch a chart before updating it. `chart.fields` contains fields currently
-referenced by visualization and layer slots, sort lists, filters, and hierarchy
-members. Fetch its dataset and use a `DatasetField` when adding a field that is
-not yet referenced. For each GUID, the proxy keeps the first encountered
-snapshot and fills missing properties from its chart-local definition. Its
-`.raw` exposes that enriched snapshot. Numeric formatting, date formats, and
-title overrides may differ between occurrences; reading `.fields` leaves them
-unchanged. Use the GUID when occurrences have different title overrides,
-because name lookup uses only the selected snapshot's title and name.
+Re-fetch a chart before updating it. Use `chart.fields.by_guid(guid)` to get
+the representative of a referenced field. Each GUID has one representative,
+which may come from any of its placements. Use a `DatasetField` from the
+intended dataset when adding an unreferenced field or when its dataset is
+ambiguous. See the [field reference rules](common-operations.md#field-references).
+
+`y()` replaces the complete Y field list and copies the supplied fields'
+supported presentation properties. Use the desired chart design to choose
+the entire list. Here, the intended Y fields are Revenue and Profit, in that
+order. Pass `[]` when intentionally clearing an optional slot.
 
 ```python
 chart = client.get.wizard_chart(by_id="chart-id")
+dataset = client.get.dataset(by_id="dataset-id")
+revenue = dataset.fields.by_name("Revenue")
+profit = dataset.fields.by_name("Profit")
 
-placed_revenue = chart.fields.by_guid("revenue-guid")
-dataset = client.get.dataset(by_id=chart.dataset_ids[0])
-new_profit = dataset.fields.by_name("Profit")
-
-chart = chart.update.y([placed_revenue, new_profit]).mode("save").execute()
+chart = chart.update.y([revenue, profit]).mode("save").execute()
 ```
-
-Placeholder setters replace the complete field list. Include fields that must
-remain, and pass `[]` only when intentionally clearing an optional slot.
-Setters copy the supplied snapshot's supported presentation properties. For example,
-`chart.update.labels([chart.fields.by_guid(guid)])` can copy the representative
-value-slot formatting over the existing label formatting. Reading `.fields`
-itself preserves every placement's formatting.
-The public typed API lists active fields through `chart.fields` but does not
-report which slot each field occupies. This example assumes Revenue is
-the complete current `y` list; if the current layout is unknown, ask the user
-instead of guessing.
 
 `measures()` is update-only for indicator, pie, donut, funnel, and treemap;
 their typed create builders use `y()` instead. Pivot table uses `measures()`
@@ -247,6 +236,12 @@ chart = (
 only the supplied keys into each placement's original formatting. A precision
 patch preserves distinct numeric formats, label modes, and other untouched
 keys. Filter and sort references do not acquire presentation formatting.
+
+```python
+chart = client.get.wizard_chart(by_id="chart-id")
+revenue = chart.fields.by_guid("revenue-guid")
+chart = chart.update.measure_format(revenue, precision=4).mode("save").execute()
+```
 
 Use `palette()` after binding color to a dimension when a categorical palette
 is desired.

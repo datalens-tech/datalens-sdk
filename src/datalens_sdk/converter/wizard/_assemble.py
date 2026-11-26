@@ -280,13 +280,21 @@ def _json_array(value: object, *, context: str) -> list[JsonValue]:
     return normalized
 
 
-def _project_update_field(snapshot: Mapping[str, object], *, normalizer: _Normalizer) -> dict[str, object]:
-    return {
+def _project_update_field(
+    snapshot: Mapping[str, object],
+    *,
+    dataset_id: str | None,
+    field_structure: WizardFieldStructure,
+) -> dict[str, object]:
+    field = {
         key: value
         for key, value in snapshot.items()
-        if key in normalizer.update_field_properties
-        and (value is not None or key in normalizer.nullable_update_field_properties)
+        if key in field_structure["update_properties"]
+        and (value is not None or key in field_structure["nullable_update_properties"])
     }
+    if dataset_id is not None and not field.get("datasetId"):
+        field["datasetId"] = dataset_id
+    return field
 
 
 def _without_field_decorations(item: WizardJsonObject, *, normalizer: _Normalizer) -> WizardJsonObject:
@@ -334,7 +342,7 @@ def _project_field(
                 if not isinstance(item, Mapping):
                     continue
                 guid = item.get("guid")
-                item_dataset_id = item.get("datasetId") or dataset_id
+                item_dataset_id = normalizer.dataset_id_for(item, fallback=dataset_id)
                 if isinstance(guid, str) and isinstance(item_dataset_id, str):
                     fields.append({"guid": guid, "datasetId": item_dataset_id})
         hierarchy = {
@@ -356,7 +364,7 @@ def _project_field(
         return _json_object(pseudo, context="Wizard pseudo field")
 
     guid = snapshot.get("guid")
-    field_dataset_id = snapshot.get("datasetId") or dataset_id
+    field_dataset_id = normalizer.dataset_id_for(snapshot, fallback=dataset_id)
     if not isinstance(guid, str) or not isinstance(field_dataset_id, str):
         raise DataLensConfigurationError("Wizard field requires string guid and datasetId.")
     return _json_object(
@@ -519,8 +527,8 @@ def _filter_item(
     return result
 
 
-def _field_guid(ref: object, normalizer: _Normalizer, *, dataset_id: str | None) -> str:
-    fields = _normalize_fields(normalizer, [ref], dataset_id=dataset_id)
+def _field_guid(ref: object, normalizer: _Normalizer) -> str:
+    fields = normalizer.normalize([ref])  # type: ignore[list-item]
     guid = fields[0].get("guid") if fields else None
     if not isinstance(guid, str):
         raise DataLensConfigurationError("Wizard field reference has no guid.")
@@ -567,7 +575,6 @@ def _measure_mapping(
     values: Mapping[Any, str],
     *,
     normalizer: _Normalizer,
-    dataset_id: str | None,
     method_name: str,
     defaults: bool,
 ) -> dict[str, str]:
@@ -576,7 +583,7 @@ def _measure_mapping(
         raise DataLensConfigurationError(f"{method_name}() requires at least two measures across the y and y2 slots.")
     mounted: dict[str, str] = {guid: str(index) for index, guid in enumerate(measure_guids)} if defaults else {}
     for ref, value in values.items():
-        guid = _field_guid(ref, normalizer, dataset_id=dataset_id)
+        guid = _field_guid(ref, normalizer)
         if guid not in measure_guids:
             raise DataLensConfigurationError(
                 f"{method_name}(...): field {ref!r} is not placed as a measure in the y or y2 slot."
@@ -789,7 +796,6 @@ def _apply_color_encoding(
             visualization,
             encoding.colors_map,
             normalizer=normalizer,
-            dataset_id=dataset_id,
             method_name="color_by_measure_name",
             defaults=True,
         )
@@ -856,7 +862,6 @@ def _apply_shape_encoding(
             visualization,
             encoding.shapes_map or {},
             normalizer=normalizer,
-            dataset_id=dataset_id,
             method_name="shape_by_measure_name",
             defaults=False,
         )
@@ -891,10 +896,9 @@ def _apply_item_mutations(
     mutations: Sequence[tuple[object, str, object]],
     *,
     normalizer: _Normalizer,
-    dataset_id: str | None,
 ) -> None:
     for ref, key, value in mutations:
-        guid = _field_guid(ref, normalizer, dataset_id=dataset_id)
+        guid = _field_guid(ref, normalizer)
         target_key = "fakeTitle" if key == "_title_override" else key
         normalized_value = normalize_json_object({"value": value}, context="Wizard item mutation")["value"]
         if target_key == "backgroundSettings":
@@ -955,7 +959,6 @@ def _apply_measure_formats(
     formats: Sequence[tuple[object, MeasureFormat]],
     *,
     normalizer: _Normalizer,
-    dataset_id: str | None,
 ) -> None:
     mutations: list[tuple[object, str, object]] = []
     for ref, value in formats:
@@ -965,7 +968,6 @@ def _apply_measure_formats(
         visualization,
         mutations,
         normalizer=normalizer,
-        dataset_id=dataset_id,
     )
 
 
@@ -1118,26 +1120,13 @@ def _assemble_combined_visualization(
         visualization,
         spec.item_mutations,
         normalizer=normalizer,
-        dataset_id=dataset_id,
     )
     _apply_measure_formats(
         visualization,
         spec.pending_measure_formats,
         normalizer=normalizer,
-        dataset_id=dataset_id,
     )
     return visualization
-
-
-def _geo_normalizer(
-    spec: WizardChartCreateSpec, dataset: object, *, field_structure: WizardFieldStructure
-) -> _Normalizer:
-    return _Normalizer(
-        dataset=dataset,  # type: ignore[arg-type]
-        local_fields=_local_fields_map(spec.local_fields),
-        hierarchies=_hierarchies_map(spec.hierarchies),
-        field_structure=field_structure,
-    )
 
 
 def _assemble_geo_visualization(
@@ -1154,11 +1143,7 @@ def _assemble_geo_visualization(
         layer_type = layer_input["layer_type"]
         layer_dataset = layer_input.get("dataset") or spec.dataset
         layer_dataset_id = layer_dataset.id if layer_dataset is not None and layer_dataset.id else dataset_id
-        layer_normalizer = (
-            _geo_normalizer(spec, layer_dataset, field_structure=normalizer.field_structure)
-            if layer_dataset is not None
-            else normalizer
-        )
+        layer_normalizer = normalizer.for_dataset(layer_dataset) if layer_dataset is not None else normalizer
         layer_settings: GeoLayerSettingsV1 = {
             "id": layer_input["id"],
             "name": layer_input["name"] or f"Layer {index}",
@@ -1274,11 +1259,7 @@ def _assemble_geo_visualization(
     selected_input = spec.geo_layers[-1]
     selected_dataset = selected_input.get("dataset") or spec.dataset
     selected_dataset_id = selected_dataset.id if selected_dataset is not None and selected_dataset.id else dataset_id
-    selected_normalizer = (
-        _geo_normalizer(spec, selected_dataset, field_structure=normalizer.field_structure)
-        if selected_dataset is not None
-        else normalizer
-    )
+    selected_normalizer = normalizer.for_dataset(selected_dataset) if selected_dataset is not None else normalizer
     if "labels" in spec.slots:
         if "labels" not in selected:
             raise DataLensConfigurationError(f"Geo layer type {selected.get('type')!r} does not support labels().")
@@ -1293,13 +1274,11 @@ def _assemble_geo_visualization(
         visualization,
         spec.item_mutations,
         normalizer=selected_normalizer,
-        dataset_id=selected_dataset_id,
     )
     _apply_measure_formats(
         visualization,
         spec.pending_measure_formats,
         normalizer=selected_normalizer,
-        dataset_id=selected_dataset_id,
     )
     return visualization
 
@@ -1339,24 +1318,19 @@ def _assemble_wizard_data(
         local_fields=spec.local_fields,
         hierarchies=spec.hierarchies,
     )
-    normalizer = _Normalizer(
-        dataset=dataset,
-        local_fields=_local_fields_map(spec.local_fields),
-        hierarchies=_hierarchies_map(spec.hierarchies),
-        field_structure=field_structure,
-    )
-
     sources: WizardSourcesV1 = {"datasetsIds": dataset_ids}
     updates: list[WizardJsonObject] = []
     update_guids: set[str] = set()
     if dataset is not None:
         for parameter in dataset.parameters:
-            field = _project_update_field(parameter.raw, normalizer=normalizer)
+            field = _project_update_field(
+                parameter.raw,
+                dataset_id=parameter.dataset_id or dataset_id,
+                field_structure=field_structure,
+            )
             field.setdefault("guid", parameter.guid)
             field.setdefault("title", parameter.title)
             field.setdefault("calc_mode", "parameter")
-            if dataset_id is not None and "datasetId" not in field:
-                field["datasetId"] = dataset_id
             guid = field.get("guid")
             if not isinstance(guid, str) or not guid:
                 raise DataLensConfigurationError("Wizard dataset parameter requires a non-empty guid.")
@@ -1374,18 +1348,28 @@ def _assemble_wizard_data(
                 )
             )
             update_guids.add(guid)
+    local_fields: list[Mapping[str, object]] = []
     for local_field in spec.local_fields:
-        field = _project_update_field(local_field, normalizer=normalizer)
-        if dataset_id is not None and "datasetId" not in field:
-            field["datasetId"] = dataset_id
+        field = _project_update_field(local_field, dataset_id=dataset_id, field_structure=field_structure)
         guid = field.get("guid")
         if isinstance(guid, str) and guid in update_guids:
             continue
         updates.append(_json_object({"action": "add_field", "field": field}, context="Wizard field update"))
+        snapshot = dict(local_field)
+        if "datasetId" in field:
+            snapshot["datasetId"] = field["datasetId"]
+        local_fields.append(snapshot)
         if isinstance(guid, str):
             update_guids.add(guid)
     if updates:
         sources["updates"] = updates
+    normalizer = _Normalizer(
+        dataset=dataset,
+        local_fields=_local_fields_map(local_fields),
+        hierarchies=_hierarchies_map(spec.hierarchies),
+        dataset_ids=dataset_ids,
+        field_structure=field_structure,
+    )
 
     hierarchies: list[WizardJsonObject] = []
     for hierarchy in spec.hierarchies:
@@ -1555,13 +1539,11 @@ def _assemble_wizard_data(
         visualization,
         spec.item_mutations,
         normalizer=normalizer,
-        dataset_id=dataset_id,
     )
     _apply_measure_formats(
         visualization,
         spec.pending_measure_formats,
         normalizer=normalizer,
-        dataset_id=dataset_id,
     )
 
     filters = _assemble_root_filters(spec, normalizer=normalizer, dataset_id=dataset_id)

@@ -154,7 +154,7 @@ are provided, `rev_id` wins and the client emits `UserWarning`.
 | `.collection_id` | Collection metadata, if reported. |
 | `.category` | Always `"wizard"`. |
 | `.visualization_id` | Current Wizard visualization ID, or `None`. |
-| `.fields` | `FieldsProxy` containing fields currently referenced by the chart (slots, filters, sorts, and hierarchy members), deduplicated by GUID. |
+| `.fields` | `FieldsProxy` with one representative per GUID across slot items, sorts, filters, and hierarchy members. |
 | `.dataset_ids` | Tuple of datasets currently referenced by the chart. |
 | `.update` | A new `WizardChartUpdate` bound to this chart. |
 
@@ -286,12 +286,11 @@ arguments, string resolution is deterministic:
 4. Reject ambiguous title/name matches and unresolved strings.
 
 On create, call `.dataset(dataset)` before relying on dataset field strings. On
-update, strings can resolve only against fields already active in the loaded
-chart and chart-local fields. To place an unreferenced dataset field, fetch the
-dataset using `chart.dataset_ids[0]` and pass its `DatasetField`. After a fetch,
-reuse a saved handle for a Wizard-owned field; when no handle is available,
-resolve an active snapshot by exact GUID with `chart.fields.by_guid(...)`, not
-by title.
+update, strings resolve against fields already active in the loaded chart and
+chart-local fields. To place an unreferenced dataset field, fetch its dataset
+and pass its `DatasetField`. After a fetch, reuse a saved handle for a
+Wizard-owned field. Without a saved handle, use `chart.fields.by_guid(...)`
+for an active snapshot.
 
 Structural target arguments are stricter. For `replace_field(old, ...)`,
 `delete_field(field)`, `delete_filter(field)`, and
@@ -301,16 +300,31 @@ Prefer a saved Wizard handle or the matching `DatasetField` from
 `replace_formula()` applies only to a chart-local `add_field` formula. An
 unknown or title-like target can fail or leave the formula unchanged.
 
-`chart.fields` contains fields referenced by visualization and layer slots,
-sort lists, filters, and hierarchy members. It deduplicates them by GUID,
-keeping the first encountered snapshot and filling missing properties from
-its chart-local definition. Standalone field definitions do not add fields
-to this inventory. The returned objects are `DatasetField` snapshots;
-`chart.fields.by_guid(handle.guid).raw` exposes the enriched snapshot.
-Numeric formatting, date formats, and title overrides may differ between
-occurrences. Reading `.fields` leaves those occurrences unchanged. A nonempty
-`datasetId` that conflicts with the selected snapshot raises
-`DataLensValidationError`.
+`chart.fields` walks visualization and layer slot items, sort lists, filters,
+and hierarchy members from both declarations and mounted items. A mounted
+hierarchy also contributes its own slot item. The proxy keeps the first
+snapshot for each GUID, considering mounted members after other references.
+It lists snapshots without a GUID separately. For an
+active GUID, the selected chart-local add or update definition fills missing
+properties. The returned `DatasetField.raw` exposes the enriched snapshot.
+
+The representative uses the known dataset ID from those references or the
+selected definition. Different nonempty IDs for one GUID raise
+`DataLensValidationError` with both IDs and their locations. Numeric
+formatting, date formats, and title overrides may differ between occurrences.
+Reading `.fields` leaves `chart.data` unchanged. Typed creation and updates
+that change references validate this same rule on the final configuration
+before sending the request.
+
+When creating a reference with an unknown dataset ID, the SDK uses the sole
+available dataset. If several datasets are available, pass a `DatasetField`
+with a known `dataset_id`. When a typed update or `publish_revision()` resends
+an existing field in a recognized slot, source filter, or hierarchy, the SDK
+encodes a missing or null dataset ID in the request as `""`.
+
+To format a field with a known GUID, pass `chart.fields.by_guid(guid)` to
+`measure_format()`. The patch applies to each presentation placement of that
+field, including placements with an unknown dataset ID.
 
 The selected snapshot's `title` supplies the field title. When it is absent,
 `fakeTitle` supplies the title and default name. `.fields.by_name()` searches
@@ -318,14 +332,11 @@ only these selected titles and names; use the GUID when another occurrence
 has a different title override. The proxy does not merge presentation properties
 or select a particular slot or layer.
 
-Slot setters replace that slot's complete field list; pass `[]`
-to clear an optional slot. Setters copy the supplied field snapshot's
-supported presentation properties, including formatting; reusing a representative from
-`y` in `labels` can therefore replace the previous label formatting.
-`chart.fields` lists active fields but does not expose their slot membership.
-When updating an existing chart,
-obtain the intended complete field list from the user or known chart design;
-do not guess which active fields belong to `x`, `y`, `y2`, or another group.
+Slot setters replace the complete field list. Pass `[]` to clear an optional
+slot. Setters copy the supplied field snapshot's supported presentation
+properties, including formatting. Reusing a representative from `y` in
+`labels` can therefore replace the previous label formatting. Use the desired
+chart design to supply the complete field list for each edited slot.
 `sort(fields)` replaces the create-side sort list, while
 `add_sort(field, direction=...)` appends one directional sort.
 

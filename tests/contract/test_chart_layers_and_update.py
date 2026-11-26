@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import replace
 from typing import Any, Literal, cast
 
 import httpx
@@ -16,10 +17,10 @@ from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.chart_types import GradientPaletteId
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
-from datalens_sdk.domain.fields import DatasetField, WizardHierarchy
+from datalens_sdk.domain.fields import DatasetField, WizardHierarchy, WizardLocalField
 from datalens_sdk.domain.ports import ChartDataOperations, NavigationOperations, ScreenshotOperations
 from datalens_sdk.domain.wizard_chart import WizardChart
-from datalens_sdk.errors import DataLensAPIError, DataLensConfigurationError
+from datalens_sdk.errors import DataLensAPIError, DataLensConfigurationError, DataLensValidationError
 from datalens_sdk.http import DataLensHTTPClient
 
 
@@ -770,6 +771,112 @@ def test_geolayer_adds_multiple_datasets() -> None:
     assert geopoint_ph["items"][0]["guid"] == "g_secondary"
 
 
+def test_geolayer_create_uses_local_definition_dataset_for_layer_and_root_filter() -> None:
+    factory = WizardChartCreateFactory(cast(Any, None))
+    primary = _dataset()
+    secondary = replace(primary, id="ds2")
+    local = WizardLocalField.measure(guid="local", title="Local", formula="1", formatting={"precision": 2})
+    builder = (
+        factory.geolayer(name="G", location=EntryLocation.path("/F"))
+        .dataset(primary)
+        .add_dataset(secondary)
+        .add_local_field(local)
+        .add_layer("geopoint", geopoint="Point", dataset=secondary, labels=[local])
+        .add_filter(local, operation="GT", values=["0"])
+    )
+
+    data = _payload_data(builder)
+
+    assert data["sources"]["updates"][0]["field"]["datasetId"] == "ds1"
+    assert data["sources"]["filters"][0]["datasetId"] == "ds1"
+    layer = data["visualization"]["layers"][0]
+    assert layer["points"]["items"][0]["datasetId"] == "ds2"
+    label = layer["labels"]["items"][0]
+    assert label["datasetId"] == "ds1"
+    assert label["formatting"] == {"precision": 2, "labelMode": "absolute"}
+    assert WizardChart(id="chart", data=data).fields.by_guid(local.guid).dataset_id == "ds1"
+
+
+def test_combined_create_uses_local_definition_dataset_with_multiple_datasets() -> None:
+    factory = WizardChartCreateFactory(cast(Any, None))
+    primary = _dataset()
+    local = WizardLocalField.measure(guid="local", title="Local", formula="1")
+    builder = (
+        factory.combined_chart(name="C", location=EntryLocation.path("/F"))
+        .dataset(primary)
+        .dataset(replace(primary, id="ds2"))
+        .dataset(primary)
+        .x(["Order Date"])
+        .add_local_field(local)
+        .add_layer("column", y=local)
+        .add_filter(local, operation="GT", values=["0"])
+    )
+
+    data = _payload_data(builder)
+
+    assert data["sources"]["updates"][0]["field"]["datasetId"] == "ds1"
+    assert data["sources"]["filters"][0]["datasetId"] == "ds1"
+    assert data["visualization"]["layers"][0]["y"]["items"][0]["datasetId"] == "ds1"
+
+
+def test_geolayer_create_uses_bound_parameter_dataset_when_secondary_is_registered_first() -> None:
+    factory = WizardChartCreateFactory(cast(Any, None))
+    primary = _dataset()
+    primary = replace(
+        primary,
+        result_schema=(
+            *primary.result_schema,
+            {"guid": "param", "title": "Param", "calc_mode": "parameter", "data_type": "float"},
+        ),
+    )
+    secondary = replace(_dataset(), id="ds2")
+    builder = (
+        factory.geolayer(name="G", location=EntryLocation.path("/F"))
+        .add_dataset(secondary)
+        .dataset(primary)
+        .add_layer("geopoint", geopoint="Point", dataset=primary)
+        .add_filter(primary.parameters.by_guid("param"), operation="EQ", values=["1"])
+    )
+
+    data = _payload_data(builder)
+
+    assert data["sources"]["datasetsIds"] == ["ds2", "ds1"]
+    assert data["sources"]["updates"][0]["field"]["datasetId"] == "ds1"
+    assert data["sources"]["filters"][0]["datasetId"] == "ds1"
+
+
+@pytest.mark.parametrize("secondary_guid", ["g_point", "g_secondary"], ids=["conflict", "distinct"])
+def test_geolayer_create_checks_field_provenance_across_layers(secondary_guid: str) -> None:
+    factory = WizardChartCreateFactory(cast(Any, None))
+    primary = _dataset()
+    secondary = Dataset(
+        id="ds2",
+        name="secondary",
+        location=EntryLocation.path("/"),
+        result_schema=({"guid": secondary_guid, "title": "Point", "type": "DIMENSION", "data_type": "geopoint"},),
+    )
+    builder = (
+        factory.geolayer(name="G", location=EntryLocation.path("/F"))
+        .dataset(primary)
+        .add_dataset(secondary)
+        .add_layer("geopoint", geopoint="Point", dataset=primary)
+        .add_layer("geopoint", geopoint="Point", dataset=secondary)
+    )
+    if secondary_guid == "g_point":
+        with pytest.raises(DataLensValidationError, match="conflicting snapshots") as error:
+            _payload_data(builder)
+        for detail in ("g_point", "ds1", "ds2", "visualization.layers[0].points", "visualization.layers[1].points"):
+            assert detail in str(error.value)
+    else:
+        data = _payload_data(builder)
+        layers = data["visualization"]["layers"]
+        assert [layer["points"]["items"][0]["datasetId"] for layer in layers] == ["ds1", "ds2"]
+        assert {field.guid: field.dataset_id for field in WizardChart(id="chart-1", data=data).fields} == {
+            "g_point": "ds1",
+            "g_secondary": "ds2",
+        }
+
+
 @pytest.mark.parametrize(
     ("layer_type", "kwargs", "message"),
     [
@@ -1087,25 +1194,70 @@ def test_replace_dataset_then_add_filter_uses_new_dataset_id() -> None:
     assert filters[0]["datasetId"] == "ds2", "filter item must reference the NEW dataset id after replace_dataset"
 
 
-def test_replace_dataset_then_add_sort_and_filter_both_use_new_id() -> None:
-    """Regression A-3: combined replace_dataset + add_sort + add_filter in one execute."""
+def test_replace_dataset_with_slot_sort_and_filter_changes_uses_new_id() -> None:
     chart = _chart_for_replace_dataset_regression()
+    before = copy.deepcopy(chart.data)
     date_field = DatasetField(
         guid="g_date", title="Order Date", name="Order Date", calc_mode="direct", dataset_id="ds1"
     )
     amt_field = DatasetField(guid="g_amt", title="Amount", name="Amount", calc_mode="direct", dataset_id="ds1")
     update = (
         chart.update.replace_dataset(old="ds1", new="ds2")
+        .labels([replace(amt_field, dataset_id="ds2")])
         .add_sort(date_field)
         .add_filter(amt_field, operation="GT", values=["0"])
     )
     data = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
 
     assert data["sources"]["datasetsIds"] == ["ds2"]
+    assert data["visualization"]["labels"]["items"][0]["datasetId"] == "ds2"
     sort_items = cast(list[dict[str, Any]], data["visualization"]["sort"]["items"])
     assert sort_items[0]["datasetId"] == "ds2", "sort must use new dataset id"
     filters = cast(list[dict[str, Any]], data["sources"].get("filters", []))
     assert filters[0]["datasetId"] == "ds2", "filter must use new dataset id"
+    assert {field.guid: field.dataset_id for field in WizardChart(id=chart.id, data=data).fields} == {
+        "g_date": "ds2",
+        "g_amt": "ds2",
+    }
+    assert chart.data == before
+
+
+def test_new_slot_provenance_is_available_to_sort_and_filter_in_same_update() -> None:
+    chart = _chart_for_replace_dataset_regression()
+    data = cast(dict[str, Any], chart.data)
+    data["sources"]["datasetsIds"].append("ds2")
+    data["visualization"]["y"]["items"][0]["datasetId"] = ""
+    bound = replace(_dataset(), id="ds2").fields.by_guid("g_amt")
+    before = copy.deepcopy(chart.data)
+    update = chart.update.labels([bound]).add_sort(bound.guid).add_filter(bound.guid, operation="GT", values=["0"])
+
+    saved = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
+
+    assert saved["visualization"]["y"]["items"][0]["datasetId"] == ""
+    assert saved["visualization"]["labels"]["items"][0]["datasetId"] == "ds2"
+    assert saved["visualization"]["sort"]["items"][0]["datasetId"] == "ds2"
+    assert saved["sources"]["filters"][0]["datasetId"] == "ds2"
+    assert WizardChart(id="chart", data=saved).fields.by_guid(bound.guid).dataset_id == "ds2"
+    assert chart.data == before
+
+
+def test_provenance_validation_allows_conflict_removed_by_later_hierarchy_edit() -> None:
+    chart = _chart_for_replace_dataset_regression()
+    data = cast(dict[str, Any], chart.data)
+    data["sources"]["datasetsIds"].append("ds2")
+    data["visualization"]["y"]["items"][0]["datasetId"] = ""
+    data["sources"]["hierarchies"] = [
+        {"guid": "h", "title": "Hierarchy", "fields": [{"guid": "g_amt", "datasetId": "ds1"}]}
+    ]
+    bound = replace(_dataset(), id="ds2").fields.by_guid("g_amt")
+    hierarchy = WizardHierarchy(guid="h", title="Hierarchy", fields=["g_date"])
+    update = chart.update.labels([bound]).add_hierarchy(hierarchy)
+
+    saved = cast(dict[str, Any], WizardChartConverter.from_domain_update(update).to_payload()["data"])
+
+    assert saved["visualization"]["labels"]["items"][0]["datasetId"] == "ds2"
+    assert saved["sources"]["hierarchies"][0]["fields"] == [{"guid": "g_date", "datasetId": "ds1"}]
+    assert WizardChart(id="chart", data=saved).fields.by_guid(bound.guid).dataset_id == "ds2"
 
 
 def test_replace_dataset_then_add_hierarchy_uses_new_dataset_id() -> None:

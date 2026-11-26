@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 import copy
 from dataclasses import replace
+from itertools import permutations
 from typing import Any, Literal, cast
 
 import pytest
@@ -301,6 +302,134 @@ def test_replace_dataset_updates_every_carrier_snapshot(carrier: Carrier) -> Non
     assert {item["datasetId"] for item in items} == {_NEW_DATASET}
 
 
+def _mounted_hierarchy_data(*, layered: bool) -> dict[str, Any]:
+    data = _data_for_carrier("slot")
+    visualization = data["visualization"]
+    visualization["x"]["items"] = [
+        {
+            "guid": "hierarchy-guid",
+            "title": "Date hierarchy",
+            "data_type": "hierarchy",
+            "fakeTitle": "Date axis",
+            "fields": [
+                {"guid": _OLD_GUID, "datasetId": _OLD_DATASET, "format": "DD.MM.YYYY"},
+                {"guid": "keep-guid", "datasetId": _OLD_DATASET},
+            ],
+        }
+    ]
+    if layered:
+        data["visualization"] = {
+            "type": "combined-chart",
+            "selectedLayerId": "layer-1",
+            "layers": [
+                {
+                    "type": "line",
+                    "layerSettings": {"id": "layer-1", "name": "Line"},
+                    "x": visualization["x"],
+                    "y": visualization["y"],
+                }
+            ],
+        }
+    return data
+
+
+def _mounted_hierarchy(data: Mapping[str, Any], *, layered: bool) -> dict[str, Any]:
+    visualization = data["visualization"]
+    slot_owner = visualization["layers"][0] if layered else visualization
+    return cast(dict[str, Any], slot_owner["x"]["items"][0])
+
+
+@pytest.mark.parametrize("layered", [False, True], ids=["root-slot", "layer-slot"])
+@pytest.mark.parametrize("operation", ["replace", "delete", "dataset"])
+def test_structural_mutations_update_mounted_only_hierarchy_members(
+    layered: bool, operation: Literal["replace", "delete", "dataset"]
+) -> None:
+    before = _mounted_hierarchy_data(layered=layered)
+    chart = _loaded_chart(before)
+    mounted = _mounted_hierarchy(before, layered=layered)
+    target, sibling = mounted["fields"]
+
+    if operation == "replace":
+        payload = _payload(chart.update.replace_field(_OLD_GUID, _replacement_field()))
+        expected = [{**target, "guid": _NEW_GUID, "datasetId": _NEW_DATASET}, sibling]
+    elif operation == "delete":
+        payload = _payload(chart.update.delete_field(_OLD_GUID))
+        expected = [sibling]
+    else:
+        payload = _payload(chart.update.replace_dataset(old=_OLD_DATASET, new=_NEW_DATASET))
+        expected = [{**field, "datasetId": _NEW_DATASET} for field in (target, sibling)]
+        assert payload["sources"]["datasetsIds"] == [_NEW_DATASET]
+
+    assert _mounted_hierarchy(payload, layered=layered) == {**mounted, "fields": expected}
+    reloaded = _loaded_chart(payload)
+    assert {field.guid: field.raw for field in reloaded.fields if field.guid != "hierarchy-guid"} == {
+        field["guid"]: field for field in expected
+    }
+    assert chart.fields.by_guid(_OLD_GUID).raw == target
+    assert chart.data == before
+
+
+def test_mounted_hierarchy_members_preserve_existing_representatives_and_validate_source_provenance() -> None:
+    data = _mounted_hierarchy_data(layered=False)
+    mounted = _mounted_hierarchy(data, layered=False)
+    data["sources"]["datasetsIds"].append(_NEW_DATASET)
+    source = {"guid": mounted["guid"], "title": mounted["title"], "fields": [{"guid": _OLD_GUID, "datasetId": ""}]}
+    data["sources"]["hierarchies"] = [source]
+
+    chart = _loaded_chart(data)
+    payload = _payload(chart.update.replace_field(_OLD_GUID, _replacement_field()))
+    assert payload["sources"]["hierarchies"] == [{**source, "fields": [{"guid": _NEW_GUID, "datasetId": _NEW_DATASET}]}]
+    assert _mounted_hierarchy(payload, layered=False)["fields"][0] == {
+        "guid": _NEW_GUID,
+        "datasetId": _NEW_DATASET,
+        "format": "DD.MM.YYYY",
+    }
+    assert chart.fields.by_guid(_OLD_GUID).raw == {"guid": _OLD_GUID, "datasetId": _OLD_DATASET}
+
+    source["fields"][0]["datasetId"] = _NEW_DATASET
+    conflicting = _loaded_chart(data)
+    with pytest.raises(DataLensValidationError, match="conflicting snapshots") as error:
+        conflicting.fields.by_guid(_OLD_GUID)
+    for detail in (
+        _OLD_GUID,
+        _OLD_DATASET,
+        _NEW_DATASET,
+        "sources.hierarchies[0].fields[0]",
+        "visualization.x.items[0].fields[0]",
+    ):
+        assert detail in str(error.value)
+
+
+@pytest.mark.parametrize("operation", ["replace-field", "replace-dataset"])
+def test_structural_mutations_round_trip_legacy_mounted_dataset_alias(
+    operation: Literal["replace-field", "replace-dataset"],
+) -> None:
+    data = _mounted_hierarchy_data(layered=True)
+    mounted = _mounted_hierarchy(data, layered=True)
+    target, sibling = mounted["fields"]
+    target["dataset_id"] = target.pop("datasetId")
+    chart = _loaded_chart(data)
+    placed = chart.fields.by_guid(_OLD_GUID)
+    assert placed.dataset_id == _OLD_DATASET
+
+    if operation == "replace-field":
+        update = chart.update.replace_field(placed, _replacement_field())
+        expected_guid = _NEW_GUID
+        expected_sibling = sibling
+    else:
+        update = chart.update.replace_dataset(old=_OLD_DATASET, new=_NEW_DATASET)
+        expected_guid = _OLD_GUID
+        expected_sibling = {**sibling, "datasetId": _NEW_DATASET}
+
+    saved = _payload(update)
+    assert _mounted_hierarchy(saved, layered=True)["fields"] == [
+        {"guid": expected_guid, "datasetId": _NEW_DATASET, "format": "DD.MM.YYYY"},
+        expected_sibling,
+    ]
+    assert _loaded_chart(saved).fields.by_guid(expected_guid).dataset_id == _NEW_DATASET
+    assert chart.data == data
+
+
 @pytest.mark.parametrize("operation", ["replace", "delete", "aggregation"])
 def test_structural_mutations_update_color_and_shape_config_pointers(operation: Operation) -> None:
     data = _data_for_carrier("slot")
@@ -511,16 +640,119 @@ def test_wizard_chart_fields_accepts_placement_formatting_differences(
     assert chart.data == before
 
 
-def test_wizard_chart_fields_rejects_conflicting_dataset_identity() -> None:
-    data = _data_for_carrier("slot")
-    conflicting = _field(dataset_id=_NEW_DATASET)
-    data["visualization"]["labels"]["items"] = [conflicting]
-    chart = _chart(data)
+@pytest.mark.parametrize("dataset_ids", tuple(permutations(("", _OLD_DATASET, _NEW_DATASET))))
+@pytest.mark.parametrize("carrier", ["sort", "filter"])
+def test_wizard_chart_fields_rejects_conflicting_dataset_identity(
+    carrier: Carrier, dataset_ids: tuple[str, str, str]
+) -> None:
+    data = _differently_formatted_data()
+    data["sources"]["datasetsIds"] = [_OLD_DATASET, _NEW_DATASET]
+    paths = ["visualization.y.items[0]", "visualization.labels.items[0]"]
+    if carrier == "sort":
+        data["sources"].pop("filters")
+        paths.append("visualization.sort.items[0]")
+    else:
+        data["visualization"]["sort"]["items"].clear()
+        paths.append("sources.filters[0]")
+    snapshots = [
+        data["visualization"]["y"]["items"][0],
+        data["visualization"]["labels"]["items"][0],
+        _carrier_items(data, carrier)[0],
+    ]
+    for snapshot, dataset_id in zip(snapshots, dataset_ids, strict=True):
+        snapshot["datasetId"] = dataset_id
+    chart = _loaded_chart(data)
+    before = copy.deepcopy(chart.data)
 
-    with pytest.raises(DataLensValidationError, match=r"conflicting snapshots.*\['datasetId'\]"):
+    with pytest.raises(DataLensValidationError, match="conflicting snapshots") as error:
         list(chart.fields)
+    for dataset_id in (_OLD_DATASET, _NEW_DATASET):
+        assert dataset_id in str(error.value)
+        assert paths[dataset_ids.index(dataset_id)] in str(error.value)
+    assert _OLD_GUID in str(error.value)
     with pytest.raises(DataLensValidationError, match="conflicting snapshots"):
         _payload(chart.update.measure_format(_OLD_GUID, precision=4))
+    assert chart.data == before
+
+
+@pytest.mark.parametrize("action", ["add", "add_field", "update", "update_field"])
+def test_wizard_rejects_active_snapshot_conflicting_with_local_definition(action: str) -> None:
+    data = _differently_formatted_data()
+    data["sources"]["datasetsIds"] = [_OLD_DATASET, _NEW_DATASET]
+    definition = {"guid": _OLD_GUID, "datasetId": _NEW_DATASET, "local": True, "formula": "1"}
+    data["sources"]["updates"] = [{"action": action, "field": definition}]
+    chart = _loaded_chart(data)
+    before = copy.deepcopy(chart.data)
+
+    with pytest.raises(DataLensValidationError, match="conflicting snapshots") as error:
+        chart.fields.by_guid(_OLD_GUID)
+    for detail in (_OLD_GUID, _OLD_DATASET, _NEW_DATASET, "visualization.y.items[0]", "sources.updates[0].field"):
+        assert detail in str(error.value)
+    with pytest.raises(DataLensValidationError, match="conflicting snapshots"):
+        _payload(chart.update.labels([_OLD_GUID]))
+    assert chart.data == before
+
+
+@pytest.mark.parametrize("wire_id", [{}, {"datasetId": ""}, {"datasetId": None}], ids=["missing", "empty", "null"])
+def test_wizard_rejects_conflicting_dataset_ids_with_legacy_alias(wire_id: dict[str, str | None]) -> None:
+    data = _differently_formatted_data()
+    data["sources"]["datasetsIds"] = [_OLD_DATASET, _NEW_DATASET]
+    data["sources"]["filters"].clear()
+    visualization = data["visualization"]
+    visualization["sort"]["items"].clear()
+    axis = visualization["y"]["items"][0]
+    axis["dataset_id"] = axis.pop("datasetId")
+    axis.update(wire_id)
+    visualization["labels"]["items"][0]["datasetId"] = _NEW_DATASET
+    chart = _loaded_chart(data)
+
+    with pytest.raises(DataLensValidationError, match="conflicting snapshots") as error:
+        chart.fields.by_guid(_OLD_GUID)
+    for detail in (_OLD_GUID, _OLD_DATASET, _NEW_DATASET, "visualization.y.items[0]", "visualization.labels.items[0]"):
+        assert detail in str(error.value)
+    with pytest.raises(DataLensValidationError, match="conflicting snapshots"):
+        _payload(chart.update.measure_format(_OLD_GUID, precision=4))
+    assert chart.data == data
+
+
+@pytest.mark.parametrize("action", ["delete", "delete_field"])
+def test_wizard_uses_positive_definition_provenance_and_ignores_removal(action: str) -> None:
+    data = _data_for_carrier("slot")
+    data["sources"]["datasetsIds"] = [_OLD_DATASET, _NEW_DATASET]
+    data["visualization"]["x"]["items"][0]["datasetId"] = ""
+    data["sources"]["updates"] = [
+        {"action": "add_field", "field": {"guid": _OLD_GUID, "datasetId": _NEW_DATASET, "formula": "1", "local": True}},
+        {"action": action, "field": {"guid": _OLD_GUID, "datasetId": _OLD_DATASET}},
+    ]
+    chart = _loaded_chart(data)
+    before = copy.deepcopy(chart.data)
+
+    placed = chart.fields.by_guid(_OLD_GUID)
+    assert placed.dataset_id == _NEW_DATASET
+    assert placed.formula == "1"
+    saved = _payload(chart.update.labels([_OLD_GUID]))
+    assert saved["visualization"]["labels"]["items"][0]["datasetId"] == _NEW_DATASET
+    assert _loaded_chart(saved).fields.by_guid(_OLD_GUID).dataset_id == _NEW_DATASET
+    assert chart.data == before
+
+
+def test_wizard_resolves_string_using_active_provenance_when_local_definition_lacks_dataset_id() -> None:
+    data = _data_for_carrier("slot")
+    data["sources"]["datasetsIds"] = [_OLD_DATASET, _NEW_DATASET]
+    data["visualization"]["x"]["items"][0]["datasetId"] = _NEW_DATASET
+    data["sources"]["updates"] = [
+        {"action": "add_field", "field": {"guid": _OLD_GUID, "formula": "1", "local": True}},
+    ]
+    chart = _loaded_chart(data)
+    before = copy.deepcopy(chart.data)
+
+    saved = _payload(chart.update.labels([_OLD_GUID]))
+
+    assert saved["visualization"]["labels"]["items"][0]["datasetId"] == _NEW_DATASET
+    representative = _loaded_chart(saved).fields.by_guid(_OLD_GUID)
+    assert representative.dataset_id == _NEW_DATASET
+    assert representative.formula == "1"
+    assert chart.data == before
 
 
 def _differently_presented_date_data() -> dict[str, Any]:
@@ -683,6 +915,7 @@ def test_unrelated_update_preserves_different_placement_formatting_and_open_prop
 
     assert data["visualization"] == {**before["visualization"], "chartSettings": {"legendMode": "hide"}}
     assert data["sources"] == before["sources"]
+    assert _loaded_chart(data).fields.by_guid(_OLD_GUID).raw == chart.fields.by_guid(_OLD_GUID).raw
     assert chart.data == before
 
 
@@ -723,19 +956,56 @@ def test_mutations_preserve_placement_formatting_ownership(
     references = [*data["visualization"]["sort"]["items"], *data["sources"]["filters"]]
     assert all("formatting" not in item for item in references)
     assert [item["guid"] for item in references] == ([] if expected_guid is None else [expected_guid, expected_guid])
+    if expected_guid is not None:
+        representative = _loaded_chart(data).fields.by_guid(expected_guid)
+        assert representative.raw["formatting"] == data["visualization"]["y"]["items"][0]["formatting"]
     assert chart.data == before
 
 
-def test_slot_reuse_copies_representative_formatting() -> None:
-    chart = _loaded_chart(_differently_formatted_data())
+def test_slot_reuse_copies_representative_formatting_and_known_dataset() -> None:
+    data = _differently_formatted_data()
+    data["sources"]["datasetsIds"] = [_OLD_DATASET, _NEW_DATASET]
+    axis = data["visualization"]["y"]["items"][0]
+    axis["datasetId"] = ""
+    axis["fakeTitle"] = "Axis measure"
+    data["visualization"]["labels"]["items"][0]["datasetId"] = _NEW_DATASET
+    data["visualization"]["sort"]["items"][0]["datasetId"] = _NEW_DATASET
+    data["sources"]["filters"].clear()
+    chart = _loaded_chart(data)
     before = copy.deepcopy(cast(dict[str, Any], chart.data))
     placed = chart.fields.by_guid(_OLD_GUID)
 
-    data = _payload(chart.update.labels([placed]))
+    saved = _payload(chart.update.labels([placed]))
 
-    axis_formatting = before["visualization"]["y"]["items"][0]["formatting"]
-    assert data["visualization"]["y"]["items"][0]["formatting"] == axis_formatting
-    assert data["visualization"]["labels"]["items"][0]["formatting"] == axis_formatting
+    assert placed.dataset_id == _NEW_DATASET
+    assert placed.raw == {**axis, "datasetId": _NEW_DATASET}
+    assert saved["visualization"]["y"]["items"][0] == axis
+    label = saved["visualization"]["labels"]["items"][0]
+    assert label["datasetId"] == _NEW_DATASET
+    assert label["formatting"] == axis["formatting"]
+    assert label["fakeTitle"] == "Axis measure"
+    assert _loaded_chart(saved).fields.by_guid(_OLD_GUID).raw == placed.raw
+    assert chart.data == before
+
+
+@pytest.mark.parametrize("operation", ["labels", "replace"])
+def test_update_rejects_conflict_introduced_by_new_placement(operation: str) -> None:
+    data = _differently_formatted_data()
+    data["sources"]["datasetsIds"] = [_OLD_DATASET, _NEW_DATASET]
+    foreign = _replacement_field()
+    if operation == "labels":
+        foreign = replace(foreign, guid=_OLD_GUID)
+    else:
+        data["visualization"]["y"]["items"].append(_field(_NEW_GUID, title="Other measure"))
+    chart = _loaded_chart(data)
+    before = copy.deepcopy(chart.data)
+    assert chart.fields.by_guid(_OLD_GUID).dataset_id == _OLD_DATASET
+    update = chart.update.labels([foreign]) if operation == "labels" else chart.update.replace_field(_OLD_GUID, foreign)
+
+    with pytest.raises(DataLensValidationError, match="conflicting snapshots") as error:
+        _payload(update)
+    for detail in (foreign.guid, _OLD_DATASET, _NEW_DATASET):
+        assert detail in str(error.value)
     assert chart.data == before
 
 
