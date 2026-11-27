@@ -203,6 +203,30 @@ def test_raw_dataset_replace_stops_when_target_read_fails(
     assert requests == [{"path": "/rpc/getDataset", "body": {"datasetId": "dataset-id"}}]
 
 
+@pytest.mark.parametrize("enveloped", [False, True], ids=["direct", "enveloped"])
+def test_raw_dataset_replace_rejects_failed_read_with_component_errors(enveloped: bool) -> None:
+    details = {"dataset": {"component_errors": {"items": [{"message": "Unavailable source"}]}}}
+    error: dict[str, object] = {"code": "ERR.DS_API.DATASET", "message": "Unable to read target"}
+    error.update({"details": {"data": details}} if enveloped else details)
+    read = httpx.Response(400, json=error, headers={"x-request-id": "target-read-error"})
+    client, requests = _client(
+        "enterprise",
+        {"/rpc/getDataset": [read], "/rpc/updateDataset": [_snapshot()]},
+    )
+    update = client.raw.replace.dataset(
+        target=dl.Dataset(id="dataset-id"),
+        response_snapshot=cast(Mapping[str, dl.JsonValue], _snapshot()),
+    )
+
+    with pytest.raises(BadRequestError) as exc:
+        update.execute()
+
+    assert exc.value.context.code == "ERR.DS_API.DATASET"
+    assert exc.value.context.request_id == "target-read-error"
+    assert exc.value.context.status_code == 400
+    assert requests == [{"path": "/rpc/getDataset", "body": {"datasetId": "dataset-id"}}]
+
+
 @pytest.mark.parametrize("has_component_errors", [False, True])
 def test_raw_dataset_replace_reports_revision_mismatch_without_retry(has_component_errors: bool) -> None:
     target = _snapshot()

@@ -78,16 +78,18 @@ class DatasetAPI:
         body: dict[str, object],
         *,
         retry_policy: RetryPolicy = DEFAULT_RETRY_POLICY,
+        accept_component_errors: bool = True,
     ) -> dict[str, object]:
         payload = self._client.post_json_object(
             path,
             body,
             retry_policy=retry_policy,
-            accept_response=_is_dataset_error_response,
+            accept_response=_is_dataset_error_response if accept_component_errors else None,
         )
-        accepted_payload = _dataset_payload_with_component_errors(payload)
-        if accepted_payload is not None:
-            payload = accepted_payload
+        if accept_component_errors:
+            accepted_payload = _dataset_payload_with_component_errors(payload)
+            if accepted_payload is not None:
+                return accepted_payload
         return payload
 
     def create(self, payload: dict[str, object]) -> dict[str, object]:
@@ -98,13 +100,20 @@ class DatasetAPI:
         dataset_id: str,
         workbook_id: str | None = None,
         rev_id: str | None = None,
+        *,
+        accept_component_errors: bool = True,
     ) -> dict[str, object]:
         body: dict[str, object] = {"datasetId": dataset_id}
         if workbook_id is not None:
             body["workbookId"] = workbook_id
         if rev_id is not None:
             body["rev_id"] = rev_id
-        return self._post("/rpc/getDataset", body, retry_policy=TRANSIENT_RETRY_POLICY)
+        return self._post(
+            "/rpc/getDataset",
+            body,
+            retry_policy=TRANSIENT_RETRY_POLICY,
+            accept_component_errors=accept_component_errors,
+        )
 
     def update(self, payload: dict[str, object]) -> dict[str, object]:
         return self._post("/rpc/updateDataset", payload)
@@ -247,7 +256,9 @@ class DatasetService(DatasetOperations):
         )
 
     def replace_dataset_from_raw(self, spec: RawReplaceSpec, *, mode: EntryUpdateMode = "save") -> Dataset:
-        current_target = self._api.get(spec.target_id, workbook_id=spec.target_workbook_id)
+        current_target = self._api.get(
+            spec.target_id, workbook_id=spec.target_workbook_id, accept_component_errors=False
+        )
         revision_id = DatasetConverter.raw_replace_target_revision_id(current_target)
         payload = DatasetConverter.from_raw_replace(spec, mode=mode, target_revision_id=revision_id).to_payload()
         response = self._api.update(payload)
