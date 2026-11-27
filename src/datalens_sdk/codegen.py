@@ -53,6 +53,7 @@ NAMESPACES = {
         "datasets",
         "folders",
         "html_pages",
+        "shared_entries",
         "workbooks",
     ],
     "yacloud": [
@@ -64,6 +65,7 @@ NAMESPACES = {
         "folders",
         "html_pages",
         "licenses",
+        "shared_entries",
         "workbooks",
     ],
 }
@@ -167,7 +169,7 @@ _ENTRY_STATE_SCHEMA_SUPPORTED_KEYS = frozenset({"minLength"})
 _HTML_PAGE_SCHEMA_SUPPORTED_KEYS = frozenset({"maxLength"})
 _SCREENSHOT_SCHEMA_SUPPORTED_KEYS = frozenset({"exclusiveMinimum", "maximum"})
 _TAGGED_RPC_SCHEMA_SUPPORTED_KEYS = frozenset(
-    {"minLength", "maxLength", "pattern", "minimum", "maximum", "minItems", "maxItems"}
+    {"discriminator", "minLength", "maxLength", "pattern", "minimum", "maximum", "minItems", "maxItems"}
 )
 
 
@@ -325,6 +327,7 @@ class RpcNamespaceConfig(TypedDict):
     excluded_routes: NotRequired[tuple[str, ...]]
     installations: NotRequired[tuple[str, ...]]
     alias_only_read: NotRequired[bool]
+    routes: NotRequired[tuple[str, ...]]
 
 
 class RpcOperationMeta(TypedDict):
@@ -348,6 +351,17 @@ class RpcNamespaceContractMeta(TypedDict):
 
 
 RPC_NAMESPACE_CONFIGS: tuple[RpcNamespaceConfig, ...] = (
+    RpcNamespaceConfig(
+        tag="SharedEntry",
+        namespace="shared_entries",
+        routes=(
+            "/rpc/createSharedEntryBinding",
+            "/rpc/getSharedEntryDelegation",
+            "/rpc/getSharedEntryBindings",
+            "/rpc/updateSharedEntryBinding",
+            "/rpc/deleteSharedEntryBinding",
+        ),
+    ),
     RpcNamespaceConfig(tag="SqlQueries", namespace="sql_queries"),
     RpcNamespaceConfig(
         tag="CloudEnvironments", namespace="cloud_environments", installations=("yacloud",), alias_only_read=True
@@ -983,6 +997,8 @@ def _audit_pydantic_schema_features(
                 )
             if contract.startswith("tagged RPC "):
                 python_name = _wizard_python_field_name(name)
+                if contract == "tagged RPC SharedEntry" and name == "copy":
+                    python_name = "can_copy"
                 if not python_name.isidentifier() or python_name.startswith("_"):
                     raise ValueError(
                         f"Unsupported behavior-bearing {contract} schema feature at "
@@ -1323,10 +1339,12 @@ def build_rpc_namespace_contract_meta(
         for method in sorted(http_methods & path_item.keys()):
             operation = _string_object_dict(path_item[method], context=f"{route}.{method}")
             tags = _string_list(operation.get("tags", []), context=f"{route}.{method}.tags")
-            if config["tag"] in tags:
+            if config["tag"] in tags and ("routes" not in config or route in config["routes"]):
                 selected.append((route, method, path_item, operation))
     if not selected:
         return None
+    if "routes" in config and {route for route, _, _, _ in selected} != set(config["routes"]):
+        raise ValueError(f"tagged RPC {config['tag']} is missing required routes")
 
     components = _string_object_dict(spec.get("components", {}), context="components")
     schemas = _schema_dict(components.get("schemas", {}), context="components.schemas")
@@ -1391,7 +1409,7 @@ def build_rpc_namespace_contract_meta(
                 schema,
                 pointer=f"/schemas/{_json_pointer_token(name)}",
                 contract=f"tagged RPC {config['tag']}",
-                require_provably_disjoint_one_of=True,
+                require_provably_disjoint_one_of=config["tag"] != "SharedEntry",
                 component_schemas=schemas,
             )
             normalized = _normalize_wizard_schema(schema)
@@ -5271,6 +5289,10 @@ def _emit_rpc_namespace_dto(
         contract="tagged RPC",
         empty_object_models=True,
         alias_only_read_schemas=frozenset(alias_only_read_schemas),
+        field_name_overrides={
+            ("SharedEntryBindingEntry", "permissions", "copy"): "can_copy",
+            ("WorkbookPermissions", "copy"): "can_copy",
+        },
     )
     response_models = response_emitter.emit(alias_only_result_roots | default_result_roots)
     collisions = request_emitter._emitted_components.keys() & response_emitter._emitted_components.keys()

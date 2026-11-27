@@ -17,6 +17,8 @@
 
 ### Fixed
 
+- Return typed entry and workbook permissions from `client.shared_entries.list()`
+  when `include_permissions_info=True`.
 - Preserve the concrete client type in `with ... as client` blocks so
   installation-specific methods retain their types. Subclasses that override
   `__enter__` and return `self` can annotate the return type with `Self`.
@@ -58,6 +60,8 @@
   cloud cluster ID.
 
 ### Added
+
+- Add `client.shared_entries` for shared object bindings on Yandex Cloud and Enterprise.
 
 - Add dashboard states over `/rpc/getEntryState` and `/rpc/createEntryState`:
   `dashboard.get_state(hash, tab=None, strict=False)` returns an immutable

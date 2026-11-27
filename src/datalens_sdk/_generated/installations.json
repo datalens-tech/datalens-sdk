@@ -1972,6 +1972,7 @@
         "datasets",
         "folders",
         "html_pages",
+        "shared_entries",
         "workbooks"
       ],
       "wizard": {
@@ -23883,6 +23884,7 @@
         "folders",
         "html_pages",
         "licenses",
+        "shared_entries",
         "workbooks"
       ],
       "wizard": {

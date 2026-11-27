@@ -5883,6 +5883,30 @@ class GetLakehouseOperationArgsDTO(BaseModel):
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
+class GetSharedEntryBindingsArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    entry_as: Literal['source', 'target'] = Field(alias='entryAs')
+    entry_id: str = Field(alias='entryId')
+    filter_string: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='filterString')
+    include_permissions_info: bool = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='includePermissionsInfo')
+    mode: Literal['all', 'onlyEntries', 'onlyWorkbooks'] = _UNVALIDATED_NONE_DEFAULT
+    page: Annotated[int, Field(ge=0)] = _UNVALIDATED_NONE_DEFAULT
+    page_size: Annotated[int, Field(ge=1, le=200, alias='pageSize')] = _UNVALIDATED_NONE_DEFAULT
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class GetSharedEntryDelegationArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    binded_workbook_id: None | str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='bindedWorkbookId')
+    source_id: str = Field(alias='sourceId')
+    target_id: str = Field(alias='targetId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
 class GetSparkApplicationArgsDTO(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
 
@@ -6043,6 +6067,25 @@ class RunSqlQueryArgsDTO(BaseModel):
 
     params: dict[str, list[bool | int | float | str] | CreateSqlQueryArgsParamsItemAllOf1DefaultValueDTO | bool | int | float | str] = _UNVALIDATED_NONE_DEFAULT
     sql_query_id: str = Field(alias='sqlQueryId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class SharedEntryBindingArgsDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    delegation: bool
+    source_id: str = Field(alias='sourceId')
+    target_id: str = Field(alias='targetId')
+
+    def to_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
+
+class SharedEntryBindingPairDTO(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True, strict=True)
+
+    source_id: str = Field(alias='sourceId')
+    target_id: str = Field(alias='targetId')
 
     def to_payload(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_unset=True)
@@ -6244,6 +6287,67 @@ class GetBucketObjectMetadataResultReadDTO(BaseModel):
 
     last_modified: CloudEnvironmentCreatedAtReadDTO = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='lastModified')
     size: str
+
+class SharedEntryBindingEntryPermissionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    can_copy: bool = Field(alias='copy')
+    create_entry_binding: bool = Field(alias='createEntryBinding')
+    create_limited_entry_binding: bool = Field(alias='createLimitedEntryBinding')
+    delete: bool
+    limited_view: bool = Field(alias='limitedView')
+    list_access_bindings: bool = Field(alias='listAccessBindings')
+    move: bool
+    security_approve: bool = Field(alias='securityApprove')
+    update: bool
+    update_access_bindings: bool = Field(alias='updateAccessBindings')
+    view: bool
+
+class SharedEntryBindingEntryReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    collection_id: None | str = Field(alias='collectionId')
+    collection_title: str = Field(alias='collectionTitle')
+    display_key: None | str = Field(alias='displayKey')
+    entity: Literal['entry']
+    entry_id: str = Field(alias='entryId')
+    is_delegated: bool = Field(alias='isDelegated')
+    key: None | str
+    permissions: SharedEntryBindingEntryPermissionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    scope: str
+    type: str
+    workbook_id: None | str = Field(alias='workbookId')
+
+class WorkbookPermissionsReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    can_copy: bool = Field(alias='copy')
+    delete: bool
+    embed: bool
+    limited_view: bool = Field(alias='limitedView')
+    list_access_bindings: bool = Field(alias='listAccessBindings')
+    move: bool
+    publish: bool
+    update: bool
+    update_access_bindings: bool = Field(alias='updateAccessBindings')
+    view: bool
+
+class SharedEntryBindingWorkbookReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    collection_id: None | str = Field(alias='collectionId')
+    collection_title: None | str = Field(alias='collectionTitle')
+    entity: Literal['workbook']
+    is_delegated: bool = Field(alias='isDelegated')
+    permissions: WorkbookPermissionsReadDTO = _UNVALIDATED_NONE_DEFAULT
+    title: str
+    workbook_id: str = Field(alias='workbookId')
+
+class GetSharedEntryBindingsResultReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    items: list[Annotated[SharedEntryBindingEntryReadDTO | SharedEntryBindingWorkbookReadDTO, Field(discriminator='entity')]]
+    next_page_token: str = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='nextPageToken')
 
 class GetSqlQueryResultPermissionsReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
@@ -6660,6 +6764,13 @@ class RunSqlQueryResultReadDTO(BaseModel):
     status: Literal['error', 'partial_success', 'pending', 'success']
     tenant_id: str = Field(alias='tenantId')
     updated_at: str = Field(alias='updatedAt')
+
+class SharedEntryBindingReadDTO(BaseModel):
+    model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
+
+    is_delegated: bool = Field(alias='isDelegated')
+    source_id: str = Field(alias='sourceId')
+    target_id: str = Field(alias='targetId')
 
 class UpdateSqlQueryResultReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)

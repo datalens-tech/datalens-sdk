@@ -28,6 +28,7 @@ from datalens_sdk.api.license import LicenseAPI, LicenseService
 from datalens_sdk.api.navigation import NavigationService
 from datalens_sdk.api.rest_catalog import RestCatalogAPI, RestCatalogService
 from datalens_sdk.api.screenshot import ScreenshotAPI, ScreenshotService
+from datalens_sdk.api.shared_entries import SharedBindingAPI, SharedEntriesService
 from datalens_sdk.api.spark_application import SparkApplicationAPI, SparkApplicationService
 from datalens_sdk.api.spark_cluster import SparkClusterAPI, SparkClusterService
 from datalens_sdk.api.sql_query import SqlQueryAPI, SqlQueryService
@@ -53,6 +54,7 @@ from datalens_sdk.converter.lakehouse_operation import LakehouseOperationDtoModu
 from datalens_sdk.converter.license import LicenseDtoModule
 from datalens_sdk.converter.rest_catalog import RestCatalogDtoModule
 from datalens_sdk.converter.screenshot import ScreenshotDtoModule
+from datalens_sdk.converter.shared_entries import SharedEntriesDtoModule
 from datalens_sdk.converter.spark_application import SparkApplicationDtoModule
 from datalens_sdk.converter.spark_cluster import SparkClusterDtoModule
 from datalens_sdk.converter.sql_query import SqlQueryDtoModule
@@ -1171,6 +1173,7 @@ class DataLensClientBase:
     list: ListNamespace
     navigation: NavigationNamespace
     raw: RawNamespace
+    shared_entries: SharedEntriesService
 
     @classmethod
     def _get_default_auth_provider(cls) -> AuthProviderProtocol:
@@ -1359,6 +1362,10 @@ class DataLensClientBase:
         )
         self.data = DataNamespace(self._data_service)
         self.navigation = NavigationNamespace(self._navigation_service)
+        if "shared_entries" in self._installation_info["namespaces"]:
+            self.shared_entries = SharedEntriesService(
+                api=SharedBindingAPI(self._http), dto_module=cast(SharedEntriesDtoModule, dto_module)
+            )
         if "licenses" in self._installation_info["namespaces"]:
             self._license_service = LicenseService(
                 api=LicenseAPI(self._http),
