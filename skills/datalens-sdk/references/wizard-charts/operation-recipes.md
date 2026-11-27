@@ -33,7 +33,7 @@ because name lookup uses only the selected snapshot's title and name.
 chart = client.get.wizard_chart(by_id="chart-id")
 
 placed_revenue = chart.fields.by_guid("revenue-guid")
-dataset = client.get.dataset(by_id="dataset-containing-profit")
+dataset = client.get.dataset(by_id=chart.dataset_ids[0])
 new_profit = dataset.fields.by_name("Profit")
 
 chart = chart.update.y([placed_revenue, new_profit]).mode("save").execute()
