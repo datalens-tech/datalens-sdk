@@ -162,6 +162,7 @@ class RawDatasetReplace:
             target_id=target.id,
             target_name=target.name,
             target_location=target.location,
+            target_workbook_id=target.workbook_id,
         )
         self._operations = operations
         self._mode: EntryUpdateMode = "save"

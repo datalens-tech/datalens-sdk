@@ -30,7 +30,7 @@ LOGGER = logging.getLogger("datalens_sdk.http")
 
 
 def _dataset_payload_with_component_errors(payload: object | None) -> dict[str, object] | None:
-    if not isinstance(payload, Mapping):
+    if not isinstance(payload, Mapping) or payload.get("code") == "ERR.DS_API.DATASET_REVISION_MISMATCH":
         return None
 
     candidates: list[Mapping[object, object]] = [payload]
@@ -247,7 +247,9 @@ class DatasetService(DatasetOperations):
         )
 
     def replace_dataset_from_raw(self, spec: RawReplaceSpec, *, mode: EntryUpdateMode = "save") -> Dataset:
-        payload = DatasetConverter.from_raw_replace(spec, mode=mode).to_payload()
+        current_target = self._api.get(spec.target_id, workbook_id=spec.target_workbook_id)
+        revision_id = DatasetConverter.raw_replace_target_revision_id(current_target)
+        payload = DatasetConverter.from_raw_replace(spec, mode=mode, target_revision_id=revision_id).to_payload()
         response = self._api.update(payload)
         return DatasetConverter.to_domain(
             response,

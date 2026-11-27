@@ -224,7 +224,7 @@ behavior: [references/core-concepts.md](references/core-concepts.md).
    that destroys ids, links, and permissions.
 6. **Destructive operations need explicit approval.** Before `.delete()` on
    anything you did not create in this session, or before even constructing
-   any `client.raw.replace` builder (last-write-wins, no conflict check), list
+   any `client.raw.replace` builder (full content replacement), list
    what will be affected and get the user's confirmation. A missing typed
    update operation is not permission to prepare or attempt a raw replace.
 7. **No idempotency — adopt on conflict.** Re-running a create raises
