@@ -221,6 +221,65 @@ def test_wizard_update_custom_palette_keeps_manual_colors(viz_id: str) -> None:
 
 
 @pytest.mark.parametrize("viz_id", ["pie", "donut"])
+@pytest.mark.parametrize("absent_slot", ["dimensions", "colors"])
+def test_wizard_update_palette_uses_available_dimension_binding(viz_id: str, absent_slot: str) -> None:
+    response = _wizard_with_custom_palette(viz_id)
+    entry = cast(dict[str, object], response["entry"])
+    data = cast(dict[str, object], entry["data"])
+    visualization = cast(dict[str, object], data["visualization"])
+    visualization["dimensions"] = {"items": [{"guid": "g_reg", "datasetId": "ds-1"}]}
+    del visualization[absent_slot]
+    recorder = _RecordedTransport(
+        {
+            "/rpc/getWizardChart": httpx.Response(200, json=response),
+            "/rpc/updateWizardChart": httpx.Response(200, json=response),
+        }
+    )
+
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as client:
+        chart = client.get.wizard_chart(by_id="chart-1")
+        chart.update.palette(id="org-brand-next").execute()
+
+    assert recorder.paths() == ["/rpc/getWizardChart", "/rpc/updateWizardChart"]
+    colors = _request_colors(recorder, 1)
+    assert colors["items"] == [{"guid": "g_reg", "datasetId": "ds-1"}]
+    settings = cast(dict[str, object], colors["settings"])
+    assert settings["palette"] == "org-brand-next"
+    saved_data = cast(dict[str, object], recorder.request_json(1)["data"])
+    saved_visualization = cast(dict[str, object], saved_data["visualization"])
+    if absent_slot == "dimensions":
+        assert "dimensions" not in saved_visualization
+        assert settings["mountedColors"] == {"North": "#123456", "South": "1"}
+    else:
+        assert saved_visualization["dimensions"] == {"items": [{"guid": "g_reg", "datasetId": "ds-1"}]}
+        assert settings == {"palette": "org-brand-next"}
+
+
+@pytest.mark.parametrize("viz_id", ["pie", "donut"])
+def test_wizard_update_palette_without_dimension_binding_does_not_write(viz_id: str) -> None:
+    response = _wizard_with_custom_palette(viz_id)
+    entry = cast(dict[str, object], response["entry"])
+    data = cast(dict[str, object], entry["data"])
+    visualization = cast(dict[str, object], data["visualization"])
+    del visualization["dimensions"]
+    del visualization["colors"]
+    recorder = _RecordedTransport({"/rpc/getWizardChart": httpx.Response(200, json=response)})
+
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as client:
+        chart = client.get.wizard_chart(by_id="chart-1")
+        snapshot = json.dumps(chart.data, sort_keys=True)
+        with pytest.raises(dl.DataLensConfigurationError, match="requires a field in the colors slot"):
+            chart.update.palette(id="org-brand-next").execute()
+        assert json.dumps(chart.data, sort_keys=True) == snapshot
+
+    assert recorder.paths() == ["/rpc/getWizardChart"]
+
+
+@pytest.mark.parametrize("viz_id", ["pie", "donut"])
 @pytest.mark.parametrize("same_field", [False, True])
 def test_wizard_dimension_update_preserves_compatible_palette_state(viz_id: str, same_field: bool) -> None:
     response = _wizard_with_custom_palette(viz_id)

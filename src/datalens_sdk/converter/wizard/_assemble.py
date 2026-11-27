@@ -673,7 +673,7 @@ def _apply_palette_to_visualization(
     normalizer: _Normalizer,
 ) -> None:
     _apply_implicit_dimension_colors(visualization)
-    colors = _ensure_visualization_slot(visualization, "colors", settings={})
+    colors = _visualization_slot(visualization, "colors") if visualization.get("colors") is not None else _slot([])
     current = colors.get("settings")
     settings = dict(current) if isinstance(current, dict) else {}
     visualization_type = _visualization_type(visualization)
@@ -1116,17 +1116,20 @@ def _apply_implicit_dimension_colors(visualization: WizardJsonObject) -> None:
     visualization_type = _visualization_type(visualization)
     rule = get_wizard_encoding(visualization_type, "color", "dimension")
     implicit_from_slot = rule.get("implicit_from_slot") if rule is not None else None
-    if rule is not None and implicit_from_slot is not None:
-        target = _visualization_slot(visualization, rule["slot"])
-        target_items = target.get("items")
-        source_items = _visualization_slot(visualization, implicit_from_slot).get("items")
-        if isinstance(target_items, list) and not target_items and isinstance(source_items, list) and source_items:
-            target["items"] = [
-                _json_object(
-                    cast(Mapping[str, object], source_items[0]),
-                    context=f"Wizard {visualization_type} color autofix",
-                )
-            ]
+    if rule is None or implicit_from_slot is None:
+        return
+    target_slot = rule["slot"]
+    if visualization.get(target_slot) is not None and _visualization_slot(visualization, target_slot)["items"]:
+        return
+    if visualization.get(implicit_from_slot) is None:
+        return
+    source_items = _visualization_slot(visualization, implicit_from_slot)["items"]
+    if isinstance(source_items, list) and source_items:
+        item = _json_object(
+            cast(Mapping[str, object], source_items[0]),
+            context=f"Wizard {visualization_type} color autofix",
+        )
+        _ensure_visualization_slot(visualization, target_slot, settings={})["items"] = [item]
 
 
 def _assemble_combined_visualization(
