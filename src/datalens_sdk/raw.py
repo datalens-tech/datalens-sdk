@@ -154,12 +154,14 @@ class RawDatasetReplaceFactory:
         *,
         target: Dataset,
         response_snapshot: Mapping[str, JsonValue],
+        workbook_id: str | None = None,
     ) -> RawDatasetReplace:
         return RawDatasetReplace(
             target=target,
             response_snapshot=response_snapshot,
             installation=self._installation,
             operations=self._operations,
+            workbook_id=workbook_id,
         )
 
     def from_file(
@@ -167,10 +169,12 @@ class RawDatasetReplaceFactory:
         path: ArtifactPath,
         *,
         target: Dataset,
+        workbook_id: str | None = None,
     ) -> RawDatasetReplace:
         return self(
             response_snapshot=read_dataset_artifact(path),
             target=target,
+            workbook_id=workbook_id,
         )
 
 

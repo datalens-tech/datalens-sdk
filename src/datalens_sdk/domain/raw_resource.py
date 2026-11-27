@@ -149,6 +149,7 @@ class RawDatasetReplace:
         target: Dataset,
         installation: str,
         operations: DatasetOperations | None,
+        workbook_id: str | None = None,
     ) -> None:
         _validate_target_installation(
             resource="dataset",
@@ -162,6 +163,7 @@ class RawDatasetReplace:
             target_id=target.id,
             target_name=target.name,
             target_location=target.location,
+            target_workbook_id=target._workbook_id_for_request(workbook_id),
         )
         self._operations = operations
         self._mode: EntryUpdateMode = "save"

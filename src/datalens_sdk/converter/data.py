@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Literal, Protocol, cast
+from typing import Protocol, cast
 
 from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.converter._data_rows import normalize_data_rows
@@ -8,20 +8,6 @@ from datalens_sdk.domain.data import (
     DatasetDataColumn,
     DatasetDataQuery,
 )
-
-
-class DatasetDataWriteDTOProtocol(Protocol):
-    def model_dump(
-        self,
-        *,
-        mode: Literal["json"],
-        by_alias: bool,
-        exclude_unset: bool,
-    ) -> dict[str, object]: ...
-
-
-class DatasetDataArgsDTOClass(Protocol):
-    def model_validate(self, obj: object) -> DatasetDataWriteDTOProtocol: ...
 
 
 class DatasetDataColumnReadDTOProtocol(Protocol):
@@ -40,7 +26,6 @@ class DatasetDataReadDTOClass(Protocol):
 
 
 class DatasetDataDtoModule(Protocol):
-    DatasetDataArgsDTO: DatasetDataArgsDTOClass
     DatasetDataReadDTO: DatasetDataReadDTOClass
 
 
@@ -50,16 +35,14 @@ def _dto_module(dto_module: DatasetDataDtoModule | None) -> DatasetDataDtoModule
 
 class DatasetDataConverter:
     @staticmethod
-    def request_payload(
-        query: DatasetDataQuery,
-        *,
-        dto_module: DatasetDataDtoModule | None = None,
-    ) -> dict[str, object]:
+    def request_payload(query: DatasetDataQuery) -> dict[str, object]:
         payload: dict[str, object] = {
             "datasetId": query.dataset_id,
             "columns": list(query.column_guids()),
             "limit": query.limit,
         }
+        if query.workbook_id is not None:
+            payload["workbookId"] = query.workbook_id
         if query.filters:
             payload["filters"] = [
                 {
@@ -81,14 +64,10 @@ class DatasetDataConverter:
             ]
         if query.offset is not None:
             payload["offset"] = query.offset
-        return (
-            _dto_module(dto_module)
-            .DatasetDataArgsDTO.model_validate(payload)
-            .model_dump(
-                mode="json",
-                by_alias=True,
-                exclude_unset=True,
-            )
+        return generated_dto.DatasetDataArgsDTO.model_validate(payload).model_dump(
+            mode="json",
+            by_alias=True,
+            exclude_unset=True,
         )
 
     @staticmethod

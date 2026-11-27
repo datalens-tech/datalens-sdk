@@ -57,14 +57,6 @@ class DatasetReadDTOProtocol(Protocol):
     def model_dump(self, *, exclude_none: bool = False) -> dict[str, object]: ...
 
 
-class DatasetUpdateDataDTOProtocol(Protocol):
-    def to_payload(self) -> dict[str, object]: ...
-
-
-class DatasetUpdateDTOProtocol(Protocol):
-    def to_payload(self) -> dict[str, object]: ...
-
-
 class DatasetSourceDTOClass(Protocol):
     def __call__(
         self,
@@ -110,31 +102,11 @@ class DatasetReadDTOClass(Protocol):
     def model_validate(self, obj: object) -> DatasetReadDTOProtocol: ...
 
 
-class DatasetUpdateDataDTOClass(Protocol):
-    def __call__(
-        self,
-        *,
-        dataset: Mapping[str, object],
-        mode: EntryUpdateMode | None = None,
-    ) -> DatasetUpdateDataDTOProtocol: ...
-
-
-class DatasetUpdateDTOClass(Protocol):
-    def __call__(
-        self,
-        *,
-        dataset_id: str,
-        data: DatasetUpdateDataDTOProtocol,
-    ) -> DatasetUpdateDTOProtocol: ...
-
-
 class DatasetDtoModule(Protocol):
     DatasetSourceDTO: DatasetSourceDTOClass
     DatasetContentDTO: DatasetContentDTOClass
     DatasetCreateDTO: DatasetCreateDTOClass
     DatasetReadDTO: DatasetReadDTOClass
-    DatasetUpdateDataDTO: DatasetUpdateDataDTOClass
-    DatasetUpdateDTO: DatasetUpdateDTOClass
 
 
 def _dto_module(dto_module: DatasetDtoModule | None) -> DatasetDtoModule:
@@ -273,6 +245,7 @@ class DatasetConverter:
         existing_state: Mapping[str, object] | None = None,
         refresh_sources: bool = False,
         actions: Sequence[DatasetUpdateAction] = (),
+        workbook_id: str | None = None,
     ) -> dict[str, object]:
         updates: list[dict[str, object]] = []
         for source in sources:
@@ -342,15 +315,24 @@ class DatasetConverter:
         dataset = with_supported_rls2_state(
             dict(existing_state) if existing_state is not None else DatasetConverter.empty_dataset_state()
         )
-        return {"datasetId": "", "data": {"dataset": dataset, "updates": updates}}
+        return generated_dto.DatasetValidateDTO(
+            dataset_id="",
+            data={"dataset": dataset, "updates": updates},
+            workbook_id=workbook_id,
+        ).to_payload()
 
     @staticmethod
-    def build_validate_source_payload(source: Source) -> dict[str, object]:
+    def build_validate_source_payload(
+        source: Source,
+        *,
+        workbook_id: str | None = None,
+    ) -> dict[str, object]:
         return DatasetConverter.from_domain_create_validate_step(
             sources=[source],
             relations=[],
             existing_state=None,
             refresh_sources=True,
+            workbook_id=workbook_id,
         )
 
     @staticmethod
@@ -378,6 +360,7 @@ class DatasetConverter:
         location: EntryLocation | None = None,
         name: str | None = None,
         id_fallback: str | None = None,
+        workbook_context_id: str | None = None,
         dto_module: DatasetDtoModule | None = None,
     ) -> Dataset:
         response_snapshot: dict[str, JsonValue] = {}
@@ -449,6 +432,7 @@ class DatasetConverter:
             rev_id=_optional_str(data.get("revId")),
             saved_id=_optional_str(data.get("savedId")),
             _operations=operations,
+            _workbook_context_id=workbook_context_id,
         )
 
     @staticmethod
@@ -467,6 +451,7 @@ class DatasetConverter:
         source = DatasetSnapshotView.from_raw(spec.response_snapshot)
         return RawDatasetReplaceEnvelope(
             dataset_id=spec.target_id,
+            workbook_id=spec.target_workbook_id,
             data=RawDatasetReplaceData(dataset=dataset_content_from_snapshot(source), mode=mode),
         )
 
@@ -475,23 +460,23 @@ class DatasetConverter:
         spec: DatasetUpdateSpec,
         *,
         state: Mapping[str, object],
-        dto_module: DatasetDtoModule | None = None,
-    ) -> DatasetUpdateDTOProtocol:
-        generated = _dto_module(dto_module)
-        return generated.DatasetUpdateDTO(
+    ) -> generated_dto.DatasetUpdateDTO:
+        return generated_dto.DatasetUpdateDTO(
             dataset_id=spec.dataset_id,
-            data=generated.DatasetUpdateDataDTO(dataset=state, mode=spec.mode),
+            data=generated_dto.DatasetUpdateDataDTO(dataset=state, mode=spec.mode),
+            workbook_id=spec.workbook_id,
         )
 
     @staticmethod
     def from_domain_validate(spec: DatasetUpdateSpec) -> dict[str, object]:
-        return {
-            "datasetId": spec.dataset_id,
-            "data": {
+        return generated_dto.DatasetValidateDTO(
+            dataset_id=spec.dataset_id,
+            data={
                 "dataset": _dataset_content(spec.raw),
                 "updates": [dict(action) for action in spec.actions],
             },
-        }
+            workbook_id=spec.workbook_id,
+        ).to_payload()
 
     @staticmethod
     def state_from_read_response(raw: Mapping[str, object]) -> dict[str, object]:

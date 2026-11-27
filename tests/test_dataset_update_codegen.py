@@ -16,14 +16,18 @@ def _load_spec(installation: str) -> dict[str, object]:
     return cast(dict[str, object], json.loads((ROOT / "spec" / f"{installation}.json").read_text()))
 
 
-def _update_data_schema(spec: dict[str, object]) -> dict[str, object]:
+def _dataset_request_schema(spec: dict[str, object], operation: str) -> dict[str, object]:
     paths = cast(dict[str, object], spec["paths"])
-    route = cast(dict[str, object], paths["/rpc/updateDataset"])
+    route = cast(dict[str, object], paths[f"/rpc/{operation}"])
     post = cast(dict[str, object], route["post"])
     request = cast(dict[str, object], post["requestBody"])
     content = cast(dict[str, object], request["content"])
     json_content = cast(dict[str, object], content["application/json"])
-    schema = cast(dict[str, object], json_content["schema"])
+    return cast(dict[str, object], json_content["schema"])
+
+
+def _update_data_schema(spec: dict[str, object]) -> dict[str, object]:
+    schema = _dataset_request_schema(spec, "updateDataset")
     properties = cast(dict[str, object], schema["properties"])
     return cast(dict[str, object], properties["data"])
 
@@ -91,3 +95,24 @@ def test_metadata_rejects_dataset_mode_drift_in_any_installation(tmp_path: Path,
 
     with pytest.raises(ValueError, match="must support save and publish"):
         codegen.build_metadata(installations)
+
+
+@pytest.mark.parametrize("operation", ["validateDataset", "updateDataset"])
+@pytest.mark.parametrize("change", ["removed", "required", "non-nullable", "constrained"])
+def test_metadata_rejects_dataset_mutation_workbook_contract_drift(tmp_path: Path, operation: str, change: str) -> None:
+    spec = _load_spec("yacloud")
+    schema = _dataset_request_schema(spec, operation)
+    props = cast(dict[str, object], schema["properties"])
+    if change == "removed":
+        del props["workbookId"]
+    elif change == "required":
+        cast(list[str], schema["required"]).append("workbookId")
+    elif change == "non-nullable":
+        props["workbookId"] = {"type": "string"}
+    else:
+        cast(dict[str, object], props["workbookId"])["minLength"] = 1
+    path = tmp_path / "yacloud.json"
+    path.write_text(json.dumps(spec))
+
+    with pytest.raises(ValueError, match=rf"{operation}.*workbookId"):
+        codegen.build_metadata({"yacloud": path})

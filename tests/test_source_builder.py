@@ -38,7 +38,8 @@ class RecordedTransport:
         return cast(dict[str, object], data)
 
 
-def test_source_build_fires_validate_and_returns_enriched_source() -> None:
+@pytest.mark.parametrize("workbook_id", [None, "wb-reader"])
+def test_source_build_fires_validate_and_returns_enriched_source(workbook_id: str | None) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/rpc/validateDataset":
             body = json.loads(request.content.decode())
@@ -67,13 +68,14 @@ def test_source_build_fires_validate_and_returns_enriched_source() -> None:
     recorder.set_handler(handler)
     client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
     connection = client.domain_connection(id="conn-1", type="postgres", name="PG")
+    connection.location = dl.EntryLocation.workbook("wb-owner")
     source_create = client.create.source(using=connection).pg_table(
         alias="orders", schema_name="public", table_name="orders"
     )
 
     assert isinstance(source_create, dl.SourceCreate)
 
-    source = source_create.build()
+    source = source_create.build(strict=True, workbook_id=workbook_id)
 
     assert isinstance(source, dl.Source)
     assert len(source.raw_schema) == 1
@@ -81,6 +83,11 @@ def test_source_build_fires_validate_and_returns_enriched_source() -> None:
     assert source.fields.by_name("Order Date").name == "order_date"
     assert len(recorder.requests) == 1
     body = recorder.request_json(0)
+    assert body["datasetId"] == ""
+    if workbook_id is None:
+        assert "workbookId" not in body
+    else:
+        assert body["workbookId"] == workbook_id
     updates = cast(list[dict[str, object]], cast(dict[str, object], body["data"])["updates"])
     assert [u["action"] for u in updates] == ["add_source", "add_source_avatar", "refresh_source"]
 

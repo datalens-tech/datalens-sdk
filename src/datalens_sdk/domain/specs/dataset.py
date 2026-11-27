@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from datalens_sdk.domain.dataset_rls import RLSChange
@@ -54,3 +54,4 @@ class DatasetUpdateSpec:
     name_change: str | None
     rls2_changes: tuple[RLSChange, ...]
     mode: EntryUpdateMode = "save"
+    workbook_id: str | None = field(default=None, kw_only=True)

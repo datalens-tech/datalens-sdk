@@ -1961,6 +1961,30 @@ def build_entry_move_contract_meta(spec: Mapping[str, object]) -> EntryMoveContr
     }
 
 
+def _dataset_mutation_request_schema(spec: Mapping[str, object], operation_name: str) -> dict[str, object]:
+    context = f"/rpc/{operation_name}"
+    paths = _string_object_dict(spec.get("paths"), context="paths")
+    route = _string_object_dict(paths.get(context), context=context)
+    operation = _string_object_dict(route.get("post"), context=f"{context}.post")
+    request = _string_object_dict(operation.get("requestBody"), context=f"{context}.requestBody")
+    content = _string_object_dict(request.get("content"), context=f"{context}.content")
+    json_content = _string_object_dict(content.get("application/json"), context=f"{context}.application/json")
+    return _string_object_dict(json_content.get("schema"), context=f"{context}.schema")
+
+
+def validate_dataset_mutation_workbook_contract(spec: Mapping[str, object]) -> None:
+    """Keep the shared mutation DTOs in sync with the optional workbook field."""
+
+    for operation in ("validateDataset", "updateDataset"):
+        context = f"/rpc/{operation}"
+        schema = _dataset_mutation_request_schema(spec, operation)
+        properties = _string_object_dict(schema.get("properties"), context=f"{context}.properties")
+        required = _string_list(schema.get("required", []), context=f"{context}.required")
+        workbook_schema = _normalize_wizard_schema(properties.get("workbookId"))
+        if workbook_schema != {"type": ["null", "string"]} or "workbookId" in required:
+            raise ValueError(f"{context} workbookId must be an optional nullable string without additional constraints")
+
+
 def validate_dataset_update_mode_contract(spec: Mapping[str, object]) -> None:
     """Validate data.mode from the RPC exporter without changing downloaded specs.
 
@@ -1970,13 +1994,7 @@ def validate_dataset_update_mode_contract(spec: Mapping[str, object]) -> None:
     SDK contract change.
     """
     context = "/rpc/updateDataset"
-    paths = _string_object_dict(spec.get("paths"), context="paths")
-    route = _string_object_dict(paths.get(context), context=context)
-    operation = _string_object_dict(route.get("post"), context=f"{context}.post")
-    request = _string_object_dict(operation.get("requestBody"), context=f"{context}.requestBody")
-    content = _string_object_dict(request.get("content"), context=f"{context}.content")
-    json_content = _string_object_dict(content.get("application/json"), context=f"{context}.application/json")
-    schema = _string_object_dict(json_content.get("schema"), context=f"{context}.schema")
+    schema = _dataset_mutation_request_schema(spec, "updateDataset")
     properties = _string_object_dict(schema.get("properties"), context=f"{context}.properties")
     data = _string_object_dict(properties.get("data"), context=f"{context}.data")
     if data.get("$ref") is not None:
@@ -2255,16 +2273,6 @@ def build_dataset_data_contract_meta(spec: Mapping[str, object]) -> DatasetDataC
         _normalize_wizard_schema(request_schema),
         context="getDatasetData request schema",
     )
-    request_properties = _string_object_dict(
-        normalized_request.get("properties"),
-        context="getDatasetData request schema.properties",
-    )
-    request_properties.pop("workbookId", None)
-    normalized_request["properties"] = request_properties
-    required = normalized_request.get("required")
-    if isinstance(required, list):
-        normalized_request["required"] = [item for item in required if item != "workbookId"]
-
     normalized_response = _string_object_dict(
         _normalize_wizard_schema(response_schema),
         context="getDatasetData response schema",
@@ -3266,6 +3274,7 @@ def build_metadata(
                 )
             rpc_namespace_contracts[namespace] = (installation, contract)
         schemas = _schemas(spec)
+        validate_dataset_mutation_workbook_contract(spec)
         validate_dataset_update_mode_contract(spec)
         dashboard_contract = build_dashboard_contract_meta(spec)
         dashboard_contracts.append((installation, dashboard_contract))
@@ -5681,9 +5690,13 @@ class DatasetValidateDTO(BaseModel):
 
     dataset_id: str = Field(serialization_alias="datasetId")
     data: Mapping[str, object]
+    workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
 
     def to_payload(self) -> dict[str, object]:
-        return {{"datasetId": self.dataset_id, "data": dict(self.data)}}
+        payload: dict[str, object] = {{"datasetId": self.dataset_id, "data": dict(self.data)}}
+        if self.workbook_id is not None:
+            payload["workbookId"] = self.workbook_id
+        return payload
 
 
 class DatasetUpdateDataDTO(BaseModel):
@@ -5704,9 +5717,13 @@ class DatasetUpdateDTO(BaseModel):
 
     dataset_id: str = Field(serialization_alias="datasetId")
     data: DatasetUpdateDataDTO
+    workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
 
     def to_payload(self) -> dict[str, object]:
-        return {{"datasetId": self.dataset_id, "data": self.data.to_payload()}}
+        payload: dict[str, object] = {{"datasetId": self.dataset_id, "data": self.data.to_payload()}}
+        if self.workbook_id is not None:
+            payload["workbookId"] = self.workbook_id
+        return payload
 
 
 class EntryMoveDTO(BaseModel):

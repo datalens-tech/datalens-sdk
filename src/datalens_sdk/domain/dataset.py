@@ -156,10 +156,10 @@ class SourceCreate:
         self._source = source
         self._operations = operations
 
-    def build(self, *, strict: bool = False) -> Source:
+    def build(self, *, strict: bool = False, workbook_id: str | None = None) -> Source:
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
-        schema, valid = self._operations.validate_source(self._source, strict=strict)
+        schema, valid = self._operations.validate_source(self._source, strict=strict, workbook_id=workbook_id)
         return Source(
             id=self._source.id,
             source_type=self._source.source_type,
@@ -454,6 +454,7 @@ class Dataset:
     rev_id: str | None = None
     saved_id: str | None = None
     _operations: DatasetOperations | None = field(default=None, repr=False, compare=False)
+    _workbook_context_id: str | None = field(default=None, kw_only=True, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if self.name is None:
@@ -470,6 +471,13 @@ class Dataset:
     @property
     def workbook_id(self) -> str | None:
         return workbook_id_from_location(self.location) or _optional_str(self.raw.get("workbook_id"))
+
+    def _workbook_id_for_request(self, workbook_id: str | None = None) -> str | None:
+        if workbook_id is not None:
+            return workbook_id
+        if self._workbook_context_id is not None:
+            return self._workbook_context_id
+        return self.workbook_id
 
     @property
     def collection_id(self) -> str | None:
@@ -593,11 +601,13 @@ class Dataset:
         sort: Sequence[DatasetDataSort] = (),
         limit: int = 500,
         offset: int | None = None,
+        workbook_id: str | None = None,
     ) -> DatasetData:
         """Execute by ID without pinning the loaded revision or local dataset state.
 
         The server chooses the configuration; this does not select a saved or
-        published branch based on the revision loaded into this object.
+        published branch based on the revision loaded into this object. An
+        explicit workbook ID overrides the context used to load the dataset.
         """
         if self._operations is None:
             raise DataLensConfigurationError(_UNBOUND)
@@ -612,6 +622,7 @@ class Dataset:
                 sort=sort,
                 limit=limit,
                 offset=offset,
+                workbook_id=self._workbook_id_for_request(workbook_id),
             )
         )
 

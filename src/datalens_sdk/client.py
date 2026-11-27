@@ -315,6 +315,7 @@ class DataNamespace:
         sort: Sequence[DatasetDataSort] = (),
         limit: int = 500,
         offset: int | None = None,
+        workbook_id: str | None = None,
     ) -> DatasetData:
         return self._operations.get_dataset_data(
             DatasetDataQuery.create(
@@ -325,6 +326,7 @@ class DataNamespace:
                 sort=sort,
                 limit=limit,
                 offset=offset,
+                workbook_id=workbook_id,
             )
         )
 

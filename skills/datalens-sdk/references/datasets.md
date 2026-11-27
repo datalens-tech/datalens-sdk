@@ -20,6 +20,10 @@ ds = client.get.dataset(by_id=ds.id)  # MANDATORY before any field operation
 
 `DatasetCreate` also accepts nearly the whole update DSL below (`add_field`, `add_calculation`, `add_parameter`, `add_default_filter`, `add_rls`, `update_setting`, ...) so a dataset can be born fully configured in one `.build()`. One signature differs: creation-time `add_relation` additionally requires `left_source=` / `right_source=` (a `Source` or its id), because before the first validation there are no field snapshots to infer the join sides from.
 
+For standalone source validation through a shared connection, use
+`.build(strict=True, workbook_id="wb-reader")`. Validation during dataset
+creation uses the dataset's destination workbook automatically.
+
 ## The read model
 
 After the re-`get`:
@@ -62,6 +66,17 @@ Read the draft with `client.get.dataset(by_id=..., branch="saved")` or the
 publication with `branch="published"`. Dataset branch reads resolve the current
 revision pointer, then read that exact `rev_id`, so they can make two requests.
 A missing requested pointer raises `DataLensValidationError`.
+
+If a dataset uses a shared connection, load it with the accessing workbook
+context. Its typed update uses that context for both validation and writing.
+
+```python
+ds = client.get.dataset(by_id=dataset_id, workbook_id="wb-reader")
+ds = ds.update.description("Latest sales figures").execute()
+```
+
+Use `ds.update.workbook_id("wb-other")` to override the context for one
+update. This changes the request scope without moving the dataset.
 
 The authoring examples below explicitly publish their Dataset changes.
 

@@ -113,6 +113,7 @@ class DatasetUpdate:
         self._name_change: str | None = None
         self._rls2_changes: list[RLSChange] = []
         self._mode: EntryUpdateMode = "save"
+        self._workbook_id: str | None = None
 
     @property
     def actions(self) -> tuple[DatasetUpdateAction, ...]:
@@ -133,6 +134,11 @@ class DatasetUpdate:
 
     def mode(self, value: EntryUpdateMode) -> Self:
         self._mode = validate_entry_update_mode(value)
+        return self
+
+    def workbook_id(self, value: str) -> Self:
+        """Use a workbook context for validation and update requests."""
+        self._workbook_id = value
         return self
 
     def description(self, value: str) -> Self:
@@ -638,6 +644,7 @@ class DatasetUpdate:
             name_change=self._name_change,
             rls2_changes=self.rls2_changes,
             mode=self._mode,
+            workbook_id=self._dataset._workbook_id_for_request(self._workbook_id),
         )
 
     def execute(self) -> Dataset:

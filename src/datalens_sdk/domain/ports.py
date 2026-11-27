@@ -360,6 +360,7 @@ class DatasetOperations(EntryRevisionsOperations, DatasetDataOperations, Protoco
         source: Source,
         *,
         strict: bool = False,
+        workbook_id: str | None = None,
     ) -> tuple[tuple[RawSchemaColumnPayload, ...], bool]: ...
 
 

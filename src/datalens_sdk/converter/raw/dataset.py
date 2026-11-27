@@ -37,6 +37,7 @@ class RawDatasetReplaceEnvelope(BaseModel):
 
     dataset_id: str = Field(serialization_alias="datasetId")
     data: RawDatasetReplaceData
+    workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
 
     def to_payload(self) -> dict[str, object]:
         return cast(dict[str, object], self.model_dump(by_alias=True, exclude_none=True))

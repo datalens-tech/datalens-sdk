@@ -71,6 +71,10 @@ Facts to keep straight about bundles:
 So each factory is *callable* (in-memory snapshot) and also has a `.from_file(...)` method (artifact on disk); both return the same builder, and — as everywhere in the SDK — nothing persists until the terminal call. Resource-specific extras:
 
 - **connection** create and replace accept `overrides=` — a mapping merged over the snapshot-derived payload. Identity, location, connector, and server-owned keys are rejected in overrides.
+- **dataset** replace accepts `workbook_id="wb-reader"` with both a snapshot
+  and `.from_file(...)`. By default the request uses the target dataset's
+  workbook context or workbook metadata. Workbook metadata in the imported
+  snapshot does not set that context.
 - **dashboard** replace requires `.mode("save" | "publish")` or the compatible `.execute(publish=bool, lock_token=...)` form; `publish=` itself is not mandatory.
 
 Replacement modes and publication of existing revisions follow the
