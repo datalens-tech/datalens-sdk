@@ -3,10 +3,10 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 import re
 from typing import Any, cast
+import warnings
 
 from datalens_sdk._runtime.chart_constants import (
     DEFAULT_CATEGORICAL_PALETTE,
-    VALID_DISCRETE_PALETTES,
     VALID_GRADIENT_PALETTES,
     gradient_types_for_palette,
 )
@@ -56,6 +56,7 @@ _COLOR_ENCODING_OWNED_SETTING_KEYS = frozenset(
         "mountedColors",
         "nullMode",
         "palette",
+        "paletteManualValues",
         "polygonBorders",
         "reversed",
         "rightThreshold",
@@ -604,17 +605,7 @@ def _apply_palette(
 ) -> None:
     if not color_types:
         raise DataLensConfigurationError(f"palette(id={palette!r}) requires a field in the colors slot.")
-    if palette in VALID_DISCRETE_PALETTES:
-        if not color_types <= {"DIMENSION", "PSEUDO"}:
-            got = ", ".join(sorted(color_types))
-            raise DataLensConfigurationError(
-                f"palette(id={palette!r}) requires a DIMENSION (or PSEUDO Measure Names) in colors; got {got}."
-            )
-        settings.pop("gradientMode", None)
-        settings.pop("gradientPalette", None)
-        if settings.get("colorMode") == "gradient":
-            settings["colorMode"] = "palette"
-    elif palette in VALID_GRADIENT_PALETTES:
+    if palette in VALID_GRADIENT_PALETTES:
         if color_types != {"MEASURE"}:
             got = ", ".join(sorted(color_types))
             raise DataLensConfigurationError(f"palette(id={palette!r}) requires a MEASURE in colors; got {got}.")
@@ -625,7 +616,15 @@ def _apply_palette(
         settings["gradientPalette"] = palette
         settings["thresholdsMode"] = "auto"
     else:
-        raise DataLensConfigurationError(f"Unknown palette {palette!r}.")
+        if not color_types <= {"DIMENSION", "PSEUDO"}:
+            got = ", ".join(sorted(color_types))
+            raise DataLensConfigurationError(
+                f"palette(id={palette!r}) requires a DIMENSION (or PSEUDO Measure Names) in colors; got {got}."
+            )
+        settings.pop("gradientMode", None)
+        settings.pop("gradientPalette", None)
+        if settings.get("colorMode") == "gradient":
+            settings["colorMode"] = "palette"
     settings["palette"] = palette
 
 
@@ -633,6 +632,7 @@ def _color_item_types(
     slot: WizardJsonObject,
     *,
     normalizer: _Normalizer,
+    supports_measure_colors: bool,
 ) -> frozenset[str]:
     result: set[str] = set()
     items = slot.get("items")
@@ -655,7 +655,11 @@ def _color_item_types(
         if isinstance(settings, Mapping):
             if settings.get("coloredByMeasure") is True:
                 result.add("PSEUDO")
-            elif isinstance(settings.get("fieldGuid"), str):
+            elif settings.get("colorMode") == "gradient" or (
+                supports_measure_colors
+                and settings.get("colorMode") != "palette"
+                and isinstance(settings.get("fieldGuid"), str)
+            ):
                 result.add("MEASURE")
             else:
                 result.add("DIMENSION")
@@ -668,10 +672,17 @@ def _apply_palette_to_visualization(
     *,
     normalizer: _Normalizer,
 ) -> None:
-    colors = _ensure_visualization_slot(visualization, "colors", settings={})
+    _apply_implicit_dimension_colors(visualization)
+    colors = _visualization_slot(visualization, "colors") if visualization.get("colors") is not None else _slot([])
     current = colors.get("settings")
     settings = dict(current) if isinstance(current, dict) else {}
-    _apply_palette(settings, palette, color_types=_color_item_types(colors, normalizer=normalizer))
+    visualization_type = _visualization_type(visualization)
+    color_types = _color_item_types(
+        colors,
+        normalizer=normalizer,
+        supports_measure_colors=get_wizard_encoding(visualization_type, "color", "measure") is not None,
+    )
+    _apply_palette(settings, palette, color_types=color_types)
     colors["settings"] = settings
 
 
@@ -766,6 +777,87 @@ def _apply_labels_position(visualization: WizardJsonObject, mode: str | None) ->
     labels["settings"] = settings
 
 
+def _field_identity(item: Mapping[str, object]) -> tuple[str, str] | None:
+    dataset_id = item.get("datasetId")
+    guid = item.get("guid")
+    if isinstance(dataset_id, str) and dataset_id and isinstance(guid, str) and guid:
+        return dataset_id, guid
+    return None
+
+
+def _previous_dimension_colors(
+    visualization: Mapping[str, object],
+    *,
+    slot_name: str,
+    implicit_from_slot: str | None,
+    supports_measure_colors: bool,
+) -> tuple[Mapping[str, object], Mapping[str, object]] | None:
+    slot = visualization.get(slot_name)
+    if not isinstance(slot, Mapping):
+        return None
+    settings = slot.get("settings")
+    if not isinstance(settings, Mapping):
+        return None
+    palette = settings.get("palette")
+    if (
+        settings.get("coloredByMeasure") is True
+        or settings.get("colorMode") == "gradient"
+        or settings.get("gradientMode") is not None
+        or settings.get("gradientPalette") is not None
+        or (isinstance(palette, str) and palette in VALID_GRADIENT_PALETTES)
+    ):
+        return None
+
+    items = slot.get("items")
+    if not items and implicit_from_slot is not None:
+        source = visualization.get(implicit_from_slot)
+        items = source.get("items") if isinstance(source, Mapping) else None
+    if not isinstance(items, list) or len(items) != 1 or not isinstance(items[0], Mapping):
+        return None
+    item: Mapping[str, object] = items[0]
+    item_type = item.get("type")
+    if item_type is not None and item_type != "DIMENSION":
+        return None
+    if (
+        supports_measure_colors
+        and item_type is None
+        and settings.get("colorMode") != "palette"
+        and isinstance(settings.get("fieldGuid"), str)
+    ):
+        return None
+    return settings, item
+
+
+def _preserve_dimension_color_settings(
+    settings: WizardJsonObject,
+    previous_settings: Mapping[str, object],
+    previous_field: Mapping[str, object],
+    field: WizardJsonObject,
+) -> None:
+    keys = ["reversed", "polygonBorders"]
+    palette = previous_settings.get("palette")
+    if isinstance(palette, str) and palette.strip():
+        keys.append("palette")
+    if previous_settings.get("colorMode") == "palette":
+        keys.append("colorMode")
+
+    value_keys = ("mountedColors", "paletteManualValues")
+    previous_identity = _field_identity(previous_field)
+    if previous_identity is not None and previous_identity == _field_identity(field):
+        keys.extend(value_keys)
+    elif any(previous_settings.get(key) for key in value_keys):
+        warnings.warn(
+            "color_by_dimension(): saved value colors cannot be preserved for a different or unresolved field.",
+            stacklevel=4,
+        )
+    settings.update(
+        _json_object(
+            {key: previous_settings[key] for key in keys if key in previous_settings},
+            context="Wizard saved category colors",
+        )
+    )
+
+
 def _apply_color_encoding(
     visualization: WizardJsonObject,
     encoding: WizardColorEncoding,
@@ -773,6 +865,7 @@ def _apply_color_encoding(
     normalizer: _Normalizer,
     dataset_id: str | None,
     palette: str | None,
+    previous_visualization: Mapping[str, object] | None = None,
 ) -> None:
     visualization_type = _visualization_type(visualization)
     rule = get_wizard_encoding(visualization_type, "color", encoding.kind)
@@ -828,8 +921,18 @@ def _apply_color_encoding(
                 settings["gradientMode"] = gradient_mode or "2-point"
                 settings["reversed"] = encoding.reversed if encoding.reversed is not None else False
                 settings["thresholdsMode"] = "auto"
-        elif palette is None:
-            settings["palette"] = DEFAULT_CATEGORICAL_PALETTE
+        else:
+            if previous_visualization is not None and previous_visualization.get("type") == visualization_type:
+                previous = _previous_dimension_colors(
+                    previous_visualization,
+                    slot_name=rule["slot"],
+                    implicit_from_slot=rule.get("implicit_from_slot"),
+                    supports_measure_colors=get_wizard_encoding(visualization_type, "color", "measure") is not None,
+                )
+                if previous is not None:
+                    _preserve_dimension_color_settings(settings, *previous, items[0])
+            if palette is None:
+                settings.setdefault("palette", DEFAULT_CATEGORICAL_PALETTE)
     if palette is not None:
         _apply_palette(settings, palette, color_types=color_types)
     colors["items"] = _json_array(items, context="Wizard colors items")
@@ -1006,19 +1109,27 @@ def _apply_visualization_autofix(visualization: WizardJsonObject) -> None:
                 )
             ]
 
+    _apply_implicit_dimension_colors(visualization)
+
+
+def _apply_implicit_dimension_colors(visualization: WizardJsonObject) -> None:
+    visualization_type = _visualization_type(visualization)
     rule = get_wizard_encoding(visualization_type, "color", "dimension")
     implicit_from_slot = rule.get("implicit_from_slot") if rule is not None else None
-    if rule is not None and implicit_from_slot is not None:
-        target = _visualization_slot(visualization, rule["slot"])
-        target_items = target.get("items")
-        source_items = _visualization_slot(visualization, implicit_from_slot).get("items")
-        if isinstance(target_items, list) and not target_items and isinstance(source_items, list) and source_items:
-            target["items"] = [
-                _json_object(
-                    cast(Mapping[str, object], source_items[0]),
-                    context=f"Wizard {visualization_type} color autofix",
-                )
-            ]
+    if rule is None or implicit_from_slot is None:
+        return
+    target_slot = rule["slot"]
+    if visualization.get(target_slot) is not None and _visualization_slot(visualization, target_slot)["items"]:
+        return
+    if visualization.get(implicit_from_slot) is None:
+        return
+    source_items = _visualization_slot(visualization, implicit_from_slot)["items"]
+    if isinstance(source_items, list) and source_items:
+        item = _json_object(
+            cast(Mapping[str, object], source_items[0]),
+            context=f"Wizard {visualization_type} color autofix",
+        )
+        _ensure_visualization_slot(visualization, target_slot, settings={})["items"] = [item]
 
 
 def _assemble_combined_visualization(

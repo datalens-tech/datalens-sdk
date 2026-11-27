@@ -377,7 +377,7 @@ do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 
 | Signature | Side | Notes |
 |---|---|---|
-| `.palette(*, id: PaletteId)` | C/U | Style an existing Color binding: discrete palettes require dimension/Measure Names color; gradient palettes require measure color. |
+| `.palette(*, id: PaletteId)` | C/U | Use a built-in or custom categorical palette for a dimension or Measure Names, or a built-in gradient palette for a measure. |
 | `.color_by_dimension(field)` | C/U | Bind color to a `DIMENSION`. |
 | `.color_by_measure(field, *, mode=None, palette=None, reversed=None)` | C/U | Bind color to a `MEASURE`; use a compatible mode and gradient palette from the table below. |
 | `.color_by_measure_name(*, colors_map=None)` | C/U | Color at least two placed measures; map keys must name placed measures. |
@@ -451,7 +451,7 @@ review the result before publishing.
 - `ShapeStyle`: `"Solid"`, `"Dash"`, `"Dot"`, `"ShortDash"`, `"ShortDot"`,
   `"ShortDashDot"`, `"ShortDashDotDot"`, `"LongDash"`, `"DashDot"`,
   `"LongDashDot"`, `"LongDashDotDot"`.
-- Discrete palettes: `"datalens-classic-20"`, `"classic20"`,
+- Built-in discrete palettes: `"datalens-classic-20"`, `"classic20"`,
   `"datalens-neo-20"`, `"defaultScheme"`, `"neutral20"`, `"taxi-paired"`,
   `"taxi-pastel"`, `"taxi9"`, `"yandex-cloud"`.
 - Gradient palettes: `"blue"`, `"orange-gray-blue"`, `"orange-yellow"`,
@@ -483,8 +483,15 @@ review the result before publishing.
   `Measure Names` item into the category slot (`x` for column, `y` for
   bar). It counts toward that slot's capacity of 2, so use at most one
   ordinary category field with multiple measures.
-- `palette` requires an existing Color field. Use a discrete palette with a
-  dimension or Measure Names, and a gradient palette with a measure.
+- `palette` requires a Color field. Pie and donut can supply one implicitly
+  through `x()`. Custom categorical palette IDs are non-empty strings from
+  the selected installation. DataLens checks whether the palette exists when
+  it receives the request.
+- Updating `color_by_dimension` keeps a compatible saved palette and
+  preserves manual value colors when the dataset and field GUID stay the
+  same. If the field changes or cannot be identified, the SDK clears the
+  value colors and emits a warning when assignments were present. A palette
+  specified in the same update takes precedence over the saved palette.
 - `column_background` requires exactly two thresholds for `"2-point"` and
   exactly three for `"3-point"` when thresholds are supplied.
 - `column_bars(color_type="gradient")` requires `gradient_palette`.

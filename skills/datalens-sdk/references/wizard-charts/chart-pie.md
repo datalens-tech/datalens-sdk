@@ -90,7 +90,12 @@ chart = chart.update.measures([profit]).measure_format(profit, format="number").
 ## Constraints and gotchas
 
 - `x` aliases optional `dimensions`; `y` aliases required `measures`; both have capacity 1.
-- Without explicit `color_by_dimension()`, the SDK uses the dimension as the color source.
+- Pass an installation's custom categorical palette ID with
+  `.palette(id=custom_palette_id)`. If you omit `color_by_dimension()`, the
+  SDK uses the dimension from `x()` as the color source.
+- `chart.update.color_by_dimension(field)` keeps a compatible saved palette.
+  It keeps manual value colors for the same dataset and field GUID. Choosing
+  a different field clears those assignments and warns if any were saved.
 - Only dimension color is supported; measure-gradient and measure-name color are not.
 - No visualization transition is supported from this visualization.
 

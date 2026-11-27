@@ -125,8 +125,10 @@ from datalens_sdk import (
     WorkbookUpdate,
 )
 from datalens_sdk._generated.builders.charts import (
+    DonutWizardChartCreate,
     EnterpriseEditorChartCreateFactory,
     LineWizardChartCreate,
+    PieWizardChartCreate,
     WizardChartCreateFactory,
     YacloudAdvancedChartNodeNodeCreate,
     YacloudEditorChartCreateFactory,
@@ -1538,3 +1540,18 @@ if TYPE_CHECKING:
         assert_type(builder.create(), sdk.DashboardState)
         assert_type(dashboard.create_state("Overview", [{"id": "item", "params": {}}]), sdk.DashboardState)
         assert_type(dashboard.screenshot(state=state), sdk.EntityScreenshot)
+
+
+def _wizard_palette_accepts_string_variables(
+    client: DataLensClientEnterprise,
+    chart: WizardChart,
+    palette_id: str,
+) -> None:
+    location = EntryLocation.path("/Reports")
+    assert_type(
+        client.create.wizard_chart.pie(name="Pie", location=location).palette(id=palette_id), PieWizardChartCreate
+    )
+    assert_type(
+        client.create.wizard_chart.donut(name="Donut", location=location).palette(id=palette_id), DonutWizardChartCreate
+    )
+    assert_type(chart.update.palette(id=palette_id), WizardChartUpdate)
