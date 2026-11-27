@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal, TypeAlias
 
@@ -16,6 +15,35 @@ class SharedEntryBinding:
 
 
 @dataclass(frozen=True, slots=True)
+class SharedEntryBindingEntryPermissions:
+    can_copy: bool
+    create_entry_binding: bool
+    create_limited_entry_binding: bool
+    delete: bool
+    limited_view: bool
+    list_access_bindings: bool
+    move: bool
+    security_approve: bool
+    update: bool
+    update_access_bindings: bool
+    view: bool
+
+
+@dataclass(frozen=True, slots=True)
+class SharedEntryBindingWorkbookPermissions:
+    can_copy: bool
+    delete: bool
+    embed: bool
+    limited_view: bool
+    list_access_bindings: bool
+    move: bool
+    publish: bool
+    update: bool
+    update_access_bindings: bool
+    view: bool
+
+
+@dataclass(frozen=True, slots=True)
 class SharedEntryBindingEntry:
     entry_id: str
     scope: str
@@ -26,7 +54,7 @@ class SharedEntryBindingEntry:
     workbook_id: str | None
     key: str | None
     display_key: str | None
-    permissions: Mapping[str, object] | None = None
+    permissions: SharedEntryBindingEntryPermissions | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,7 +64,7 @@ class SharedEntryBindingWorkbook:
     is_delegated: bool
     collection_title: str | None
     collection_id: str | None
-    permissions: Mapping[str, object] | None = None
+    permissions: SharedEntryBindingWorkbookPermissions | None = None
 
 
 SharedEntryBindingItem: TypeAlias = SharedEntryBindingEntry | SharedEntryBindingWorkbook

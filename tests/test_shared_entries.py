@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+from dataclasses import fields
 import json
 from pathlib import Path
+from typing import get_type_hints
 
 import httpx
+from pydantic import BaseModel
 import pytest
 
 from datalens_sdk import DataLensClientEnterprise, DataLensClientYC, codegen
-from datalens_sdk.domain.shared_entries import SharedEntryBindingEntry, SharedEntryBindingWorkbook
+from datalens_sdk._generated import dto
+from datalens_sdk.domain.shared_entries import (
+    SharedEntryBindingEntry,
+    SharedEntryBindingEntryPermissions,
+    SharedEntryBindingWorkbook,
+    SharedEntryBindingWorkbookPermissions,
+)
 from datalens_sdk.errors import DTOValidationError
 
 
@@ -81,8 +90,99 @@ def test_shared_binding_listing_paginates_mixed_targets() -> None:
         items = list(client.shared_entries.list(entry_id="connection-1", entry_as="source"))
     assert isinstance(items[0], SharedEntryBindingEntry)
     assert isinstance(items[1], SharedEntryBindingWorkbook)
+    assert items[0].permissions is None
+    assert items[1].permissions is None
     assert [json.loads(request.content)["page"] for request in requests] == [0, 1]
     assert all(request.url.path == "/rpc/getSharedEntryBindings" for request in requests)
+
+
+@pytest.mark.parametrize("installation", ["yacloud", "enterprise"])
+def test_shared_binding_listing_exposes_typed_permissions(installation: str) -> None:
+    response = {
+        "items": [
+            {
+                "entity": "entry",
+                "collectionTitle": "Shared",
+                "entryId": "dataset-1",
+                "workbookId": None,
+                "collectionId": "collection-1",
+                "scope": "dataset",
+                "type": "dataset",
+                "displayKey": None,
+                "key": None,
+                "isDelegated": True,
+                "permissions": {
+                    "copy": True,
+                    "createEntryBinding": True,
+                    "createLimitedEntryBinding": False,
+                    "delete": False,
+                    "limitedView": True,
+                    "listAccessBindings": True,
+                    "move": False,
+                    "securityApprove": False,
+                    "update": True,
+                    "updateAccessBindings": False,
+                    "view": True,
+                },
+            },
+            {
+                "entity": "workbook",
+                "collectionTitle": "Shared",
+                "title": "Reports",
+                "workbookId": "workbook-1",
+                "collectionId": "collection-1",
+                "isDelegated": False,
+                "permissions": {
+                    "copy": False,
+                    "delete": False,
+                    "embed": True,
+                    "limitedView": False,
+                    "listAccessBindings": True,
+                    "move": False,
+                    "publish": True,
+                    "update": True,
+                    "updateAccessBindings": False,
+                    "view": True,
+                },
+            },
+        ]
+    }
+    transport = httpx.MockTransport(lambda _: httpx.Response(200, json=response))
+    client: DataLensClientEnterprise | DataLensClientYC
+    if installation == "enterprise":
+        client = DataLensClientEnterprise(base_url="https://enterprise.example.test", auth=None, transport=transport)
+    else:
+        client = DataLensClientYC(auth=None, transport=transport)
+
+    with client:
+        items = list(
+            client.shared_entries.list(entry_id="connection-1", entry_as="source", include_permissions_info=True)
+        )
+
+    assert isinstance(items[0], SharedEntryBindingEntry)
+    assert isinstance(items[0].permissions, SharedEntryBindingEntryPermissions)
+    assert items[0].permissions.can_copy is True
+    assert items[0].permissions.create_entry_binding is True
+    assert isinstance(items[1], SharedEntryBindingWorkbook)
+    assert isinstance(items[1].permissions, SharedEntryBindingWorkbookPermissions)
+    assert items[1].permissions.can_copy is False
+    assert items[1].permissions.publish is True
+
+
+@pytest.mark.parametrize(
+    ("domain_type", "dto_type"),
+    [
+        (SharedEntryBindingEntryPermissions, dto.SharedEntryBindingEntryPermissionsReadDTO),
+        (SharedEntryBindingWorkbookPermissions, dto.WorkbookPermissionsReadDTO),
+    ],
+)
+def test_shared_binding_permission_types_match_generated_contract(domain_type: type, dto_type: type[BaseModel]) -> None:
+    domain_fields = get_type_hints(domain_type)
+    generated_fields = {name: field.annotation for name, field in dto_type.model_fields.items()}
+
+    assert {field.name for field in fields(domain_type)} == set(generated_fields)
+    assert domain_fields == generated_fields
+    assert "copy" not in domain_fields
 
 
 def test_shared_binding_rejects_non_boolean_delegation() -> None:

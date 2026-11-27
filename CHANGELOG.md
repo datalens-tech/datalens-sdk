@@ -17,6 +17,8 @@
 
 ### Fixed
 
+- Return typed entry and workbook permissions from `client.shared_entries.list()`
+  when `include_permissions_info=True`.
 - Preserve the concrete client type in `with ... as client` blocks so
   installation-specific methods retain their types. Subclasses that override
   `__enter__` and return `self` can annotate the return type with `Self`.

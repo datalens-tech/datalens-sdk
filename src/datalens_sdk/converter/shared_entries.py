@@ -8,8 +8,10 @@ from datalens_sdk._generated import dto as generated_dto
 from datalens_sdk.domain.shared_entries import (
     SharedEntryBinding,
     SharedEntryBindingEntry,
+    SharedEntryBindingEntryPermissions,
     SharedEntryBindingItem,
     SharedEntryBindingWorkbook,
+    SharedEntryBindingWorkbookPermissions,
 )
 
 
@@ -86,7 +88,9 @@ class SharedEntryConverter:
                         item.workbook_id,
                         item.key,
                         item.display_key,
-                        item.permissions.model_dump(by_alias=True) if item.permissions is not None else None,
+                        SharedEntryBindingEntryPermissions(**item.permissions.model_dump())
+                        if item.permissions is not None
+                        else None,
                     )
                 )
             else:
@@ -97,7 +101,9 @@ class SharedEntryConverter:
                         item.is_delegated,
                         item.collection_title,
                         item.collection_id,
-                        item.permissions.model_dump(by_alias=True) if item.permissions is not None else None,
+                        SharedEntryBindingWorkbookPermissions(**item.permissions.model_dump())
+                        if item.permissions is not None
+                        else None,
                     )
                 )
         return tuple(items), result.next_page_token

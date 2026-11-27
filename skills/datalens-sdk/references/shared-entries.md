@@ -20,3 +20,5 @@ client.shared_entries.unbind(source_id=connection.id, target_id=workbook.id)
 ```
 
 `delegation=True` delegates access to the source through the target. With `False`, users need their own access to the source. A binding is required in either case. `get_delegation(source_id=..., target_id=..., binded_workbook_id=...)` reads a binding in an optional workbook context. `list` accepts `entry_as="source"` or `"target"`, `mode="all"`, `"workbooks"`, or `"entries"`, an optional `filter_string`, and `page_size` from 1 to 200.
+
+Pass `include_permissions_info=True` to `list` to request permissions for each target. An entry target has `SharedEntryBindingEntryPermissions`; a workbook target has `SharedEntryBindingWorkbookPermissions`. Both expose Boolean attributes such as `can_copy` and `view`; entry targets also expose `create_entry_binding`, and workbook targets expose `publish`. `permissions` is `None` when the API omits it.
