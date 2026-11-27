@@ -969,7 +969,7 @@ def _apply_measure_formats(
     )
 
 
-def _apply_visualization_autofix(visualization: WizardJsonObject) -> None:
+def _apply_visualization_autofix(visualization: WizardJsonObject, *, apply_default_labels: bool) -> None:
     visualization_type = _visualization_type(visualization)
     semantics = get_wizard_visualization_semantics(visualization_type)
     autofix = semantics.get("autofix") if semantics is not None else None
@@ -990,21 +990,22 @@ def _apply_visualization_autofix(visualization: WizardJsonObject) -> None:
             item["direction"] = autofix["sort_direction"]
             sort["items"] = [item]
 
-        labels = _visualization_slot(visualization, "labels")
-        label_items = labels.get("items")
-        labels_source_items = _visualization_slot(visualization, autofix["labels_from_slot"]).get("items")
-        if (
-            isinstance(label_items, list)
-            and not label_items
-            and isinstance(labels_source_items, list)
-            and labels_source_items
-        ):
-            labels["items"] = [
-                _json_object(
-                    cast(Mapping[str, object], labels_source_items[0]),
-                    context=f"Wizard {visualization_type} labels autofix",
-                )
-            ]
+        if apply_default_labels:
+            labels = _visualization_slot(visualization, "labels")
+            label_items = labels.get("items")
+            labels_source_items = _visualization_slot(visualization, autofix["labels_from_slot"]).get("items")
+            if (
+                isinstance(label_items, list)
+                and not label_items
+                and isinstance(labels_source_items, list)
+                and labels_source_items
+            ):
+                labels["items"] = [
+                    _json_object(
+                        cast(Mapping[str, object], labels_source_items[0]),
+                        context=f"Wizard {visualization_type} labels autofix",
+                    )
+                ]
 
     rule = get_wizard_encoding(visualization_type, "color", "dimension")
     implicit_from_slot = rule.get("implicit_from_slot") if rule is not None else None
@@ -1549,7 +1550,7 @@ def _assemble_wizard_data(
         size_settings.update(_json_object(spec.geopoints_config, context="Wizard scatter size settings"))
         size["settings"] = size_settings
 
-    _apply_visualization_autofix(visualization)
+    _apply_visualization_autofix(visualization, apply_default_labels="labels" not in spec.slots)
 
     _apply_item_mutations(
         visualization,

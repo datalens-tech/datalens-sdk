@@ -11,7 +11,7 @@ from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
 from datalens_sdk.domain.fields import DatasetField
 from datalens_sdk.domain.wizard_chart import resolve_field_snapshot
-from datalens_sdk.errors import DataLensValidationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 
 def _dataset() -> Dataset:
@@ -100,10 +100,61 @@ def test_funnel_specific_settings_land_in_extra_settings() -> None:
 def test_bar_autofix_injects_desc_sort_and_measure_labels() -> None:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
-    builder = factory.bar(name="B", location=EntryLocation.path("/F")).dataset(dataset).x(["Amount"]).y(["Region"])
+    builder = (
+        factory.bar(name="B", location=EntryLocation.path("/F")).dataset(dataset).x(["Amount", "Count"]).y(["Region"])
+    )
     data = cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()["data"])
     assert data["visualization"]["sort"]["items"] == [{"guid": "g_reg", "datasetId": "ds1", "direction": "DESC"}]
     assert data["visualization"]["labels"]["items"] == [{"guid": "g_amt", "datasetId": "ds1"}]
+
+
+@pytest.mark.parametrize(
+    ("label_calls", "expected_labels"),
+    [
+        pytest.param((("Count",),), [{"guid": "g_cnt", "datasetId": "ds1"}], id="explicit-measure"),
+        pytest.param((("Count",), ()), [], id="clear-explicit-measure"),
+        pytest.param(((), ("Count",)), [{"guid": "g_cnt", "datasetId": "ds1"}], id="set-after-clear"),
+    ],
+)
+def test_bar_create_uses_last_labels_call(
+    label_calls: tuple[tuple[str, ...], ...],
+    expected_labels: list[dict[str, str]],
+) -> None:
+    dataset = _dataset()
+    factory = WizardChartCreateFactory(cast(Any, None))
+    builder = (
+        factory.bar(name="B", location=EntryLocation.path("/F"))
+        .dataset(dataset)
+        .x(["Amount", "Count"])
+        .y(["Region"])
+        .add_sort("Count", direction="asc")
+    )
+    for label_fields in label_calls:
+        builder.labels(label_fields)
+
+    data = cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()["data"])
+    assert data["visualization"]["labels"]["items"] == expected_labels
+    assert data["visualization"]["sort"]["items"] == [{"guid": "g_cnt", "datasetId": "ds1", "direction": "ASC"}]
+
+
+@pytest.mark.parametrize("explicit_empty_labels", [False, True], ids=["labels-omitted", "empty-labels"])
+@pytest.mark.parametrize("configuration", ["mode", "position"])
+def test_bar_label_configuration_requires_explicit_fields(
+    configuration: str,
+    explicit_empty_labels: bool,
+) -> None:
+    dataset = _dataset()
+    factory = WizardChartCreateFactory(cast(Any, None))
+    builder = factory.bar(name="B", location=EntryLocation.path("/F")).dataset(dataset).x(["Amount"]).y(["Region"])
+    if explicit_empty_labels:
+        builder.labels([])
+    if configuration == "mode":
+        builder.label_mode(mode="absolute")
+    else:
+        builder.labels_position(mode="inside")
+
+    with pytest.raises(DataLensConfigurationError, match=r"requires at least one field in the labels slot"):
+        WizardChartConverter.from_domain_create(builder.to_spec())
 
 
 def test_multi_measure_pseudo_for_line() -> None:
