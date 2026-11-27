@@ -148,7 +148,6 @@ class DatasetService(DatasetOperations):
                 refresh_sources=True,
                 actions=spec.actions,
                 workbook_id=workbook_id_from_location(spec.location),
-                dto_module=self._dto_module,
             )
             validated = self._api.validate(validate_payload)
             state = DatasetConverter.state_from_read_response(validated)
@@ -226,7 +225,7 @@ class DatasetService(DatasetOperations):
         if not dataset_id:
             raise ValueError("Cannot update dataset without an id")
         if spec.actions:
-            validate_payload = DatasetConverter.from_domain_validate(spec, dto_module=self._dto_module)
+            validate_payload = DatasetConverter.from_domain_validate(spec)
             validated = self._api.validate(validate_payload)
             state = DatasetConverter.state_from_read_response(validated)
             if spec.name_change is not None:
@@ -235,7 +234,7 @@ class DatasetService(DatasetOperations):
             state = DatasetConverter.state_for_name_only(spec)
         state = DatasetConverter.apply_rls2_changes(state, spec.rls2_changes)
         try:
-            payload = DatasetConverter.from_domain_update(spec, state=state, dto_module=self._dto_module).to_payload()
+            payload = DatasetConverter.from_domain_update(spec, state=state).to_payload()
         except ValidationError as exc:
             raise translate_dto_validation_error(operation="updateDataset", reason=str(exc)) from exc
         response = self._api.update(payload)
@@ -271,7 +270,7 @@ class DatasetService(DatasetOperations):
         if not dataset.id:
             raise ValueError("Cannot rename a dataset without an id")
         self._entries_service.rename_entry(entry_id=dataset.id, name=name)
-        return self.get_dataset(dataset.id, workbook_id=dataset.workbook_id)
+        return self.get_dataset(dataset.id, workbook_id=dataset._workbook_id_for_request())
 
     def move_dataset(
         self,
@@ -298,9 +297,7 @@ class DatasetService(DatasetOperations):
         strict: bool = False,
         workbook_id: str | None = None,
     ) -> tuple[tuple[RawSchemaColumnPayload, ...], bool]:
-        payload = DatasetConverter.build_validate_source_payload(
-            source, workbook_id=workbook_id, dto_module=self._dto_module
-        )
+        payload = DatasetConverter.build_validate_source_payload(source, workbook_id=workbook_id)
         response = self._api.validate(payload)
         schema, valid = DatasetConverter.parse_validate_source_response(response, source.id)
         if not valid or not schema:

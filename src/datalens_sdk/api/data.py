@@ -46,7 +46,7 @@ class DataService(DataOperations):
     def get_dataset_data(self, query: DatasetDataQuery) -> DatasetData:
         # Preserve the existing dataset request/response exception boundary.
         try:
-            payload = DatasetDataConverter.request_payload(query, dto_module=self._dto_module)
+            payload = DatasetDataConverter.request_payload(query)
             response = self._api.get_dataset_data(payload)
             return DatasetDataConverter.result(response, dto_module=self._dto_module)
         except ValidationError as exc:

@@ -1,12 +1,16 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from importlib import import_module
 import json
 from pathlib import Path
+from types import ModuleType
 from typing import cast
 
 import httpx
+from pydantic import BaseModel, ConfigDict, Field
 import pytest
 
 import datalens_sdk as dl
+from datalens_sdk import client as client_module
 from datalens_sdk._generated import dto
 from datalens_sdk.client import DataLensClientBase
 from datalens_sdk.domain.data import DatasetDataQuery
@@ -265,3 +269,108 @@ def test_mutation_dtos_serialize_optional_context(workbook_id: str | None) -> No
         data=dto.DatasetUpdateDataDTO(dataset={}, mode="publish"),
         workbook_id=workbook_id,
     ).to_payload() == {"datasetId": "ds-1", "data": {"dataset": {}, "mode": "publish"}, **scope}
+
+
+def test_rename_reload_preserves_accessing_workbook() -> None:
+    recorder = RecordedTransport(
+        {"/rpc/getDataset": {**_SNAPSHOT, "workbook_id": "wb-owner"}, "/rpc/getDatasetData": _DATA}
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/rpc/renameEntry":
+            return httpx.Response(200, json=[])
+        return recorder.handler(request)
+
+    with dl.DataLensClientEnterprise(auth=None, base_url="http://test", transport=httpx.MockTransport(handler)) as sdk:
+        dataset = sdk.get.dataset(by_id="ds-1", workbook_id="wb-reader")
+        assert dataset.workbook_id == "wb-owner"
+        dataset.rename("Renamed").get_dataset_data(columns=["amount"])
+
+    assert [(path, body.get("workbookId")) for path, body in recorder.requests] == [
+        ("/rpc/getDataset", "wb-reader"),
+        ("/rpc/getDataset", "wb-reader"),
+        ("/rpc/getDatasetData", "wb-reader"),
+    ]
+
+
+class LegacyDatasetValidateDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dataset_id: str
+    data: Mapping[str, object]
+
+    def to_payload(self) -> dict[str, object]:
+        return {"datasetId": self.dataset_id, "data": dict(self.data)}
+
+
+class LegacyDatasetUpdateDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dataset_id: str
+    data: dto.DatasetUpdateDataDTO
+
+    def to_payload(self) -> dict[str, object]:
+        return {"datasetId": self.dataset_id, "data": self.data.to_payload()}
+
+
+class LegacyDatasetDataArgsDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dataset_id: str = Field(alias="datasetId")
+    columns: list[str]
+    limit: int
+
+
+@pytest.mark.parametrize("workbook_id", [None, "wb-reader"])
+@pytest.mark.parametrize("operation", ["create", "update", "read_data"])
+def test_dataset_requests_accept_legacy_generated_module(
+    monkeypatch: pytest.MonkeyPatch, operation: str, workbook_id: str | None
+) -> None:
+    legacy_dto = ModuleType(dto.__name__)
+    legacy_dto.__dict__.update(
+        vars(dto),
+        DatasetValidateDTO=LegacyDatasetValidateDTO,
+        DatasetUpdateDTO=LegacyDatasetUpdateDTO,
+        DatasetDataArgsDTO=LegacyDatasetDataArgsDTO,
+    )
+
+    def import_with_legacy_dto(name: str) -> ModuleType:
+        return legacy_dto if name == dto.__name__ else import_module(name)
+
+    monkeypatch.setattr(client_module, "import_module", import_with_legacy_dto)
+    recorder = RecordedTransport(
+        {
+            "/rpc/validateDataset": {"dataset": _CONTENT},
+            "/rpc/createDataset": {"id": "ds-1"},
+            "/rpc/getDataset": _SNAPSHOT,
+            "/rpc/updateDataset": {"id": "ds-1"},
+            "/rpc/getDatasetData": _DATA,
+        }
+    )
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as sdk:
+        if operation == "create":
+            location = dl.EntryLocation.workbook(workbook_id) if workbook_id else dl.EntryLocation.path("folder")
+            sdk.create.dataset(name="Dataset", location=location).add_calculation(
+                name="Constant", formula="1", kind="MEASURE", guid="calc-1"
+            ).build()
+            assert [path for path, _ in recorder.requests] == ["/rpc/validateDataset", "/rpc/createDataset"]
+        else:
+            dataset = sdk.get.dataset(by_id="ds-1", workbook_id=workbook_id)
+            if operation == "update":
+                dataset.update.description("New description").execute()
+                assert [path for path, _ in recorder.requests] == [
+                    "/rpc/getDataset",
+                    "/rpc/validateDataset",
+                    "/rpc/updateDataset",
+                ]
+            else:
+                dataset.get_dataset_data(columns=["amount"])
+                assert [path for path, _ in recorder.requests] == ["/rpc/getDataset", "/rpc/getDatasetData"]
+
+    scoped_routes = {"/rpc/validateDataset", "/rpc/updateDataset", "/rpc/getDatasetData"}
+    for path, body in recorder.requests:
+        if path in scoped_routes:
+            assert body.get("workbookId") == workbook_id
+            assert ("workbookId" in body) == (workbook_id is not None)
