@@ -362,7 +362,7 @@ do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 | `.legend(*, mode: Literal["show", "hide"])` | C/U | Set legend visibility. |
 | `.tooltip(*, mode: Literal["show", "hide"])` | C/U | Set chart-level tooltip visibility on supported visualizations. Geolayer tooltip fields belong to `add_layer(..., tooltips=...)`. |
 | `.tooltip_sum(*, enabled: bool)` | C/U | Toggle tooltip totals. |
-| `.labels_position(*, mode)` | C/U | `"inside"`, `"outside"`, or `"auto"`. |
+| `.labels_position(*, mode)` | C/U | `"inside"`, `"outside"`, or `"auto"` for bar, column, funnel, and combined charts with a selected column layer. |
 | `.label_mode(*, mode)` | C/U | `"absolute"`; `"percent"` is additionally available on 100% charts, donut, funnel, and pie. |
 | `.tooltip_percentage_base(*, mode)` | C/U | Funnel only: `"auto"`, `"first"`, or `"previous"`. |
 | `.axis_visibility(slot_name, *, mode)` | C/U | Slot name is chart-specific; mode is `"show"`/`"hide"`. |

@@ -17,6 +17,8 @@
 
 ### Fixed
 
+- Reject `labels_position()` for Wizard pie and donut charts when the
+  method is called. Omit the method to keep the default label placement.
 - Preserve the concrete client type in `with ... as client` blocks so
   installation-specific methods retain their types. Subclasses that override
   `__enter__` and return `self` can annotate the return type with `Self`.

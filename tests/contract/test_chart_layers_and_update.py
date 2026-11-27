@@ -176,6 +176,42 @@ def test_combined_update_targets_selected_layer_and_preserves_unknown_nested_dat
     assert layers[1]["sort"]["items"] == [{"guid": "g_date", "datasetId": "ds1", "direction": "ASC"}]
 
 
+@pytest.mark.parametrize("selected_layer", ["column", "line", None])
+def test_combined_labels_position_checks_selected_layer_carrier(selected_layer: str | None) -> None:
+    dataset = _dataset()
+    builder = (
+        WizardChartCreateFactory(cast(Any, None))
+        .combined_chart(name="C", location=EntryLocation.path("/F"))
+        .dataset(dataset)
+        .x(["Order Date"])
+        .add_layer("column", y="Amount")
+        .add_layer("line", y="Amount")
+    )
+    data = _payload_data(builder)
+    visualization = data["visualization"]
+    column, line = visualization["layers"]
+    if selected_layer == "column":
+        visualization["selectedLayerId"] = column["layerSettings"]["id"]
+    elif selected_layer == "line":
+        visualization["selectedLayerId"] = line["layerSettings"]["id"]
+    else:
+        del visualization["selectedLayerId"]
+    chart = WizardChart(id="chart-1", installation="yacloud", data=data)
+    original_data = copy.deepcopy(chart.data)
+    update = chart.update.labels([dataset.fields.by_name("Amount")]).labels_position(mode="outside")
+
+    if selected_layer == "column":
+        payload = WizardChartConverter.from_domain_update(update).to_payload()
+        column, line = cast(dict[str, Any], payload["data"])["visualization"]["layers"]
+        assert column["labels"]["settings"] == {"labelsPosition": "outside"}
+        assert line["labels"] == {"items": []}
+    else:
+        with pytest.raises(DataLensConfigurationError, match="missing_any_slot_setting"):
+            WizardChartConverter.from_domain_update(update)
+
+    assert chart.data == original_data
+
+
 def _layered_update_data(visualization_type: Literal["combined-chart", "geolayer"]) -> dict[str, Any]:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
