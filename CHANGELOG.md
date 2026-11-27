@@ -39,6 +39,8 @@
   bundled SDK skill.
 - Correct the Wizard chart dependency example to use `link_direction="from"`.
   Use `"to"` to find entries that depend on the chart.
+- Document that in-place Wizard pie and donut transitions are unsupported.
+  Explain how to use a new chart ID when updating a dashboard widget.
 
 ### Known limitations and follow-up
 

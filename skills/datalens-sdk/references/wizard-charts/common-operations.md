@@ -433,9 +433,11 @@ non-negative palette-index string such as `"2"` for each override value.
 | `.delete_filter(field)` | U | Remove filters targeted by a field object or exact field GUID. |
 | `.execute() -> WizardChart` | U | Validate, persist, and return the updated chart. |
 
-`change_visualization_to` rejects unknown, identical, and unsupported
-transitions. It preserves only the fields mapped by the supported transition;
-review the result before publishing.
+`change_visualization_to()` rejects unknown, identical, and unsupported
+transitions before sending an update. It preserves only the mapped fields for
+supported transitions. Review the result before publishing. Both directions
+between pie and donut are unsupported. See the
+[pie and donut options](operation-recipes.md#switching-between-pie-and-donut).
 
 ## Argument Domains and Constraints
 
