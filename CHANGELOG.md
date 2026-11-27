@@ -28,6 +28,9 @@
 - Preserve the API status, code, message, and request ID when a screenshot
   RPC returns a structured error in an HTTP 200 response. For a wrapped `429`,
   honor `Retry-After` and retry when the remaining timeout permits it.
+- Honor `labels([])` when creating horizontal Wizard bar charts. When
+  `labels()` is omitted, the first X measure still supplies the default data
+  labels.
 
 ### Documentation
 

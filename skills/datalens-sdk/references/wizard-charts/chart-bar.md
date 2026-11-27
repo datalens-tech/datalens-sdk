@@ -96,10 +96,17 @@ chart = client.get.wizard_chart(by_id=chart.id)
 chart = chart.update.axis_title("x", mode="manual", text="Revenue").mode("publish").execute()
 ```
 
+To clear existing value labels, load the chart and call
+`chart.update.labels([]).execute()`.
+
 ## Constraints and gotchas
 
 - Bar axes are inverted: put categories in `y` and measures in `x`.
 - `y` has capacity 2; `x` accepts any number of measures.
+- On creation, omitting `labels()` uses the first measure in `x`, when present.
+  Pass `labels([])` to disable value labels, or `labels([measure])` to select a
+  measure. Set a nonempty label list before using `label_mode()` or
+  `labels_position()`.
 - Multiple measures insert `Measure Names` into `y` and consume one of its two
   category slots. Use at most one ordinary `y` category with multi-measure
   coloring.

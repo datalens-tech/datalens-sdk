@@ -146,6 +146,30 @@ def test_wizard_create_payload_carries_v3_field_references() -> None:
     assert set(x_items[0]) == {"guid", "datasetId"}
 
 
+@pytest.mark.parametrize("client_type", [dl.DataLensClientEnterprise, dl.DataLensClientYC])
+def test_bar_create_with_explicit_empty_labels_sends_empty_items(
+    client_type: type[dl.DataLensClientEnterprise] | type[dl.DataLensClientYC],
+) -> None:
+    recorder = _RecordedTransport({"/rpc/createWizardChart": httpx.Response(200, json=_wizard_response(viz_id="bar"))})
+    dataset = _dataset()
+
+    with client_type(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)) as client:
+        (
+            client.create.wizard_chart.bar(name="Sales", location=dl.EntryLocation.workbook("workbook-1"))
+            .dataset(dataset)
+            .y([dataset.fields.by_name("Region")])
+            .x([dataset.fields.by_name("Amount")])
+            .labels([])
+            .build()
+        )
+
+    assert recorder.paths() == ["/rpc/createWizardChart"]
+    data = cast(dict[str, object], recorder.request_json(0)["data"])
+    visualization = cast(dict[str, dict[str, object]], data["visualization"])
+    assert visualization["labels"]["items"] == []
+    assert visualization["sort"]["items"] == [{"guid": "g_reg", "datasetId": "ds-1", "direction": "DESC"}]
+
+
 def test_chart_create_accepts_resource_objects_and_equivalent_location_refs() -> None:
     recorder = _RecordedTransport(
         {
