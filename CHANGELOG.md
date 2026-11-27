@@ -59,6 +59,8 @@
 
 ### Added
 
+- Add `client.shared_entries` for shared object bindings on Yandex Cloud and Enterprise.
+
 - Add dashboard states over `/rpc/getEntryState` and `/rpc/createEntryState`:
   `dashboard.get_state(hash, tab=None, strict=False)` returns an immutable
   `DashboardState` with queue-ordered selections, decoded operations, intervals

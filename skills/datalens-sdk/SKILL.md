@@ -178,6 +178,7 @@ One client, action and utility namespaces:
 | `client.list.*`                    | Yandex Cloud resource listing     | lazy `Pager`          |
 | `obj.update...`                    | fluent update on a fetched object | `.execute()` persists |
 | `client.data`                     | read dataset rows or chart tables | typed data result     |
+| `client.shared_entries`           | manage shared-entry bindings      | binding or lazy `Pager` |
 | `client.navigation` / `client.raw` | listing / snapshot import-export  | —                     |
 
 Forgetting the terminal call is the #1 mistake: a builder chain without
@@ -341,6 +342,7 @@ Editor index replaces the public Editor subtree for that installation.
 | A dashboard link with `state=`: reading, creating, or editing saved selector values; which widgets they reach | [references/dashboard-state.md](references/dashboard-state.md) |
 | Finding, listing, linking, moving, or renaming entities; revision history; containers | [references/navigation.md](references/navigation.md)                     |
 | Finding what an entry depends on (`"from"`) or what uses it (`"to"`), directly or through multiple links | [Entry relations](references/navigation.md#entry-relations) |
+| Shared connections and datasets; bindings to workbooks | [references/shared-entries.md](references/shared-entries.md) |
 | Listing DataLens REST catalogs or selecting one for a Trino cluster (Yandex Cloud only) | [references/rest-catalogs.md](references/rest-catalogs.md)                |
 | Creating, getting, listing, updating, or deleting a Yandex Cloud environment | [references/cloud-environments.md](references/cloud-environments.md) |
 | Creating bucket upload/download URLs, reading object metadata, or listing bucket keys (Yandex Cloud only) | [references/cloud-environment-storage.md](references/cloud-environment-storage.md) |

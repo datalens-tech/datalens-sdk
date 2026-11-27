@@ -4,6 +4,8 @@ Read this when you need to find, list, link to, move, or rename entities,
 follow their relations, inspect their revision history, or manage collections,
 workbooks, and folders.
 
+For shared connections and datasets and their bindings to workbooks, read [shared-entries.md](shared-entries.md).
+
 ## The container model
 
 Two organizational schemes coexist, per installation:

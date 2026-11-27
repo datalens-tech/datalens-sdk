@@ -14861,6 +14861,112 @@
         ],
         "type": "object"
       },
+      "GetSharedEntryBindingsArgs": {
+        "properties": {
+          "entryAs": {
+            "description": "Role of the common object in the bindings.",
+            "enum": [
+              "target",
+              "source"
+            ],
+            "type": "string"
+          },
+          "entryId": {
+            "description": "ID of the common object whose bindings to list.",
+            "type": "string"
+          },
+          "filterString": {
+            "description": "Filter related objects by name.",
+            "type": "string"
+          },
+          "includePermissionsInfo": {
+            "description": "Include permissions for related objects.",
+            "type": "boolean"
+          },
+          "mode": {
+            "description": "Types of related objects to return. Defaults to all.",
+            "enum": [
+              "all",
+              "onlyWorkbooks",
+              "onlyEntries"
+            ],
+            "type": "string"
+          },
+          "page": {
+            "description": "Zero-based page number. Defaults to 0.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "Maximum number of bindings per page. Defaults to 20.",
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entryId",
+          "entryAs"
+        ],
+        "type": "object"
+      },
+      "GetSharedEntryBindingsResult": {
+        "properties": {
+          "items": {
+            "description": "Bindings to related common objects and workbooks.",
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "entry": "#/components/schemas/SharedEntryBindingEntry",
+                  "workbook": "#/components/schemas/SharedEntryBindingWorkbook"
+                },
+                "propertyName": "entity"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/SharedEntryBindingEntry"
+                },
+                {
+                  "$ref": "#/components/schemas/SharedEntryBindingWorkbook"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "nextPageToken": {
+            "description": "Next zero-based page number, passed as page in the next request. May lead to an empty page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "GetSharedEntryDelegationArgs": {
+        "properties": {
+          "bindedWorkbookId": {
+            "description": "Workbook context when reading a connection-to-dataset binding through a workbook.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceId": {
+            "description": "ID of the common connection or dataset being bound.",
+            "type": "string"
+          },
+          "targetId": {
+            "description": "ID of the target common dataset or workbook.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceId",
+          "targetId"
+        ],
+        "type": "object"
+      },
       "GetSparkClusterArgs": {
         "additionalProperties": false,
         "properties": {
@@ -22603,6 +22709,233 @@
         "required": [
           "name",
           "value"
+        ],
+        "type": "object"
+      },
+      "SharedEntryBinding": {
+        "properties": {
+          "isDelegated": {
+            "description": "Whether access to the source is delegated through the target.",
+            "type": "boolean"
+          },
+          "sourceId": {
+            "description": "ID of the common connection or dataset being bound.",
+            "type": "string"
+          },
+          "targetId": {
+            "description": "ID of the target common dataset or workbook.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceId",
+          "targetId",
+          "isDelegated"
+        ],
+        "type": "object"
+      },
+      "SharedEntryBindingArgs": {
+        "properties": {
+          "delegation": {
+            "description": "Whether to delegate access to the source through the target. If false, users also need their own permissions on the source. The binding is required in either mode.",
+            "type": "boolean"
+          },
+          "sourceId": {
+            "description": "ID of the common connection or dataset being bound.",
+            "type": "string"
+          },
+          "targetId": {
+            "description": "ID of the target common dataset or workbook.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceId",
+          "targetId",
+          "delegation"
+        ],
+        "type": "object"
+      },
+      "SharedEntryBindingEntry": {
+        "properties": {
+          "collectionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "collectionTitle": {
+            "type": "string"
+          },
+          "displayKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entity": {
+            "enum": [
+              "entry"
+            ],
+            "type": "string"
+          },
+          "entryId": {
+            "type": "string"
+          },
+          "isDelegated": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "permissions": {
+            "properties": {
+              "copy": {
+                "description": "Permission to copy.",
+                "type": "boolean"
+              },
+              "createEntryBinding": {
+                "description": "Permission to create entry binding.",
+                "type": "boolean"
+              },
+              "createLimitedEntryBinding": {
+                "description": "Permission to create limited entry binding.",
+                "type": "boolean"
+              },
+              "delete": {
+                "description": "Permission to delete.",
+                "type": "boolean"
+              },
+              "limitedView": {
+                "description": "Permission for limited viewing.",
+                "type": "boolean"
+              },
+              "listAccessBindings": {
+                "description": "Permission to list access bindings.",
+                "type": "boolean"
+              },
+              "move": {
+                "description": "Permission to move.",
+                "type": "boolean"
+              },
+              "securityApprove": {
+                "type": "boolean"
+              },
+              "update": {
+                "description": "Permission to update.",
+                "type": "boolean"
+              },
+              "updateAccessBindings": {
+                "description": "Permission to update access bindings.",
+                "type": "boolean"
+              },
+              "view": {
+                "description": "Permission to view.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "listAccessBindings",
+              "updateAccessBindings",
+              "limitedView",
+              "view",
+              "update",
+              "copy",
+              "move",
+              "delete",
+              "createEntryBinding",
+              "createLimitedEntryBinding",
+              "securityApprove"
+            ],
+            "type": "object"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "workbookId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "entity",
+          "collectionTitle",
+          "entryId",
+          "workbookId",
+          "collectionId",
+          "scope",
+          "type",
+          "displayKey",
+          "key",
+          "isDelegated"
+        ],
+        "type": "object"
+      },
+      "SharedEntryBindingPair": {
+        "properties": {
+          "sourceId": {
+            "description": "ID of the common connection or dataset being bound.",
+            "type": "string"
+          },
+          "targetId": {
+            "description": "ID of the target common dataset or workbook.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceId",
+          "targetId"
+        ],
+        "type": "object"
+      },
+      "SharedEntryBindingWorkbook": {
+        "properties": {
+          "collectionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "collectionTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entity": {
+            "enum": [
+              "workbook"
+            ],
+            "type": "string"
+          },
+          "isDelegated": {
+            "type": "boolean"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/WorkbookPermissions"
+          },
+          "title": {
+            "type": "string"
+          },
+          "workbookId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "collectionTitle",
+          "title",
+          "workbookId",
+          "collectionId",
+          "isDelegated"
         ],
         "type": "object"
       },
@@ -42070,6 +42403,63 @@
         ],
         "type": "object"
       },
+      "WorkbookPermissions": {
+        "properties": {
+          "copy": {
+            "description": "Indicates if the workbook can be copied.",
+            "type": "boolean"
+          },
+          "delete": {
+            "description": "Indicates if the workbook can be deleted.",
+            "type": "boolean"
+          },
+          "embed": {
+            "description": "Indicates if entries in the workbook can be embedded.",
+            "type": "boolean"
+          },
+          "limitedView": {
+            "description": "Indicates if the workbook can be viewed with limited access.",
+            "type": "boolean"
+          },
+          "listAccessBindings": {
+            "description": "Indicates if access bindings for the workbook can be listed.",
+            "type": "boolean"
+          },
+          "move": {
+            "description": "Indicates if the workbook can be moved.",
+            "type": "boolean"
+          },
+          "publish": {
+            "description": "Indicates if entries in the workbook can be published.",
+            "type": "boolean"
+          },
+          "update": {
+            "description": "Indicates if the workbook can be updated.",
+            "type": "boolean"
+          },
+          "updateAccessBindings": {
+            "description": "Indicates if access bindings for the workbook can be updated.",
+            "type": "boolean"
+          },
+          "view": {
+            "description": "Indicates if the workbook can be viewed.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "listAccessBindings",
+          "updateAccessBindings",
+          "limitedView",
+          "view",
+          "update",
+          "copy",
+          "move",
+          "publish",
+          "embed",
+          "delete"
+        ],
+        "type": "object"
+      },
       "WorkbookTransferNotification": {
         "properties": {
           "code": {
@@ -53737,6 +54127,47 @@
         "x-mcp-scope": "privileged"
       }
     },
+    "/rpc/createSharedEntryBinding": {
+      "post": {
+        "description": "Creates a binding between a common object and a dataset or workbook.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedEntryBindingArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedEntryBinding"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "Access token": []
+          }
+        ],
+        "summary": "Create common object binding",
+        "tags": [
+          "SharedEntry"
+        ],
+        "x-mcp-scope": "privileged"
+      }
+    },
     "/rpc/createSparkCluster": {
       "post": {
         "description": "Creates a Spark cluster and returns an asynchronous operation.",
@@ -54589,6 +55020,47 @@
         "summary": "Delete report",
         "tags": [
           "Reports"
+        ],
+        "x-mcp-scope": "privileged"
+      }
+    },
+    "/rpc/deleteSharedEntryBinding": {
+      "post": {
+        "description": "Deletes the specified common object binding.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedEntryBindingPair"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedEntryBinding"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "Access token": []
+          }
+        ],
+        "summary": "Delete common object binding",
+        "tags": [
+          "SharedEntry"
         ],
         "x-mcp-scope": "privileged"
       }
@@ -56565,6 +57037,88 @@
         "summary": "Get root collection permissions",
         "tags": [
           "Collection"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/getSharedEntryBindings": {
+      "post": {
+        "description": "Returns bindings for the specified common object.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetSharedEntryBindingsArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSharedEntryBindingsResult"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "Access token": []
+          }
+        ],
+        "summary": "List common object bindings",
+        "tags": [
+          "SharedEntry"
+        ],
+        "x-mcp-scope": "read"
+      }
+    },
+    "/rpc/getSharedEntryDelegation": {
+      "post": {
+        "description": "Returns the binding and delegation status for the specified source and target.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetSharedEntryDelegationArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedEntryBinding"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "Access token": []
+          }
+        ],
+        "summary": "Get common object binding",
+        "tags": [
+          "SharedEntry"
         ],
         "x-mcp-scope": "read"
       }
@@ -58632,6 +59186,47 @@
           "Reports"
         ],
         "x-mcp-scope": "write"
+      }
+    },
+    "/rpc/updateSharedEntryBinding": {
+      "post": {
+        "description": "Updates delegation for the specified common object binding.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedEntryBindingArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedEntryBinding"
+                }
+              }
+            },
+            "description": "Response"
+          }
+        },
+        "security": [
+          {
+            "Access token": []
+          }
+        ],
+        "summary": "Update common object binding",
+        "tags": [
+          "SharedEntry"
+        ],
+        "x-mcp-scope": "privileged"
       }
     },
     "/rpc/updateSqlQuery": {

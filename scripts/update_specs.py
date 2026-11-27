@@ -34,7 +34,7 @@ SOURCES: dict[str, SpecSource] = {
         destination=ROOT / "spec" / "yacloud.json",
     ),
     "enterprise": SpecSource(
-        url="https://api.enterprise.dev.datalens.tech/json",
+        url="https://enterprise.dev.datalens.tech/api/docs/swagger/json",
         destination=ROOT / "spec" / "enterprise.json",
         default=False,
     ),
