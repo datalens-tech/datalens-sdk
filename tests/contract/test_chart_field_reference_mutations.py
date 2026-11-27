@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 import copy
+from dataclasses import replace
 from typing import Any, Literal, cast
 
 import pytest
@@ -188,7 +189,14 @@ def _payload(update: object) -> dict[str, Any]:
 def test_fields_proxy_enriches_compact_active_local_reference_from_definition() -> None:
     data = _data_for_carrier("slot")
     visualization = cast(dict[str, Any], data["visualization"])
-    visualization["x"]["items"] = [{"guid": _OLD_GUID, "datasetId": _OLD_DATASET}]
+    visualization["x"]["items"] = [
+        {"guid": _OLD_GUID, "datasetId": _OLD_DATASET, "formatting": {"precision": 2}},
+        _field("keep-guid", title="Keep field"),
+    ]
+    visualization["labels"]["items"] = [
+        {"guid": _OLD_GUID, "datasetId": _OLD_DATASET, "formatting": {"format": "percent", "precision": 0}},
+    ]
+    data["visualization"] = {"x": visualization["x"], **visualization}
     cast(dict[str, Any], data["sources"])["updates"] = [
         {
             "action": "add_field",
@@ -199,12 +207,19 @@ def test_fields_proxy_enriches_compact_active_local_reference_from_definition() 
                 "data_type": "integer",
                 "aggregation": "count",
                 "local": True,
+                "formatting": {"precision": 9, "prefix": "definition"},
             },
         }
     ]
 
-    field = _chart(data).fields.by_guid(_OLD_GUID)
+    chart = _chart(data)
+    before = copy.deepcopy(data)
+    field = chart.fields.by_guid(_OLD_GUID)
 
+    assert [item.guid for item in chart.fields] == [_OLD_GUID, "keep-guid"]
+    assert field.raw["formatting"] == {"precision": 2}
+    assert field.raw["local"] is True
+    assert chart.data == before
     assert field.title == "Local count"
     assert field.type == "MEASURE"
     assert field.data_type == "integer"
@@ -322,7 +337,7 @@ def test_structural_mutations_update_color_and_shape_config_pointers(operation: 
 
 
 def _combined_data() -> dict[str, Any]:
-    return {
+    data: dict[str, Any] = {
         "sources": {
             "datasetsIds": [_OLD_DATASET],
             "filters": [{**_field(), "filter": {"operation": {"code": "IN"}, "value": ["old"]}}],
@@ -351,6 +366,16 @@ def _combined_data() -> dict[str, Any]:
             ],
         },
     }
+    first = data["visualization"]["layers"][0]
+    first["y"]["items"][0]["formatting"] = {"format": "number", "precision": 2}
+    first["labels"]["items"][0]["formatting"] = {"format": "percent", "precision": 0}
+    first["sort"]["items"][0].pop("formatting")
+    data["sources"]["filters"][0].pop("formatting")
+    second = copy.deepcopy(first)
+    second["layerSettings"] = {"id": "layer-2", "name": "Second line"}
+    second["y"]["items"][0]["formatting"] = {"format": "number", "precision": 3}
+    data["visualization"]["layers"].append(second)
+    return data
 
 
 def _all_field_guids(value: object) -> list[str]:
@@ -411,6 +436,29 @@ def test_structural_mutations_traverse_combined_layers(operation: Operation) -> 
         data = _payload(chart.update.replace_dataset(old=_OLD_DATASET, new=_NEW_DATASET))
         assert _OLD_DATASET not in _all_dataset_ids(data)
         assert _NEW_DATASET in _all_dataset_ids(data)
+    if operation != "delete":
+        original_layers = cast(dict[str, Any], chart.data["visualization"])["layers"]
+        for actual, original in zip(data["visualization"]["layers"], original_layers, strict=True):
+            for slot in ("y", "labels"):
+                assert actual[slot]["items"][0]["formatting"] == original[slot]["items"][0]["formatting"]
+
+
+def test_combined_measure_format_merges_each_placement_and_skips_references() -> None:
+    chart = _chart(_combined_data())
+    before = copy.deepcopy(cast(dict[str, Any], chart.data))
+
+    data = _payload(chart.update.measure_format(chart.fields.by_guid(_OLD_GUID), precision=4))
+
+    for actual, original in zip(data["visualization"]["layers"], before["visualization"]["layers"], strict=True):
+        for slot in ("x", "y", "colors", "labels", "shapes"):
+            assert actual[slot]["items"][0]["formatting"] == {
+                **original[slot]["items"][0]["formatting"],
+                "precision": 4,
+            }
+        assert "formatting" not in actual["sort"]["items"][0]
+    assert "formatting" not in data["sources"]["filters"][0]
+    assert data["sources"]["updates"] == before["sources"]["updates"]
+    assert chart.data == before
 
 
 def test_wizard_chart_fields_includes_combined_layer_carriers() -> None:
@@ -429,14 +477,266 @@ def test_wizard_chart_fields_includes_combined_layer_carriers() -> None:
     }
 
 
-def test_wizard_chart_fields_rejects_conflicting_snapshots_for_one_guid() -> None:
+@pytest.mark.parametrize(
+    ("first_formatting", "second_formatting"),
+    [
+        ({"precision": 1}, {"precision": 2}),
+        ({"format": "number"}, {"format": "percent"}),
+        ({"labelMode": "absolute"}, {"labelMode": "percent"}),
+        ({}, {"precision": 2}),
+        (None, {"precision": 2}),
+        ({"precision": 2}, None),
+    ],
+    ids=["precision", "numeric-format", "label-mode", "empty", "first-absent", "second-absent"],
+)
+def test_wizard_chart_fields_accepts_placement_formatting_differences(
+    first_formatting: dict[str, object] | None,
+    second_formatting: dict[str, object] | None,
+) -> None:
     data = _data_for_carrier("slot")
-    conflicting = _field()
-    conflicting["formatting"] = {"precision": 2}
-    data["visualization"]["colors"]["items"] = [conflicting]
+    first = data["visualization"]["x"]["items"][0]
+    second = _field()
+    for item, formatting in ((first, first_formatting), (second, second_formatting)):
+        if formatting is None:
+            item.pop("formatting")
+        else:
+            item["formatting"] = formatting
+    data["visualization"]["labels"]["items"] = [second]
+    data["visualization"] = {"x": data["visualization"]["x"], **data["visualization"]}
+    before = copy.deepcopy(data)
+    chart = _chart(data)
 
+    assert [field.guid for field in chart.fields] == [_OLD_GUID, "keep-guid"]
+    assert chart.fields.by_guid(_OLD_GUID).raw == first
+    assert chart.data == before
+
+
+def test_wizard_chart_fields_rejects_conflicting_dataset_identity() -> None:
+    data = _data_for_carrier("slot")
+    conflicting = _field(dataset_id=_NEW_DATASET)
+    data["visualization"]["labels"]["items"] = [conflicting]
+    chart = _chart(data)
+
+    with pytest.raises(DataLensValidationError, match=r"conflicting snapshots.*\['datasetId'\]"):
+        list(chart.fields)
     with pytest.raises(DataLensValidationError, match="conflicting snapshots"):
-        list(_chart(data).fields)
+        _payload(chart.update.measure_format(_OLD_GUID, precision=4))
+
+
+def _differently_presented_date_data() -> dict[str, Any]:
+    data = _data_for_carrier("slot")
+    first = data["visualization"]["x"]["items"][0]
+    first.update({"data_type": "date", "format": "YYYY-MM-DD", "fakeTitle": "Axis date"})
+    data["visualization"]["labels"]["items"] = [
+        {**copy.deepcopy(first), "format": "YYYY", "fakeTitle": "Label date"},
+    ]
+    data["visualization"]["sort"]["items"] = [
+        {
+            "guid": _OLD_GUID,
+            "datasetId": _OLD_DATASET,
+            "format": "YYYY-MM",
+            "fakeTitle": "Sort date",
+            "direction": "ASC",
+        },
+    ]
+    data["sources"]["filters"] = [
+        {
+            "guid": _OLD_GUID,
+            "datasetId": _OLD_DATASET,
+            "fakeTitle": "Filter date",
+            "filter": {"operation": {"code": "EQ"}, "value": ["2026-01-01"]},
+        }
+    ]
+    data["visualization"] = {"x": data["visualization"]["x"], **data["visualization"]}
+    return data
+
+
+@pytest.mark.parametrize("explicit_title", [True, False], ids=["title", "fake-title-fallback"])
+def test_fields_use_first_date_snapshot_with_distinct_formats_and_titles(explicit_title: bool) -> None:
+    data = _differently_presented_date_data()
+    if not explicit_title:
+        for slot in ("x", "labels"):
+            data["visualization"][slot]["items"][0].pop("title")
+    chart = _loaded_chart(data)
+    before = copy.deepcopy(cast(dict[str, Any], chart.data))
+
+    field = chart.fields.by_guid(_OLD_GUID)
+
+    assert [item.guid for item in chart.fields] == [_OLD_GUID, "keep-guid"]
+    assert field.raw == before["visualization"]["x"]["items"][0]
+    expected_title = "Old field" if explicit_title else "Axis date"
+    assert field.title == expected_title
+    assert field.name == expected_title
+    assert chart.fields.by_name(expected_title) == field
+    for alias in ("Label date", "Sort date", "Filter date"):
+        with pytest.raises(DataLensValidationError, match="not found"):
+            chart.fields.by_name(alias)
+    assert chart.data == before
+
+
+def test_unrelated_update_preserves_date_formats_and_placement_titles() -> None:
+    chart = _loaded_chart(_differently_presented_date_data())
+    before = copy.deepcopy(cast(dict[str, Any], chart.data))
+
+    data = _payload(chart.update.legend(mode="hide"))
+
+    assert data["visualization"] == {**before["visualization"], "chartSettings": {"legendMode": "hide"}}
+    assert data["sources"] == before["sources"]
+    assert chart.data == before
+
+
+def test_column_title_preserves_filter_alias_and_remains_readable() -> None:
+    column = _field()
+    column.pop("title")
+    column["fakeTitle"] = "Original title"
+    data = {
+        "sources": {
+            "datasetsIds": [_OLD_DATASET],
+            "filters": [
+                {
+                    "guid": _OLD_GUID,
+                    "datasetId": _OLD_DATASET,
+                    "fakeTitle": "Original title",
+                    "filter": {"operation": {"code": "EQ"}, "value": ["old"]},
+                }
+            ],
+        },
+        "visualization": {"type": "flatTable", "columns": {"items": [column]}, "sort": {"items": []}},
+    }
+    chart = _loaded_chart(data)
+    before = copy.deepcopy(cast(dict[str, Any], chart.data))
+
+    updated = _payload(chart.update.column_title(chart.fields.by_guid(_OLD_GUID), title="New title"))
+    fetched = _loaded_chart(updated)
+
+    assert updated["visualization"]["columns"]["items"][0]["fakeTitle"] == "New title"
+    assert updated["sources"]["filters"] == before["sources"]["filters"]
+    assert len(fetched.fields) == 1
+    assert fetched.fields.by_guid(_OLD_GUID).title == "New title"
+    assert fetched.fields.by_name("New title").guid == _OLD_GUID
+    assert _payload(fetched.update.pagination(enabled=True))["sources"]["filters"] == before["sources"]["filters"]
+    assert chart.data == before
+
+
+@pytest.mark.parametrize("replacement_presentation", [True, False], ids=["supplied", "absent"])
+def test_replace_field_owns_date_format_and_title_independently_of_lookup(replacement_presentation: bool) -> None:
+    chart = _loaded_chart(_differently_presented_date_data())
+    before = copy.deepcopy(cast(dict[str, Any], chart.data))
+    presentation = {"format": "YYYY-MM", "fakeTitle": "Replacement date"} if replacement_presentation else {}
+    replacement = replace(
+        _replacement_field(),
+        raw={**_field(_NEW_GUID, title="New field", dataset_id=_NEW_DATASET), "data_type": "date", **presentation},
+    )
+
+    data = _payload(chart.update.replace_field(chart.fields.by_guid(_OLD_GUID), replacement))
+
+    for slot in ("x", "labels", "sort"):
+        item = data["visualization"][slot]["items"][0]
+        assert item["guid"] == _NEW_GUID
+        for key in ("format", "fakeTitle"):
+            if replacement_presentation:
+                assert item[key] == presentation[key]
+            else:
+                assert key not in item
+    filter_item = data["sources"]["filters"][0]
+    assert filter_item["guid"] == _NEW_GUID
+    assert filter_item["filter"] == before["sources"]["filters"][0]["filter"]
+    if replacement_presentation:
+        assert filter_item["fakeTitle"] == presentation["fakeTitle"]
+    else:
+        assert "fakeTitle" not in filter_item
+    assert chart.data == before
+
+
+def _differently_formatted_data() -> dict[str, Any]:
+    data = _data_for_carrier("slot")
+    visualization = data["visualization"]
+    visualization["x"]["items"] = [_field("keep-guid", title="Keep field")]
+    measure = {**_field(), "type": "MEASURE", "data_type": "float", "aggregation": "sum"}
+    visualization["y"]["items"] = [
+        {
+            **measure,
+            "formatting": {"format": "number", "precision": 2, "futureFormatting": {"keep": "axis"}},
+            "futurePlacement": {"keep": "axis"},
+        }
+    ]
+    visualization["labels"]["items"] = [
+        {
+            **measure,
+            "formatting": {"format": "percent", "precision": 0, "labelMode": "absolute"},
+            "futurePlacement": {"keep": "label"},
+        }
+    ]
+    visualization["sort"]["items"] = [{"guid": _OLD_GUID, "datasetId": _OLD_DATASET, "direction": "DESC"}]
+    data["sources"]["filters"] = [
+        {"guid": _OLD_GUID, "datasetId": _OLD_DATASET, "filter": {"operation": {"code": "GT"}, "value": ["0"]}}
+    ]
+    data["visualization"] = {"x": visualization["x"], "y": visualization["y"], **visualization}
+    return data
+
+
+def test_unrelated_update_preserves_different_placement_formatting_and_open_properties() -> None:
+    chart = _loaded_chart(_differently_formatted_data())
+    before = copy.deepcopy(cast(dict[str, Any], chart.data))
+
+    data = _payload(chart.update.legend(mode="hide"))
+
+    assert data["visualization"] == {**before["visualization"], "chartSettings": {"legendMode": "hide"}}
+    assert data["sources"] == before["sources"]
+    assert chart.data == before
+
+
+@pytest.mark.parametrize("operation", ["replace", "aggregation", "delete", "format"])
+def test_mutations_preserve_placement_formatting_ownership(
+    operation: Literal["replace", "aggregation", "delete", "format"],
+) -> None:
+    chart = _loaded_chart(_differently_formatted_data())
+    before = copy.deepcopy(cast(dict[str, Any], chart.data))
+    placed = chart.fields.by_guid(_OLD_GUID)
+    if operation == "replace":
+        update = chart.update.replace_field(placed, _replacement_field())
+        expected_guid = _NEW_GUID
+    elif operation == "aggregation":
+        update = chart.update.change_aggregation(placed, aggregation="avg", name="Average", guid="aggregated-guid")
+        expected_guid = "aggregated-guid"
+    elif operation == "delete":
+        update = chart.update.delete_field(placed)
+        expected_guid = None
+    else:
+        update = chart.update.measure_format(placed, precision=4)
+        expected_guid = _OLD_GUID
+
+    data = _payload(update)
+
+    for slot in ("y", "labels"):
+        items = data["visualization"][slot]["items"]
+        if expected_guid is None:
+            assert items == []
+        else:
+            assert items[0]["guid"] == expected_guid
+            original = before["visualization"][slot]["items"][0]
+            expected_formatting = (
+                {**original["formatting"], "precision": 4} if operation == "format" else original["formatting"]
+            )
+            assert items[0]["formatting"] == expected_formatting
+            assert items[0]["futurePlacement"] == original["futurePlacement"]
+    references = [*data["visualization"]["sort"]["items"], *data["sources"]["filters"]]
+    assert all("formatting" not in item for item in references)
+    assert [item["guid"] for item in references] == ([] if expected_guid is None else [expected_guid, expected_guid])
+    assert chart.data == before
+
+
+def test_slot_reuse_copies_representative_formatting() -> None:
+    chart = _loaded_chart(_differently_formatted_data())
+    before = copy.deepcopy(cast(dict[str, Any], chart.data))
+    placed = chart.fields.by_guid(_OLD_GUID)
+
+    data = _payload(chart.update.labels([placed]))
+
+    axis_formatting = before["visualization"]["y"]["items"][0]["formatting"]
+    assert data["visualization"]["y"]["items"][0]["formatting"] == axis_formatting
+    assert data["visualization"]["labels"]["items"][0]["formatting"] == axis_formatting
+    assert chart.data == before
 
 
 def test_replace_field_rejects_unknown_string_replacement() -> None:

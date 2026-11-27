@@ -28,6 +28,12 @@
 - Preserve the API status, code, message, and request ID when a screenshot
   RPC returns a structured error in an HTTP 200 response. For a wrapped `429`,
   honor `Retry-After` and retry when the remaining timeout permits it.
+- Allow Wizard field inspection and update resolution when occurrences of the
+  same field have different numeric formatting, date formats, or display titles.
+  Reads and unrelated updates preserve each occurrence's presentation properties.
+  `chart.fields` lists currently referenced fields, deduplicated by GUID, with
+  the first snapshot enriched by its chart-local definition. Slot setters copy
+  the supplied snapshot's decorations when replacing the complete field list.
 
 ### Documentation
 
