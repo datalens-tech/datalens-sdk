@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import json
 from typing import Any, cast
 
+import httpx
 import pytest
 
+from datalens_sdk import DataLensClientEnterprise
 from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
 from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk.converter.wizard.converter import WizardChartConverter
@@ -207,3 +210,61 @@ def test_verified_cartesian_transition_rebuilds_target_named_slots(
     assert set(visualization) == {"type", *WIZARD_VISUALIZATION_STRUCTURE[target_type]["slots"]}
     for slot_name, expected_guid in expected_axes.items():
         assert visualization[slot_name]["items"] == [{"guid": expected_guid, "datasetId": "dataset-1"}]
+
+
+@pytest.mark.parametrize(
+    ("dimension_guids", "color_field", "color_guid"),
+    [
+        pytest.param((), "Region", "region-guid", id="colors_only"),
+        pytest.param(("region-guid",), "Date", "date-guid", id="distinct_color"),
+        pytest.param(("region-guid",), "Region", "region-guid", id="repeated_category"),
+    ],
+)
+def test_donut_totals_preserves_category_and_color_slots(
+    dimension_guids: tuple[str, ...], color_field: str, color_guid: str
+) -> None:
+    dataset = _dataset()
+    amount = dataset.fields.by_name("Amount")
+    requests: list[tuple[str, dict[str, Any]]] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        requests.append((path, json.loads(request.content)))
+        assert path in {"/rpc/createWizardChart", "/rpc/getWizardChart"}
+        return httpx.Response(200, json=_read_response(entry_id="donut-chart", data=requests[0][1]["data"]))
+
+    with DataLensClientEnterprise(
+        base_url="https://datalens.test", auth=None, transport=httpx.MockTransport(handle)
+    ) as client:
+        builder = client.create.wizard_chart.donut(name="Donut", location=EntryLocation.path("/Charts")).dataset(
+            dataset
+        )
+        if dimension_guids:
+            builder.x([dataset.fields.by_name("Region")])
+        created = (
+            builder.y([amount])
+            .color_by_dimension(dataset.fields.by_name(color_field))
+            .labels([amount])
+            .label_mode(mode="percent")
+            .totals(enabled=True)
+            .palette(id="datalens-neo-20")
+            .build()
+        )
+        chart = client.get.wizard_chart(by_id=created.id)
+
+    assert [path for path, _ in requests] == ["/rpc/createWizardChart", "/rpc/getWizardChart"]
+    data = requests[0][1]["data"]
+    assert data["sources"]["datasetsIds"] == ["dataset-1"]
+    visualization = data["visualization"]
+    assert visualization["type"] == "donut"
+    assert visualization["dimensions"]["items"] == [
+        {"guid": guid, "datasetId": "dataset-1"} for guid in dimension_guids
+    ]
+    assert visualization["colors"]["items"] == [{"guid": color_guid, "datasetId": "dataset-1"}]
+    assert visualization["colors"]["settings"]["palette"] == "datalens-neo-20"
+    assert visualization["measures"]["items"] == [{"guid": "amount-guid", "datasetId": "dataset-1"}]
+    assert visualization["labels"]["items"] == [
+        {"guid": "amount-guid", "datasetId": "dataset-1", "formatting": {"labelMode": "percent"}},
+    ]
+    assert visualization["chartSettings"]["totals"] == "on"
+    assert chart.data == data

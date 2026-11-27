@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import inspect
 from pathlib import Path
 import re
@@ -201,3 +202,28 @@ def test_wizard_chart_pages_signatures_match_generated_builders() -> None:
 def test_wizard_references_do_not_use_removed_ph_id_parameter_name() -> None:
     references_with_ph_id = [path.name for path in WIZARD_REFERENCES.glob("*.md") if "ph_id" in path.read_text()]
     assert references_with_ph_id == []
+
+
+def test_donut_canonical_create_uses_color_as_category_with_totals() -> None:
+    text = (WIZARD_REFERENCES / "chart-donut.md").read_text()
+    section = text.split("## Canonical create\n", 1)[1].split("\n## ", 1)[0]
+    examples = re.findall(r"```python\n(.*?)```", section, flags=re.DOTALL)
+    (example,) = examples
+    calls = {
+        node.func.attr: node
+        for node in ast.walk(ast.parse(example))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+    }
+
+    assert "x" not in calls
+    assert {"donut", "y", "color_by_dimension", "labels", "label_mode", "totals", "palette", "build"} <= calls.keys()
+    assert [ast.unparse(argument) for argument in calls["color_by_dimension"].args] == ["category"]
+    assert [ast.unparse(argument) for argument in calls["y"].args] == ["[value]"]
+    assert [ast.unparse(argument) for argument in calls["labels"].args] == ["[value]"]
+    assert {keyword.arg: ast.literal_eval(keyword.value) for keyword in calls["label_mode"].keywords} == {
+        "mode": "percent"
+    }
+    assert {keyword.arg: ast.literal_eval(keyword.value) for keyword in calls["totals"].keywords} == {"enabled": True}
+    assert {keyword.arg: ast.literal_eval(keyword.value) for keyword in calls["palette"].keywords} == {
+        "id": "datalens-neo-20"
+    }

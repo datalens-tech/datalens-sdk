@@ -67,7 +67,6 @@ chart = (
         location=EntryLocation.path("/Charts"),
     )
     .dataset(dataset)
-    .x([category])
     .y([value])
     .color_by_dimension(category)
     .labels([value])
@@ -92,7 +91,13 @@ chart = chart.update.measures([profit]).measure_format(profit, format="number").
 
 - `x` sets the dimension field; `y` sets the required measure field.
 - Both dimensions and measures have capacity 1.
-- Without explicit `color_by_dimension()`, the SDK uses the dimension as the color source.
+- When the same field defines both slices and colors, use
+  `color_by_dimension(category)` alone. If a different field defines color
+  groups, use `.x([category]).color_by_dimension(color_group)`.
+- With totals enabled, using the same field in both slots was reported to
+  prevent rendering on DataLens On-premises 26.9.0. See [issue #90](https://github.com/datalens-tech/datalens-sdk/issues/90).
+- Without an explicit color field and palette, the SDK uses the dimension as
+  the color source. When setting `palette()`, specify the color field explicitly.
 - No visualization transition is supported from this visualization.
 
 ## Related references
