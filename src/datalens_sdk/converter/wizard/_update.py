@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 import copy
 from typing import TYPE_CHECKING
 
@@ -31,6 +31,7 @@ from datalens_sdk.converter.wizard._assemble import (
     _placed_measure_guids,
     _project_field,
     _reconcile_area_measure_names,
+    _record_field_roles,
     _selected_layer,
     _slot_settings_structure,
     _sync_axis_modes,
@@ -300,6 +301,7 @@ def _apply_slot_edits(
     update: WizardChartUpdate,
     *,
     field_structure: WizardFieldStructure,
+    area_non_measure_guids: set[str] | None,
 ) -> None:
     if not update.slot_edits:
         return
@@ -308,6 +310,8 @@ def _apply_slot_edits(
     dataset_id = _primary_dataset_id(data)
     for slot_name, refs in update.slot_edits.items():
         normalized = normalizer.normalize(refs)
+        if area_non_measure_guids is not None and slot_name == "y":
+            _record_field_roles(normalized, area_non_measure_guids)
         for target in _slots_for_edit(visualization, slot_name):
             target["items"] = [
                 _project_field(item, dataset_id=dataset_id, normalizer=normalizer) for item in normalized
@@ -435,6 +439,7 @@ def _apply_structural_field_mutations(
     update: WizardChartUpdate,
     *,
     field_structure: WizardFieldStructure,
+    area_non_measure_guids: set[str] | None,
 ) -> None:
     references = WizardFieldReferences(data)
     normalizer = _normalizer(data, update, field_structure=field_structure)
@@ -452,6 +457,8 @@ def _apply_structural_field_mutations(
             raise DataLensValidationError(
                 f"change_aggregation could not resolve its staged replacement for field {old_guid!r}."
             )
+        if area_non_measure_guids is not None:
+            _record_field_roles([replacement], area_non_measure_guids)
         references.replace_field(
             old_guid,
             _project_field(replacement, dataset_id=_primary_dataset_id(data), normalizer=normalizer),
@@ -466,6 +473,8 @@ def _apply_structural_field_mutations(
                 field,
                 field_structure=field_structure,
             )
+            if area_non_measure_guids is not None:
+                _record_field_roles([resolved_replacement], area_non_measure_guids)
             references.replace_field(
                 old_guid,
                 _project_field(
@@ -625,6 +634,7 @@ def _apply_encodings_and_decorations(
     update: WizardChartUpdate,
     *,
     field_structure: WizardFieldStructure,
+    non_measure_guids: Collection[str],
 ) -> None:
     visualization = _known_visualization(data, mutation_requested=True)
     normalizer = _normalizer(data, update, field_structure=field_structure)
@@ -640,6 +650,7 @@ def _apply_encodings_and_decorations(
             normalizer=normalizer,
             dataset_id=dataset_id,
             palette=update.colors_palette,
+            non_measure_guids=non_measure_guids,
         )
     elif update.colors_palette is not None:
         _apply_palette_to_visualization(
@@ -938,18 +949,30 @@ def _apply_update_operations(
     _validate_link_mutations(data, update, field_structure=field_structure)
     _apply_local_field_additions(data, update, field_structure=field_structure)
     visualization = _known_visualization(data, mutation_requested=True)
+    area_non_measure_guids: set[str] | None = set() if visualization["type"] == "area" else None
+    if area_non_measure_guids is not None:
+        # Saved charts may only have compact references. Use the type where
+        # available and keep untyped references eligible according to Y placement.
+        _record_field_roles(
+            (ref.snapshot for ref in WizardFieldReferences(data).snapshot_locations(include_definitions=True)),
+            area_non_measure_guids,
+        )
     reconcile_area_colors = (
-        visualization["type"] == "area"
+        area_non_measure_guids is not None
         and not _has_layers(visualization)
         and "colors" not in update.slot_edits
         and update.color_encoding is None
     )
-    original_measures = _placed_measure_guids(visualization, ("y",)) if reconcile_area_colors else []
-    _apply_structural_field_mutations(data, update, field_structure=field_structure)
-    _apply_slot_edits(data, update, field_structure=field_structure)
+    original_y_guids = _placed_measure_guids(visualization, ("y",)) if reconcile_area_colors else []
+    _apply_structural_field_mutations(
+        data, update, field_structure=field_structure, area_non_measure_guids=area_non_measure_guids
+    )
+    _apply_slot_edits(data, update, field_structure=field_structure, area_non_measure_guids=area_non_measure_guids)
+    non_measure_guids: Collection[str] = area_non_measure_guids or ()
     if reconcile_area_colors:
-        measures = _placed_measure_guids(visualization, ("y",))
-        if measures != original_measures:
+        y_guids = _placed_measure_guids(visualization, ("y",))
+        measures = [guid for guid in y_guids if guid not in non_measure_guids]
+        if y_guids != original_y_guids or ("y" in update.slot_edits and len(measures) < len(y_guids)):
             _reconcile_area_measure_names(visualization, measures)
     _apply_chart_settings(data, update)
     _apply_slot_settings(data, update)
@@ -960,7 +983,7 @@ def _apply_update_operations(
     _apply_filter_deletions(data, update)
     _apply_hierarchies(data, update, field_structure=field_structure)
     _apply_filters_and_sort(data, update, field_structure=field_structure)
-    _apply_encodings_and_decorations(data, update, field_structure=field_structure)
+    _apply_encodings_and_decorations(data, update, field_structure=field_structure, non_measure_guids=non_measure_guids)
     _apply_scatter_size(data, update)
     _apply_formula_replacements(data, update)
 

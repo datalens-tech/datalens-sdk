@@ -221,6 +221,125 @@ def test_area_measure_names_colors_round_trip(
     }
 
 
+def test_area_implicit_colors_do_not_count_a_y_dimension() -> None:
+    dataset = _dataset()
+    recorder = _RecordedTransport({"/rpc/createWizardChart": httpx.Response(200, json=_wizard_response(viz_id="area"))})
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as client:
+        (
+            client.create.wizard_chart.area(name="Sales", location=dl.EntryLocation.path("/Charts"))
+            .dataset(dataset)
+            .x(["g_date"])
+            .y(["g_amt", "g_reg"])
+            .build()
+        )
+
+    viz = cast(dict[str, object], cast(dict[str, object], recorder.request_json(0)["data"])["visualization"])
+    assert cast(dict[str, object], viz["colors"])["items"] == []
+    assert cast(dict[str, object], viz["y"])["items"] == [
+        {"guid": "g_amt", "datasetId": "ds-1"},
+        {"guid": "g_reg", "datasetId": "ds-1"},
+    ]
+
+
+def _area_response_with_colors(*, saved_colors: bool, compact: bool = False) -> dict[str, object]:
+    response = _wizard_response(viz_id="area")
+    entry = cast(dict[str, object], response["entry"])
+    visualization = cast(dict[str, object], cast(dict[str, object], entry["data"])["visualization"])
+    visualization["y"] = {
+        "items": [
+            {"guid": "g_amt", "datasetId": "ds-1"},
+            {"guid": "g_costs", "datasetId": "ds-1"},
+            {"guid": "g_reg", "datasetId": "ds-1", **({} if compact else {"type": "DIMENSION"})},
+        ]
+    }
+    if saved_colors:
+        visualization["colors"] = {
+            "items": [{"title": "Measure Names", "type": "PSEUDO", "data_type": "string"}],
+            "settings": {"mountedColors": {"g_reg": "0", "g_amt": "#123456", "g_costs": "2"}},
+        }
+    return response
+
+
+@pytest.mark.parametrize("scenario", ["create", "expanded-update", "compact-update"])
+def test_area_explicit_colors_reject_a_dimension_key_even_with_two_measures(scenario: str) -> None:
+    update = scenario != "create"
+    response = _area_response_with_colors(saved_colors=False, compact=scenario == "compact-update")
+    recorder = _RecordedTransport(
+        {
+            "/rpc/getWizardChart": httpx.Response(200, json=response),
+            "/rpc/createWizardChart": httpx.Response(200, json=response),
+            "/rpc/updateWizardChart": httpx.Response(200, json=response),
+        }
+    )
+    dataset = _dataset()
+    costs = replace(dataset.fields.by_guid("g_amt"), guid="g_costs", title="Costs", raw={})
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as client:
+        if update:
+            chart = client.get.wizard_chart(by_id="chart-1")
+            region = dataset.fields.by_guid("g_reg") if scenario == "compact-update" else "g_reg"
+            with pytest.raises(dl.DataLensConfigurationError, match="not placed as a measure"):
+                chart.update.color_by_measure_name(colors_map={region: "#123456"}).execute()
+        else:
+            builder = (
+                client.create.wizard_chart.area(name="Sales", location=dl.EntryLocation.path("/Charts"))
+                .dataset(dataset)
+                .x(["g_date"])
+                .y(["g_amt", costs, "g_reg"])
+            )
+            with pytest.raises(dl.DataLensConfigurationError, match="not placed as a measure"):
+                builder.color_by_measure_name(colors_map={"g_reg": "#123456"}).build()
+
+    assert recorder.paths() == (["/rpc/getWizardChart"] if update else [])
+
+
+@pytest.mark.parametrize("replace_field", [False, True], ids=["y-edit", "field-replacement"])
+def test_area_saved_measure_colors_are_reconciled_after_editing_y_with_a_dimension(*, replace_field: bool) -> None:
+    response = _area_response_with_colors(saved_colors=True)
+    recorder = _RecordedTransport(
+        {
+            "/rpc/getWizardChart": httpx.Response(200, json=response),
+            "/rpc/updateWizardChart": httpx.Response(200, json=response),
+        }
+    )
+    new_dimension = replace(_dataset().fields.by_guid("g_reg"), guid="g_new_region", raw={})
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as client:
+        chart = client.get.wizard_chart(by_id="chart-1")
+        if replace_field:
+            chart.update.replace_field("g_reg", new_dimension).execute()
+        else:
+            chart.update.y(["g_costs", "g_amt", new_dimension]).execute()
+
+    assert recorder.paths() == ["/rpc/getWizardChart", "/rpc/updateWizardChart"]
+    viz = cast(dict[str, object], cast(dict[str, object], recorder.request_json(1)["data"])["visualization"])
+    settings = cast(dict[str, object], cast(dict[str, object], viz["colors"])["settings"])
+    assert settings["mountedColors"] == {"g_costs": "2", "g_amt": "#123456"}
+
+
+def test_area_update_does_not_add_measure_names_for_a_new_y_dimension() -> None:
+    response = _area_response_with_colors(saved_colors=False)
+    recorder = _RecordedTransport(
+        {
+            "/rpc/getWizardChart": httpx.Response(200, json=response),
+            "/rpc/updateWizardChart": httpx.Response(200, json=response),
+        }
+    )
+    new_dimension = replace(_dataset().fields.by_guid("g_reg"), guid="g_new_region", raw={})
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as client:
+        chart = client.get.wizard_chart(by_id="chart-1")
+        chart.update.y(["g_amt", new_dimension]).execute()
+
+    viz = cast(dict[str, object], cast(dict[str, object], recorder.request_json(1)["data"])["visualization"])
+    assert cast(dict[str, object], viz["colors"])["items"] == []
+
+
 def test_wizard_create_payload_carries_v3_field_references() -> None:
     recorder = _RecordedTransport({"/rpc/createWizardChart": httpx.Response(200, json=_wizard_response())})
     client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))
