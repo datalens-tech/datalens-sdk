@@ -39,6 +39,8 @@
   bundled SDK skill.
 - Correct the Wizard chart dependency example to use `link_direction="from"`.
   Use `"to"` to find entries that depend on the chart.
+- Correct the Wizard donut example with totals to place the shared category
+  in the color slot only ([#90](https://github.com/datalens-tech/datalens-sdk/issues/90)).
 
 ### Known limitations and follow-up
 
