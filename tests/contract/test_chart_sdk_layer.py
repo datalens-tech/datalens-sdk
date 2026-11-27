@@ -380,6 +380,20 @@ def test_update_change_visualization_to_changes_viz_id_in_payload() -> None:
     assert update_viz["type"] == "bar"
 
 
+@pytest.mark.parametrize(("source", "target"), [("pie", "donut"), ("donut", "pie")])
+def test_update_rejects_pie_donut_transition_before_write(source: str, target: str) -> None:
+    recorder = _RecordedTransport({"/rpc/getWizardChart": httpx.Response(200, json=_wizard_response(viz_id=source))})
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as client:
+        chart = client.get.wizard_chart(by_id="chart-1")
+
+        with pytest.raises(dl.DataLensConfigurationError, match="Verified targets"):
+            chart.update.change_visualization_to(visualization_id=target).mode("publish").execute()
+
+    assert recorder.paths() == ["/rpc/getWizardChart"]
+
+
 def test_update_deep_merge_preserves_untouched_named_slots() -> None:
     recorder = _RecordedTransport(
         {

@@ -93,7 +93,9 @@ chart = chart.update.measures([profit]).measure_format(profit, format="number").
 - `x` sets the dimension field; `y` sets the required measure field.
 - Both dimensions and measures have capacity 1.
 - Without explicit `color_by_dimension()`, the SDK uses the dimension as the color source.
-- No visualization transition is supported from this visualization.
+- Switching an existing donut to pie is unsupported. See
+  [switching between pie and donut](operation-recipes.md#switching-between-pie-and-donut)
+  for options if a new chart ID is acceptable.
 
 ## Related references
 

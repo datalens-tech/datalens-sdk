@@ -365,6 +365,25 @@ if missing_guids:
 chart = chart.update.replace_dataset(old=old_dataset_id, new=new_dataset_id).mode("publish").execute()
 ```
 
+### Switching between pie and donut
+
+The SDK rejects `pie → donut` and `donut → pie` locally with
+`DataLensConfigurationError`. An in-place server update that preserves the chart
+ID, compatible settings, and dashboard references is unverified. Raw snapshot
+replacement is also unverified for this change of visualization.
+
+If a new chart ID is acceptable, create the target type with the
+[pie](chart-pie.md) or [donut](chart-donut.md) builder. Reapply the fields and
+compatible settings. The new chart has its own ID. Existing links still open
+the original chart.
+
+For a dashboard you control, use
+`dashboard.update.replace_chart(item_id=..., chart=new_chart, widget_tab_id=...)`
+and choose save or publish mode before execution. This changes the chart ID for
+the selected widget tab. Supply the tab ID for a widget with multiple chart
+tabs. Verify the widget's parameters and selectors against the replacement
+before publishing. See [dashboard updates](../dashboards.md#updating-an-existing-dashboard).
+
 ## Build Combined Charts and Geolayers
 
 Combined layers are defined only during creation. An update can change the

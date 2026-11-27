@@ -144,7 +144,11 @@ Every cell describes only the installed package's typed public API.
 | `line` | `bar` | `x -> y`, `y -> x` |
 | `bar` | `line` | `y -> x`, `x -> y` |
 
-Every other source/target pair, unknown target, and same-visualization transition is unsupported. `combined-chart`, `geolayer`, tables, circular charts, funnel, indicator, scatter, treemap, and all 100% variants have no supported transition.
+Every other source/target pair, unknown target, and same-visualization transition is unsupported.
+`combined-chart`, `geolayer`, tables, pie, donut, funnel, indicator, scatter, treemap,
+and all 100% variants have no supported transition. See
+[switching between pie and donut](operation-recipes.md#switching-between-pie-and-donut)
+for options when the chart appears on a dashboard.
 
 ## Reading notes
 
