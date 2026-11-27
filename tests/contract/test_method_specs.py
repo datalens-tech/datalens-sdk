@@ -113,7 +113,7 @@ _ENCODING_METHODS = {
 }
 
 _EXPECTED_ENCODING_METHODS_BY_VIZ: dict[str, frozenset[str]] = {
-    "area": frozenset({"color_by_dimension"}),
+    "area": frozenset({"color_by_dimension", "color_by_measure_name"}),
     "area100p": frozenset({"color_by_dimension"}),
     "bar": frozenset({"color_by_dimension", "color_by_measure", "color_by_measure_name"}),
     "bar100p": frozenset({"color_by_dimension"}),

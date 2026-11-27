@@ -106,7 +106,7 @@ Every cell describes only the installed package's typed public API.
 | `palette()` | `*, id: PaletteId` | CU | CU | CU | CU | CU | CU | — | CU | CU | CU | — | CU | — | CU | CU | CU | CU |
 | `color_by_dimension()` | `field: Field` | CU | CU | CU | CU | CU | CU | — | CU | — | CU | — | CU | — | CU | — | CU | CU |
 | `color_by_measure()` | `field: Field, *, mode: Literal['2-point', '3-point'] \| None = None, palette: GradientPaletteId \| None = None, reversed: bool \| None = None` | — | — | CU | — | CU | — | — | — | CU | — | — | — | — | — | CU | CU | CU |
-| `color_by_measure_name()` | `*, colors_map: Mapping[Field, str] \| None = None` | — | — | CU | — | CU | — | — | — | — | — | — | CU | — | — | — | — | — |
+| `color_by_measure_name()` | `*, colors_map: Mapping[Field, str] \| None = None` | CU | — | CU | — | CU | — | — | — | — | — | — | CU | — | — | — | — | — |
 | `shape_by_dimension()` | `field: Field, *, shapes_map: Mapping[str, ShapeStyle] \| None = None` | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | CU | — |
 | `shape_by_measure_name()` | `*, shapes_map: Mapping[Field, ShapeStyle] \| None = None` | — | — | — | — | — | — | — | — | — | — | — | CU | — | — | — | — | — |
 | `point_size_range()` | `*, min_radius: float = 4.5, max_radius: float = 9.0` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — |

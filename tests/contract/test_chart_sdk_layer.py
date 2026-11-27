@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 from typing import cast
 
@@ -125,6 +126,98 @@ def _sparse_wizard_response(*, entry_id: str) -> dict[str, object]:
         },
         "isFavorite": False,
         "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
+    }
+
+
+@pytest.mark.parametrize("client_class", [dl.DataLensClientEnterprise, dl.DataLensClientYC])
+def test_area_measure_names_colors_round_trip(
+    client_class: type[dl.DataLensClientEnterprise | dl.DataLensClientYC],
+) -> None:
+    dataset = _dataset()
+    dataset = replace(
+        dataset,
+        result_schema=(
+            *dataset.result_schema,
+            {"guid": "g_costs", "title": "Costs", "type": "MEASURE", "data_type": "float", "calc_mode": "direct"},
+        ),
+    )
+    date = dataset.fields.by_guid("g_date")
+    amount = dataset.fields.by_guid("g_amt")
+    costs = dataset.fields.by_guid("g_costs")
+    saved = _wizard_response(viz_id="area")
+    entry = cast(dict[str, object], saved["entry"])
+    visualization = cast(dict[str, object], cast(dict[str, object], entry["data"])["visualization"])
+    visualization["x"] = {"items": [{"guid": "g_date", "datasetId": "ds-1", "title": "Order Date"}]}
+    visualization["y"] = {
+        "items": [
+            {
+                "guid": field.guid,
+                "datasetId": "ds-1",
+                "title": field.title,
+                "fakeTitle": "Visible amount",
+                "type": "MEASURE",
+                "data_type": "float",
+                "calc_mode": "direct",
+            }
+            for field in (amount, costs)
+        ]
+    }
+    visualization["colors"] = {"items": [], "settings": {"futureSetting": True}, "futureSlotValue": "keep"}
+    recorder = _RecordedTransport(
+        {
+            "/rpc/createWizardChart": httpx.Response(200, json=_wizard_response(viz_id="area")),
+            "/rpc/getWizardChart": httpx.Response(200, json=saved),
+            "/rpc/updateWizardChart": httpx.Response(200, json=_wizard_response(viz_id="area")),
+        }
+    )
+    with client_class(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)) as client:
+        created = (
+            client.create.wizard_chart.area(name="Sales", location=dl.EntryLocation.path("/Charts"))
+            .dataset(dataset)
+            .x([date])
+            .y([amount, costs])
+            .color_by_measure_name(colors_map={amount: "#112233", costs: "#445566"})
+            .palette(id="classic20")
+            .build()
+        )
+        loaded = client.get.wizard_chart(by_id=created.id)
+        loaded.update.color_by_measure_name(colors_map={loaded.fields.by_guid("g_amt"): "#112244"}).mode(
+            "publish"
+        ).execute()
+
+    assert recorder.paths() == ["/rpc/createWizardChart", "/rpc/getWizardChart", "/rpc/updateWizardChart"]
+    create_viz = cast(dict[str, object], cast(dict[str, object], recorder.request_json(0)["data"])["visualization"])
+    assert create_viz["type"] == "area"
+    assert cast(dict[str, object], create_viz["x"])["items"] == [{"guid": "g_date", "datasetId": "ds-1"}]
+    assert cast(dict[str, object], create_viz["y"])["items"] == [
+        {"guid": "g_amt", "datasetId": "ds-1"},
+        {"guid": "g_costs", "datasetId": "ds-1"},
+    ]
+    pseudo = {"title": "Measure Names", "type": "PSEUDO", "data_type": "string"}
+    assert create_viz["colors"] == {
+        "items": [pseudo],
+        "settings": {
+            "coloredByMeasure": True,
+            "colorMode": "palette",
+            "mountedColors": {"g_amt": "#112233", "g_costs": "#445566"},
+            "palette": "classic20",
+            "polygonBorders": "show",
+        },
+    }
+    update = recorder.request_json(2)
+    update_viz = cast(dict[str, object], cast(dict[str, object], update["data"])["visualization"])
+    assert update["mode"] == "publish"
+    assert update_viz["y"] == visualization["y"]
+    assert update_viz["colors"] == {
+        "items": [pseudo],
+        "settings": {
+            "coloredByMeasure": True,
+            "colorMode": "palette",
+            "futureSetting": True,
+            "mountedColors": {"g_amt": "#112244", "g_costs": "1"},
+            "polygonBorders": "show",
+        },
+        "futureSlotValue": "keep",
     }
 
 

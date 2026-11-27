@@ -4,6 +4,10 @@
 
 ### Added
 
+- Support Measure Names colors on Wizard area charts with multiple Y measures.
+  Use `color_by_measure_name()` on creates and updates to set colors by field.
+  Area updates keep colors for retained measures when the Y measures change.
+
 - Support the Activities tab on Yandex Cloud Advanced Editor charts during
   typed creation and updates. Updates to other tabs preserve the saved
   Activities source.

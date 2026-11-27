@@ -28,7 +28,9 @@ from datalens_sdk.converter.wizard._assemble import (
     _layer_slot,
     _layer_slot_settings_structure,
     _normalize_fields,
+    _placed_measure_guids,
     _project_field,
+    _reconcile_area_measure_names,
     _selected_layer,
     _slot_settings_structure,
     _sync_axis_modes,
@@ -313,7 +315,12 @@ def _apply_slot_edits(
             settings = target.get("settings")
             if isinstance(settings, Mapping) and "axisModeMap" in settings:
                 _sync_axis_modes(target, normalized)
-    if not _has_layers(visualization) and ("colors" not in update.slot_edits and update.color_encoding is None):
+    if (
+        not _has_layers(visualization)
+        and visualization["type"] != "area"
+        and "colors" not in update.slot_edits
+        and update.color_encoding is None
+    ):
         _apply_implicit_measure_names(visualization)
 
 
@@ -930,11 +937,22 @@ def _apply_update_operations(
     _validate_update_semantic_guids(data, update)
     _validate_link_mutations(data, update, field_structure=field_structure)
     _apply_local_field_additions(data, update, field_structure=field_structure)
+    visualization = _known_visualization(data, mutation_requested=True)
+    reconcile_area_colors = (
+        visualization["type"] == "area"
+        and not _has_layers(visualization)
+        and "colors" not in update.slot_edits
+        and update.color_encoding is None
+    )
+    original_measures = _placed_measure_guids(visualization, ("y",)) if reconcile_area_colors else []
     _apply_structural_field_mutations(data, update, field_structure=field_structure)
     _apply_slot_edits(data, update, field_structure=field_structure)
+    if reconcile_area_colors:
+        measures = _placed_measure_guids(visualization, ("y",))
+        if measures != original_measures:
+            _reconcile_area_measure_names(visualization, measures)
     _apply_chart_settings(data, update)
     _apply_slot_settings(data, update)
-    visualization = _known_visualization(data, mutation_requested=True)
     decoration_target = _selected_layer(visualization) if _has_layers(visualization) else visualization
     _apply_label_mode(decoration_target, update.label_mode_value)
     _apply_labels_position(decoration_target, update.labels_position_value)
