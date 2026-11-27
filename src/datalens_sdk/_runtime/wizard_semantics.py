@@ -83,7 +83,12 @@ WIZARD_VISUALIZATION_SEMANTICS: dict[str, WizardVisualizationSemantics] = {
     },
     "area": {
         "slot_aliases": {},
-        "encodings": {"color": {"dimension": {"slot": "colors"}}},
+        "encodings": {
+            "color": {
+                "dimension": {"slot": "colors"},
+                "measure_name": {"slot": "colors", "measure_slots": ("y",)},
+            },
+        },
         "label_modes": ("absolute",),
     },
     "area100p": {

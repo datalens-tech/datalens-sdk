@@ -380,7 +380,7 @@ do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 | `.palette(*, id: PaletteId)` | C/U | Style an existing Color binding: discrete palettes require dimension/Measure Names color; gradient palettes require measure color. |
 | `.color_by_dimension(field)` | C/U | Bind color to a `DIMENSION`. |
 | `.color_by_measure(field, *, mode=None, palette=None, reversed=None)` | C/U | Bind color to a `MEASURE`; use a compatible mode and gradient palette from the table below. |
-| `.color_by_measure_name(*, colors_map=None)` | C/U | Color at least two placed measures; map keys must name placed measures. |
+| `.color_by_measure_name(*, colors_map=None)` | C/U | Color at least two placed measures. Use field references for the map keys. |
 | `.shape_by_dimension(field, *, shapes_map=None)` | C/U | Bind shape to a `DIMENSION` and optionally map its values to `ShapeStyle`. |
 | `.shape_by_measure_name(*, shapes_map=None)` | C/U | Shape at least two placed measures; map keys must name placed measures. |
 | `.shape(*, value: FunnelShape)` | C/U | Funnel shape: `"auto"`, `"rectangle"`, or `"trapezoid"`. |
@@ -390,7 +390,10 @@ Calling another explicit color or shape binding in the same chain replaces the
 previous binding of that encoding.
 
 `color_by_measure_name(colors_map=...)` accepts `#RRGGBB`, `#RRGGBBAA`, or a
-non-negative palette-index string such as `"2"` for each override value.
+non-negative palette-index string such as `"2"` for each override value. On an
+area chart, map measures on Y by field or GUID. The binding goes in Colors and leaves the category on X. A
+partial map overrides the selected measures and assigns palette indexes in Y
+order to the remaining measures.
 
 `color_by_measure()` accepts only these gradient combinations:
 

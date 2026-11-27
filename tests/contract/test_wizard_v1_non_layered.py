@@ -207,3 +207,116 @@ def test_verified_cartesian_transition_rebuilds_target_named_slots(
     assert set(visualization) == {"type", *WIZARD_VISUALIZATION_STRUCTURE[target_type]["slots"]}
     for slot_name, expected_guid in expected_axes.items():
         assert visualization[slot_name]["items"] == [{"guid": expected_guid, "datasetId": "dataset-1"}]
+
+
+def test_area_update_inserts_measure_names_when_a_second_y_measure_is_added() -> None:
+    created = WizardChartConverter.from_domain_create(_builder("area").to_spec()).to_payload()
+    chart = WizardChartConverter.to_domain(
+        _read_response(entry_id="area-chart", data=created["data"]), installation="yacloud"
+    )
+    dataset = _dataset()
+
+    changed = WizardChartConverter.from_domain_update(
+        chart.update.y([dataset.fields.by_name("Amount"), dataset.fields.by_name("Count")])
+    ).to_payload()
+
+    visualization = cast(dict[str, Any], changed["data"])["visualization"]
+    for axis, guids in (("x", ["date-guid"]), ("y", ["amount-guid", "count-guid"])):
+        assert [item["guid"] for item in visualization[axis]["items"]] == guids
+    assert visualization["colors"]["items"] == [{"title": "Measure Names", "type": "PSEUDO", "data_type": "string"}]
+
+
+@pytest.mark.parametrize("remove_field", [False, True], ids=["replace-y", "delete-field"])
+def test_area_update_clears_measure_names_when_a_y_measure_is_removed(*, remove_field: bool) -> None:
+    payload = WizardChartConverter.from_domain_create(_builder("area").y(["Amount", "Count"]).to_spec()).to_payload()
+    data = cast(dict[str, Any], payload["data"])
+    colors = data["visualization"]["colors"]
+    colors["futureSlotValue"] = True
+    colors["settings"].update(
+        {
+            "coloredByMeasure": True,
+            "colorMode": "palette",
+            "mountedColors": {"amount-guid": "#112233", "count-guid": "1"},
+            "palette": "classic20",
+            "polygonBorders": "show",
+            "futureSetting": True,
+        }
+    )
+    chart = WizardChartConverter.to_domain(_read_response(entry_id="area-chart", data=data), installation="yacloud")
+    update = (
+        chart.update.delete_field(chart.fields.by_guid("count-guid"))
+        if remove_field
+        else chart.update.y([chart.fields.by_guid("amount-guid")])
+    )
+
+    changed = WizardChartConverter.from_domain_update(update).to_payload()
+
+    visualization = cast(dict[str, Any], changed["data"])["visualization"]
+    assert [item["guid"] for item in visualization["y"]["items"]] == ["amount-guid"]
+    assert visualization["colors"] == {"items": [], "settings": {"futureSetting": True}, "futureSlotValue": True}
+
+
+@pytest.mark.parametrize(
+    ("retained_guid", "retained_color"),
+    [("amount-guid", "#112233"), ("count-guid", "1")],
+)
+def test_area_update_preserves_existing_measure_colors_and_adds_defaults_for_new_guids(
+    retained_guid: str,
+    retained_color: str,
+) -> None:
+    builder = _builder("area").y(["Amount", "Count"]).color_by_measure_name(colors_map={"Amount": "#112233"})
+    payload = WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()
+    chart = WizardChartConverter.to_domain(
+        _read_response(entry_id="area-chart", data=payload["data"]),
+        installation="yacloud",
+    )
+    extra = Dataset(
+        id="dataset-1",
+        result_schema=(
+            {"guid": "extra-guid", "title": "Extra", "type": "MEASURE", "data_type": "float", "calc_mode": "direct"},
+        ),
+    ).fields.by_guid("extra-guid")
+
+    changed = WizardChartConverter.from_domain_update(
+        chart.update.y([chart.fields.by_guid(retained_guid), extra])
+    ).to_payload()
+
+    visualization = cast(dict[str, Any], changed["data"])["visualization"]
+    assert [item["guid"] for item in visualization["y"]["items"]] == [retained_guid, "extra-guid"]
+    assert visualization["colors"]["settings"]["mountedColors"] == {
+        retained_guid: retained_color,
+        "extra-guid": "0" if retained_color == "1" else "1",
+    }
+
+
+def test_area_update_preserves_an_explicit_dimension_color_when_y_changes() -> None:
+    builder = _builder("area").color_by_dimension("Region").palette(id="classic20")
+    payload = WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()
+    chart = WizardChartConverter.to_domain(
+        _read_response(entry_id="area-chart", data=payload["data"]),
+        installation="yacloud",
+    )
+    dataset = _dataset()
+
+    changed = WizardChartConverter.from_domain_update(
+        chart.update.y([dataset.fields.by_name("Amount"), dataset.fields.by_name("Count")])
+    ).to_payload()
+
+    colors = cast(dict[str, Any], changed["data"])["visualization"]["colors"]
+    assert colors["items"] == [{"guid": "region-guid", "datasetId": "dataset-1"}]
+    assert colors["settings"]["palette"] == "classic20"
+
+
+@pytest.mark.parametrize("legacy_empty_colors", [False, True], ids=["saved-measure-names", "legacy-empty"])
+def test_area_update_without_y_changes_preserves_saved_colors(*, legacy_empty_colors: bool) -> None:
+    builder = _builder("area").y(["Amount", "Count"]).color_by_measure_name(colors_map={"Count": "#112233"})
+    payload = WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()
+    data = cast(dict[str, Any], payload["data"])
+    visualization = data["visualization"]
+    if legacy_empty_colors:
+        visualization["colors"] = {"items": [], "settings": {"futureSetting": True}}
+    chart = WizardChartConverter.to_domain(_read_response(entry_id="area-chart", data=data), installation="yacloud")
+
+    changed = WizardChartConverter.from_domain_update(chart.update.legend(mode="hide")).to_payload()
+
+    assert cast(dict[str, Any], changed["data"])["visualization"]["colors"] == visualization["colors"]

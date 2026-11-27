@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 import re
 from typing import Any, cast
 
@@ -540,15 +540,26 @@ def _encoding_settings(
     return settings
 
 
-def _placed_measure_guids(visualization: WizardJsonObject) -> list[str]:
+def _record_field_roles(fields: Iterable[Mapping[str, object]], non_measure_guids: set[str]) -> None:
+    for field in fields:
+        guid = field.get("guid")
+        if not isinstance(guid, str) or not guid:
+            continue
+        role = field.get("type")
+        if field.get("data_type") == "hierarchy" or role in ("DIMENSION", "PARAMETER", "PSEUDO"):
+            non_measure_guids.add(guid)
+        elif role == "MEASURE":
+            non_measure_guids.discard(guid)
+
+
+def _placed_measure_guids(
+    visualization: WizardJsonObject,
+    measure_slots: Sequence[str],
+    *,
+    non_measure_guids: Collection[str] = (),
+) -> list[str]:
     guids: list[str] = []
-    visualization_type = _visualization_type(visualization)
-    rule = get_wizard_encoding(visualization_type, "color", "measure_name") or get_wizard_encoding(
-        visualization_type,
-        "shape",
-        "measure_name",
-    )
-    for slot_name in rule.get("measure_slots", ()) if rule is not None else ():
+    for slot_name in measure_slots:
         slot = visualization.get(slot_name)
         if not isinstance(slot, dict):
             continue
@@ -557,7 +568,7 @@ def _placed_measure_guids(visualization: WizardJsonObject) -> list[str]:
             continue
         for item in items:
             guid = item.get("guid") if isinstance(item, Mapping) else None
-            if isinstance(guid, str) and guid and guid not in guids:
+            if isinstance(guid, str) and guid and guid not in guids and guid not in non_measure_guids:
                 guids.append(guid)
     return guids
 
@@ -569,17 +580,22 @@ def _measure_mapping(
     normalizer: _Normalizer,
     dataset_id: str | None,
     method_name: str,
+    measure_slots: Sequence[str],
     defaults: bool,
+    non_measure_guids: Collection[str] = (),
 ) -> dict[str, str]:
-    measure_guids = _placed_measure_guids(visualization)
+    measure_guids = _placed_measure_guids(visualization, measure_slots, non_measure_guids=non_measure_guids)
+    slot_names = ", ".join(repr(slot_name) for slot_name in measure_slots)
     if len(measure_guids) < 2:
-        raise DataLensConfigurationError(f"{method_name}() requires at least two measures across the y and y2 slots.")
+        raise DataLensConfigurationError(
+            f"{method_name}() requires at least two measures in the following slots: {slot_names}."
+        )
     mounted: dict[str, str] = {guid: str(index) for index, guid in enumerate(measure_guids)} if defaults else {}
     for ref, value in values.items():
         guid = _field_guid(ref, normalizer, dataset_id=dataset_id)
         if guid not in measure_guids:
             raise DataLensConfigurationError(
-                f"{method_name}(...): field {ref!r} is not placed as a measure in the y or y2 slot."
+                f"{method_name}(...): field {ref!r} is not placed as a measure in any of these slots: {slot_names}."
             )
         mounted[guid] = value
     return mounted
@@ -717,15 +733,58 @@ def _ensure_visualization_slot(
     return _visualization_slot(visualization, slot_name)
 
 
-def _apply_implicit_measure_names(visualization: WizardJsonObject) -> None:
+def _apply_implicit_measure_names(visualization: WizardJsonObject, *, non_measure_guids: Collection[str] = ()) -> None:
     visualization_type = _visualization_type(visualization)
     rule = get_wizard_encoding(visualization_type, "color", "measure_name")
     if rule is None:
         return
     target = _ensure_visualization_slot(visualization, rule["slot"], settings={})
-    if target.get("items") or len(_placed_measure_guids(visualization)) < 2:
+    measure_guids = _placed_measure_guids(
+        visualization, rule.get("measure_slots", ()), non_measure_guids=non_measure_guids
+    )
+    if target.get("items") or len(measure_guids) < 2:
         return
     target["items"] = [dict(_MEASURE_NAMES_ITEM)]
+
+
+def _reconcile_area_measure_names(visualization: WizardJsonObject, measure_guids: Sequence[str]) -> None:
+    colors = _ensure_visualization_slot(visualization, "colors", settings={})
+    items = colors.get("items")
+    if not isinstance(items, list):
+        return
+
+    def is_measure_names(value: object) -> bool:
+        return isinstance(value, Mapping) and value.get("type") == "PSEUDO" and value.get("title") == "Measure Names"
+
+    if not items:
+        if len(measure_guids) >= 2:
+            colors["items"] = [dict(_MEASURE_NAMES_ITEM)]
+        return
+    if not any(is_measure_names(item) for item in items):
+        return
+    if len(measure_guids) < 2:
+        colors["items"] = [item for item in items if not is_measure_names(item)]
+        _encoding_settings(
+            colors,
+            owned_keys=frozenset({"coloredByMeasure", "colorMode", "mountedColors", "palette", "polygonBorders"}),
+        )
+        return
+    settings = colors.get("settings")
+    if not isinstance(settings, dict) or not isinstance(mounted := settings.get("mountedColors"), dict):
+        return
+    colors_by_guid = {guid: mounted[guid] for guid in measure_guids if guid in mounted}
+    used_colors = {value for value in colors_by_guid.values() if isinstance(value, str)}
+    next_free = 0
+    for index, guid in enumerate(measure_guids):
+        if guid in colors_by_guid:
+            continue
+        if str(index) in used_colors:
+            while str(next_free) in used_colors:
+                next_free += 1
+            index = next_free
+        colors_by_guid[guid] = str(index)
+        used_colors.add(str(index))
+    settings["mountedColors"] = colors_by_guid
 
 
 def _apply_label_mode(visualization: WizardJsonObject, mode: str | None) -> None:
@@ -773,6 +832,7 @@ def _apply_color_encoding(
     normalizer: _Normalizer,
     dataset_id: str | None,
     palette: str | None,
+    non_measure_guids: Collection[str] = (),
 ) -> None:
     visualization_type = _visualization_type(visualization)
     rule = get_wizard_encoding(visualization_type, "color", encoding.kind)
@@ -785,13 +845,19 @@ def _apply_color_encoding(
     items: list[WizardJsonObject]
     if encoding.kind == "measure_name":
         _validate_measure_colors(encoding.colors_map)
+        if visualization_type == "area" and encoding.colors_map:
+            mapped_non_measures: set[str] = set()
+            _record_field_roles(normalizer.normalize(list(encoding.colors_map)), mapped_non_measures)
+            non_measure_guids = mapped_non_measures.union(non_measure_guids)
         mounted = _measure_mapping(
             visualization,
             encoding.colors_map,
             normalizer=normalizer,
             dataset_id=dataset_id,
             method_name="color_by_measure_name",
+            measure_slots=rule.get("measure_slots", ()),
             defaults=True,
+            non_measure_guids=non_measure_guids,
         )
         items = [dict(_MEASURE_NAMES_ITEM)]
         settings.update(
@@ -858,6 +924,7 @@ def _apply_shape_encoding(
             normalizer=normalizer,
             dataset_id=dataset_id,
             method_name="shape_by_measure_name",
+            measure_slots=rule.get("measure_slots", ()),
             defaults=False,
         )
         items = [dict(_MEASURE_NAMES_ITEM)]
@@ -1445,12 +1512,15 @@ def _assemble_wizard_data(
             settings=_default_slot_settings(visualization_type, slot_name),
         )
 
+    non_measure_guids: set[str] = set()
     for slot_name, slot_refs in spec.slots.items():
         if slot_name not in allowed_slots:
             raise DataLensConfigurationError(
                 f"Wizard V1 visualization {visualization_type!r} has no {slot_name!r} slot."
             )
         slot_snapshots = normalizer.normalize(list(slot_refs))
+        if visualization_type == "area" and slot_name == "y":
+            _record_field_roles(slot_snapshots, non_measure_guids)
         slot = _visualization_slot(visualization, slot_name)
         slot["items"] = _json_array(
             [_project_field(item, dataset_id=dataset_id, normalizer=normalizer) for item in slot_snapshots],
@@ -1516,7 +1586,7 @@ def _assemble_wizard_data(
     _apply_labels_position(visualization, spec.labels_position)
 
     if spec.color_encoding is None:
-        _apply_implicit_measure_names(visualization)
+        _apply_implicit_measure_names(visualization, non_measure_guids=non_measure_guids)
     if spec.color_encoding is not None:
         _apply_color_encoding(
             visualization,
@@ -1524,6 +1594,7 @@ def _assemble_wizard_data(
             normalizer=normalizer,
             dataset_id=dataset_id,
             palette=spec.colors_palette,
+            non_measure_guids=non_measure_guids,
         )
     elif spec.colors_palette is not None:
         _apply_palette_to_visualization(

@@ -10,7 +10,13 @@ from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.chart_types import MeasureFormat, PaletteId
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
-from datalens_sdk.domain.fields import DatasetField, WizardAggregatedMeasure, WizardHierarchy, WizardLocalField
+from datalens_sdk.domain.fields import (
+    DatasetField,
+    WizardAggregatedMeasure,
+    WizardFieldRef,
+    WizardHierarchy,
+    WizardLocalField,
+)
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
@@ -730,6 +736,47 @@ class TestSemanticColorRouting:
 
 
 class TestColorByMeasureNameHelper:
+    @pytest.mark.parametrize("measure_guids", [("measure_1",), ("measure_1", "measure_2")])
+    def test_area_uses_measure_names_for_multiple_y_measures(self, measure_guids: tuple[str, ...]) -> None:
+        ds = _dataset("dim", "measure_1", "other_dim", "measure_2")
+        builder = _factory.area(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(measure_guids)
+
+        data = _build(builder)
+
+        expected_colors = [{"title": "Measure Names", "type": "PSEUDO", "data_type": "string"}]
+        assert _items_in_ph(data, "colors") == (expected_colors if len(measure_guids) == 2 else [])
+        assert [item["guid"] for item in _items_in_ph(data, "y")] == list(measure_guids)
+        assert [item["guid"] for item in _items_in_ph(data, "x")] == ["dim"]
+
+    def test_area_dimension_color_has_priority_over_implicit_measure_names(self) -> None:
+        ds = _dataset("dim", "measure_1", "other_dim", "measure_2")
+        builder = (
+            _factory.area(name="Chart", location=_loc())
+            .dataset(ds)
+            .x(["dim"])
+            .y(["measure_1", "measure_2"])
+            .color_by_dimension("other_dim")
+        )
+
+        assert [item["guid"] for item in _items_in_ph(_build(builder), "colors")] == ["other_dim"]
+
+    @pytest.mark.parametrize(
+        ("measure_guids", "colors_map", "error"),
+        [
+            (["measure_1"], {}, "at least two measures"),
+            (["measure_1", "measure_2"], {"unused": "#123456"}, "not placed as a measure"),
+            (["measure_1", "measure_2"], {"measure_1": "red"}, "#RRGGBB"),
+        ],
+    )
+    def test_area_rejects_invalid_measure_name_colors(
+        self, measure_guids: list[str], colors_map: dict[WizardFieldRef, str], error: str
+    ) -> None:
+        ds = _dataset("dim", "measure_1", "other_dim", "measure_2", "another_dim", "unused")
+        builder = _factory.area(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(measure_guids)
+
+        with pytest.raises(DataLensConfigurationError, match=error):
+            _build(builder.color_by_measure_name(colors_map=colors_map))
+
     def test_multi_measure_colors_write_palette_configuration_and_pseudo_fields(self) -> None:
         ds = _dataset("dim", "measure_1", "other_dim", "measure_2")
         builder = (

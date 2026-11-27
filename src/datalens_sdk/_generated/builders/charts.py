@@ -87,6 +87,9 @@ class AreaWizardChartCreate(_BaseWizardChartCreate):
     def color_by_dimension(self, field: WizardFieldRef) -> Self:
         return self._color_by_dimension(field)
 
+    def color_by_measure_name(self, *, colors_map: Mapping[WizardFieldRef, str] | None = None) -> Self:
+        return self._color_by_measure_name(colors_map=colors_map)
+
     def description(self, text: str) -> Self:
         return self._set_description(text)
 
