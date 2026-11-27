@@ -136,7 +136,16 @@ issues = validate_dashboard_refs(client, client.get.dashboard(by_id=new_dash.id)
 
 ## `raw.replace` is destructive — hard rule 6
 
-`raw.replace` sends the snapshot's content to the target id. It does **not** fetch the target's current state, does **not** merge, and does **not** check for conflicts — pure last-write-wins. Everything on the target that is not in the snapshot is gone after `.execute()`; concurrent edits are silently overwritten. The target keeps its own id, name, and location — only the content is replaced.
+`raw.replace` overwrites the target's supported mutable content with the
+supplied snapshot. The target keeps its own ID, name, and location. There is no
+merge. Replacements of connections, charts, and dashboards are last-write-wins.
+
+For datasets, each `.execute()` reads the current target before writing and
+requires read and update permissions. If the read returns an internal dataset
+revision, the write includes it. This does not detect edits made before the
+fresh read, even if the target object was loaded earlier. The SDK surfaces
+revision mismatches reported by the server after that read and does not retry
+the update. See [datasets.md](datasets.md#the-update-dsl) for error handling.
 
 Per the skill's hard rules, before constructing any `raw.replace` builder:
 

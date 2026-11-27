@@ -330,9 +330,15 @@ revision selectors are excluded from the write payload. Use `.mode("publish")`
 to publish that content. Publishing an existing saved draft or historical
 revision is the separate `publish_revision(rev_id=existing_revision_id)`
 operation on Wizard, Editor, Dashboard, and HTML pages.
-Replace overwrites the supported mutable content and is last-write-wins: it
-does not fetch, merge, or check for concurrent changes. Each `build()` or
-`execute()` call performs a new mutation and has no idempotency guarantee.
+Replace overwrites the supported mutable content without merging it.
+For a dataset replacement, each `execute()` first reads the current target by
+ID, then sends its internal dataset revision if present in the read response.
+The caller needs permission to read and update the target. This read does not
+detect changes made between loading the target object and executing the
+replacement. If the server rejects the write because the revision no longer
+matches, the SDK surfaces that error without retrying. Other replacements are
+last-write-wins. Each `build()` or `execute()` performs a new mutation and has
+no idempotency guarantee.
 
 `Dashboard.to_file(parent, with_dependencies=True)` adds Charts and Datasets
 discovered only through the relations API. It never calls `getEntries`;

@@ -35,6 +35,7 @@ from datalens_sdk.domain.fields import FieldsProxy
 from datalens_sdk.domain.ports import DatasetOperations
 from datalens_sdk.domain.specs.dataset import DatasetCreateSpec, DatasetUpdateSpec
 from datalens_sdk.domain.specs.raw_resource import RawCreateSpec, RawReplaceSpec
+from datalens_sdk.errors import translate_invalid_response_error
 from datalens_sdk.serialization.artifacts import DatasetSnapshotView
 from datalens_sdk.serialization.json_types import JsonValue, normalize_json_object
 
@@ -463,11 +464,28 @@ class DatasetConverter:
         )
 
     @staticmethod
-    def from_raw_replace(spec: RawReplaceSpec, *, mode: EntryUpdateMode = "save") -> RawDatasetReplaceEnvelope:
+    def raw_replace_target_revision_id(response: Mapping[str, object]) -> str | None:
+        dataset = response.get("dataset")
+        if not isinstance(dataset, Mapping):
+            raise translate_invalid_response_error(operation="getDataset", reason="dataset must be an object")
+        revision_id = dataset.get("revision_id")
+        if revision_id is not None and not isinstance(revision_id, str):
+            raise translate_invalid_response_error(
+                operation="getDataset", reason="dataset.revision_id must be a string or null"
+            )
+        return revision_id
+
+    @staticmethod
+    def from_raw_replace(
+        spec: RawReplaceSpec, *, target_revision_id: str | None, mode: EntryUpdateMode = "save"
+    ) -> RawDatasetReplaceEnvelope:
         source = DatasetSnapshotView.from_raw(spec.response_snapshot)
+        dataset = dataset_content_from_snapshot(source)
+        if target_revision_id is not None:
+            dataset["revision_id"] = target_revision_id
         return RawDatasetReplaceEnvelope(
             dataset_id=spec.target_id,
-            data=RawDatasetReplaceData(dataset=dataset_content_from_snapshot(source), mode=mode),
+            data=RawDatasetReplaceData(dataset=dataset, mode=mode),
         )
 
     @staticmethod

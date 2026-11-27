@@ -17,6 +17,11 @@
 
 ### Fixed
 
+- Read the current dataset before each raw replacement and include its internal
+  revision in the update when available. This operation now requires read and
+  update access to the target. Revision mismatches surface as API errors without
+  a retry.
+
 - Preserve the concrete client type in `with ... as client` blocks so
   installation-specific methods retain their types. Subclasses that override
   `__enter__` and return `self` can annotate the return type with `Self`.

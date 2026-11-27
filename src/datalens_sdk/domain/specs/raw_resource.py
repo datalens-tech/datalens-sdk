@@ -20,3 +20,4 @@ class RawReplaceSpec:
     target_id: str
     target_name: str | None
     target_location: EntryLocation | None
+    target_workbook_id: str | None = field(default=None, kw_only=True)

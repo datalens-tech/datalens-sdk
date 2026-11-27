@@ -52,6 +52,9 @@ def _snapshot(*, dataset_id: str = "source-id", description: str = "Original") -
             "name": "Source content name",
             "description": description,
             "revision_id": "source-dataset-revision",
+            "revisionId": "source-dataset-revision-alias",
+            "rev_id": "nested-source-entry-revision",
+            "revId": "nested-source-entry-revision-alias",
             "sources": [
                 {
                     "id": "source-1",
@@ -217,7 +220,7 @@ def test_raw_dataset_create_uses_new_identity_and_preserves_only_mutable_content
     assert cast(list[dict[str, object]], dataset_payload["sources"])[0]["id"] == "source-1"
     assert "name" not in dataset_payload
     assert "rls" not in dataset_payload
-    assert "revision_id" not in dataset_payload
+    assert not {"revision_id", "revisionId", "rev_id", "revId"} & dataset_payload.keys()
     assert dataset_payload["rls2"] == {"field-1": []}
 
 
@@ -244,17 +247,22 @@ def test_raw_dataset_create_from_file_reads_snapshot_eagerly(tmp_path: Path) -> 
     assert cast(dict[str, object], payload["dataset"])["description"] == "Original"
 
 
-def test_raw_dataset_update_uses_target_identity_and_one_rpc(tmp_path: Path) -> None:
+def test_raw_dataset_update_reads_target_and_writes_once(tmp_path: Path) -> None:
     source_snapshot = _snapshot()
     target_snapshot = _snapshot(dataset_id="target-id", description="Target")
     response = _snapshot(dataset_id="target-id", description="Replacement")
     target_snapshot["name"] = "Target"
     target_snapshot["key"] = "target/folder/Target"
+    current_target = _snapshot(dataset_id="target-id", description="Latest Target")
+    cast(dict[str, object], current_target["dataset"])["revision_id"] = "latest-target-revision"
     response.pop("name")
     response.pop("key")
     recorder = RecordedTransport(
         {
-            "/rpc/getDataset": httpx.Response(200, json=target_snapshot),
+            "/rpc/getDataset": [
+                httpx.Response(200, json=target_snapshot),
+                httpx.Response(200, json=current_target),
+            ],
             "/rpc/updateDataset": httpx.Response(200, json=response),
         }
     )
@@ -273,8 +281,13 @@ def test_raw_dataset_update_uses_target_identity_and_one_rpc(tmp_path: Path) -> 
 
     assert updated.id == "target-id"
     assert updated.name == target.name == "Target"
-    assert [request.url.path for request in recorder.requests] == ["/rpc/getDataset", "/rpc/updateDataset"]
-    payload = recorder.request_json(1)
+    assert updated.location == target.location
+    assert [request.url.path for request in recorder.requests] == [
+        "/rpc/getDataset",
+        "/rpc/getDataset",
+        "/rpc/updateDataset",
+    ]
+    payload = recorder.request_json(2)
     assert payload["datasetId"] == "target-id"
     assert set(payload) == {"datasetId", "data"}
     data = cast(dict[str, object], payload["data"])
@@ -282,14 +295,18 @@ def test_raw_dataset_update_uses_target_identity_and_one_rpc(tmp_path: Path) -> 
     assert dataset_payload["description"] == "Original"
     assert "name" not in dataset_payload
     assert "rls" not in dataset_payload
-    assert "revision_id" not in dataset_payload
+    assert dataset_payload["revision_id"] == "latest-target-revision"
+    assert not {"revisionId", "rev_id", "revId"} & dataset_payload.keys()
 
 
 def test_raw_dataset_replace_uses_owned_snapshot_with_target_identity() -> None:
     source_snapshot = _snapshot()
     recorder = RecordedTransport(
         {
-            "/rpc/getDataset": httpx.Response(200, json=_snapshot(dataset_id="target-id", description="Target")),
+            "/rpc/getDataset": [
+                httpx.Response(200, json=_snapshot(dataset_id="target-id", description="Target")),
+                httpx.Response(200, json={"id": "target-id", "dataset": {"revision_id": "latest-target-revision"}}),
+            ],
             "/rpc/updateDataset": httpx.Response(
                 200,
                 json=_snapshot(dataset_id="target-id", description="Original"),
@@ -308,8 +325,12 @@ def test_raw_dataset_replace_uses_owned_snapshot_with_target_identity() -> None:
 
     assert updated.id == "target-id"
     assert updated.name == target.name == "Source"
-    assert [request.url.path for request in recorder.requests] == ["/rpc/getDataset", "/rpc/updateDataset"]
-    payload = recorder.request_json(1)
+    assert [request.url.path for request in recorder.requests] == [
+        "/rpc/getDataset",
+        "/rpc/getDataset",
+        "/rpc/updateDataset",
+    ]
+    payload = recorder.request_json(2)
     assert payload["datasetId"] == "target-id"
     data = cast(dict[str, object], payload["data"])
     assert cast(dict[str, object], data["dataset"])["description"] == "Original"
@@ -319,6 +340,7 @@ def test_raw_dataset_namespace_defers_create_and_replace_until_terminal_call() -
     recorder = RecordedTransport(
         {
             "/rpc/createDataset": httpx.Response(200, json={"id": "clone-id"}),
+            "/rpc/getDataset": httpx.Response(200, json={"id": "target-id", "dataset": {}}),
             "/rpc/updateDataset": httpx.Response(200, json={"id": "target-id"}),
         }
     )
@@ -350,10 +372,11 @@ def test_raw_dataset_namespace_defers_create_and_replace_until_terminal_call() -
     assert updated.id == "target-id"
     assert [request.url.path for request in recorder.requests] == [
         "/rpc/createDataset",
+        "/rpc/getDataset",
         "/rpc/updateDataset",
     ]
     create_payload = recorder.request_json(0)
-    update_payload = recorder.request_json(1)
+    update_payload = recorder.request_json(2)
     expected_content = _expected_dataset_content()
     assert create_payload == {
         "name": "Clone",
@@ -371,6 +394,7 @@ def test_raw_dataset_builder_owns_prevalidated_snapshot_view(boundary: str) -> N
     recorder = RecordedTransport(
         {
             "/rpc/createDataset": httpx.Response(200, json={"id": "clone-id"}),
+            "/rpc/getDataset": httpx.Response(200, json={"id": "target-id", "dataset": {}}),
             "/rpc/updateDataset": httpx.Response(200, json={"id": "target-id"}),
         }
     )
@@ -394,7 +418,7 @@ def test_raw_dataset_builder_owns_prevalidated_snapshot_view(boundary: str) -> N
 
     terminal()
 
-    request = recorder.request_json(0)
+    request = recorder.request_json(-1)
     data = request if boundary == "create" else cast(dict[str, object], request["data"])
     payload = cast(dict[str, object], data["dataset"])
     assert payload["description"] == "Original"
@@ -447,6 +471,7 @@ def test_raw_dataset_normalizes_each_snapshot_once_before_deferred_execution(
     recorder = RecordedTransport(
         {
             "/rpc/createDataset": httpx.Response(200, json={"id": "clone-id"}),
+            "/rpc/getDataset": httpx.Response(200, json={"id": "target-id", "dataset": {}}),
             "/rpc/updateDataset": httpx.Response(200, json={"id": "target-id"}),
         }
     )
@@ -519,6 +544,7 @@ def test_raw_dataset_namespace_file_methods_use_the_same_artifact(tmp_path: Path
     recorder = RecordedTransport(
         {
             "/rpc/createDataset": httpx.Response(200, json={"id": "clone-id"}),
+            "/rpc/getDataset": httpx.Response(200, json={"id": "target-id", "dataset": {}}),
             "/rpc/updateDataset": httpx.Response(200, json={"id": "target-id"}),
         }
     )
@@ -539,7 +565,7 @@ def test_raw_dataset_namespace_file_methods_use_the_same_artifact(tmp_path: Path
     replace.execute()
 
     create_payload = recorder.request_json(0)
-    update_payload = recorder.request_json(1)
+    update_payload = recorder.request_json(2)
     assert cast(dict[str, object], create_payload["dataset"]) == cast(
         dict[str, object],
         cast(dict[str, object], update_payload["data"])["dataset"],
@@ -564,7 +590,12 @@ def test_dataset_typed_and_raw_builders_have_separate_surfaces() -> None:
 
 
 def test_raw_dataset_replace_captures_target_identity_before_target_mutation() -> None:
-    recorder = RecordedTransport({"/rpc/updateDataset": httpx.Response(200, json={"id": "target-id"})})
+    recorder = RecordedTransport(
+        {
+            "/rpc/getDataset": httpx.Response(200, json={"id": "target-id", "dataset": {}}),
+            "/rpc/updateDataset": httpx.Response(200, json={"id": "target-id"}),
+        }
+    )
     client = _client(recorder)
     original_location = dl.EntryLocation.path("/original")
     target = dl.Dataset(
@@ -583,7 +614,8 @@ def test_raw_dataset_replace_captures_target_identity_before_target_mutation() -
     target.location = dl.EntryLocation.path("/mutated")
     updated = replace.execute()
 
-    assert recorder.request_json(0)["datasetId"] == "target-id"
+    assert [request.url.path for request in recorder.requests] == ["/rpc/getDataset", "/rpc/updateDataset"]
+    assert recorder.request_json(0)["datasetId"] == recorder.request_json(1)["datasetId"] == "target-id"
     assert updated.id == "target-id"
     assert updated.name == "Original target"
     assert updated.location == original_location
@@ -608,6 +640,10 @@ def test_raw_dataset_terminal_calls_repeat_mutations() -> None:
             "/rpc/createDataset": [
                 httpx.Response(200, json={"id": "clone-1"}),
                 httpx.Response(200, json={"id": "clone-2"}),
+            ],
+            "/rpc/getDataset": [
+                httpx.Response(200, json={"dataset": {"revision_id": "read-1"}}),
+                httpx.Response(200, json={"dataset": {"revision_id": "read-2"}}),
             ],
             "/rpc/updateDataset": [
                 httpx.Response(200, json={"id": "target-id"}),
@@ -634,9 +670,14 @@ def test_raw_dataset_terminal_calls_repeat_mutations() -> None:
     assert [request.url.path for request in recorder.requests] == [
         "/rpc/createDataset",
         "/rpc/createDataset",
+        "/rpc/getDataset",
         "/rpc/updateDataset",
+        "/rpc/getDataset",
         "/rpc/updateDataset",
     ]
+    for index, revision in ((3, "read-1"), (5, "read-2")):
+        data = cast(dict[str, object], recorder.request_json(index)["data"])
+        assert cast(dict[str, object], data["dataset"])["revision_id"] == revision
 
 
 def test_dataset_response_snapshot_is_excluded_from_repr_and_equality() -> None:

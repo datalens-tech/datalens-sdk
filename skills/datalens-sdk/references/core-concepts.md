@@ -102,7 +102,7 @@ for entry in pager:  # EntrySummary: .id, .scope, .type, .name, .key, .workbook_
 
 ### `client.raw` — snapshot-level create and replace
 
-`client.raw.create.*` and `client.raw.replace.*` (for `connection`, `dataset`, `dashboard`, `wizard_chart`, `editor_chart`, `ql_chart`) work on full response snapshots, either passed as `response_snapshot=` or loaded with `.from_file(path, ...)` from an artifact written by an entity's `to_file()`. `raw.replace` is last-write-wins with no conflict check — hard rule 6 applies. Export, import, and clone workflows: [serialization.md](serialization.md).
+`client.raw.create.*` and `client.raw.replace.*` (for `connection`, `dataset`, `dashboard`, `wizard_chart`, `editor_chart`, `ql_chart`) work on full response snapshots, either passed as `response_snapshot=` or loaded with `.from_file(path, ...)` from an artifact written by an entity's `to_file()`. `raw.replace` overwrites the target content. Dataset replacement first reads the current target to obtain its internal revision, and other replacements are last-write-wins. Follow hard rule 6 and see [serialization.md](serialization.md) for export, import, and clone workflows.
 
 ### `client.capabilities` and installation gating
 

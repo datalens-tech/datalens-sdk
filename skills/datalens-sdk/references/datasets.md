@@ -58,6 +58,15 @@ with `.id`/`.title`; use `avatar.get("id")`, `avatar.get("source_id")`, and
 Typed updates and `client.raw.replace.dataset` follow the
 [shared revision lifecycle](core-concepts.md#revision-lifecycle).
 
+For raw replacement, each `.execute()` reads the target by ID and sends its
+internal `dataset.revision_id` in the update when available. The server selects
+the revision returned by the read. The write mode (`save` or `publish`) selects
+whether to save a draft or publish the new content. The SDK makes one write
+attempt. A server response with status 400 and code
+`ERR.DS_API.DATASET_REVISION_MISMATCH` raises `BadRequestError` with the code
+and the server's `x-request-id` in its context when provided. Inspect the
+current target before deciding whether to execute the replacement again.
+
 Read the draft with `client.get.dataset(by_id=..., branch="saved")` or the
 publication with `branch="published"`. Dataset branch reads resolve the current
 revision pointer, then read that exact `rev_id`, so they can make two requests.
