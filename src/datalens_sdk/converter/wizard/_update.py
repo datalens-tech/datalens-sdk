@@ -661,6 +661,68 @@ def _apply_encodings_and_decorations(
     )
 
 
+def _apply_field_type_changes(data: WizardJsonObject, update: WizardChartUpdate) -> None:
+    guids = update.field_type_changes
+    if not guids:
+        return
+    operations = _sources(data).get("updates")
+    existing: dict[str, list[tuple[JsonValue, WizardJsonObject]]] = {}
+    if isinstance(operations, list):
+        for operation in operations:
+            if not isinstance(operation, dict):
+                continue
+            field = operation.get("field")
+            guid = field.get("guid") if isinstance(field, dict) else None
+            if isinstance(field, dict) and isinstance(guid, str) and guid in guids:
+                existing.setdefault(guid, []).append((operation.get("action"), field))
+
+    conflicting_guids = (
+        update.deleted_field_guids
+        | update.field_replacements.keys()
+        | update.aggregation_field_replacements.keys()
+        | update.formula_replacements.keys()
+    )
+    active: dict[str, list[dict[str, object]]] = {}
+    for location in WizardFieldReferences(data).snapshot_locations():
+        if location.guid in guids and location.guid is not None:
+            active.setdefault(location.guid, []).append(location.snapshot)
+    dataset_ids = _dataset_ids(data)
+    for guid in sorted(guids):
+        if guid in conflicting_guids:
+            raise DataLensValidationError(f"change_field_type({guid!r}) conflicts with another edit of the same field.")
+        matches = existing.get(guid, [])
+        if len(matches) != 1 or matches[0][0] != "update_field":
+            raise DataLensValidationError(f"change_field_type({guid!r}) requires one existing update_field definition.")
+        definition = matches[0][1]
+        dataset_id = definition.get("datasetId")
+        if update.dataset_replacement is not None and dataset_id == update.dataset_replacement[0]:
+            raise DataLensValidationError(f"change_field_type({guid!r}) conflicts with replacement of its dataset.")
+        if (
+            dataset_id not in dataset_ids
+            or definition.get("type") != "MEASURE"
+            or definition.get("aggregation") != "sum"
+            or definition.get("calc_mode") != "direct"
+            or definition.get("local") is True
+            or definition.get("autoaggregated") is True
+            or not definition.get("source")
+            or definition.get("cast") != "integer"
+            or definition.get("data_type") != "integer"
+        ):
+            raise DataLensValidationError(
+                f"change_field_type({guid!r}) requires an existing update_field definition for an integer SUM measure."
+            )
+        snapshots = active.get(guid, [])
+        if not snapshots or any(snapshot.get("datasetId") not in (None, dataset_id) for snapshot in snapshots):
+            raise DataLensValidationError(
+                f"change_field_type({guid!r}) requires active references to the field's dataset."
+            )
+        definition["cast"] = definition["data_type"] = "float"
+        for snapshot in snapshots:
+            for key in ("cast", "data_type"):
+                if key in snapshot:
+                    snapshot[key] = "float"
+
+
 def _apply_formula_replacements(data: WizardJsonObject, update: WizardChartUpdate) -> None:
     if not update.formula_replacements:
         return
@@ -884,6 +946,7 @@ def _has_update_mutations(update: WizardChartUpdate) -> bool:
             update.pending_measure_formats,
             update.shape_encoding is not None,
             update.formula_replacements,
+            update.field_type_changes,
             update.new_hierarchies,
             update.local_field_additions,
             update.geopoints_config,
@@ -928,6 +991,7 @@ def _apply_update_operations(
     _apply_visualization_transition(data, update, structure=visualization_structure)
     _validate_update_structure(data, update, visualization_structure)
     _validate_update_semantic_guids(data, update)
+    _apply_field_type_changes(data, update)
     _validate_link_mutations(data, update, field_structure=field_structure)
     _apply_local_field_additions(data, update, field_structure=field_structure)
     _apply_structural_field_mutations(data, update, field_structure=field_structure)

@@ -186,6 +186,24 @@ chart = (
 )
 ```
 
+## Stage a Float Cast on an Existing SUM Measure
+
+Use the experimental update on a fetched Wizard chart with an existing field
+update definition for a placed, dataset-backed integer SUM measure.
+
+```python
+chart = client.get.wizard_chart(by_id="chart-id")
+amount = chart.fields.by_guid("amount-guid")
+updated = chart.update.change_field_type(amount, data_type="float").mode("save").execute()
+```
+
+The SDK keeps the GUID and aggregation in the request. Re-read the saved
+chart and verify that the server executes the cast before SUM. This runtime
+behavior is unverified on DataLens On-premises. For charts without a
+compatible field update definition, edit the type in Wizard and re-fetch
+the chart. `change_aggregation()` creates a replacement measure with a
+different GUID.
+
 ## Configure Encodings, Axes, and Formatting
 
 Use measure-name encodings when one slot contains several measures. Map

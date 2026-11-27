@@ -14,6 +14,9 @@
   links. Pass a larger positive integer to follow links up to that depth, or
   `max_depth="all"` to find every reachable entry in the chosen direction.
   The SDK batches entries at the same depth to reduce RPC calls.
+- Add the experimental Wizard update method `change_field_type()` for a
+  dataset-backed integer SUM measure with an existing field update. The
+  SDK keeps the measure GUID and aggregation when it sends a float cast.
 
 ### Fixed
 

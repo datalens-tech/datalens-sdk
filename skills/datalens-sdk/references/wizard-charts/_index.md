@@ -124,6 +124,7 @@ Every cell describes only the installed package's typed public API.
 | `subtotals()` | `field: Field, *, enabled: bool` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | CU | — | — |
 | `replace_formula()` | `field: StructuralTarget, *, formula: str` | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U |
 | `change_aggregation()` | `field: DatasetField, *, aggregation: Literal['sum', 'avg', 'min', 'max', 'count', 'countunique'], name: str, guid: str \| None = None` | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U |
+| `change_field_type()` | `field: DatasetField \| str, *, data_type: Literal["float"]` | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U |
 | `replace_field()` | `old: StructuralTarget, new: Field` | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U |
 | `delete_field()` | `field: StructuralTarget` | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U |
 | `delete_filter()` | `field: StructuralTarget` | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U | U |
