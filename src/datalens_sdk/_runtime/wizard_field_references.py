@@ -11,8 +11,6 @@ FieldCarrier = Literal["slot", "filter", "sort", "hierarchy", "field_definition"
 PathPart: TypeAlias = str | int
 ReplacementContainer: TypeAlias = dict[str, object] | list[object]
 
-_DATASET_ID_KEYS = ("datasetId", "dataset_id")
-
 # These keys define the mounted field snapshot owned by SDK replacement
 # semantics. They are intentionally a policy subset, not a copy of every
 # field property exposed by the generated Wizard schema.
@@ -25,7 +23,7 @@ _MOUNTED_FIELD_OWNED_KEYS = frozenset(
         "calc_mode",
         "cast",
         "data_type",
-        *_DATASET_ID_KEYS,
+        "datasetId",
         "default_value",
         "fakeTitle",
         "format",
@@ -42,9 +40,9 @@ _MOUNTED_FIELD_OWNED_KEYS = frozenset(
         "type",
     }
 )
-_FILTER_FIELD_OWNED_KEYS = frozenset({"guid", *_DATASET_ID_KEYS, "fakeTitle"})
-_SORT_FIELD_OWNED_KEYS = frozenset({"guid", *_DATASET_ID_KEYS, "fakeTitle", "format"})
-_HIERARCHY_FIELD_OWNED_KEYS = frozenset({"guid", *_DATASET_ID_KEYS})
+_FILTER_FIELD_OWNED_KEYS = frozenset({"guid", "datasetId", "fakeTitle"})
+_SORT_FIELD_OWNED_KEYS = frozenset({"guid", "datasetId", "fakeTitle", "format"})
+_HIERARCHY_FIELD_OWNED_KEYS = frozenset({"guid", "datasetId"})
 
 # Replacement ownership is an SDK mutation policy, not a projection of every
 # property exposed by generated field schemas. New open-snapshot properties
@@ -57,7 +55,9 @@ _FIELD_SNAPSHOT_OWNED_KEYS_BY_CARRIER: Mapping[FieldCarrier, frozenset[str]] = {
     "field_definition": _MOUNTED_FIELD_OWNED_KEYS,
 }
 
-_FIELD_DEFINITION_ACTIONS = frozenset({"add", "add_field", "update", "update_field"})
+# A GUID identifies one field within its dataset. Presentation properties can
+# differ between active placements without changing that field identity.
+_ACTIVE_SNAPSHOT_CONFLICT_KEYS = frozenset({"datasetId"})
 _GUID_VALUE_KEYS = frozenset({"colorFieldGuid", "fieldGuid"})
 _GUID_MAP_KEYS = frozenset({"axisModeMap", "mountedColors", "mountedShapes"})
 
@@ -65,19 +65,6 @@ _GUID_MAP_KEYS = frozenset({"axisModeMap", "mountedColors", "mountedShapes"})
 def _guid(value: Mapping[str, object]) -> str | None:
     guid = value.get("guid")
     return guid if isinstance(guid, str) and guid else None
-
-
-def field_snapshot_dataset_id(snapshot: Mapping[str, object]) -> str | None:
-    """Return the first known dataset ID, preferring the wire spelling."""
-    for key in _DATASET_ID_KEYS:
-        value = snapshot.get(key)
-        if isinstance(value, str) and value:
-            return value
-    return None
-
-
-def _format_path(path: tuple[PathPart, ...]) -> str:
-    return "".join(f"[{part}]" if isinstance(part, int) else f".{part}" for part in path).lstrip(".")
 
 
 def _replacement_snapshot(
@@ -181,24 +168,7 @@ class WizardFieldReferences:
         self._data = data
 
     def snapshot_locations(self, *, include_definitions: bool = False) -> list[FieldSnapshotLocation]:
-        locations = list(self._iter_snapshot_locations(include_definitions=include_definitions))
-        mounted_members: list[FieldSnapshotLocation] = []
-        for location in locations:
-            if location.carrier not in {"slot", "sort"} or location.snapshot.get("data_type") != "hierarchy":
-                continue
-            fields = location.snapshot.get("fields")
-            if isinstance(fields, list):
-                mounted_members.extend(
-                    self._iter_list(
-                        fields,
-                        carrier="hierarchy",
-                        layer_id=location.layer_id,
-                        path=(*location.path, "fields"),
-                    )
-                )
-        # Include mounted-only members after the existing representatives.
-        locations.extend(mounted_members)
-        return locations
+        return list(self._iter_snapshot_locations(include_definitions=include_definitions))
 
     def guid_locations(self) -> list[FieldGuidLocation]:
         return list(self._iter_guid_locations())
@@ -206,79 +176,44 @@ class WizardFieldReferences:
     def link_field_locations(self) -> list[LinkFieldLocation]:
         return list(self._iter_link_field_locations())
 
-    def field_definition_locations(self) -> Iterator[FieldSnapshotLocation]:
-        return self._iter_definition_locations(active_only=True)
-
-    def _selected_definitions(self) -> dict[str, FieldSnapshotLocation]:
-        return {guid: location for location in self.field_definition_locations() if (guid := location.guid) is not None}
-
-    @staticmethod
-    def _active_dataset_ids(
-        locations: list[FieldSnapshotLocation],
-        definitions: Mapping[str, FieldSnapshotLocation],
-        *,
-        require_consistent: bool = True,
-    ) -> dict[str, str]:
-        origins: dict[str, tuple[str, tuple[PathPart, ...]]] = {}
-        conflicting_guids: set[str] = set()
-
-        def observe(location: FieldSnapshotLocation) -> None:
-            guid = location.guid
-            dataset_id = field_snapshot_dataset_id(location.snapshot)
-            if guid is None or dataset_id is None:
-                return
-            first_id, first_path = origins.setdefault(guid, (dataset_id, location.path))
-            if first_id != dataset_id:
-                if not require_consistent:
-                    conflicting_guids.add(guid)
-                    return
-                raise DataLensValidationError(
-                    f"Wizard chart contains conflicting snapshots for field guid {guid!r}: "
-                    f"datasetId {first_id!r} at {_format_path(first_path)} differs from "
-                    f"{dataset_id!r} at {_format_path(location.path)}."
-                )
-
-        active_guids: set[str] = set()
-        for location in locations:
-            observe(location)
-            if (guid := location.guid) is not None:
-                active_guids.add(guid)
-        for guid, definition in definitions.items():
-            if guid in active_guids:
-                observe(definition)
-        return {guid: dataset_id for guid, (dataset_id, _) in origins.items() if guid not in conflicting_guids}
-
-    def active_dataset_ids(self, *, require_consistent: bool = True) -> dict[str, str]:
-        """Collect known provenance, omitting conflicts only for intermediate mutations."""
-        return self._active_dataset_ids(
-            self.snapshot_locations(),
-            self._selected_definitions(),
-            require_consistent=require_consistent,
-        )
-
-    def validate_active_provenance(self) -> None:
-        self.active_dataset_ids()
+    def active_snapshots(self) -> list[dict[str, object]]:
+        return [location.snapshot for location in self.snapshot_locations()]
 
     def unique_active_snapshots(self) -> list[dict[str, object]]:
-        locations = self.snapshot_locations()
-        definitions = self._selected_definitions()
-        dataset_ids = self._active_dataset_ids(locations, definitions)
+        definitions = {
+            location.guid: location.snapshot
+            for location in self.snapshot_locations(include_definitions=True)
+            if location.carrier == "field_definition" and location.guid is not None
+        }
         unique: list[dict[str, object]] = []
-        seen: set[str] = set()
-        for location in locations:
-            guid = location.guid
-            snapshot = location.snapshot
+        by_guid: dict[str, dict[str, object]] = {}
+        for snapshot in self.active_snapshots():
+            guid = _guid(snapshot)
             if guid is None:
-                unique.append(dict(snapshot))
+                unique.append(snapshot)
                 continue
-            if guid in seen:
-                continue
-            seen.add(guid)
             definition = definitions.get(guid)
-            representative = {**definition.snapshot, **snapshot} if definition is not None else dict(snapshot)
-            if guid in dataset_ids:
-                representative["datasetId"] = dataset_ids[guid]
-            unique.append(representative)
+            if definition is not None:
+                snapshot = {**definition, **snapshot}
+            existing = by_guid.get(guid)
+            if existing is None:
+                by_guid[guid] = snapshot
+                unique.append(snapshot)
+                continue
+            conflicts = {
+                key
+                for key in _ACTIVE_SNAPSHOT_CONFLICT_KEYS
+                if key in existing
+                and key in snapshot
+                and existing[key] not in (None, "")
+                and snapshot[key] not in (None, "")
+                and existing[key] != snapshot[key]
+            }
+            if conflicts:
+                raise DataLensValidationError(
+                    f"Wizard chart contains conflicting snapshots for field guid {guid!r}: "
+                    f"{sorted(conflicts)} differ between active carriers."
+                )
         return unique
 
     def validate_field_replacement(self, old_guid: str, replacement: Mapping[str, object]) -> None:
@@ -287,12 +222,12 @@ class WizardFieldReferences:
             return
         replacement_guid = _guid(replacement)
         replacement_title = replacement.get("title")
-        replacement_dataset_id = field_snapshot_dataset_id(replacement)
+        replacement_dataset_id = replacement.get("datasetId")
         if replacement_guid is None or not isinstance(replacement_title, str):
             raise DataLensValidationError(
                 f"Replacing linked field {old_guid!r} requires a replacement with non-empty guid and string title."
             )
-        if replacement_dataset_id is None:
+        if not isinstance(replacement_dataset_id, str) or not replacement_dataset_id:
             raise DataLensValidationError(
                 f"Replacing linked field {old_guid!r} requires a replacement with a non-empty datasetId."
             )
@@ -385,9 +320,8 @@ class WizardFieldReferences:
     def replace_dataset(self, old_id: str, new_id: str) -> None:
         self.validate_dataset_replacement(old_id, new_id)
         for location in self.snapshot_locations(include_definitions=True):
-            for key in _DATASET_ID_KEYS:
-                if location.snapshot.get(key) == old_id:
-                    location.snapshot[key] = new_id
+            if location.snapshot.get("datasetId") == old_id:
+                location.snapshot["datasetId"] = new_id
 
     def assert_guid_absent(self, guid: str) -> None:
         stale = [location.path for location in self.snapshot_locations() if location.guid == guid]
@@ -402,7 +336,7 @@ class WizardFieldReferences:
         stale = [
             location.path
             for location in self.snapshot_locations(include_definitions=True)
-            if any(location.snapshot.get(key) == dataset_id for key in _DATASET_ID_KEYS)
+            if location.snapshot.get("datasetId") == dataset_id
         ]
         stale.extend(
             (*location.path, "dataset", "id")
@@ -466,33 +400,25 @@ class WizardFieldReferences:
                         path=("sources", "hierarchies", hierarchy_index, "fields"),
                     )
         if include_definitions:
-            yield from self._iter_definition_locations(active_only=False)
-
-    def _iter_definition_locations(self, *, active_only: bool) -> Iterator[FieldSnapshotLocation]:
-        sources = self._data.get("sources")
-        updates = sources.get("updates") if isinstance(sources, dict) else None
-        if not isinstance(updates, list):
-            return
-        for update_index, operation in enumerate(updates):
-            if not isinstance(operation, dict):
-                continue
-            action = operation.get("action")
-            if active_only and (not isinstance(action, str) or action not in _FIELD_DEFINITION_ACTIONS):
-                continue
-            field = operation.get("field")
-            if not isinstance(field, dict):
-                continue
-            yield FieldSnapshotLocation(
-                carrier="field_definition",
-                layer_id=None,
-                path=("sources", "updates", update_index, "field"),
-                reference_kind="snapshot",
-                snapshot=field,
-                _replacement_container=operation,
-                _replacement_key="field",
-                _removal_container=updates,
-                _removal_index=update_index,
-            )
+            updates = sources.get("updates")
+            if isinstance(updates, list):
+                for update_index, operation in enumerate(updates):
+                    if not isinstance(operation, dict):
+                        continue
+                    field = operation.get("field")
+                    if not isinstance(field, dict):
+                        continue
+                    yield FieldSnapshotLocation(
+                        carrier="field_definition",
+                        layer_id=None,
+                        path=("sources", "updates", update_index, "field"),
+                        reference_kind="snapshot",
+                        snapshot=field,
+                        _replacement_container=operation,
+                        _replacement_key="field",
+                        _removal_container=updates,
+                        _removal_index=update_index,
+                    )
 
     @staticmethod
     def _iter_list(

@@ -28,26 +28,12 @@
 - Preserve the API status, code, message, and request ID when a screenshot
   RPC returns a structured error in an HTTP 200 response. For a wrapped `429`,
   honor `Retry-After` and retry when the remaining timeout permits it.
-
 - Allow Wizard field inspection and update resolution when occurrences of the
   same field have different numeric formatting, date formats, or display titles.
   Reads and unrelated updates preserve each occurrence's presentation properties.
-  `chart.fields` keeps the first snapshot for each GUID and uses the known
-  dataset ID from its active references or selected chart-local definition.
-  Typed Wizard creates and updates that introduce conflicting dataset IDs for
-  the same GUID now raise `DataLensValidationError` before sending a request.
-  Use consistent dataset IDs for a shared GUID or distinct GUIDs across
-  datasets. When a new reference has an unknown dataset ID and the chart has
-  multiple datasets, pass a `DatasetField` with a known `dataset_id`. References
-  to chart-local fields and dataset parameters use their known dataset IDs.
-  Later operations in the same typed update can reuse the dataset ID from a
-  placement created earlier in that update.
-- Include mounted Wizard hierarchy members in field lookup, dataset provenance
-  validation, and structural reference updates.
-- Use the empty-string dataset ID when typed updates or revision publishing
-  resend existing Wizard fields in slots, source filters, or hierarchy
-  members with a missing or null dataset ID. Recognize the legacy
-  `dataset_id` spelling when checking provenance and write it as `datasetId`.
+  `chart.fields` lists currently referenced fields, deduplicated by GUID, with
+  the first snapshot enriched by its chart-local definition. Slot setters copy
+  the supplied snapshot's decorations when replacing the complete field list.
 
 ### Documentation
 

@@ -168,26 +168,17 @@ chart = (
 The remembered handles remain valid after re-fetch because references resolve
 by GUID. Without a saved handle, use an exact GUID through
 `chart.fields.by_guid(...)`. `chart.fields` returns `DatasetField` snapshots
-from visualization and layer slots, sorts, filters, and hierarchy members in
-both declarations and mounted items. For each GUID, it keeps the first
-encountered snapshot, considering mounted members after the other references.
-The selected chart-local add or update definition fills missing properties.
-The representative uses the known dataset ID from these references
-or that definition, raising `DataLensValidationError` if two nonempty IDs
-differ. `.raw` exposes the enriched copy. Numeric formatting, date formats,
-and title overrides may differ between occurrences. Reading `.fields` leaves
-`chart.data` unchanged.
-
-When `title` is absent, the selected snapshot's `fakeTitle` supplies its title
-and default name. Use the GUID to identify a field across placements with
-different display titles. Slot setters replace complete item lists and copy the
-supplied snapshot's supported decorations. If the dataset ID is unknown when
-creating a reference, the SDK can use the chart's sole dataset. For multiple
-datasets, pass a `DatasetField` with a known `dataset_id`. When typed updates
-and `publish_revision()` resend existing fields in recognized slots, source
-filters, or hierarchy members, they encode a missing or null dataset ID as `""`.
-`measure_format()` patches the supplied keys across presentation placements of
-the target GUID.
+and does not reconstruct handles. It includes fields currently referenced by
+visualization and layer slots, sort lists, filters, and source hierarchy
+members. For each GUID, it keeps the first encountered
+snapshot and fills missing properties from its chart-local definition. Its
+`.raw` exposes that enriched snapshot. Numeric formatting, date formats, and
+title overrides may differ between occurrences; reading `.fields` leaves them
+unchanged. When `title` is absent, the selected snapshot's `fakeTitle` supplies
+its title and default name. Lookup by another occurrence's title override is
+unavailable; use the GUID. Slot setters replace complete item lists and copy
+the supplied snapshot's supported decorations, while `measure_format()` patches
+the supplied keys across presentation placements of the target GUID.
 
 ## Chart data
 

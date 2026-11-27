@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import copy
-from dataclasses import replace
 from typing import Any, cast
 
 import pytest
@@ -10,7 +8,7 @@ from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
 from datalens_sdk.converter.wizard.converter import WizardChartConverter
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.entry_location import EntryLocation
-from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
+from datalens_sdk.errors import DataLensConfigurationError
 
 
 def _dataset() -> Dataset:
@@ -287,146 +285,6 @@ def test_label_mode_built_chart_remains_readable_with_different_placement_format
         "precision": 2,
         "labelMode": "absolute",
     }
-
-
-@pytest.mark.parametrize("dataset_ids", [["dataset-1"], ["dataset-1", "dataset-2"]], ids=["single", "multiple"])
-def test_new_placement_requires_a_resolvable_dataset_id(dataset_ids: list[str]) -> None:
-    response = _line_response()
-    entry = cast(dict[str, Any], response["entry"])
-    entry["data"]["sources"]["datasetsIds"] = dataset_ids
-    axis = entry["data"]["visualization"]["y"]["items"][0]
-    axis["datasetId"] = ""
-    chart = WizardChartConverter.to_domain(response, installation="yacloud")
-    before = copy.deepcopy(chart.data)
-    measure = chart.fields.by_guid("amount-guid")
-    assert measure.dataset_id is None
-    if len(dataset_ids) > 1:
-        with pytest.raises(DataLensValidationError, match="DatasetField"):
-            WizardChartConverter.from_domain_update(chart.update.labels([measure]))
-        secondary = replace(_dataset(), id="dataset-2")
-        measure = secondary.fields.by_guid("amount-guid")
-
-    payload = WizardChartConverter.from_domain_update(chart.update.labels([measure])).to_payload()
-    saved = cast(dict[str, Any], payload["data"])
-
-    assert saved["visualization"]["y"]["items"][0] == axis
-    assert saved["visualization"]["labels"]["items"][0]["datasetId"] == dataset_ids[-1]
-    entry["data"] = saved
-    reread = WizardChartConverter.to_domain(response, installation="yacloud").fields.by_guid("amount-guid")
-    assert reread.dataset_id == dataset_ids[-1]
-    assert chart.data == before
-
-
-def test_measure_format_patches_unknown_dataset_placement_using_its_guid() -> None:
-    response = _line_response()
-    entry = cast(dict[str, Any], response["entry"])
-    entry["data"]["sources"]["datasetsIds"] = ["dataset-1", "dataset-2"]
-    axis = entry["data"]["visualization"]["y"]["items"][0]
-    axis.update({"datasetId": "", "formatting": {"format": "number", "precision": 2}})
-    chart = WizardChartConverter.to_domain(response, installation="yacloud")
-    before = copy.deepcopy(chart.data)
-
-    payload = WizardChartConverter.from_domain_update(chart.update.measure_format("amount-guid", precision=4))
-    saved = cast(dict[str, Any], payload.to_payload()["data"])
-
-    assert saved["visualization"]["y"]["items"] == [{**axis, "formatting": {"format": "number", "precision": 4}}]
-    assert saved["sources"] == before["sources"]
-    entry["data"] = saved
-    reread = WizardChartConverter.to_domain(response, installation="yacloud").fields.by_guid("amount-guid")
-    assert reread.dataset_id is None
-    assert reread.raw["formatting"] == {"format": "number", "precision": 4}
-    assert chart.data == before
-
-
-@pytest.mark.parametrize("missing", [False, True], ids=["null", "absent"])
-def test_typed_updates_normalize_legacy_slot_dataset_id_on_the_write_copy(missing: bool) -> None:
-    response = _line_response()
-    entry = cast(dict[str, Any], response["entry"])
-    data = entry["data"]
-    data["sources"]["datasetsIds"] = ["dataset-1", "dataset-2"]
-    visualization = data["visualization"]
-    axis = visualization["y"]["items"][0]
-    if missing:
-        del axis["datasetId"]
-    else:
-        axis["datasetId"] = None
-    axis["formatting"] = {"format": "number", "precision": 2}
-    visualization["futureConfig"] = {"items": [{"guid": "opaque-id"}]}
-    legacy_filter = {"guid": "date-guid", "filter": {"operation": {"code": "ISNULL"}}, "datasetId": None}
-    data["sources"]["filters"] = [legacy_filter]
-    chart = WizardChartConverter.to_domain(response, installation="yacloud")
-    before = copy.deepcopy(chart.data)
-    measure = chart.fields.by_guid("amount-guid")
-    assert measure.dataset_id is None
-
-    secondary_measure = replace(_dataset(), id="dataset-2").fields.by_guid(measure.guid)
-    update = chart.update.labels([secondary_measure]).measure_format(measure, precision=4)
-    payload = WizardChartConverter.from_domain_update(update).to_payload()
-    saved = cast(dict[str, Any], payload["data"])
-
-    assert saved["visualization"]["y"]["items"] == [
-        {**axis, "datasetId": "", "formatting": {"format": "number", "precision": 4}}
-    ]
-    assert saved["visualization"]["labels"]["items"][0]["datasetId"] == "dataset-2"
-    assert saved["visualization"]["colors"] == visualization["colors"]
-    assert saved["visualization"]["futureConfig"] == visualization["futureConfig"]
-    assert saved["sources"]["filters"] == [{**legacy_filter, "datasetId": ""}]
-    entry["data"] = saved
-    assert WizardChartConverter.to_domain(response, installation="yacloud").fields.by_guid(measure.guid).dataset_id == (
-        "dataset-2"
-    )
-
-    publish = WizardChartConverter.from_domain_publish_revision(chart, rev_id="revision-1").to_payload()
-    assert publish["revId"] == "revision-1"
-    published = cast(dict[str, Any], publish["data"])
-    assert published["visualization"]["y"]["items"] == [{**axis, "datasetId": ""}]
-    assert chart.data == before
-
-
-def test_typed_update_normalizes_legacy_mounted_hierarchy_members() -> None:
-    response = _line_response()
-    data = cast(dict[str, Any], response["entry"])["data"]
-    hierarchy = {
-        "guid": "hierarchy-guid",
-        "title": "Date and region",
-        "data_type": "hierarchy",
-        "fields": [{"guid": "date-guid"}, {"guid": "region-guid", "datasetId": None}],
-    }
-    data["visualization"]["x"]["items"] = [hierarchy]
-    declaration = {key: value for key, value in hierarchy.items() if key != "data_type"}
-    data["sources"]["hierarchies"] = [declaration]
-    chart = WizardChartConverter.to_domain(response, installation="yacloud")
-    before = copy.deepcopy(chart.data)
-
-    payload = WizardChartConverter.from_domain_update(chart.update.legend(mode="hide")).to_payload()
-    saved = cast(dict[str, Any], payload["data"])
-
-    assert saved["visualization"]["x"]["items"] == [
-        {**hierarchy, "fields": [{"guid": "date-guid", "datasetId": ""}, {"guid": "region-guid", "datasetId": ""}]}
-    ]
-    assert saved["sources"]["hierarchies"] == [
-        {**declaration, "fields": [{"guid": "date-guid", "datasetId": ""}, {"guid": "region-guid", "datasetId": ""}]}
-    ]
-    assert chart.data == before
-
-
-def test_typed_updates_write_legacy_dataset_id_alias_using_the_wire_key() -> None:
-    response = _line_response()
-    data = cast(dict[str, Any], response["entry"])["data"]
-    axis = data["visualization"]["y"]["items"][0]
-    axis["dataset_id"] = axis.pop("datasetId")
-    chart = WizardChartConverter.to_domain(response, installation="yacloud")
-    before = copy.deepcopy(chart.data)
-
-    payload = WizardChartConverter.from_domain_update(chart.update.legend(mode="hide")).to_payload()
-    publish = WizardChartConverter.from_domain_publish_revision(chart, rev_id="revision-1").to_payload()
-
-    expected = {key: value for key, value in axis.items() if key != "dataset_id"}
-    expected["datasetId"] = "dataset-1"
-    for result in (payload, publish):
-        saved = cast(dict[str, Any], result["data"])
-        assert saved["visualization"]["y"]["items"] == [expected]
-    assert chart.data == before
 
 
 def test_dataset_parameter_is_emitted_under_document_v1_sources_updates() -> None:

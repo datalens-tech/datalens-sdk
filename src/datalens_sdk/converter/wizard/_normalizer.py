@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-import copy
 
-from datalens_sdk._runtime.wizard_field_references import field_snapshot_dataset_id
 from datalens_sdk._runtime.wizard_structure import WizardFieldStructure
 from datalens_sdk.domain.dataset import Dataset
 from datalens_sdk.domain.fields import DatasetField, WizardFieldRef, WizardHierarchy
@@ -59,72 +57,57 @@ class _Normalizer:
         local_fields: Mapping[str, Mapping[str, object]],
         hierarchies: Mapping[str, Mapping[str, object]] | None = None,
         fields: Sequence[DatasetField] | None = None,
-        field_dataset_ids: Mapping[str, str] | None = None,
-        dataset_ids: Sequence[str] = (),
         dataset_replacement: tuple[str, str] | None = None,
         field_structure: WizardFieldStructure,
     ) -> None:
+        self._dataset = dataset
         self._local_fields = local_fields
         self._hierarchies = dict(hierarchies) if hierarchies else {}
         if fields is not None:
             self._fields = list(fields)
         else:
             self._fields = list(dataset.fields) if dataset is not None else []
+        self._dataset_id = dataset.id if dataset is not None else None
         self._dataset_name = _dataset_name(dataset)
         self._dataset_replacement = dataset_replacement
-        self._dataset_ids = frozenset(self._replace_dataset_id(dataset_id) for dataset_id in dataset_ids if dataset_id)
-        self._field_dataset_ids = {
-            field.guid: field.dataset_id for field in self._fields if field.guid and field.dataset_id
-        }
-        if field_dataset_ids is not None:
-            self._field_dataset_ids.update(field_dataset_ids)
-        self._field_structure = field_structure
         self._direct_field_properties = frozenset(field_structure["direct_properties"])
+        self._update_field_properties = frozenset(field_structure["update_properties"])
+        self._nullable_update_field_properties = frozenset(field_structure["nullable_update_properties"])
 
     @property
     def direct_field_properties(self) -> frozenset[str]:
         return self._direct_field_properties
 
-    def for_dataset(self, dataset: Dataset) -> _Normalizer:
-        return _Normalizer(
-            dataset=dataset,
-            local_fields=self._local_fields,
-            hierarchies=self._hierarchies,
-            field_structure=self._field_structure,
-        )
+    @property
+    def update_field_properties(self) -> frozenset[str]:
+        return self._update_field_properties
+
+    @property
+    def nullable_update_field_properties(self) -> frozenset[str]:
+        return self._nullable_update_field_properties
+
+    @property
+    def field_structure(self) -> WizardFieldStructure:
+        return {
+            "direct_properties": tuple(sorted(self._direct_field_properties)),
+            "update_properties": tuple(sorted(self._update_field_properties)),
+            "nullable_update_properties": tuple(sorted(self._nullable_update_field_properties)),
+        }
 
     def for_hierarchy_fields(self) -> _Normalizer:
         "Return a copy of this normalizer that skips hierarchy lookups."
-        clone = copy.copy(self)
-        clone._hierarchies = {}
+        clone: _Normalizer = object.__new__(_Normalizer)
+        clone._dataset = self._dataset
+        clone._local_fields = self._local_fields
+        clone._hierarchies = {}  # no hierarchy lookup inside hierarchy fields
+        clone._fields = self._fields
+        clone._dataset_id = self._dataset_id
+        clone._dataset_name = self._dataset_name
+        clone._dataset_replacement = self._dataset_replacement
+        clone._direct_field_properties = self._direct_field_properties
+        clone._update_field_properties = self._update_field_properties
+        clone._nullable_update_field_properties = self._nullable_update_field_properties
         return clone
-
-    def _replace_dataset_id(self, dataset_id: str) -> str:
-        if self._dataset_replacement is not None and dataset_id == self._dataset_replacement[0]:
-            return self._dataset_replacement[1]
-        return dataset_id
-
-    def dataset_id_for(self, snapshot: Mapping[str, object], *, fallback: str | None) -> str | None:
-        dataset_id = field_snapshot_dataset_id(snapshot)
-        if dataset_id is not None:
-            return dataset_id
-        guid = snapshot.get("guid")
-        if not isinstance(guid, str):
-            return None
-        known_id = self._field_dataset_ids.get(guid)
-        if known_id is not None:
-            return self._replace_dataset_id(known_id)
-        local_field = self._local_fields.get(guid)
-        if local_field is not None and local_field.get("guid") == guid:
-            local_id = field_snapshot_dataset_id(local_field)
-            if local_id is not None:
-                return self._replace_dataset_id(local_id)
-        if len(self._dataset_ids) > 1:
-            raise DataLensValidationError(
-                f"Cannot determine datasetId for Wizard field guid {guid!r} with multiple datasets "
-                f"{sorted(self._dataset_ids)!r}. Pass a DatasetField with a known dataset."
-            )
-        return next(iter(self._dataset_ids), fallback)
 
     def normalize(self, items: Sequence[WizardFieldRef]) -> list[dict[str, object]]:
         out: list[dict[str, object]] = []
@@ -159,8 +142,9 @@ class _Normalizer:
                 bound_dataset_name=self._dataset_name or None,
             )
             snapshot = {k: v for k, v in snapshot.items() if v is not None}
-            dataset_id = field_snapshot_dataset_id(snapshot)
-            if dataset_id is not None:
-                snapshot["datasetId"] = self._replace_dataset_id(dataset_id)
+            if self._dataset_replacement is not None and snapshot.get("datasetId") == self._dataset_replacement[0]:
+                snapshot["datasetId"] = self._dataset_replacement[1]
+            if self._dataset_id and not snapshot.get("datasetId"):
+                snapshot["datasetId"] = self._dataset_id
             out.append(snapshot)
         return out

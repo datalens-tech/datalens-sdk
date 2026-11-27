@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 import copy
 from dataclasses import dataclass
 import re
 from typing import Protocol, cast
 
 from datalens_sdk._generated import dto as generated_dto
-from datalens_sdk._runtime.wizard_field_references import WizardFieldReferences
 from datalens_sdk._runtime.wizard_structure import WizardFieldStructure, WizardVisualizationRegistry
 from datalens_sdk.converter._navigation import name_from_key
 from datalens_sdk.converter._utils import _optional_str
@@ -233,56 +232,6 @@ def _generated_contract(
     return source if isinstance(source, WizardGeneratedContract) else validate_wizard_generated_contract(source)
 
 
-def _normalize_legacy_field_items(items: JsonValue) -> None:
-    if not isinstance(items, list):
-        return
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        if item.get("data_type") == "hierarchy":
-            _normalize_legacy_field_items(item.get("fields"))
-        elif item.get("type") != "PSEUDO" and isinstance(item.get("guid"), str):
-            alias = item.pop("dataset_id", None)
-            if item.get("datasetId") in (None, ""):
-                # The write DTO requires a string. An empty ID keeps the origin unknown.
-                item["datasetId"] = "" if alias is None else alias
-
-
-def _normalize_legacy_slots(container: WizardJsonObject, slot_names: Iterable[str]) -> None:
-    for name in slot_names:
-        slot = container.get(name)
-        if isinstance(slot, dict):
-            _normalize_legacy_field_items(slot.get("items"))
-
-
-def _normalize_legacy_dataset_ids(data: WizardJsonObject, structure: WizardVisualizationRegistry) -> None:
-    sources = data.get("sources")
-    if isinstance(sources, dict):
-        _normalize_legacy_field_items(sources.get("filters"))
-        hierarchies = sources.get("hierarchies")
-        if isinstance(hierarchies, list):
-            for hierarchy in hierarchies:
-                if isinstance(hierarchy, dict):
-                    _normalize_legacy_field_items(hierarchy.get("fields"))
-
-    visualization = data.get("visualization")
-    if not isinstance(visualization, dict):
-        return
-    visualization_type = visualization.get("type")
-    if not isinstance(visualization_type, str) or visualization_type not in structure:
-        return
-    visualization_structure = structure[visualization_type]
-    _normalize_legacy_slots(visualization, visualization_structure["slots"])
-    layers = visualization.get("layers")
-    if not isinstance(layers, list):
-        return
-    layer_structures = visualization_structure["layers"]
-    for layer in layers:
-        layer_type = layer.get("type") if isinstance(layer, dict) else None
-        if isinstance(layer, dict) and isinstance(layer_type, str) and layer_type in layer_structures:
-            _normalize_legacy_slots(layer, layer_structures[layer_type]["slots"])
-
-
 class WizardChartConverter:
     @staticmethod
     def from_domain_create(
@@ -297,7 +246,6 @@ class WizardChartConverter:
             visualization_structure=generated.visualization_structure,
             field_structure=generated.field_structure,
         )
-        WizardFieldReferences(data).validate_active_provenance()
         key = key_from_location(spec.location, name=spec.name)
         annotation: dict[str, object] | None = None
         if spec.description:
@@ -327,7 +275,6 @@ class WizardChartConverter:
             visualization_structure=generated.visualization_structure,
             field_structure=generated.field_structure,
         )
-        _normalize_legacy_dataset_ids(data, generated.visualization_structure)
         annotation = {"description": update.description_value} if update.description_value is not None else None
         return generated.update_dto(
             chart_id=cast(str, chart.id),
@@ -351,7 +298,6 @@ class WizardChartConverter:
         generated = _generated_contract(dto_module)
         generated.require_available()
         data = copy.deepcopy(normalize_json_object(chart.data, context="Wizard V1 publish snapshot"))
-        _normalize_legacy_dataset_ids(data, generated.visualization_structure)
         raw_annotation = chart.raw.get("annotation")
         annotation = (
             normalize_json_object(raw_annotation, context="Wizard V1 publish annotation")

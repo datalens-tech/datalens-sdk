@@ -98,7 +98,22 @@ def _primary_dataset_id(data: WizardJsonObject) -> str | None:
 
 
 def _field_definitions_from_data(data: WizardJsonObject) -> list[Mapping[str, object]]:
-    return [location.snapshot for location in WizardFieldReferences(data).field_definition_locations()]
+    updates = _sources(data).get("updates")
+    if not isinstance(updates, list):
+        return []
+    fields: list[Mapping[str, object]] = []
+    for operation in updates:
+        if not isinstance(operation, Mapping) or operation.get("action") not in {
+            "add",
+            "add_field",
+            "update",
+            "update_field",
+        }:
+            continue
+        field = operation.get("field")
+        if isinstance(field, Mapping):
+            fields.append(field)
+    return fields
 
 
 def _local_fields_from_data(data: WizardJsonObject) -> dict[str, dict[str, object]]:
@@ -157,18 +172,12 @@ def _normalizer(
     update: WizardChartUpdate,
     *,
     field_structure: WizardFieldStructure,
-    use_staged_provenance: bool = False,
 ) -> _Normalizer:
-    staged_dataset_ids = (
-        WizardFieldReferences(data).active_dataset_ids(require_consistent=False) if use_staged_provenance else None
-    )
     return _Normalizer(
         dataset=None,
         local_fields=_local_fields_for_update(data, update, field_structure=field_structure),
         fields=list(update.chart.fields),
-        field_dataset_ids=staged_dataset_ids,
         hierarchies=_hierarchies_for_update(data, update),
-        dataset_ids=[item for item in _dataset_ids(data) if isinstance(item, str)],
         dataset_replacement=update.dataset_replacement,
         field_structure=field_structure,
     )
@@ -518,9 +527,7 @@ def _apply_hierarchies(
         for index, item in enumerate(hierarchies)
         if isinstance(item, Mapping) and isinstance(item.get("guid"), str)
     }
-    normalizer = _normalizer(
-        data, update, field_structure=field_structure, use_staged_provenance=True
-    ).for_hierarchy_fields()
+    normalizer = _normalizer(data, update, field_structure=field_structure).for_hierarchy_fields()
     dataset_id = _primary_dataset_id(data)
     visualization = _known_visualization(data, mutation_requested=True)
     for spec in update.new_hierarchies:
@@ -571,9 +578,7 @@ def _apply_filters_and_sort(
     *,
     field_structure: WizardFieldStructure,
 ) -> None:
-    if not update.pending_filters and not update.sort_direction_items:
-        return
-    normalizer = _normalizer(data, update, field_structure=field_structure, use_staged_provenance=True)
+    normalizer = _normalizer(data, update, field_structure=field_structure)
     dataset_id = _primary_dataset_id(data)
     if update.pending_filters:
         sources = _sources(data)
@@ -615,12 +620,7 @@ def _apply_encodings_and_decorations(
     field_structure: WizardFieldStructure,
 ) -> None:
     visualization = _known_visualization(data, mutation_requested=True)
-    normalizer = _normalizer(
-        data,
-        update,
-        field_structure=field_structure,
-        use_staged_provenance=update.color_encoding is not None or update.shape_encoding is not None,
-    )
+    normalizer = _normalizer(data, update, field_structure=field_structure)
     dataset_id = _primary_dataset_id(data)
     if _has_layers(visualization) and any(
         (update.color_encoding is not None, update.colors_palette is not None, update.shape_encoding is not None)
@@ -651,11 +651,13 @@ def _apply_encodings_and_decorations(
         visualization,
         update.item_mutations,
         normalizer=normalizer,
+        dataset_id=dataset_id,
     )
     _apply_measure_formats(
         visualization,
         update.pending_measure_formats,
         normalizer=normalizer,
+        dataset_id=dataset_id,
     )
 
 
@@ -864,38 +866,30 @@ def _validate_update_structure(
             )
 
 
-def _has_field_reference_mutations(update: WizardChartUpdate) -> bool:
+def _has_update_mutations(update: WizardChartUpdate) -> bool:
     return any(
         (
             update.slot_edits,
+            update.chart_settings_edits,
+            update.slot_settings_edits,
             update.field_replacements,
-            update.aggregation_field_replacements,
             update.deleted_field_guids,
             update.deleted_filter_guids,
             update.dataset_replacement,
+            update.item_mutations,
             update.pending_filters,
             update.sort_direction_items,
+            update.colors_palette is not None,
             update.color_encoding is not None,
+            update.pending_measure_formats,
             update.shape_encoding is not None,
+            update.formula_replacements,
             update.new_hierarchies,
             update.local_field_additions,
-            update.target_visualization_type is not None,
-        )
-    )
-
-
-def _has_update_mutations(update: WizardChartUpdate) -> bool:
-    return _has_field_reference_mutations(update) or any(
-        (
-            update.chart_settings_edits,
-            update.slot_settings_edits,
-            update.item_mutations,
-            update.colors_palette is not None,
-            update.pending_measure_formats,
-            update.formula_replacements,
             update.geopoints_config,
             update.label_mode_value is not None,
             update.labels_position_value is not None,
+            update.target_visualization_type is not None,
         )
     )
 
@@ -960,5 +954,3 @@ def _apply_update_operations(
         references.assert_guid_absent(guid)
     if update.dataset_replacement is not None:
         references.assert_dataset_absent(update.dataset_replacement[0])
-    if _has_field_reference_mutations(update):
-        references.validate_active_provenance()
