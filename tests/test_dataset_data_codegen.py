@@ -58,7 +58,8 @@ def test_dataset_data_dto_fields_and_types_follow_openapi(tmp_path: Path) -> Non
     assert "format_hint: None | str" in block or "format_hint: str | None" in block
     assert "type: str" in block
     assert "'future_type'" not in block
-    assert "workbook_id" not in block
+    assert "workbook_id:" in block
+    assert "alias='workbookId'" in block
     assert "le=100000" in block
     assert "columns: list[" in block
     assert "alias='schema'" in block

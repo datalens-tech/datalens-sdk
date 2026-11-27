@@ -29,6 +29,11 @@
   RPC returns a structured error in an HTTP 200 response. For a wrapped `429`,
   honor `Retry-After` and retry when the remaining timeout permits it.
 
+- Preserve workbook context for datasets accessed through a shared connection.
+  Dataset data queries, typed updates, and raw replacements can use the
+  workbook context supplied when the dataset was fetched or an explicit
+  override. Dataset creation uses the destination workbook for validation.
+
 ### Documentation
 
 - Clarify typed connection creates, including the `ai_access_level` default

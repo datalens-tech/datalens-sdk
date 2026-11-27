@@ -41,6 +41,20 @@ result = client.data.get_dataset_data(
 result = dataset.get_dataset_data(columns=[date, sales])
 ```
 
+When a dataset uses a shared connection, pass the accessing workbook to
+either entry point:
+
+```python
+result = client.data.get_dataset_data(dataset_id=dataset_id, columns=[date, sales], workbook_id="wb-reader")
+
+dataset = client.get.dataset(by_id=dataset_id, workbook_id="wb-reader")
+result = dataset.get_dataset_data(columns=[date, sales])
+```
+
+The bound method uses an explicit `workbook_id` first. It then reuses the
+context from the fetch, or the dataset's workbook metadata when no context
+was supplied. This does not change the dataset's location.
+
 The SDK always sends `limit=500` unless an explicit limit is provided. This
 keeps an accidental read small while still allowing an explicit value from 1
 through 100000.

@@ -13,7 +13,7 @@ from datalens_sdk.domain.data import DatasetData, DatasetDataQuery
 from datalens_sdk.domain.dataset import Dataset, DatasetCreate, Source
 from datalens_sdk.domain.dataset_types import RawSchemaColumnPayload
 from datalens_sdk.domain.dataset_update import DatasetUpdate
-from datalens_sdk.domain.entry_location import EntryLocation
+from datalens_sdk.domain.entry_location import EntryLocation, workbook_id_from_location
 from datalens_sdk.domain.entry_types import EntryBranch, EntryUpdateMode
 from datalens_sdk.domain.navigation import EntryRelation, Pager, RelationOptions
 from datalens_sdk.domain.ports import DatasetDataOperations, DatasetOperations, NavigationOperations
@@ -147,6 +147,8 @@ class DatasetService(DatasetOperations):
                 existing_state=None,
                 refresh_sources=True,
                 actions=spec.actions,
+                workbook_id=workbook_id_from_location(spec.location),
+                dto_module=self._dto_module,
             )
             validated = self._api.validate(validate_payload)
             state = DatasetConverter.state_from_read_response(validated)
@@ -211,6 +213,7 @@ class DatasetService(DatasetOperations):
             installation=self._installation,
             operations=self,
             id_fallback=dataset_id,
+            workbook_context_id=workbook_id,
             dto_module=self._dto_module,
         )
 
@@ -223,7 +226,7 @@ class DatasetService(DatasetOperations):
         if not dataset_id:
             raise ValueError("Cannot update dataset without an id")
         if spec.actions:
-            validate_payload = DatasetConverter.from_domain_validate(spec)
+            validate_payload = DatasetConverter.from_domain_validate(spec, dto_module=self._dto_module)
             validated = self._api.validate(validate_payload)
             state = DatasetConverter.state_from_read_response(validated)
             if spec.name_change is not None:
@@ -243,6 +246,7 @@ class DatasetService(DatasetOperations):
             location=spec.location,
             name=spec.name_change or spec.name,
             id_fallback=dataset_id,
+            workbook_context_id=spec.workbook_id,
             dto_module=self._dto_module,
         )
 
@@ -256,6 +260,7 @@ class DatasetService(DatasetOperations):
             location=spec.target_location,
             name=spec.target_name,
             id_fallback=spec.target_id,
+            workbook_context_id=spec.target_workbook_id,
             dto_module=self._dto_module,
         )
 
@@ -291,8 +296,11 @@ class DatasetService(DatasetOperations):
         source: Source,
         *,
         strict: bool = False,
+        workbook_id: str | None = None,
     ) -> tuple[tuple[RawSchemaColumnPayload, ...], bool]:
-        payload = DatasetConverter.build_validate_source_payload(source)
+        payload = DatasetConverter.build_validate_source_payload(
+            source, workbook_id=workbook_id, dto_module=self._dto_module
+        )
         response = self._api.validate(payload)
         schema, valid = DatasetConverter.parse_validate_source_response(response, source.id)
         if not valid or not schema:

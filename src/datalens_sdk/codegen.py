@@ -2255,16 +2255,6 @@ def build_dataset_data_contract_meta(spec: Mapping[str, object]) -> DatasetDataC
         _normalize_wizard_schema(request_schema),
         context="getDatasetData request schema",
     )
-    request_properties = _string_object_dict(
-        normalized_request.get("properties"),
-        context="getDatasetData request schema.properties",
-    )
-    request_properties.pop("workbookId", None)
-    normalized_request["properties"] = request_properties
-    required = normalized_request.get("required")
-    if isinstance(required, list):
-        normalized_request["required"] = [item for item in required if item != "workbookId"]
-
     normalized_response = _string_object_dict(
         _normalize_wizard_schema(response_schema),
         context="getDatasetData response schema",
@@ -5681,9 +5671,13 @@ class DatasetValidateDTO(BaseModel):
 
     dataset_id: str = Field(serialization_alias="datasetId")
     data: Mapping[str, object]
+    workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
 
     def to_payload(self) -> dict[str, object]:
-        return {{"datasetId": self.dataset_id, "data": dict(self.data)}}
+        payload: dict[str, object] = {{"datasetId": self.dataset_id, "data": dict(self.data)}}
+        if self.workbook_id is not None:
+            payload["workbookId"] = self.workbook_id
+        return payload
 
 
 class DatasetUpdateDataDTO(BaseModel):
@@ -5704,9 +5698,13 @@ class DatasetUpdateDTO(BaseModel):
 
     dataset_id: str = Field(serialization_alias="datasetId")
     data: DatasetUpdateDataDTO
+    workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
 
     def to_payload(self) -> dict[str, object]:
-        return {{"datasetId": self.dataset_id, "data": self.data.to_payload()}}
+        payload: dict[str, object] = {{"datasetId": self.dataset_id, "data": self.data.to_payload()}}
+        if self.workbook_id is not None:
+            payload["workbookId"] = self.workbook_id
+        return payload
 
 
 class EntryMoveDTO(BaseModel):

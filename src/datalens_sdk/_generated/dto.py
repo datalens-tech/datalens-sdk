@@ -263,6 +263,7 @@ class DatasetDataArgsDTO(BaseModel):
     offset: Annotated[int, Field(ge=0)] = _UNVALIDATED_NONE_DEFAULT
     params: list[DatasetDataArgsParamsItemDTO] = _UNVALIDATED_NONE_DEFAULT
     sort: list[DatasetDataArgsSortItemDTO] = _UNVALIDATED_NONE_DEFAULT
+    workbook_id: None | Annotated[str, Field(min_length=1)] = Field(default=_UNVALIDATED_NONE_DEFAULT, alias='workbookId')
 
 class DatasetDataSchemaItemReadDTO(BaseModel):
     model_config = ConfigDict(extra='ignore', populate_by_name=True, strict=True)
@@ -369,9 +370,13 @@ class DatasetValidateDTO(BaseModel):
 
     dataset_id: str = Field(serialization_alias="datasetId")
     data: Mapping[str, object]
+    workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
 
     def to_payload(self) -> dict[str, object]:
-        return {"datasetId": self.dataset_id, "data": dict(self.data)}
+        payload: dict[str, object] = {"datasetId": self.dataset_id, "data": dict(self.data)}
+        if self.workbook_id is not None:
+            payload["workbookId"] = self.workbook_id
+        return payload
 
 
 class DatasetUpdateDataDTO(BaseModel):
@@ -392,9 +397,13 @@ class DatasetUpdateDTO(BaseModel):
 
     dataset_id: str = Field(serialization_alias="datasetId")
     data: DatasetUpdateDataDTO
+    workbook_id: str | None = Field(default=None, serialization_alias="workbookId")
 
     def to_payload(self) -> dict[str, object]:
-        return {"datasetId": self.dataset_id, "data": self.data.to_payload()}
+        payload: dict[str, object] = {"datasetId": self.dataset_id, "data": self.data.to_payload()}
+        if self.workbook_id is not None:
+            payload["workbookId"] = self.workbook_id
+        return payload
 
 
 class EntryMoveDTO(BaseModel):

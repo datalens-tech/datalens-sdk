@@ -60,6 +60,8 @@ class DatasetDataConverter:
             "columns": list(query.column_guids()),
             "limit": query.limit,
         }
+        if query.workbook_id is not None:
+            payload["workbookId"] = query.workbook_id
         if query.filters:
             payload["filters"] = [
                 {

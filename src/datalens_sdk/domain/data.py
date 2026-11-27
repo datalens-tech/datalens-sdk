@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import math
 from typing import TypeAlias, get_args
 
@@ -91,6 +91,7 @@ class DatasetDataQuery:
     sort: tuple[DatasetDataSort, ...] = ()
     limit: int = 500
     offset: int | None = None
+    workbook_id: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         if not self.dataset_id:
@@ -125,6 +126,7 @@ class DatasetDataQuery:
         sort: Sequence[DatasetDataSort] = (),
         limit: int = 500,
         offset: int | None = None,
+        workbook_id: str | None = None,
     ) -> Self:
         if isinstance(columns, str):
             raise DataLensValidationError("columns must be a sequence of field references, not a string")
@@ -136,6 +138,7 @@ class DatasetDataQuery:
             sort=tuple(sort),
             limit=limit,
             offset=offset,
+            workbook_id=workbook_id,
         )
 
     def column_guids(self) -> tuple[str, ...]:
