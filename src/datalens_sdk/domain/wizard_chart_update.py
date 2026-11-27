@@ -34,7 +34,7 @@ from datalens_sdk.domain.fields import (
     WizardLocalField,
 )
 from datalens_sdk.domain.ports import ChartOperations
-from datalens_sdk.errors import DataLensConfigurationError
+from datalens_sdk.errors import DataLensConfigurationError, DataLensValidationError
 
 if TYPE_CHECKING:
     from datalens_sdk.domain.wizard_chart import WizardChart
@@ -57,6 +57,7 @@ class WizardChartUpdate(_ChartMutationsMixin):
         self._target_visualization_type: str | None = None
         self._dataset_replacement: tuple[str, str] | None = None
         self._replace_formulas: dict[str, str] = {}
+        self._field_type_changes: set[str] = set()
         self._new_hierarchies: list[dict[str, object]] = []
         self._local_field_additions: list[dict[str, object]] = []
         self._aggregation_field_replacements: dict[str, dict[str, object]] = {}
@@ -173,6 +174,10 @@ class WizardChartUpdate(_ChartMutationsMixin):
     @property
     def formula_replacements(self) -> Mapping[str, str]:
         return self._replace_formulas
+
+    @property
+    def field_type_changes(self) -> frozenset[str]:
+        return frozenset(self._field_type_changes)
 
     @property
     def new_hierarchies(self) -> Sequence[Mapping[str, object]]:
@@ -427,6 +432,35 @@ class WizardChartUpdate(_ChartMutationsMixin):
             name=name,
             guid=guid,
         )
+        return self
+
+    def change_field_type(self, field: DatasetField | str, *, data_type: Literal["float"]) -> Self:
+        """Stage a float cast on a placed dataset-backed SUM measure.
+
+        A string identifies the field by its exact GUID. The update requires
+        an existing Wizard field definition for the measure.
+        """
+        guid = _field_guid(field)
+        if data_type not in ("float",):
+            raise DataLensValidationError(f"change_field_type({guid!r}) supports only data_type='float'.")
+        placed = self._chart.fields.by_guid(guid)
+        if (
+            placed.type != "MEASURE"
+            or placed.aggregation != "sum"
+            or placed.calc_mode != "direct"
+            or placed.raw.get("autoaggregated") is True
+            or placed.raw.get("local") is True
+            or not placed.source
+            or placed.dataset_id not in self._chart.dataset_ids
+        ):
+            raise DataLensValidationError(
+                f"change_field_type({guid!r}) requires a dataset-backed measure with explicit SUM."
+            )
+        if placed.cast == placed.data_type == "float":
+            return self
+        if placed.cast != "integer" or placed.data_type != "integer":
+            raise DataLensValidationError(f"change_field_type({guid!r}) requires an integer source cast and data type.")
+        self._field_type_changes.add(guid)
         return self
 
     def measure_format(

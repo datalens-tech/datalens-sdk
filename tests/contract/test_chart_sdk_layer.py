@@ -128,6 +128,154 @@ def _sparse_wizard_response(*, entry_id: str) -> dict[str, object]:
     }
 
 
+def _wizard_sum_cast_data(
+    *, data_type: str = "integer", aggregation: str = "sum", expanded: bool = False
+) -> dict[str, object]:
+    amount = {"guid": "g_amount", "datasetId": "ds-2", "fakeTitle": "Total"}
+    if expanded:
+        amount.update(cast=data_type, data_type=data_type)
+    return {
+        "sources": {
+            "datasetsIds": ["ds-1", "ds-2"],
+            "updates": [
+                {"action": "update_field", "field": {"guid": "g_date", "title": "Date"}},
+                {
+                    "action": "update_field",
+                    "field": {
+                        "guid": "g_amount",
+                        "datasetId": "ds-2",
+                        "title": "Amount",
+                        "calc_mode": "direct",
+                        "source": "amount",
+                        "type": "MEASURE",
+                        "aggregation": aggregation,
+                        "autoaggregated": False,
+                        "cast": data_type,
+                        "data_type": data_type,
+                    },
+                },
+            ],
+        },
+        "visualization": {
+            "type": "line",
+            "x": {"items": [{"guid": "g_date", "datasetId": "ds-1"}]},
+            "y": {"items": [amount]},
+            "sort": {"items": [{**amount, "direction": "DESC"}]},
+        },
+    }
+
+
+def _wizard_sum_cast_response(data: dict[str, object]) -> dict[str, object]:
+    response = _wizard_response()
+    cast(dict[str, object], response["entry"])["data"] = data
+    return response
+
+
+@pytest.mark.parametrize("expanded", [False, True], ids=["compact", "expanded"])
+def test_wizard_sum_cast_keeps_field_identity(expanded: bool) -> None:
+    original = _wizard_sum_cast_data(expanded=expanded)
+    expected = _wizard_sum_cast_data(data_type="float", expanded=expanded)
+    recorder = _RecordedTransport(
+        {
+            "/rpc/getWizardChart": httpx.Response(200, json=_wizard_sum_cast_response(original)),
+            "/rpc/updateWizardChart": httpx.Response(200, json=_wizard_sum_cast_response(expected)),
+        }
+    )
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as client:
+        chart = client.get.wizard_chart(by_id="chart-1")
+        original_field = chart.fields.by_guid("g_amount")
+        updated = (
+            chart.update.change_field_type(original_field, data_type="float")
+            .change_field_type("g_amount", data_type="float")
+            .execute()
+        )
+
+    assert recorder.paths() == ["/rpc/getWizardChart", "/rpc/updateWizardChart"]
+    payload = recorder.request_json(1)
+    assert payload == {"chartId": "chart-1", "mode": "save", "data": expected}
+    if not expanded:
+        generated_dto.WizardV1ConfigSchemaDTO.model_validate(payload["data"])
+    assert chart.data == original
+    changed = updated.fields.by_guid("g_amount")
+    assert (changed.cast, changed.data_type, changed.aggregation, changed.dataset_id) == (
+        "float",
+        "float",
+        "sum",
+        "ds-2",
+    )
+    assert updated.dataset_ids == ("ds-1", "ds-2")
+
+
+@pytest.mark.parametrize(
+    ("scenario", "message"),
+    [
+        ("unknown_guid", "g_missing"),
+        ("other_aggregation", "SUM"),
+        ("missing_definition", "existing update_field"),
+        ("deleted_definition", "existing update_field"),
+        ("delete_field", "conflicts"),
+        ("replace_field", "conflicts"),
+        ("change_aggregation", "conflicts"),
+        ("replace_dataset", "conflicts"),
+    ],
+)
+def test_wizard_sum_cast_rejects_unsupported_or_conflicting_update_before_rpc(scenario: str, message: str) -> None:
+    data = _wizard_sum_cast_data(aggregation="count" if scenario == "other_aggregation" else "sum")
+    sources = cast(dict[str, object], data["sources"])
+    updates = cast(list[dict[str, object]], sources["updates"])
+    if scenario in {"missing_definition", "deleted_definition"}:
+        field = cast(dict[str, object], updates[-1]["field"])
+        visualization = cast(dict[str, object], data["visualization"])
+        visualization["y"] = {"items": [{**field, "fakeTitle": "Total"}]}
+        if scenario == "missing_definition":
+            updates.pop()
+        else:
+            updates.append({"action": "delete_field", "field": {"guid": "g_amount"}})
+    recorder = _RecordedTransport(
+        {
+            "/rpc/getWizardChart": httpx.Response(200, json=_wizard_sum_cast_response(data)),
+        }
+    )
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as client:
+        chart = client.get.wizard_chart(by_id="chart-1")
+        guid = "g_missing" if scenario == "unknown_guid" else "g_amount"
+        if scenario in {"unknown_guid", "other_aggregation"}:
+            with pytest.raises(dl.DataLensValidationError, match=message):
+                chart.update.change_field_type(guid, data_type="float")
+        else:
+            update = chart.update.change_field_type(guid, data_type="float")
+            if scenario == "delete_field":
+                update.delete_field(guid)
+            elif scenario == "replace_field":
+                update.replace_field(guid, "g_date")
+            elif scenario == "change_aggregation":
+                update.change_aggregation(chart.fields.by_guid(guid), aggregation="avg", name="Average")
+            elif scenario == "replace_dataset":
+                update.replace_dataset(old="ds-2", new="ds-3")
+            with pytest.raises(dl.DataLensValidationError, match=message):
+                update.execute()
+
+    assert recorder.paths() == ["/rpc/getWizardChart"]
+
+
+def test_wizard_sum_cast_does_not_bypass_published_revision_guard_when_already_float() -> None:
+    response = _wizard_sum_cast_response(_wizard_sum_cast_data(data_type="float"))
+    cast(dict[str, object], response["entry"])["savedId"] = "revision-2"
+    recorder = _RecordedTransport({"/rpc/getWizardChart": httpx.Response(200, json=response)})
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as client:
+        chart = client.get.wizard_chart(by_id="chart-1", branch="published")
+        with pytest.raises(dl.DataLensConfigurationError, match="newer saved draft"):
+            chart.update.change_field_type("g_amount", data_type="float").mode("publish").execute()
+
+    assert recorder.paths() == ["/rpc/getWizardChart"]
+
+
 def test_wizard_create_payload_carries_v3_field_references() -> None:
     recorder = _RecordedTransport({"/rpc/createWizardChart": httpx.Response(200, json=_wizard_response())})
     client = dl.DataLensClientYC(auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler))

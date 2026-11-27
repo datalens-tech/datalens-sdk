@@ -340,6 +340,7 @@ do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 | `.add_local_field(field: WizardLocalField)` | C/U | Add a formula dimension/measure handle created with `WizardLocalField.dimension(...)` or `.measure(...)`. |
 | `.add_aggregated_measure(field: WizardAggregatedMeasure)` | C/U | Add a handle that aggregates its source Dataset dimension; existing measures are rejected. |
 | `.change_aggregation(field: DatasetField, *, aggregation, name, guid=None)` | U | Replace a placed dimension or manually aggregated measure; `name` is required. |
+| `.change_field_type(field: DatasetField \| str, *, data_type: Literal["float"])` | U | Experimental. Stage a float cast for a placed dataset-backed integer SUM measure with an existing field update. |
 | `.add_hierarchy(hierarchy: WizardHierarchy)` | C/U | Add a hierarchy handle; its members are frozen to an ordered tuple. |
 | `.replace_formula(field, *, formula: str)` | U | Replace a chart-local formula; target by its saved `WizardLocalField`, a `DatasetField` snapshot, or exact GUID, never by title. |
 | `.add_filter(field, *, operation: FilterOperation, values=())` | C/U | Append a filter. Null checks normally use empty `values`. |
@@ -353,6 +354,14 @@ do not guess which active fields belong to `x`, `y`, `y2`, or another group.
 
 `aggregation` for aggregated-measure operations is one of `"sum"`, `"avg"`,
 `"min"`, `"max"`, `"count"`, or `"countunique"`.
+
+The experimental `change_field_type()` uses an exact GUID or a fetched
+`DatasetField`. The loaded chart must already contain a complete update
+definition for a dataset-backed integer measure with explicit SUM. The
+SDK sends the new cast and data type in that definition and keeps the same
+field identity, aggregation, and dataset. Server execution of the cast
+before SUM has not been verified on DataLens On-premises. Confirm the
+calculation in the chart before depending on it.
 
 ### Titles, Labels, Legend, and Axes
 
