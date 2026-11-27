@@ -28,6 +28,9 @@
 - Preserve the API status, code, message, and request ID when a screenshot
   RPC returns a structured error in an HTTP 200 response. For a wrapped `429`,
   honor `Retry-After` and retry when the remaining timeout permits it.
+- Accept custom categorical palette IDs on Wizard charts. Dimension color
+  updates keep compatible palettes and preserve manual value colors for the
+  same field. The SDK warns when a change clears saved color assignments.
 
 ### Documentation
 

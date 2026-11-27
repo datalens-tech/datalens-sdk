@@ -35,8 +35,6 @@ VALID_GRADIENT_PALETTES: frozenset[str] = frozenset(
     }
 )
 
-VALID_PALETTES: frozenset[str] = VALID_DISCRETE_PALETTES | VALID_GRADIENT_PALETTES
-
 SEQUENTIAL_GRADIENT_PALETTES: frozenset[str] = frozenset(
     {
         "blue",

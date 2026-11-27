@@ -627,12 +627,14 @@ def _apply_encodings_and_decorations(
     ):
         raise DataLensConfigurationError("Layered Wizard V1 encodings must be configured by add_layer().")
     if update.color_encoding is not None:
+        previous_visualization = update.chart.data.get("visualization")
         _apply_color_encoding(
             visualization,
             update.color_encoding,
             normalizer=normalizer,
             dataset_id=dataset_id,
             palette=update.colors_palette,
+            previous_visualization=previous_visualization if isinstance(previous_visualization, Mapping) else None,
         )
     elif update.colors_palette is not None:
         _apply_palette_to_visualization(

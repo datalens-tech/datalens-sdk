@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Literal, cast
 
 from datalens_sdk._runtime.chart_constants import (
     VALID_GRADIENT_PALETTES,
-    VALID_PALETTES,
     gradient_types_for_palette,
 )
 from datalens_sdk._runtime.chart_wire import build_background_settings, build_bars_settings
@@ -43,8 +42,8 @@ class _ChartMutationsMixin:
         self._labels_position_value: str | None = None
 
     def _set_palette(self, *, id: PaletteId) -> None:
-        if id not in VALID_PALETTES:
-            raise DataLensConfigurationError(f"Unknown palette {id!r}. Valid palettes: {sorted(VALID_PALETTES)}")
+        if not isinstance(id, str) or not id.strip():
+            raise DataLensConfigurationError("palette(id=...) requires a non-empty string.")
         self._colors_palette = id
 
     def _set_color_by_dimension(self, field: WizardFieldRef) -> None:

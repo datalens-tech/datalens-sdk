@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 from typing import Any, Literal, cast, get_type_hints
+import warnings
 
 import pytest
 
-from datalens_sdk._generated.builders.charts import WizardChartCreateFactory
+from datalens_sdk._generated.builders.charts import (
+    ColumnWizardChartCreate,
+    DonutWizardChartCreate,
+    PieWizardChartCreate,
+    WizardChartCreateFactory,
+)
 from datalens_sdk._runtime.chart_wire import build_date_interval
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.chart_types import MeasureFormat, PaletteId
@@ -574,12 +580,13 @@ class TestPaletteHelper:
         assert cfg.get("gradientPalette") == "blue"
         assert "gradientMode" in cfg
 
-    def test_discrete_palette_rejects_measure_colors(self) -> None:
+    @pytest.mark.parametrize("palette", ["classic20", "org-brand-2026"])
+    def test_discrete_palette_rejects_measure_colors(self, palette: PaletteId) -> None:
         ds = _dataset("dim", "meas")
         builder = (
             _factory.column(name="Chart", location=_loc()).dataset(ds).x(["dim"]).y(["meas"]).color_by_measure("meas")
         )
-        builder.palette(id="classic20")
+        builder.palette(id=palette)
         with pytest.raises(DataLensConfigurationError, match="requires a DIMENSION"):
             _build(builder)
 
@@ -656,9 +663,34 @@ class TestPaletteHelper:
         assert cfg.get("palette") == "datalens-classic-20"
         assert _items_in_ph(data, "colors")[0]["guid"] == "dim"
 
-    def test_unknown_palette_raises_configuration_error(self) -> None:
-        with pytest.raises(DataLensConfigurationError, match="Unknown palette"):
-            _factory.line(name="Chart", location=_loc()).palette(id=cast(PaletteId, "nonexistent-palette-xyz"))
+    @pytest.mark.parametrize("invalid_id", ["", " \t", 0])
+    def test_invalid_palette_id_rejected_by_create_and_update(self, invalid_id: object) -> None:
+        builder = _factory.line(name="Chart", location=_loc())
+        chart = WizardChart(id="chart-1", installation="yacloud", data=_build(builder))
+        for palette_target in (builder, chart.update):
+            with pytest.raises(DataLensConfigurationError, match="requires a non-empty string"):
+                palette_target.palette(id=cast(PaletteId, invalid_id))
+
+    def test_custom_palette_applies_to_measure_names(self) -> None:
+        ds = _dataset("dim", "meas", "other_dim", "meas2")
+        builder = (
+            _factory.line(name="Chart", location=_loc())
+            .dataset(ds)
+            .x(["dim"])
+            .y(["meas", "meas2"])
+            .color_by_measure_name()
+            .palette(id="org-brand-2026")
+        )
+
+        assert _slot_settings(_build(builder), "colors")["palette"] == "org-brand-2026"
+
+    @pytest.mark.parametrize("viz_type", ["pie", "donut"])
+    def test_custom_palette_requires_a_color_source(self, viz_type: str) -> None:
+        ds = _dataset("dim", "meas")
+        create = _factory.pie if viz_type == "pie" else _factory.donut
+        builder = create(name="Chart", location=_loc()).dataset(ds).y(["meas"]).palette(id="org-brand-2026")
+        with pytest.raises(DataLensConfigurationError, match="requires a field in the colors slot"):
+            _build(builder)
 
 
 class TestSemanticColorRouting:
@@ -1675,6 +1707,78 @@ class TestSemanticEncodingUpdates:
         actual = self._update_data(self._set_color(self._chart(source).update, ds, target_mode))
 
         assert self._encoding_fragment(actual) == self._encoding_fragment(expected)
+
+    @pytest.mark.parametrize("viz_type", ["pie", "donut", "column"])
+    @pytest.mark.parametrize("palette_first", [False, True])
+    def test_explicit_palette_wins_when_reusing_color_field(self, viz_type: str, palette_first: bool) -> None:
+        ds = _dataset("dim", "meas")
+        builder: PieWizardChartCreate | DonutWizardChartCreate | ColumnWizardChartCreate
+        if viz_type == "pie":
+            builder = _factory.pie(name="Chart", location=_loc())
+        elif viz_type == "donut":
+            builder = _factory.donut(name="Chart", location=_loc())
+        else:
+            builder = _factory.column(name="Chart", location=_loc())
+        source = _build(builder.dataset(ds).x(["dim"]).y(["meas"]))
+        colors = source["visualization"]["colors"]
+        if viz_type == "column":
+            colors["items"] = [{"guid": "dim", "datasetId": "ds1"}]
+        else:
+            colors["items"] = []
+        colors["settings"].update(
+            {"palette": "org-brand-2026", "mountedColors": {"North": "1"}, "paletteManualValues": ["North"]}
+        )
+        update = self._chart(source).update
+        field = ds.fields.by_name("field_dim")
+        if palette_first:
+            update.palette(id="org-brand-next").color_by_dimension(field)
+        else:
+            update.color_by_dimension(field).palette(id="org-brand-next")
+
+        assert _slot_settings(self._update_data(update), "colors") == {
+            "palette": "org-brand-next",
+            "mountedColors": {"North": "1"},
+            "paletteManualValues": ["North"],
+        }
+
+    def test_change_dimension_keeps_palette_without_warning_when_no_value_overrides(self) -> None:
+        ds = _dataset("dim", "measure_1", "other_dim", "measure_2")
+        source = self._column_with_color(ds, "dimension")
+        _slot_settings(source, "colors")["palette"] = "org-brand-2026"
+        update = self._chart(source).update.color_by_dimension(ds.fields.by_name("field_other_dim"))
+
+        with warnings.catch_warnings(record=True) as caught:
+            result = self._update_data(update)
+
+        assert _slot_settings(result, "colors") == {"palette": "org-brand-2026"}
+        assert caught == []
+
+    def test_replacing_dataset_clears_value_colors_even_when_guid_matches(self) -> None:
+        ds = _dataset("dim", "measure_1", "other_dim", "measure_2")
+        source = self._column_with_color(ds, "dimension")
+        _slot_settings(source, "colors").update(
+            {"palette": "org-brand-2026", "mountedColors": {"North": "1"}, "paletteManualValues": ["North"]}
+        )
+        update = (
+            self._chart(source)
+            .update.replace_dataset(old="ds1", new="ds2")
+            .color_by_dimension(ds.fields.by_name("field_dim"))
+        )
+
+        with pytest.warns(UserWarning, match="saved value colors cannot be preserved"):
+            result = self._update_data(update)
+
+        assert _items_in_ph(result, "colors") == [{"guid": "dim", "datasetId": "ds2"}]
+        assert _slot_settings(result, "colors") == {"palette": "org-brand-2026"}
+
+    @pytest.mark.parametrize("source_mode", ["measure", "measure_name"])
+    def test_new_dimension_does_not_inherit_noncategorical_settings(self, source_mode: str) -> None:
+        ds = _dataset("dim", "measure_1", "other_dim", "measure_2")
+        source = self._column_with_color(ds, source_mode)
+        _slot_settings(source, "colors")["paletteManualValues"] = ["invalid-for-dimension"]
+        update = self._chart(source).update.color_by_dimension(ds.fields.by_name("field_dim"))
+
+        assert _slot_settings(self._update_data(update), "colors") == {"palette": "datalens-classic-20"}
 
     def test_shape_transitions_are_path_independent_and_clear_field_binding(self) -> None:
         ds = _dataset("dim", "measure_1", "other_dim", "measure_2")

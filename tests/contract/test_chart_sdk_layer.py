@@ -146,6 +146,161 @@ def test_wizard_create_payload_carries_v3_field_references() -> None:
     assert set(x_items[0]) == {"guid", "datasetId"}
 
 
+@pytest.mark.parametrize("viz_id", ["pie", "donut"])
+@pytest.mark.parametrize("explicit_colors", [False, True])
+def test_wizard_create_with_custom_palette(viz_id: str, explicit_colors: bool) -> None:
+    recorder = _RecordedTransport({"/rpc/createWizardChart": httpx.Response(200, json=_wizard_response(viz_id=viz_id))})
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as client:
+        factory = client.create.wizard_chart
+        create = factory.pie if viz_id == "pie" else factory.donut
+        chart = create(name="Sales", location=dl.EntryLocation.path("/Users/me")).dataset(_dataset()).y(["Amount"])
+        chart.x(["Order Date" if explicit_colors else "Region"])
+        if explicit_colors:
+            chart.color_by_dimension("Region")
+        palette_id: str = "org-brand-2026"
+        chart.palette(id=palette_id).build()
+
+    assert recorder.paths() == ["/rpc/createWizardChart"]
+    assert _request_colors(recorder, 0) == {
+        "items": [{"guid": "g_reg", "datasetId": "ds-1"}],
+        "settings": {"palette": "org-brand-2026"},
+    }
+
+
+def _request_colors(recorder: _RecordedTransport, index: int) -> dict[str, object]:
+    data = cast(dict[str, object], recorder.request_json(index)["data"])
+    visualization = cast(dict[str, object], data["visualization"])
+    return cast(dict[str, object], visualization["colors"])
+
+
+def _wizard_with_custom_palette(viz_id: str) -> dict[str, object]:
+    response = _wizard_response(viz_id=viz_id)
+    entry = cast(dict[str, object], response["entry"])
+    visualization = cast(dict[str, object], cast(dict[str, object], entry["data"])["visualization"])
+    visualization["colors"] = {
+        "items": [{"guid": "g_reg", "datasetId": "ds-1"}],
+        "settings": {
+            "palette": "org-brand-2026",
+            "colorMode": "palette",
+            "fieldGuid": "g_reg",
+            "mountedColors": {"North": "#123456", "South": "1"},
+            "paletteManualValues": ["North", "South"],
+            "reversed": True,
+            "futureSetting": "kept",
+        },
+    }
+    visualization["measures"] = {"items": [{"guid": "g_amt", "datasetId": "ds-1"}]}
+    visualization["chartSettings"] = {"titleMode": "hide"}
+    return response
+
+
+@pytest.mark.parametrize("viz_id", ["pie", "donut"])
+def test_wizard_update_custom_palette_keeps_manual_colors(viz_id: str) -> None:
+    response = _wizard_with_custom_palette(viz_id)
+    recorder = _RecordedTransport(
+        {
+            "/rpc/getWizardChart": httpx.Response(200, json=response),
+            "/rpc/updateWizardChart": httpx.Response(200, json=response),
+        }
+    )
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as client:
+        chart = client.get.wizard_chart(by_id="chart-1")
+        chart.update.palette(id="org-brand-next").execute()
+
+    assert recorder.paths() == ["/rpc/getWizardChart", "/rpc/updateWizardChart"]
+    colors = _request_colors(recorder, 1)
+    assert colors["items"] == [{"guid": "g_reg", "datasetId": "ds-1"}]
+    settings = cast(dict[str, object], colors["settings"])
+    assert settings["palette"] == "org-brand-next"
+    assert settings["mountedColors"] == {"North": "#123456", "South": "1"}
+    assert settings["paletteManualValues"] == ["North", "South"]
+
+
+@pytest.mark.parametrize("viz_id", ["pie", "donut"])
+@pytest.mark.parametrize("same_field", [False, True])
+def test_wizard_dimension_update_preserves_compatible_palette_state(viz_id: str, same_field: bool) -> None:
+    response = _wizard_with_custom_palette(viz_id)
+    recorder = _RecordedTransport(
+        {
+            "/rpc/getWizardChart": httpx.Response(200, json=response),
+            "/rpc/updateWizardChart": httpx.Response(200, json=response),
+        }
+    )
+    with dl.DataLensClientEnterprise(
+        auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+    ) as client:
+        chart = client.get.wizard_chart(by_id="chart-1")
+        snapshot = json.dumps(chart.data, sort_keys=True)
+        ds = _dataset()
+        field = ds.fields.by_guid("g_reg" if same_field else "g_date")
+        update = chart.update.color_by_dimension(field).mode("save")
+        if same_field:
+            update.execute()
+        else:
+            with pytest.warns(UserWarning, match="saved value colors cannot be preserved") as warning:
+                update.execute()
+            assert len(warning) == 1
+        assert json.dumps(chart.data, sort_keys=True) == snapshot
+
+    assert recorder.paths() == ["/rpc/getWizardChart", "/rpc/updateWizardChart"]
+    payload = recorder.request_json(1)
+    assert payload["chartId"] == "chart-1"
+    assert payload["mode"] == "save"
+    data = cast(dict[str, object], payload["data"])
+    assert cast(dict[str, object], data["visualization"])["chartSettings"] == {"titleMode": "hide"}
+    colors = _request_colors(recorder, 1)
+    assert colors["items"] == [{"guid": field.guid, "datasetId": "ds-1"}]
+    settings = cast(dict[str, object], colors["settings"])
+    expected: dict[str, object] = {
+        "palette": "org-brand-2026",
+        "colorMode": "palette",
+        "reversed": True,
+        "futureSetting": "kept",
+    }
+    if same_field:
+        expected.update(
+            {"mountedColors": {"North": "#123456", "South": "1"}, "paletteManualValues": ["North", "South"]}
+        )
+    assert settings == expected
+
+
+def test_wizard_custom_palette_server_rejection_preserves_api_error() -> None:
+    recorder = _RecordedTransport(
+        {
+            "/rpc/createWizardChart": httpx.Response(
+                400,
+                json={"code": "TEST_PALETTE_NOT_FOUND", "message": "Palette cannot be used"},
+                headers={"x-request-id": "palette-invalid-1"},
+            )
+        }
+    )
+    with (
+        dl.DataLensClientEnterprise(
+            auth=None, base_url="http://test", transport=httpx.MockTransport(recorder.handler)
+        ) as client,
+        pytest.raises(dl.BadRequestError) as error,
+    ):
+        (
+            client.create.wizard_chart.pie(name="Sales", location=dl.EntryLocation.path("/Users/me"))
+            .dataset(_dataset())
+            .x(["Region"])
+            .y(["Amount"])
+            .palette(id="missing-brand-palette")
+            .build()
+        )
+
+    assert recorder.paths() == ["/rpc/createWizardChart"]
+    assert (error.value.context.status_code, error.value.context.code, error.value.context.request_id) == (
+        400,
+        "TEST_PALETTE_NOT_FOUND",
+        "palette-invalid-1",
+    )
+
+
 def test_chart_create_accepts_resource_objects_and_equivalent_location_refs() -> None:
     recorder = _RecordedTransport(
         {

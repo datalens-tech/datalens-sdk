@@ -74,7 +74,7 @@ GradientPaletteId: TypeAlias = Literal[
     "yellow",
 ]
 
-PaletteId: TypeAlias = DiscretePaletteId | GradientPaletteId
+PaletteId: TypeAlias = DiscretePaletteId | GradientPaletteId | str
 
 ShapeStyle: TypeAlias = Literal[
     "Solid",
