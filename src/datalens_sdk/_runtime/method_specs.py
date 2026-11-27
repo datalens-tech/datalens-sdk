@@ -122,6 +122,7 @@ METHOD_SPECS: dict[str, MethodSpec] = {
     "labels_position": {
         "kind": "helper",
         "helper": "labels_position",
+        "excluded_visualization_types": frozenset({"pie", "donut"}),
         "required_slot_carrier": "labels",
         "required_slot_settings_any": frozenset({"labelsPosition", "position"}),
     },

@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from copy import deepcopy
+import json
+from typing import Any, Literal, cast
 
+import httpx
 import pytest
 
+from datalens_sdk import DataLensClientEnterprise
 from datalens_sdk._generated.dto import WIZARD_VISUALIZATION_STRUCTURE
 from datalens_sdk.converter.wizard_chart import WizardChartConverter
 from datalens_sdk.domain.wizard_chart import WizardChart
 from datalens_sdk.errors import DataLensConfigurationError
 
 
-def _chart_with_viz(viz_id: str, *, fields: list[dict[str, Any]] | None = None) -> WizardChart:
+def _response_with_viz(viz_id: str, *, fields: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """Build a Wizard v3 chart snapshot with resolvable named-slot items."""
     field_items = (
         fields
@@ -26,36 +30,37 @@ def _chart_with_viz(viz_id: str, *, fields: list[dict[str, Any]] | None = None) 
     slots: dict[str, Any] = {slot_name: {"items": []} for slot_name in structure["slots"]}
     carrier = next(name for name in ("y", "measures", "columns") if name in slots)
     slots[carrier]["items"] = [{**field, "datasetId": "ds1"} for field in field_items]
-    return WizardChartConverter.to_domain(
-        {
-            "entry": {
-                "createdAt": "2026-01-01T00:00:00.000Z",
-                "createdBy": "user-1",
-                "hidden": False,
-                "key": "Users/example/chart-1",
-                "meta": {},
-                "public": False,
-                "publishedId": "revision-1",
-                "revId": "revision-1",
-                "savedId": "revision-1",
-                "scope": "widget",
-                "tenantId": "tenant-1",
-                "updatedAt": "2026-01-02T00:00:00.000Z",
-                "updatedBy": "user-1",
-                "version": 1,
-                "entryId": "chart-1",
-                "type": "d3_wizard_node",
-                "workbookId": None,
-                "data": {
-                    "sources": {"datasetsIds": ["ds1"]},
-                    "visualization": {"type": viz_id, **slots},
-                },
+    return {
+        "entry": {
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "createdBy": "user-1",
+            "hidden": False,
+            "key": "Users/example/chart-1",
+            "meta": {},
+            "public": False,
+            "publishedId": "revision-1",
+            "revId": "revision-1",
+            "savedId": "revision-1",
+            "scope": "widget",
+            "tenantId": "tenant-1",
+            "updatedAt": "2026-01-02T00:00:00.000Z",
+            "updatedBy": "user-1",
+            "version": 1,
+            "entryId": "chart-1",
+            "type": "d3_wizard_node",
+            "workbookId": None,
+            "data": {
+                "sources": {"datasetsIds": ["ds1"]},
+                "visualization": {"type": viz_id, **slots},
             },
-            "isFavorite": False,
-            "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
         },
-        installation="yacloud",
-    )
+        "isFavorite": False,
+        "permissions": {"admin": True, "edit": True, "execute": True, "read": True},
+    }
+
+
+def _chart_with_viz(viz_id: str, *, fields: list[dict[str, Any]] | None = None) -> WizardChart:
+    return WizardChartConverter.to_domain(_response_with_viz(viz_id, fields=fields), installation="yacloud")
 
 
 def _update_data(update: Any) -> dict[str, Any]:
@@ -113,6 +118,59 @@ def test_explicit_labels_position_is_stored_in_label_slot_settings() -> None:
     data = _update_data(update)
     settings = cast(dict[str, Any], data["visualization"]["labels"]["settings"])
     assert settings["labelsPosition"] == "inside"
+
+
+@pytest.mark.parametrize("viz_id", ["pie", "donut"])
+@pytest.mark.parametrize("mode", ["outside", "inside", "auto"])
+def test_pie_and_donut_reject_labels_position_at_setter(
+    viz_id: str, mode: Literal["outside", "inside", "auto"]
+) -> None:
+    response = _response_with_viz(viz_id)
+    visualization = response["entry"]["data"]["visualization"]
+    region, amount = visualization["measures"]["items"]
+    visualization["dimensions"]["items"] = [region]
+    visualization["measures"]["items"] = [amount]
+    visualization["labels"]["items"] = [{"guid": "g_amt", "datasetId": "ds1"}]
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=response)
+
+    with DataLensClientEnterprise(
+        base_url="https://datalens.example", auth=None, transport=httpx.MockTransport(handler)
+    ) as client:
+        chart = client.get.wizard_chart(by_id="chart-1")
+        original_data = deepcopy(chart.data)
+        update = chart.update
+
+        with pytest.raises(
+            DataLensConfigurationError,
+            match=rf"labels_position.*not applicable to visualization '{viz_id}'",
+        ):
+            update.labels_position(mode=mode)
+
+        assert [request.url.path for request in requests] == ["/rpc/getWizardChart"]
+        assert chart.data == original_data
+
+        update.labels([chart.fields.by_guid("g_amt")]).execute()
+
+    assert [request.url.path for request in requests] == ["/rpc/getWizardChart", "/rpc/updateWizardChart"]
+    payload = json.loads(requests[1].content)
+    assert payload["chartId"] == "chart-1"
+    assert payload["mode"] == "save"
+    labels = payload["data"]["visualization"]["labels"]
+    assert labels["items"] == [{"guid": "g_amt", "datasetId": "ds1"}]
+    assert not {"labelsPosition", "position"} & labels.get("settings", {}).keys()
+    assert chart.data == original_data
+
+
+def test_funnel_labels_position_uses_position_setting() -> None:
+    chart = _chart_with_viz("funnel")
+    data = _update_data(chart.update.labels(["Amount"]).labels_position(mode="outside"))
+    settings = data["visualization"]["labels"]["settings"]
+    assert settings["position"] == "outside"
+    assert "labelsPosition" not in settings
 
 
 def test_labels_position_auto_removes_the_explicit_carrier() -> None:

@@ -92,6 +92,9 @@ chart = chart.update.measures([profit]).measure_format(profit, format="number").
 - `x` aliases optional `dimensions`; `y` aliases required `measures`; both have capacity 1.
 - Without explicit `color_by_dimension()`, the SDK uses the dimension as the color source.
 - Only dimension color is supported; measure-gradient and measure-name color are not.
+- Creation uses the default label placement. Calling `labels_position()` on
+  an update raises `DataLensConfigurationError` immediately. Use `labels()`
+  to select label fields and `label_mode()` to choose absolute or percent values.
 - No visualization transition is supported from this visualization.
 
 ## Related references

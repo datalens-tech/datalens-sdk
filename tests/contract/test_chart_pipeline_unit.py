@@ -182,6 +182,27 @@ def test_explicit_labels_position_column_inside() -> None:
     assert data["visualization"]["labels"]["settings"]["labelsPosition"] == "inside"
 
 
+@pytest.mark.parametrize("viz_id", ["pie", "donut"])
+def test_pie_and_donut_create_builders_support_labels_without_explicit_position(viz_id: str) -> None:
+    dataset = _dataset()
+    factory = WizardChartCreateFactory(cast(Any, None))
+    create = factory.pie if viz_id == "pie" else factory.donut
+    builder = (
+        create(name="Chart", location=EntryLocation.path("/F"))
+        .dataset(dataset)
+        .x(["Region"])
+        .y(["Amount"])
+        .labels(["Amount"])
+        .label_mode(mode="percent")
+    )
+    assert not hasattr(builder, "labels_position")
+
+    data = cast(dict[str, Any], WizardChartConverter.from_domain_create(builder.to_spec()).to_payload()["data"])
+    labels = data["visualization"]["labels"]
+    assert labels["items"] == [{"guid": "g_amt", "datasetId": "ds1", "formatting": {"labelMode": "percent"}}]
+    assert not {"labelsPosition", "position"} & labels.get("settings", {}).keys()
+
+
 def test_labels_column_without_position_has_no_position_carrier() -> None:
     dataset = _dataset()
     factory = WizardChartCreateFactory(cast(Any, None))
